@@ -1,0 +1,32 @@
+{
+  "permissions": {
+    "allow": [
+      "Read(//c/Users/mauri/AppData/Roaming/Claude/local-agent-mode-sessions/skills-plugin/eef0f4a7-3ec6-4888-aa93-28da463cac29/eed2e429-18d1-480a-9535-95f4f5a87032/skills/docx/**)",
+      "Bash(python scripts/office/unpack.py \"D:\\\\Cossmil\\\\figma\\\\AUTH_USUARIO_ASEGURADO.docx\" /tmp/auth_doc_unpacked/)",
+      "Bash(pandoc \"D:/Cossmil/figma/AUTH_USUARIO_ASEGURADO.docx\" -t markdown)",
+      "Bash(python3 -c \":*)",
+      "Bash(powershell -Command \"Copy-Item ''D:\\\\Cossmil\\\\figma\\\\AUTH_USUARIO_ASEGURADO.docx'' ''C:\\\\Users\\\\mauri\\\\AppData\\\\Local\\\\Temp\\\\auth_copy.docx'' -Force\")",
+      "Bash(powershell -Command \":*)",
+      "Bash(powershell -Command \"cd ''D:\\\\Cossmil\\\\frontend\\\\flutter_application_1''; flutter pub get\")",
+      "Bash(powershell -Command \"Get-ChildItem -Path ''C:\\\\'' -Filter ''flutter.bat'' -Recurse -Depth 4 -ErrorAction SilentlyContinue | Select-Object FullName\")",
+      "Bash(powershell -Command \"Get-ChildItem Env: | Where-Object {$_Name -like ''*FLUTTER*'' -or $_Value -like ''*flutter*''} | Select-Object Name,Value\")",
+      "Read(//d/Cossmil/figma/**)",
+      "Read(//d/Cossmil/**)",
+      "Bash(find D:/Cossmil -name *.png -o -name *.jpg -o -name *.jpeg -o -name *.svg)",
+      "Bash(flutter analyze:*)",
+      "Bash(where flutter:*)",
+      "Bash(cmd.exe /c \"where flutter\")",
+      "Bash(cmd.exe /c \"flutter pub get\")",
+      "Bash(cmd.exe /c \"flutter pub get 2>&1\")",
+      "Bash(powershell.exe -Command \"flutter pub get\")",
+      "Bash(xargs wc:*)",
+      "Bash(flutter pub:*)",
+      "Bash(cmd //c \"flutter pub get\")",
+      "Read(//d/Cossmil/frontend/flutter_application_1/$LOCALAPPDATA/flutter/bin/**)",
+      "Read(//d/Cossmil/frontend/flutter_application_1/$HOME/flutter/bin/**)",
+      "Read(//c/src/flutter/bin/**)",
+      "Read(//d/flutter/bin/**)",
+      "Bash(powershell -Command \"Get-ChildItem -Path ''C:\\\\'',''D:\\\\'' -Filter ''flutter.bat'' -Recurse -Depth 4 -ErrorAction SilentlyContinue | Select-Object -First 3 -ExpandProperty FullName\")"
+    ]
+  }
+}
