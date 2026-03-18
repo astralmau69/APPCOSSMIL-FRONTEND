@@ -1,5 +1,6 @@
-import 'package:flutter/cupertino.dart';
+import 'package:flutter/material.dart';
 import '../../../core/constants/app_colors.dart';
+import '../../../core/theme/app_theme.dart';
 import '../../../core/mock/mock_schedule_data.dart';
 import '../../../core/models/time_slot_model.dart';
 import '../../../core/widgets/breadcrumb_chips.dart';
@@ -50,20 +51,22 @@ class _ScheduleScreenState extends State<ScheduleScreen>
       bs.specialty?.name ?? '',
     ];
 
-    return CupertinoPageScaffold(
-      backgroundColor: AppColors.bgGrey,
-      navigationBar: CupertinoNavigationBar(
-        previousPageTitle: 'Atrás',
-        middle: const Text(
+    return Scaffold(
+      backgroundColor: AppColors.background,
+      appBar: AppBar(
+        title: const Text(
           'HORAS DISPONIBLES',
           style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16),
         ),
         backgroundColor: AppColors.white,
-        border: const Border(
-          bottom: BorderSide(color: AppColors.cardBorder, width: 0.5),
+        centerTitle: true,
+        elevation: 0,
+        bottom: PreferredSize(
+          preferredSize: const Size.fromHeight(0.5),
+          child: Container(color: AppColors.border, height: 0.5),
         ),
       ),
-      child: SafeArea(
+      body: SafeArea(
         child: FadeTransition(
           opacity: _fadeIn,
           child: ListView(
@@ -71,48 +74,8 @@ class _ScheduleScreenState extends State<ScheduleScreen>
             children: [
               BreadcrumbChips(labels: breadcrumbs),
               const SizedBox(height: 16),
-              _buildInfoBanner(),
+              _buildDateAndInfoHeader(),
               const SizedBox(height: 18),
-              // Pill de fecha
-              Center(
-                child: Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 22, vertical: 11),
-                  decoration: BoxDecoration(
-                    gradient: const LinearGradient(
-                      colors: [Color(0xFF7A7640), Color(0xFF5C5928)],
-                    ),
-                    borderRadius: BorderRadius.circular(24),
-                    boxShadow: [
-                      BoxShadow(
-                        color: AppColors.olive.withOpacity(0.3),
-                        blurRadius: 8,
-                        offset: const Offset(0, 3),
-                      ),
-                    ],
-                  ),
-                  child: const Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(
-                        CupertinoIcons.calendar,
-                        size: 16,
-                        color: CupertinoColors.white,
-                      ),
-                      SizedBox(width: 8),
-                      Text(
-                        'Mañana, 18 de Marzo',
-                        style: TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w600,
-                          color: CupertinoColors.white,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-              const SizedBox(height: 22),
               _buildDoctorCard(),
               const SizedBox(height: 24),
               Padding(
@@ -123,7 +86,7 @@ class _ScheduleScreenState extends State<ScheduleScreen>
                       width: 3,
                       height: 18,
                       decoration: BoxDecoration(
-                        color: AppColors.olive,
+                        color: AppColors.primary,
                         borderRadius: BorderRadius.circular(2),
                       ),
                     ),
@@ -133,7 +96,7 @@ class _ScheduleScreenState extends State<ScheduleScreen>
                       style: TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.w700,
-                        color: AppColors.darkText,
+                        color: AppColors.textPrimary,
                       ),
                     ),
                   ],
@@ -142,17 +105,21 @@ class _ScheduleScreenState extends State<ScheduleScreen>
               const SizedBox(height: 14),
               _buildTimeGrid(),
               const SizedBox(height: 32),
-              // Botón continuar
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 40),
                 child: AnimatedOpacity(
                   opacity: _selectedTime != null ? 1.0 : 0.5,
                   duration: const Duration(milliseconds: 250),
-                  child: CupertinoButton(
-                    color: AppColors.olive,
-                    disabledColor: AppColors.olive.withOpacity(0.3),
-                    borderRadius: BorderRadius.circular(14),
-                    padding: const EdgeInsets.symmetric(vertical: 16),
+                  child: ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.primary,
+                      disabledBackgroundColor: AppColors.primary.withOpacity(0.3),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(AppTheme.radiusLg),
+                      ),
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      elevation: 0,
+                    ),
                     onPressed: _selectedTime == null
                         ? null
                         : () {
@@ -161,7 +128,7 @@ class _ScheduleScreenState extends State<ScheduleScreen>
                                 _selectedTime;
                             Navigator.push(
                               context,
-                              CupertinoPageRoute(
+                              MaterialPageRoute(
                                 builder: (_) => SummaryScreen(
                                     tabShell: widget.tabShell),
                               ),
@@ -175,14 +142,14 @@ class _ScheduleScreenState extends State<ScheduleScreen>
                           style: TextStyle(
                             fontSize: 17,
                             fontWeight: FontWeight.w700,
-                            color: CupertinoColors.white,
+                            color: Colors.white,
                           ),
                         ),
                         SizedBox(width: 8),
                         Icon(
-                          CupertinoIcons.arrow_right,
+                          Icons.arrow_forward,
                           size: 18,
-                          color: CupertinoColors.white,
+                          color: Colors.white,
                         ),
                       ],
                     ),
@@ -197,41 +164,84 @@ class _ScheduleScreenState extends State<ScheduleScreen>
     );
   }
 
-  Widget _buildInfoBanner() {
+  Widget _buildDateAndInfoHeader() {
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 20),
-      padding: const EdgeInsets.all(14),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: AppColors.infoBlueBg,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: AppColors.infoBlueBorder),
+        color: AppColors.white,
+        borderRadius: BorderRadius.circular(AppTheme.radiusLg),
+        boxShadow: AppColors.cardShadow,
       ),
-      child: Row(
+      child: Column(
         children: [
-          Container(
-            width: 32,
-            height: 32,
-            decoration: BoxDecoration(
-              color: AppColors.infoBlue.withOpacity(0.1),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Icon(
-              CupertinoIcons.info_circle_fill,
-              size: 18,
-              color: AppColors.infoBlue,
-            ),
-          ),
-          const SizedBox(width: 12),
-          const Expanded(
-            child: Text(
-              'Las reservas solo están habilitadas para el día de mañana.',
-              style: TextStyle(
-                fontSize: 13,
-                color: Color(0xFF3A5A9C),
-                height: 1.3,
-                fontWeight: FontWeight.w500,
+          // Fecha destacada
+          Row(
+            children: [
+              Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(
+                    colors: [Color(0xFF0E5B85), Color(0xFF082F49)],
+                  ),
+                  borderRadius: BorderRadius.circular(AppTheme.radiusMd),
+                ),
+                child: const Icon(
+                  Icons.calendar_today,
+                  size: 20,
+                  color: Colors.white,
+                ),
               ),
-            ),
+              const SizedBox(width: 12),
+              const Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Martes, 18 de Marzo',
+                      style: TextStyle(
+                        fontSize: 17,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.textPrimary,
+                      ),
+                    ),
+                    SizedBox(height: 2),
+                    Text(
+                      'Fecha disponible para reservas',
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: AppColors.textSecondary,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Container(height: 0.5, color: AppColors.divider),
+          const SizedBox(height: 10),
+          // Info nota
+          const Row(
+            children: [
+              Icon(
+                Icons.info,
+                size: 16,
+                color: AppColors.info,
+              ),
+              SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  'Las reservas solo están habilitadas para el día de mañana.',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: AppColors.textSecondary,
+                    height: 1.3,
+                  ),
+                ),
+              ),
+            ],
           ),
         ],
       ),
@@ -244,7 +254,7 @@ class _ScheduleScreenState extends State<ScheduleScreen>
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
         color: AppColors.white,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(AppTheme.radiusLg),
         boxShadow: AppColors.cardShadow,
       ),
       child: Row(
@@ -257,8 +267,8 @@ class _ScheduleScreenState extends State<ScheduleScreen>
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
                 colors: [
-                  AppColors.olive.withOpacity(0.15),
-                  AppColors.olive.withOpacity(0.08),
+                  AppColors.primary.withOpacity(0.15),
+                  AppColors.primary.withOpacity(0.08),
                 ],
               ),
               borderRadius: BorderRadius.circular(14),
@@ -267,7 +277,7 @@ class _ScheduleScreenState extends State<ScheduleScreen>
             child: Text(
               _doctor.fullName[0],
               style: const TextStyle(
-                color: AppColors.olive,
+                color: AppColors.primary,
                 fontWeight: FontWeight.w700,
                 fontSize: 22,
               ),
@@ -283,20 +293,20 @@ class _ScheduleScreenState extends State<ScheduleScreen>
                   style: const TextStyle(
                     fontSize: 17,
                     fontWeight: FontWeight.w700,
-                    color: AppColors.darkText,
+                    color: AppColors.textPrimary,
                   ),
                 ),
                 const SizedBox(height: 4),
                 Row(
                   children: [
-                    Icon(CupertinoIcons.location_solid,
-                        size: 12, color: AppColors.subtleGrey),
+                    const Icon(Icons.location_on,
+                        size: 12, color: AppColors.textSecondary),
                     const SizedBox(width: 4),
                     Text(
                       _doctor.office,
                       style: const TextStyle(
                         fontSize: 14,
-                        color: AppColors.subtleGrey,
+                        color: AppColors.textSecondary,
                       ),
                     ),
                   ],
@@ -329,17 +339,17 @@ class _ScheduleScreenState extends State<ScheduleScreen>
     Color borderColor;
 
     if (isDisabled) {
-      bgColor = AppColors.bgGrey;
-      textColor = AppColors.subtleGrey.withOpacity(0.4);
-      borderColor = AppColors.cardBorder;
+      bgColor = AppColors.background;
+      textColor = AppColors.textTertiary.withOpacity(0.4);
+      borderColor = AppColors.border;
     } else if (isSelected) {
-      bgColor = AppColors.olive;
+      bgColor = AppColors.primary;
       textColor = AppColors.white;
-      borderColor = AppColors.olive;
+      borderColor = AppColors.primary;
     } else {
       bgColor = AppColors.white;
-      textColor = AppColors.darkText;
-      borderColor = AppColors.cardBorder;
+      textColor = AppColors.textPrimary;
+      borderColor = AppColors.border;
     }
 
     return GestureDetector(
@@ -356,12 +366,12 @@ class _ScheduleScreenState extends State<ScheduleScreen>
         padding: const EdgeInsets.symmetric(vertical: 12),
         decoration: BoxDecoration(
           color: bgColor,
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(AppTheme.radiusMd),
           border: Border.all(color: borderColor, width: isSelected ? 2 : 1),
           boxShadow: isSelected
               ? [
                   BoxShadow(
-                    color: AppColors.olive.withOpacity(0.25),
+                    color: AppColors.primary.withOpacity(0.25),
                     blurRadius: 8,
                     offset: const Offset(0, 2),
                   ),

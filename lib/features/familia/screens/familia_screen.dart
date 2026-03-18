@@ -1,5 +1,6 @@
-import 'package:flutter/cupertino.dart';
+import 'package:flutter/material.dart';
 import '../../../core/constants/app_colors.dart';
+import '../../../core/theme/app_theme.dart';
 import '../../../core/mock/mock_user_data.dart';
 
 class FamiliaScreen extends StatelessWidget {
@@ -9,19 +10,22 @@ class FamiliaScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final beneficiaries = MockUserData.user.beneficiaries;
 
-    return CupertinoPageScaffold(
-      backgroundColor: AppColors.bgGrey,
-      navigationBar: const CupertinoNavigationBar(
-        middle: Text(
+    return Scaffold(
+      backgroundColor: AppColors.background,
+      appBar: AppBar(
+        title: const Text(
           'Familia',
           style: TextStyle(fontWeight: FontWeight.bold),
         ),
-        backgroundColor: CupertinoColors.white,
-        border: Border(
-          bottom: BorderSide(color: AppColors.cardBorder, width: 0.5),
+        backgroundColor: AppColors.white,
+        centerTitle: true,
+        elevation: 0,
+        bottom: PreferredSize(
+          preferredSize: const Size.fromHeight(0.5),
+          child: Container(color: AppColors.border, height: 0.5),
         ),
       ),
-      child: SafeArea(
+      body: SafeArea(
         child: ListView.builder(
           padding: const EdgeInsets.all(20),
           itemCount: beneficiaries.length,
@@ -31,15 +35,9 @@ class FamiliaScreen extends StatelessWidget {
               margin: const EdgeInsets.only(bottom: 12),
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: CupertinoColors.white,
-                borderRadius: BorderRadius.circular(14),
-                boxShadow: [
-                  BoxShadow(
-                    color: CupertinoColors.black.withOpacity(0.04),
-                    blurRadius: 10,
-                    offset: const Offset(0, 2),
-                  ),
-                ],
+                color: AppColors.white,
+                borderRadius: BorderRadius.circular(AppTheme.radiusLg),
+                boxShadow: AppColors.softShadow,
               ),
               child: Row(
                 children: [
@@ -48,13 +46,13 @@ class FamiliaScreen extends StatelessWidget {
                     height: 44,
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
-                      color: AppColors.olive.withOpacity(0.1),
+                      color: AppColors.primary.withOpacity(0.1),
                     ),
                     alignment: Alignment.center,
                     child: Text(
                       b.fullName[0],
                       style: const TextStyle(
-                        color: AppColors.olive,
+                        color: AppColors.primary,
                         fontWeight: FontWeight.w600,
                         fontSize: 16,
                       ),
@@ -70,15 +68,15 @@ class FamiliaScreen extends StatelessWidget {
                           style: const TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.w600,
-                            color: AppColors.darkText,
+                            color: AppColors.textPrimary,
                           ),
                         ),
                         const SizedBox(height: 2),
                         Text(
                           b.relationship,
-                          style: TextStyle(
+                          style: const TextStyle(
                             fontSize: 13,
-                            color: AppColors.subtleGrey,
+                            color: AppColors.textSecondary,
                           ),
                         ),
                       ],

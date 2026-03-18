@@ -26,7 +26,12 @@
       "Read(//d/Cossmil/frontend/flutter_application_1/$HOME/flutter/bin/**)",
       "Read(//c/src/flutter/bin/**)",
       "Read(//d/flutter/bin/**)",
-      "Bash(powershell -Command \"Get-ChildItem -Path ''C:\\\\'',''D:\\\\'' -Filter ''flutter.bat'' -Recurse -Depth 4 -ErrorAction SilentlyContinue | Select-Object -First 3 -ExpandProperty FullName\")"
+      "Bash(powershell -Command \"Get-ChildItem -Path ''C:\\\\'',''D:\\\\'' -Filter ''flutter.bat'' -Recurse -Depth 4 -ErrorAction SilentlyContinue | Select-Object -First 3 -ExpandProperty FullName\")",
+      "Bash(flutter build:*)",
+      "Bash(flutter install:*)",
+      "Bash(flutter run:*)",
+      "Bash(timeout 60)",
+      "Bash(flutter devices:*)"
     ]
   }
 }

@@ -8,6 +8,8 @@ class UserModel {
   final String bloodType;
   final int age;
   final String role;
+  final bool isEnabled;
+  final bool hasMedicalAppointment;
   final List<BeneficiaryModel> beneficiaries;
 
   const UserModel({
@@ -18,6 +20,8 @@ class UserModel {
     required this.bloodType,
     required this.age,
     required this.role,
+    this.isEnabled = true,
+    this.hasMedicalAppointment = false,
     required this.beneficiaries,
   });
 

@@ -1,5 +1,6 @@
-import 'package:flutter/cupertino.dart';
+import 'package:flutter/material.dart';
 import '../../../core/constants/app_colors.dart';
+import '../../../core/theme/app_theme.dart';
 import '../../../core/mock/mock_user_data.dart';
 import '../../../core/storage/token_storage.dart';
 
@@ -10,31 +11,33 @@ class PerfilScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final user = MockUserData.user;
 
-    return CupertinoPageScaffold(
-      backgroundColor: AppColors.bgGrey,
-      navigationBar: const CupertinoNavigationBar(
-        middle: Text(
+    return Scaffold(
+      backgroundColor: AppColors.background,
+      appBar: AppBar(
+        title: const Text(
           'Perfil',
           style: TextStyle(fontWeight: FontWeight.bold),
         ),
-        backgroundColor: CupertinoColors.white,
-        border: Border(
-          bottom: BorderSide(color: AppColors.cardBorder, width: 0.5),
+        backgroundColor: AppColors.white,
+        centerTitle: true,
+        elevation: 0,
+        bottom: PreferredSize(
+          preferredSize: const Size.fromHeight(0.5),
+          child: Container(color: AppColors.border, height: 0.5),
         ),
       ),
-      child: SafeArea(
+      body: SafeArea(
         child: ListView(
           padding: const EdgeInsets.all(20),
           children: [
             const SizedBox(height: 10),
-            // Avatar
             Center(
               child: Container(
                 width: 80,
                 height: 80,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  color: AppColors.olive.withOpacity(0.12),
+                  color: AppColors.primary.withOpacity(0.12),
                 ),
                 alignment: Alignment.center,
                 child: Text(
@@ -42,7 +45,7 @@ class PerfilScreen extends StatelessWidget {
                   style: const TextStyle(
                     fontSize: 32,
                     fontWeight: FontWeight.bold,
-                    color: AppColors.olive,
+                    color: AppColors.primary,
                   ),
                 ),
               ),
@@ -51,32 +54,37 @@ class PerfilScreen extends StatelessWidget {
             Center(
               child: Text(
                 user.displayName,
+                textAlign: TextAlign.center,
                 style: const TextStyle(
                   fontSize: 20,
                   fontWeight: FontWeight.bold,
-                  color: AppColors.darkText,
+                  color: AppColors.textPrimary,
                 ),
               ),
             ),
             Center(
               child: Text(
                 '${user.role} • Mat. ${user.matricula}',
-                style: TextStyle(
+                style: const TextStyle(
                   fontSize: 14,
-                  color: AppColors.olive,
+                  color: AppColors.primary,
                 ),
               ),
             ),
             const SizedBox(height: 30),
-            // Info card
             _infoRow('Grupo Sanguíneo', user.bloodType),
             _infoRow('Edad', '${user.age} años'),
             _infoRow('Matrícula', user.matricula),
             const SizedBox(height: 30),
-            // Logout
-            CupertinoButton(
-              color: AppColors.errorRed,
-              borderRadius: BorderRadius.circular(14),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.error,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(AppTheme.radiusLg),
+                ),
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                elevation: 0,
+              ),
               onPressed: () async {
                 await TokenStorage.deleteToken();
                 if (!context.mounted) return;
@@ -86,7 +94,7 @@ class PerfilScreen extends StatelessWidget {
               child: const Text(
                 'Cerrar Sesión',
                 style: TextStyle(
-                  color: CupertinoColors.white,
+                  color: AppColors.white,
                   fontWeight: FontWeight.w600,
                 ),
               ),
@@ -102,9 +110,9 @@ class PerfilScreen extends StatelessWidget {
       margin: const EdgeInsets.only(bottom: 1),
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       decoration: const BoxDecoration(
-        color: CupertinoColors.white,
+        color: AppColors.white,
         border: Border(
-          bottom: BorderSide(color: AppColors.cardBorder, width: 0.5),
+          bottom: BorderSide(color: AppColors.border, width: 0.5),
         ),
       ),
       child: Row(
@@ -112,14 +120,14 @@ class PerfilScreen extends StatelessWidget {
         children: [
           Text(
             label,
-            style: TextStyle(fontSize: 15, color: AppColors.subtleGrey),
+            style: const TextStyle(fontSize: 15, color: AppColors.textSecondary),
           ),
           Text(
             value,
             style: const TextStyle(
               fontSize: 15,
               fontWeight: FontWeight.w600,
-              color: AppColors.darkText,
+              color: AppColors.textPrimary,
             ),
           ),
         ],

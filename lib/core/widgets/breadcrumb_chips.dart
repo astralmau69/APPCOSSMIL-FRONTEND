@@ -1,7 +1,7 @@
-import 'package:flutter/cupertino.dart';
+import 'package:flutter/material.dart';
 import '../constants/app_colors.dart';
 
-/// Fila de breadcrumb chips scrollable con animación de entrada.
+/// Fila de breadcrumb chips scrollable.
 class BreadcrumbChips extends StatelessWidget {
   final List<String> labels;
 
@@ -27,10 +27,14 @@ class BreadcrumbChips extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
       decoration: BoxDecoration(
-        color: isLast ? AppColors.olive.withOpacity(0.12) : AppColors.olive.withOpacity(0.06),
+        color: isLast
+            ? AppColors.primary.withOpacity(0.12)
+            : AppColors.primary.withOpacity(0.05),
         borderRadius: BorderRadius.circular(20),
         border: Border.all(
-          color: isLast ? AppColors.olive.withOpacity(0.3) : AppColors.olive.withOpacity(0.12),
+          color: isLast
+              ? AppColors.primary.withOpacity(0.3)
+              : AppColors.primary.withOpacity(0.1),
         ),
       ),
       child: Text(
@@ -38,7 +42,7 @@ class BreadcrumbChips extends StatelessWidget {
         style: TextStyle(
           fontSize: 12,
           fontWeight: isLast ? FontWeight.w600 : FontWeight.w500,
-          color: AppColors.olive,
+          color: AppColors.primary,
           letterSpacing: 0.1,
         ),
       ),
@@ -49,9 +53,9 @@ class BreadcrumbChips extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 6),
       child: Icon(
-        CupertinoIcons.chevron_right,
+        Icons.chevron_right,
         size: 12,
-        color: AppColors.subtleGrey.withOpacity(0.4),
+        color: AppColors.textTertiary.withOpacity(0.5),
       ),
     );
   }

@@ -1,5 +1,6 @@
-import 'package:flutter/cupertino.dart';
+import 'package:flutter/material.dart';
 import '../../../core/constants/app_colors.dart';
+import '../../../core/theme/app_theme.dart';
 import '../../../core/services/auth_service.dart';
 import '../../../core/storage/token_storage.dart';
 
@@ -10,7 +11,8 @@ class LoginScreen extends StatefulWidget {
   State<LoginScreen> createState() => _LoginScreenState();
 }
 
-class _LoginScreenState extends State<LoginScreen> {
+class _LoginScreenState extends State<LoginScreen>
+    with SingleTickerProviderStateMixin {
   final _usernameController = TextEditingController();
   final _passwordController = TextEditingController();
   final _authService = AuthService();
@@ -19,19 +21,33 @@ class _LoginScreenState extends State<LoginScreen> {
   bool _obscurePassword = true;
   String? _errorMessage;
 
-  // Colores centralizados
-  static const Color _olive = AppColors.olive;
-  static const Color _bgGrey = AppColors.bgGrey;
-  static const Color _errorRed = AppColors.errorRed;
+  late final AnimationController _animCtrl;
+  late final Animation<double> _fadeIn;
+  late final Animation<Offset> _slideUp;
+
+  @override
+  void initState() {
+    super.initState();
+    _animCtrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 800),
+    );
+    _fadeIn = CurvedAnimation(parent: _animCtrl, curve: Curves.easeOut);
+    _slideUp = Tween<Offset>(
+      begin: const Offset(0, 0.05),
+      end: Offset.zero,
+    ).animate(CurvedAnimation(parent: _animCtrl, curve: Curves.easeOutCubic));
+
+    _animCtrl.forward();
+  }
 
   @override
   void dispose() {
+    _animCtrl.dispose();
     _usernameController.dispose();
     _passwordController.dispose();
     super.dispose();
   }
-
-  // ─── Lógica ──────────────────────────────────────────────────────────────
 
   Future<void> _onLoginPressed() async {
     final username = _usernameController.text.trim();
@@ -68,130 +84,146 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
-  // ─── UI ──────────────────────────────────────────────────────────────────
-
   @override
   Widget build(BuildContext context) {
-    return CupertinoPageScaffold(
-      backgroundColor: _bgGrey,
-      child: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(horizontal: 28.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              const SizedBox(height: 48),
-              _buildLogo(),
-              const SizedBox(height: 28),
-              _buildTitle(),
-              const SizedBox(height: 32),
-              _buildFormCard(),
-              const SizedBox(height: 12),
-              _buildForgotPassword(),
-              const SizedBox(height: 28),
-              if (_errorMessage != null) ...[
-                _buildErrorBanner(),
-                const SizedBox(height: 16),
-              ],
-              _buildLoginButton(),
-              const SizedBox(height: 40),
-            ],
+    final screenWidth = MediaQuery.of(context).size.width;
+    final padding = AppTheme.horizontalPadding(screenWidth);
+    final logoSize = AppTheme.logoSize(screenWidth);
+
+    return Scaffold(
+      backgroundColor: AppColors.background,
+      body: SafeArea(
+        child: FadeTransition(
+          opacity: _fadeIn,
+          child: SlideTransition(
+            position: _slideUp,
+            child: SingleChildScrollView(
+              padding: EdgeInsets.symmetric(horizontal: padding),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  SizedBox(height: screenWidth * 0.1),
+                  _buildLogo(logoSize),
+                  const SizedBox(height: 32),
+                  _buildHeader(),
+                  const SizedBox(height: 32),
+                  _buildForm(),
+                  const SizedBox(height: 24),
+                  if (_errorMessage != null) ...[
+                    _buildErrorBanner(),
+                    const SizedBox(height: 16),
+                  ],
+                  _buildLoginButton(),
+                  const SizedBox(height: 16),
+                  _buildForgotPassword(),
+                  const SizedBox(height: 40),
+                ],
+              ),
+            ),
           ),
         ),
       ),
     );
   }
 
-  Widget _buildLogo() {
-    return SizedBox(
-      width: 110,
-      height: 110,
-      child: Image.asset(
-        'assets/images/cossmil_logo.png',
-        fit: BoxFit.contain,
-        errorBuilder: (context, error, stackTrace) => Container(
-          width: 110,
-          height: 110,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            border: Border.all(color: _olive, width: 2.5),
+  Widget _buildLogo(double size) {
+    return Container(
+      width: size,
+      height: size,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.primary.withOpacity(0.08),
+            blurRadius: 24,
+            spreadRadius: 2,
           ),
-          child: const Icon(
-            CupertinoIcons.shield_fill,
-            size: 54,
-            color: _olive,
+        ],
+      ),
+      child: ClipOval(
+        child: Image.asset(
+          'assets/images/cossmil_logo.png',
+          fit: BoxFit.contain,
+          errorBuilder: (_, __, ___) => Container(
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: AppColors.primaryLight,
+              border: Border.all(color: AppColors.primary.withOpacity(0.2)),
+            ),
+            child: Icon(
+              Icons.shield,
+              size: size * 0.4,
+              color: AppColors.primary,
+            ),
           ),
         ),
       ),
     );
   }
 
-  Widget _buildTitle() {
-    return const Column(
+  Widget _buildHeader() {
+    return Column(
       children: [
-        Text(
+        const Text(
           'Iniciar Sesión',
           style: TextStyle(
-            fontSize: 30,
-            fontWeight: FontWeight.bold,
-            color: CupertinoColors.black,
+            fontSize: 28,
+            fontWeight: FontWeight.w800,
+            color: AppColors.textPrimary,
             letterSpacing: -0.5,
           ),
         ),
-        SizedBox(height: 8),
+        const SizedBox(height: 8),
         Text(
-          'Ingresa tu matrícula para reservar\ntu ficha médica.',
-          textAlign: TextAlign.center,
+          'INGRESA TUS DATOS',
           style: TextStyle(
-            fontSize: 15,
-            color: CupertinoColors.secondaryLabel,
-            height: 1.4,
+            fontSize: 13,
+            fontWeight: FontWeight.w600,
+            color: AppColors.textSecondary,
+            letterSpacing: 1.5,
           ),
         ),
       ],
     );
   }
 
-  Widget _buildFormCard() {
+  Widget _buildForm() {
     return Container(
       decoration: BoxDecoration(
-        color: CupertinoColors.white,
-        borderRadius: BorderRadius.circular(14),
-        boxShadow: [
-          BoxShadow(
-            color: CupertinoColors.black.withOpacity(0.05),
-            blurRadius: 16,
-            offset: const Offset(0, 4),
-          ),
-        ],
+        color: AppColors.white,
+        borderRadius: BorderRadius.circular(AppTheme.radiusLg),
+        boxShadow: AppColors.cardShadow,
       ),
       child: Column(
         children: [
-          _buildFormRow(
+          _buildInputField(
             label: 'Matrícula',
             controller: _usernameController,
-            placeholder: 'Ej. 2051986',
-            obscureText: false,
+            placeholder: '010325AQJ',
+            icon: Icons.person,
             isLast: false,
           ),
-          Container(height: 0.5, color: const Color(0xFFE0E0E0)),
-          _buildFormRow(
-            label: 'Clave',
+          Container(
+            height: 0.5,
+            margin: const EdgeInsets.symmetric(horizontal: 16),
+            color: AppColors.border,
+          ),
+          _buildInputField(
+            label: 'Contraseña',
             controller: _passwordController,
             placeholder: '••••••••',
+            icon: Icons.lock,
             obscureText: _obscurePassword,
             isLast: true,
-            trailing: CupertinoButton(
+            trailing: IconButton(
               padding: EdgeInsets.zero,
-              minSize: 30,
+              constraints: const BoxConstraints(minWidth: 30, minHeight: 30),
+              iconSize: 18,
               onPressed: () =>
                   setState(() => _obscurePassword = !_obscurePassword),
-              child: Icon(
-                _obscurePassword
-                    ? CupertinoIcons.eye_slash
-                    : CupertinoIcons.eye,
-                size: 18,
-                color: CupertinoColors.secondaryLabel,
+              icon: Icon(
+                _obscurePassword ? Icons.visibility_off : Icons.visibility,
+                color: AppColors.textTertiary,
               ),
             ),
           ),
@@ -200,11 +232,12 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
-  Widget _buildFormRow({
+  Widget _buildInputField({
     required String label,
     required TextEditingController controller,
     required String placeholder,
-    required bool obscureText,
+    required IconData icon,
+    bool obscureText = false,
     required bool isLast,
     Widget? trailing,
   }) {
@@ -212,29 +245,37 @@ class _LoginScreenState extends State<LoginScreen> {
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
       child: Row(
         children: [
+          Icon(icon, size: 18, color: AppColors.primary.withOpacity(0.6)),
+          const SizedBox(width: 12),
           SizedBox(
-            width: 80,
+            width: 88,
             child: Text(
               label,
               style: const TextStyle(
                 fontSize: 15,
                 fontWeight: FontWeight.w500,
-                color: CupertinoColors.label,
+                color: AppColors.textPrimary,
               ),
             ),
           ),
           Expanded(
-            child: CupertinoTextField(
+            child: TextField(
               controller: controller,
-              placeholder: placeholder,
               obscureText: obscureText,
               enabled: !_isLoading,
-              padding: const EdgeInsets.symmetric(vertical: 16),
-              decoration: const BoxDecoration(),
-              style: const TextStyle(fontSize: 15),
-              placeholderStyle: const TextStyle(
-                color: CupertinoColors.placeholderText,
+              decoration: InputDecoration(
+                hintText: placeholder,
+                border: InputBorder.none,
+                isDense: true,
+                contentPadding: const EdgeInsets.symmetric(vertical: 16),
+                hintStyle: const TextStyle(
+                  color: AppColors.textTertiary,
+                  fontSize: 15,
+                ),
+              ),
+              style: const TextStyle(
                 fontSize: 15,
+                color: AppColors.textPrimary,
               ),
               textInputAction:
                   isLast ? TextInputAction.done : TextInputAction.next,
@@ -247,44 +288,24 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
-  Widget _buildForgotPassword() {
-    return Align(
-      alignment: Alignment.centerRight,
-      child: CupertinoButton(
-        padding: EdgeInsets.zero,
-        onPressed: () {
-          // TODO: navegar a recuperar contraseña
-        },
-        child: const Text(
-          '¿Olvidaste tu contraseña?',
-          style: TextStyle(
-            fontSize: 14,
-            color: _olive,
-            fontWeight: FontWeight.w500,
-          ),
-        ),
-      ),
-    );
-  }
-
   Widget _buildErrorBanner() {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
       decoration: BoxDecoration(
-        color: _errorRed.withOpacity(0.08),
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: _errorRed.withOpacity(0.25)),
+        color: AppColors.errorLight,
+        borderRadius: BorderRadius.circular(AppTheme.radiusMd),
+        border: Border.all(color: AppColors.error.withOpacity(0.3)),
       ),
       child: Row(
         children: [
-          const Icon(CupertinoIcons.exclamationmark_circle,
-              color: _errorRed, size: 17),
+          const Icon(Icons.error_outline,
+              color: AppColors.error, size: 17),
           const SizedBox(width: 8),
           Expanded(
             child: Text(
               _errorMessage!,
-              style:
-                  const TextStyle(color: _errorRed, fontSize: 13.5, height: 1.3),
+              style: const TextStyle(
+                  color: AppColors.error, fontSize: 13.5, height: 1.3),
             ),
           ),
         ],
@@ -295,23 +316,56 @@ class _LoginScreenState extends State<LoginScreen> {
   Widget _buildLoginButton() {
     return SizedBox(
       width: double.infinity,
-      child: CupertinoButton(
+      child: ElevatedButton(
         onPressed: _isLoading ? null : _onLoginPressed,
-        color: _olive,
-        disabledColor: _olive.withOpacity(0.5),
-        borderRadius: BorderRadius.circular(14),
-        padding: const EdgeInsets.symmetric(vertical: 16),
+        style: ElevatedButton.styleFrom(
+          backgroundColor: AppColors.primary,
+          disabledBackgroundColor: AppColors.primary.withOpacity(0.5),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(AppTheme.radiusLg),
+          ),
+          padding: const EdgeInsets.symmetric(vertical: 16),
+          elevation: 0,
+        ),
         child: _isLoading
-            ? const CupertinoActivityIndicator(color: CupertinoColors.white)
+            ? const SizedBox(
+                width: 20,
+                height: 20,
+                child: CircularProgressIndicator(
+                  color: AppColors.white,
+                  strokeWidth: 2,
+                ),
+              )
             : const Text(
                 'Ingresar',
                 style: TextStyle(
                   fontSize: 17,
                   fontWeight: FontWeight.w600,
-                  color: CupertinoColors.white,
-                  letterSpacing: 0.2,
+                  color: AppColors.white,
+                  letterSpacing: 0.3,
                 ),
               ),
+      ),
+    );
+  }
+
+  Widget _buildForgotPassword() {
+    return TextButton(
+      style: TextButton.styleFrom(
+        padding: EdgeInsets.zero,
+        minimumSize: Size.zero,
+        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+      ),
+      onPressed: () {
+        // TODO: navegar a recuperar contraseña
+      },
+      child: const Text(
+        '¿Olvidaste tu contraseña?',
+        style: TextStyle(
+          fontSize: 14,
+          color: AppColors.primary,
+          fontWeight: FontWeight.w500,
+        ),
       ),
     );
   }

@@ -1,4 +1,5 @@
-import 'package:flutter/cupertino.dart';
+import 'package:flutter/material.dart';
+import 'core/theme/app_theme.dart';
 import 'features/splash/screens/splash_screen.dart';
 import 'features/auth/screens/login_screen.dart';
 import 'shell/tab_shell.dart';
@@ -57,14 +58,11 @@ class _CossmilAppState extends State<CossmilApp> with WidgetsBindingObserver {
 
   @override
   Widget build(BuildContext context) {
-    return CupertinoApp(
+    return MaterialApp(
       navigatorKey: _navigatorKey,
       title: 'COSSMIL Flow',
       debugShowCheckedModeBanner: false,
-      theme: const CupertinoThemeData(
-        primaryColor: Color(0xFF6B6830),
-        brightness: Brightness.light,
-      ),
+      theme: AppTheme.theme,
       home: const SplashScreen(),
       routes: {
         '/login': (context) => const LoginScreen(),

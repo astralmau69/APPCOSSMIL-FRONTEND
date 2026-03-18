@@ -1,4 +1,4 @@
-import 'package:flutter/cupertino.dart';
+import 'package:flutter/material.dart';
 import '../../../core/constants/app_colors.dart';
 
 class ReservasScreen extends StatelessWidget {
@@ -6,34 +6,37 @@ class ReservasScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return CupertinoPageScaffold(
-      backgroundColor: AppColors.bgGrey,
-      navigationBar: const CupertinoNavigationBar(
-        middle: Text(
+    return Scaffold(
+      backgroundColor: AppColors.background,
+      appBar: AppBar(
+        title: const Text(
           'Reservas',
           style: TextStyle(fontWeight: FontWeight.bold),
         ),
-        backgroundColor: CupertinoColors.white,
-        border: Border(
-          bottom: BorderSide(color: AppColors.cardBorder, width: 0.5),
+        backgroundColor: AppColors.white,
+        centerTitle: true,
+        elevation: 0,
+        bottom: PreferredSize(
+          preferredSize: const Size.fromHeight(0.5),
+          child: Container(color: AppColors.border, height: 0.5),
         ),
       ),
-      child: SafeArea(
+      body: SafeArea(
         child: Center(
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Icon(
-                CupertinoIcons.calendar,
+                Icons.calendar_today,
                 size: 56,
-                color: AppColors.subtleGrey.withOpacity(0.4),
+                color: AppColors.textTertiary.withOpacity(0.4),
               ),
               const SizedBox(height: 16),
-              Text(
+              const Text(
                 'No tiene reservas pendientes',
                 style: TextStyle(
                   fontSize: 16,
-                  color: AppColors.subtleGrey,
+                  color: AppColors.textSecondary,
                 ),
               ),
             ],

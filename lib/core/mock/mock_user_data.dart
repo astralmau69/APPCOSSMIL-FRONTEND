@@ -4,26 +4,28 @@ import '../models/beneficiary_model.dart';
 class MockUserData {
   static const user = UserModel(
     id: '1',
-    fullName: 'Juan Pérez',
-    rank: 'Cnl.',
-    matricula: '2051986',
+    fullName: 'Henry Alexander Pacheco Ventura',
+    rank: 'Cap.',
+    matricula: '010325AQJ',
     bloodType: 'O+',
-    age: 45,
+    age: 38,
     role: 'Titular',
+    isEnabled: true,
+    hasMedicalAppointment: true,
     beneficiaries: [
       BeneficiaryModel(
         id: 'b1',
-        fullName: 'Juan Pérez',
+        fullName: 'Henry Alexander Pacheco Ventura',
         relationship: 'Titular',
       ),
       BeneficiaryModel(
         id: 'b2',
-        fullName: 'María López',
+        fullName: 'Carolina Méndez de Pacheco',
         relationship: 'Esposa',
       ),
       BeneficiaryModel(
         id: 'b3',
-        fullName: 'Pedro Pérez',
+        fullName: 'Mateo Pacheco Méndez',
         relationship: 'Hijo',
       ),
     ],

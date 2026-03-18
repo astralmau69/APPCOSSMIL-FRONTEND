@@ -1,5 +1,6 @@
-import 'package:flutter/cupertino.dart';
+import 'package:flutter/material.dart';
 import '../../../core/constants/app_colors.dart';
+import '../../../core/theme/app_theme.dart';
 import '../../../core/mock/mock_specialty_data.dart';
 import '../../../core/models/specialty_model.dart';
 import '../../../core/widgets/breadcrumb_chips.dart';
@@ -20,26 +21,27 @@ class SpecialtyScreen extends StatelessWidget {
       bs.hospital?.shortName ?? '',
     ];
 
-    return CupertinoPageScaffold(
-      backgroundColor: AppColors.bgGrey,
-      navigationBar: CupertinoNavigationBar(
-        previousPageTitle: 'Atrás',
-        middle: const Text(
+    return Scaffold(
+      backgroundColor: AppColors.background,
+      appBar: AppBar(
+        title: const Text(
           'ESPECIALIDAD',
           style: TextStyle(fontWeight: FontWeight.w800, fontSize: 17),
         ),
-        backgroundColor: CupertinoColors.white,
-        border: const Border(
-          bottom: BorderSide(color: AppColors.cardBorder, width: 0.5),
+        backgroundColor: AppColors.white,
+        centerTitle: true,
+        elevation: 0,
+        bottom: PreferredSize(
+          preferredSize: const Size.fromHeight(0.5),
+          child: Container(color: AppColors.border, height: 0.5),
         ),
       ),
-      child: SafeArea(
+      body: SafeArea(
         child: ListView(
           padding: const EdgeInsets.symmetric(vertical: 16),
           children: [
             BreadcrumbChips(labels: breadcrumbs),
             const SizedBox(height: 20),
-            // Consulta directa
             _sectionHeader('CONSULTA DIRECTA'),
             const SizedBox(height: 8),
             _buildSpecialtyList(
@@ -47,7 +49,6 @@ class SpecialtyScreen extends StatelessWidget {
               MockSpecialtyData.directas,
             ),
             const SizedBox(height: 24),
-            // Interconsulta
             _sectionHeader('INTERCONSULTA (HABILITADAS)'),
             const SizedBox(height: 8),
             _buildSpecialtyList(
@@ -66,10 +67,10 @@ class SpecialtyScreen extends StatelessWidget {
       padding: const EdgeInsets.only(left: 24),
       child: Text(
         text,
-        style: TextStyle(
+        style: const TextStyle(
           fontSize: 12,
           fontWeight: FontWeight.w600,
-          color: AppColors.subtleGrey,
+          color: AppColors.textSecondary,
           letterSpacing: 1.2,
         ),
       ),
@@ -84,15 +85,9 @@ class SpecialtyScreen extends StatelessWidget {
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 20),
       decoration: BoxDecoration(
-        color: CupertinoColors.white,
-        borderRadius: BorderRadius.circular(14),
-        boxShadow: [
-          BoxShadow(
-            color: CupertinoColors.black.withOpacity(0.04),
-            blurRadius: 10,
-            offset: const Offset(0, 2),
-          ),
-        ],
+        color: AppColors.white,
+        borderRadius: BorderRadius.circular(AppTheme.radiusLg),
+        boxShadow: AppColors.softShadow,
       ),
       child: Column(
         children: [
@@ -101,7 +96,7 @@ class SpecialtyScreen extends StatelessWidget {
             if (i < specialties.length - 1)
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: Container(height: 0.5, color: AppColors.cardBorder),
+                child: Container(height: 0.5, color: AppColors.border),
               ),
           ],
         ],
@@ -114,13 +109,13 @@ class SpecialtyScreen extends StatelessWidget {
     SpecialtyModel specialty,
     bool showBadge,
   ) {
-    return CupertinoButton(
-      padding: EdgeInsets.zero,
-      onPressed: () {
+    return InkWell(
+      borderRadius: BorderRadius.circular(AppTheme.radiusLg),
+      onTap: () {
         tabShell.bookingState.specialty = specialty;
         Navigator.push(
           context,
-          CupertinoPageRoute(
+          MaterialPageRoute(
             builder: (_) => ScheduleScreen(tabShell: tabShell),
           ),
         );
@@ -129,20 +124,19 @@ class SpecialtyScreen extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         child: Row(
           children: [
-            // Ícono
             Container(
               width: 38,
               height: 38,
               decoration: BoxDecoration(
                 color: showBadge
-                    ? AppColors.authorizedGreen.withOpacity(0.08)
-                    : AppColors.olive.withOpacity(0.08),
+                    ? AppColors.accent.withOpacity(0.08)
+                    : AppColors.primary.withOpacity(0.08),
                 borderRadius: BorderRadius.circular(10),
               ),
               child: Icon(
                 _iconForSpecialty(specialty.name),
                 size: 18,
-                color: showBadge ? AppColors.authorizedGreen : AppColors.olive,
+                color: showBadge ? AppColors.accent : AppColors.primary,
               ),
             ),
             const SizedBox(width: 12),
@@ -155,15 +149,15 @@ class SpecialtyScreen extends StatelessWidget {
                     style: const TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.w600,
-                      color: AppColors.darkText,
+                      color: AppColors.textPrimary,
                     ),
                   ),
                   const SizedBox(height: 2),
                   Text(
                     specialty.description,
-                    style: TextStyle(
+                    style: const TextStyle(
                       fontSize: 13,
-                      color: AppColors.subtleGrey,
+                      color: AppColors.textSecondary,
                     ),
                   ),
                 ],
@@ -174,10 +168,10 @@ class SpecialtyScreen extends StatelessWidget {
                 padding:
                     const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 decoration: BoxDecoration(
-                  color: AppColors.authorizedGreen.withOpacity(0.1),
+                  color: AppColors.accentLight,
                   borderRadius: BorderRadius.circular(8),
                   border: Border.all(
-                    color: AppColors.authorizedGreen.withOpacity(0.3),
+                    color: AppColors.accent.withOpacity(0.3),
                   ),
                 ),
                 child: const Text(
@@ -185,7 +179,7 @@ class SpecialtyScreen extends StatelessWidget {
                   style: TextStyle(
                     fontSize: 9,
                     fontWeight: FontWeight.w700,
-                    color: AppColors.authorizedGreen,
+                    color: AppColors.accentDark,
                     letterSpacing: 0.5,
                   ),
                 ),
@@ -193,9 +187,9 @@ class SpecialtyScreen extends StatelessWidget {
               const SizedBox(width: 6),
             ],
             Icon(
-              CupertinoIcons.chevron_right,
+              Icons.chevron_right,
               size: 16,
-              color: AppColors.subtleGrey.withOpacity(0.5),
+              color: AppColors.textTertiary.withOpacity(0.5),
             ),
           ],
         ),
@@ -206,17 +200,17 @@ class SpecialtyScreen extends StatelessWidget {
   IconData _iconForSpecialty(String name) {
     switch (name) {
       case 'Medicina Gen.':
-        return CupertinoIcons.heart_fill;
+        return Icons.favorite;
       case 'Odontología':
-        return CupertinoIcons.smiley_fill;
+        return Icons.sentiment_satisfied;
       case 'Ginecología':
-        return CupertinoIcons.person_fill;
+        return Icons.pregnant_woman;
       case 'Cardiología':
-        return CupertinoIcons.heart_circle_fill;
+        return Icons.monitor_heart;
       case 'Traumatología':
-        return CupertinoIcons.bandage_fill;
+        return Icons.healing;
       default:
-        return CupertinoIcons.plus_circle_fill;
+        return Icons.add_circle;
     }
   }
 }

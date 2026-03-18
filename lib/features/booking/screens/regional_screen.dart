@@ -1,9 +1,9 @@
-import 'package:flutter/cupertino.dart';
+import 'package:flutter/material.dart';
 import '../../../core/constants/app_colors.dart';
+import '../../../core/theme/app_theme.dart';
 import '../../../core/mock/mock_regional_data.dart';
 import '../../../core/models/regional_model.dart';
 import '../../../core/models/hospital_model.dart';
-import '../../../core/widgets/breadcrumb_chips.dart';
 import '../../../shell/tab_shell.dart';
 import 'specialty_screen.dart';
 
@@ -18,31 +18,32 @@ class RegionalScreen extends StatefulWidget {
 
 class _RegionalScreenState extends State<RegionalScreen> {
   final _regionals = MockRegionalData.regionals;
-  int _expandedIndex = 0; // La Paz abierta por defecto
+  int _expandedIndex = 0;
 
   @override
   Widget build(BuildContext context) {
     final beneficiaryLabel =
         widget.tabShell.bookingState.beneficiaryLabel ?? 'Para mí';
 
-    return CupertinoPageScaffold(
-      backgroundColor: AppColors.bgGrey,
-      navigationBar: CupertinoNavigationBar(
-        previousPageTitle: 'Atrás',
-        middle: const Text(
-          'REGIONALES',
+    return Scaffold(
+      backgroundColor: AppColors.background,
+      appBar: AppBar(
+        title: const Text(
+          'ESTABLECIMIENTO',
           style: TextStyle(fontWeight: FontWeight.w800, fontSize: 17),
         ),
-        backgroundColor: CupertinoColors.white,
-        border: const Border(
-          bottom: BorderSide(color: AppColors.cardBorder, width: 0.5),
+        backgroundColor: AppColors.white,
+        centerTitle: true,
+        elevation: 0,
+        bottom: PreferredSize(
+          preferredSize: const Size.fromHeight(0.5),
+          child: Container(color: AppColors.border, height: 0.5),
         ),
       ),
-      child: SafeArea(
+      body: SafeArea(
         child: ListView(
           padding: const EdgeInsets.symmetric(vertical: 16),
           children: [
-            // Chip beneficiario
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 20),
               child: Align(
@@ -51,23 +52,23 @@ class _RegionalScreenState extends State<RegionalScreen> {
                   padding:
                       const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                   decoration: BoxDecoration(
-                    color: AppColors.olive.withOpacity(0.08),
+                    color: AppColors.primary.withOpacity(0.08),
                     borderRadius: BorderRadius.circular(14),
                     border:
-                        Border.all(color: AppColors.olive.withOpacity(0.15)),
+                        Border.all(color: AppColors.primary.withOpacity(0.15)),
                   ),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Icon(CupertinoIcons.person_fill,
-                          size: 12, color: AppColors.olive),
+                      const Icon(Icons.person,
+                          size: 12, color: AppColors.primary),
                       const SizedBox(width: 4),
                       Text(
                         beneficiaryLabel,
                         style: const TextStyle(
                           fontSize: 12,
                           fontWeight: FontWeight.w500,
-                          color: AppColors.olive,
+                          color: AppColors.primary,
                         ),
                       ),
                     ],
@@ -76,20 +77,18 @@ class _RegionalScreenState extends State<RegionalScreen> {
               ),
             ),
             const SizedBox(height: 16),
-            Padding(
-              padding: const EdgeInsets.only(left: 24),
+            const Padding(
+              padding: EdgeInsets.symmetric(horizontal: 24),
               child: Text(
-                'SELECCIONE REGIONAL',
+                '¿Qué establecimiento desea consultar?',
                 style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                  color: AppColors.subtleGrey,
-                  letterSpacing: 1.2,
+                  fontSize: 18,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.textPrimary,
                 ),
               ),
             ),
             const SizedBox(height: 10),
-            // Lista de regionales
             for (int i = 0; i < _regionals.length; i++)
               _buildRegionalItem(_regionals[i], i),
           ],
@@ -104,34 +103,27 @@ class _RegionalScreenState extends State<RegionalScreen> {
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
       decoration: BoxDecoration(
-        color: CupertinoColors.white,
-        borderRadius: BorderRadius.circular(14),
-        boxShadow: [
-          BoxShadow(
-            color: CupertinoColors.black.withOpacity(0.03),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
+        color: AppColors.white,
+        borderRadius: BorderRadius.circular(AppTheme.radiusLg),
+        boxShadow: AppColors.softShadow,
       ),
       child: Column(
         children: [
-          // Header
-          CupertinoButton(
-            padding: EdgeInsets.zero,
-            onPressed: () {
+          InkWell(
+            onTap: () {
               setState(() {
                 _expandedIndex = isExpanded ? -1 : index;
               });
             },
+            borderRadius: BorderRadius.circular(AppTheme.radiusLg),
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
               child: Row(
                 children: [
-                  Icon(
-                    CupertinoIcons.location_solid,
+                  const Icon(
+                    Icons.location_on,
                     size: 18,
-                    color: AppColors.olive,
+                    color: AppColors.primary,
                   ),
                   const SizedBox(width: 10),
                   Expanded(
@@ -140,22 +132,21 @@ class _RegionalScreenState extends State<RegionalScreen> {
                       style: const TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.w600,
-                        color: AppColors.darkText,
+                        color: AppColors.textPrimary,
                       ),
                     ),
                   ),
                   Icon(
                     isExpanded
-                        ? CupertinoIcons.chevron_up
-                        : CupertinoIcons.chevron_down,
+                        ? Icons.expand_less
+                        : Icons.expand_more,
                     size: 16,
-                    color: AppColors.subtleGrey,
+                    color: AppColors.textSecondary,
                   ),
                 ],
               ),
             ),
           ),
-          // Hospitals (expanded)
           AnimatedCrossFade(
             firstChild: const SizedBox.shrink(),
             secondChild: _buildHospitalCards(regional),
@@ -192,7 +183,7 @@ class _RegionalScreenState extends State<RegionalScreen> {
         widget.tabShell.bookingState.hospital = hospital;
         Navigator.push(
           context,
-          CupertinoPageRoute(
+          MaterialPageRoute(
             builder: (_) => SpecialtyScreen(tabShell: widget.tabShell),
           ),
         );
@@ -200,13 +191,12 @@ class _RegionalScreenState extends State<RegionalScreen> {
       child: Container(
         height: 130,
         decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(12),
-          color: AppColors.olive.withOpacity(0.06),
-          border: Border.all(color: AppColors.olive.withOpacity(0.12)),
+          borderRadius: BorderRadius.circular(AppTheme.radiusMd),
+          color: AppColors.primary.withOpacity(0.05),
+          border: Border.all(color: AppColors.primary.withOpacity(0.12)),
         ),
         child: Stack(
           children: [
-            // Ícono decorativo
             Positioned(
               top: 8,
               right: 8,
@@ -214,17 +204,16 @@ class _RegionalScreenState extends State<RegionalScreen> {
                 width: 24,
                 height: 24,
                 decoration: BoxDecoration(
-                  color: AppColors.olive.withOpacity(0.15),
+                  color: AppColors.primary.withOpacity(0.12),
                   shape: BoxShape.circle,
                 ),
-                child: Icon(
-                  CupertinoIcons.building_2_fill,
+                child: const Icon(
+                  Icons.apartment,
                   size: 12,
-                  color: AppColors.olive,
+                  color: AppColors.primary,
                 ),
               ),
             ),
-            // Info
             Positioned(
               left: 10,
               right: 10,
@@ -239,15 +228,15 @@ class _RegionalScreenState extends State<RegionalScreen> {
                     style: const TextStyle(
                       fontSize: 13,
                       fontWeight: FontWeight.w700,
-                      color: AppColors.darkText,
+                      color: AppColors.textPrimary,
                     ),
                   ),
                   const SizedBox(height: 2),
                   Text(
                     hospital.address,
-                    style: TextStyle(
+                    style: const TextStyle(
                       fontSize: 11,
-                      color: AppColors.subtleGrey,
+                      color: AppColors.textSecondary,
                     ),
                   ),
                 ],

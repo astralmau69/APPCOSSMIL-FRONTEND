@@ -1,5 +1,6 @@
-import 'package:flutter/cupertino.dart';
+import 'package:flutter/material.dart';
 import '../../../core/constants/app_colors.dart';
+import '../../../core/theme/app_theme.dart';
 import '../../../core/mock/mock_user_data.dart';
 import '../../../core/services/pdf_service.dart';
 import '../../../core/widgets/breadcrumb_chips.dart';
@@ -53,20 +54,22 @@ class _SummaryScreenState extends State<SummaryScreen>
       bs.specialty?.name ?? '',
     ];
 
-    return CupertinoPageScaffold(
-      backgroundColor: AppColors.bgGrey,
-      navigationBar: CupertinoNavigationBar(
-        previousPageTitle: 'Atrás',
-        middle: const Text(
+    return Scaffold(
+      backgroundColor: AppColors.background,
+      appBar: AppBar(
+        title: const Text(
           'Resumen',
           style: TextStyle(fontWeight: FontWeight.w800, fontSize: 17),
         ),
         backgroundColor: AppColors.white,
-        border: const Border(
-          bottom: BorderSide(color: AppColors.cardBorder, width: 0.5),
+        centerTitle: true,
+        elevation: 0,
+        bottom: PreferredSize(
+          preferredSize: const Size.fromHeight(0.5),
+          child: Container(color: AppColors.border, height: 0.5),
         ),
       ),
-      child: SafeArea(
+      body: SafeArea(
         child: FadeTransition(
           opacity: _fadeIn,
           child: SlideTransition(
@@ -86,13 +89,13 @@ class _SummaryScreenState extends State<SummaryScreen>
                         width: 36,
                         height: 36,
                         decoration: BoxDecoration(
-                          color: AppColors.olive.withOpacity(0.1),
+                          color: AppColors.primary.withOpacity(0.1),
                           borderRadius: BorderRadius.circular(10),
                         ),
                         child: const Icon(
-                          CupertinoIcons.doc_text_fill,
+                          Icons.description,
                           size: 18,
-                          color: AppColors.olive,
+                          color: AppColors.primary,
                         ),
                       ),
                       const SizedBox(width: 12),
@@ -105,14 +108,14 @@ class _SummaryScreenState extends State<SummaryScreen>
                               style: TextStyle(
                                 fontSize: 16,
                                 fontWeight: FontWeight.w700,
-                                color: AppColors.darkText,
+                                color: AppColors.textPrimary,
                               ),
                             ),
                             Text(
                               'Antes de confirmar la reserva',
                               style: TextStyle(
                                 fontSize: 13,
-                                color: AppColors.subtleGrey,
+                                color: AppColors.textSecondary,
                               ),
                             ),
                           ],
@@ -128,30 +131,30 @@ class _SummaryScreenState extends State<SummaryScreen>
                   margin: const EdgeInsets.symmetric(horizontal: 20),
                   decoration: BoxDecoration(
                     color: AppColors.white,
-                    borderRadius: BorderRadius.circular(16),
+                    borderRadius: BorderRadius.circular(AppTheme.radiusLg),
                     boxShadow: AppColors.cardShadow,
                   ),
                   child: Column(
                     children: [
-                      _row(CupertinoIcons.person_fill, 'Paciente',
+                      _row(Icons.person, 'Paciente',
                           user.displayName),
                       _divider(),
-                      _row(CupertinoIcons.heart_fill, 'Especialidad',
+                      _row(Icons.favorite, 'Especialidad',
                           bs.specialty?.name ?? ''),
                       _divider(),
                       _row(
-                        CupertinoIcons.building_2_fill,
+                        Icons.apartment,
                         'Establecimiento',
                         bs.hospital?.displayName ?? '',
                       ),
                       _divider(),
-                      _row(CupertinoIcons.person_badge_plus_fill, 'Médico',
+                      _row(Icons.person_add, 'Médico',
                           bs.doctor?.fullName ?? ''),
                       _divider(),
-                      _row(CupertinoIcons.calendar, 'Fecha',
-                          'Mañana, 18 de Marzo'),
+                      _row(Icons.calendar_today, 'Fecha',
+                          'Martes, 18 de Marzo'),
                       _divider(),
-                      _row(CupertinoIcons.clock_fill, 'Hora',
+                      _row(Icons.schedule, 'Hora',
                           bs.selectedTime ?? ''),
                     ],
                   ),
@@ -163,24 +166,24 @@ class _SummaryScreenState extends State<SummaryScreen>
                   margin: const EdgeInsets.symmetric(horizontal: 20),
                   padding: const EdgeInsets.all(14),
                   decoration: BoxDecoration(
-                    color: AppColors.infoBlueBg,
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: AppColors.infoBlueBorder),
+                    color: AppColors.infoLight,
+                    borderRadius: BorderRadius.circular(AppTheme.radiusMd),
+                    border: Border.all(color: AppColors.info.withOpacity(0.2)),
                   ),
-                  child: Row(
+                  child: const Row(
                     children: [
                       Icon(
-                        CupertinoIcons.info_circle_fill,
+                        Icons.info,
                         size: 18,
-                        color: AppColors.infoBlue,
+                        color: AppColors.info,
                       ),
-                      const SizedBox(width: 10),
-                      const Expanded(
+                      SizedBox(width: 10),
+                      Expanded(
                         child: Text(
                           'Al confirmar se generará un comprobante PDF descargable.',
                           style: TextStyle(
                             fontSize: 13,
-                            color: Color(0xFF3A5A9C),
+                            color: AppColors.info,
                             height: 1.3,
                           ),
                         ),
@@ -195,12 +198,17 @@ class _SummaryScreenState extends State<SummaryScreen>
                   padding: const EdgeInsets.symmetric(horizontal: 20),
                   child: Row(
                     children: [
-                      // Cancelar
                       Expanded(
-                        child: CupertinoButton(
-                          padding: const EdgeInsets.symmetric(vertical: 15),
-                          borderRadius: BorderRadius.circular(14),
-                          color: AppColors.errorRed.withOpacity(0.08),
+                        child: ElevatedButton(
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: AppColors.errorLight,
+                            foregroundColor: AppColors.error,
+                            elevation: 0,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(AppTheme.radiusLg),
+                            ),
+                            padding: const EdgeInsets.symmetric(vertical: 15),
+                          ),
                           onPressed: () {
                             Navigator.popUntil(
                                 context, (route) => route.isFirst);
@@ -210,31 +218,39 @@ class _SummaryScreenState extends State<SummaryScreen>
                             style: TextStyle(
                               fontSize: 15,
                               fontWeight: FontWeight.w600,
-                              color: AppColors.errorRed,
                             ),
                           ),
                         ),
                       ),
                       const SizedBox(width: 14),
-                      // Confirmar
                       Expanded(
                         flex: 2,
-                        child: CupertinoButton(
-                          padding: const EdgeInsets.symmetric(vertical: 15),
-                          color: AppColors.olive,
-                          borderRadius: BorderRadius.circular(14),
+                        child: ElevatedButton(
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: AppColors.primary,
+                            foregroundColor: Colors.white,
+                            elevation: 0,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(AppTheme.radiusLg),
+                            ),
+                            padding: const EdgeInsets.symmetric(vertical: 15),
+                          ),
                           onPressed:
                               _isConfirming ? null : () => _confirmBooking(),
                           child: _isConfirming
-                              ? const CupertinoActivityIndicator(
-                                  color: CupertinoColors.white)
+                              ? const SizedBox(
+                                  width: 20,
+                                  height: 20,
+                                  child: CircularProgressIndicator(
+                                      color: Colors.white, strokeWidth: 2),
+                                )
                               : const Row(
                                   mainAxisAlignment: MainAxisAlignment.center,
                                   children: [
                                     Icon(
-                                      CupertinoIcons.checkmark_shield_fill,
+                                      Icons.verified_user,
                                       size: 18,
-                                      color: CupertinoColors.white,
+                                      color: Colors.white,
                                     ),
                                     SizedBox(width: 8),
                                     Text(
@@ -242,7 +258,7 @@ class _SummaryScreenState extends State<SummaryScreen>
                                       style: TextStyle(
                                         fontSize: 16,
                                         fontWeight: FontWeight.w700,
-                                        color: CupertinoColors.white,
+                                        color: Colors.white,
                                       ),
                                     ),
                                   ],
@@ -267,7 +283,7 @@ class _SummaryScreenState extends State<SummaryScreen>
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(icon, size: 16, color: AppColors.olive.withOpacity(0.5)),
+          Icon(icon, size: 16, color: AppColors.primary.withOpacity(0.5)),
           const SizedBox(width: 10),
           SizedBox(
             width: 100,
@@ -275,7 +291,7 @@ class _SummaryScreenState extends State<SummaryScreen>
               label,
               style: const TextStyle(
                 fontSize: 13,
-                color: AppColors.subtleGrey,
+                color: AppColors.textSecondary,
               ),
             ),
           ),
@@ -286,7 +302,7 @@ class _SummaryScreenState extends State<SummaryScreen>
               style: const TextStyle(
                 fontSize: 15,
                 fontWeight: FontWeight.w700,
-                color: AppColors.darkText,
+                color: AppColors.textPrimary,
               ),
             ),
           ),
@@ -299,14 +315,13 @@ class _SummaryScreenState extends State<SummaryScreen>
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16),
       height: 0.5,
-      color: AppColors.cardBorder,
+      color: AppColors.border,
     );
   }
 
   Future<void> _confirmBooking() async {
     setState(() => _isConfirming = true);
 
-    // Simular delay de confirmación
     await Future.delayed(const Duration(milliseconds: 600));
 
     if (!mounted) return;
@@ -314,15 +329,17 @@ class _SummaryScreenState extends State<SummaryScreen>
     final bs = widget.tabShell.bookingState;
     final user = MockUserData.user;
 
-    // Mostrar diálogo de éxito
-    await showCupertinoDialog(
+    await showDialog(
       context: context,
-      builder: (ctx) => CupertinoAlertDialog(
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppTheme.radiusLg),
+        ),
         title: const Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(CupertinoIcons.checkmark_circle_fill,
-                color: AppColors.successGreen, size: 22),
+            Icon(Icons.check_circle,
+                color: AppColors.success, size: 22),
             SizedBox(width: 8),
             Text('Reserva Confirmada'),
           ],
@@ -335,16 +352,15 @@ class _SummaryScreenState extends State<SummaryScreen>
           ),
         ),
         actions: [
-          CupertinoDialogAction(
+          TextButton(
             child: const Text('Cerrar'),
             onPressed: () {
               Navigator.pop(ctx);
               widget.tabShell.finishBooking();
             },
           ),
-          CupertinoDialogAction(
-            isDefaultAction: true,
-            child: const Text('Descargar PDF'),
+          TextButton(
+            child: const Text('Descargar PDF', style: TextStyle(fontWeight: FontWeight.bold)),
             onPressed: () async {
               Navigator.pop(ctx);
               await PdfService.generateAndShowBookingPdf(
@@ -354,7 +370,7 @@ class _SummaryScreenState extends State<SummaryScreen>
                 establecimiento: bs.hospital?.shortName ?? '',
                 ciudad: bs.hospital?.city ?? '',
                 medico: bs.doctor?.fullName ?? '',
-                fecha: 'Mañana, 18 de Marzo 2026',
+                fecha: 'Martes, 18 de Marzo 2026',
                 hora: bs.selectedTime ?? '',
               );
               if (mounted) {
