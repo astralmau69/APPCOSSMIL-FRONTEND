@@ -590,7 +590,18 @@ class _HomeScreenState extends State<HomeScreen>
   // ── Últimas reservas ──────────────────────────────────────────────────────
 
   Widget _buildRecentAppointments() {
-    final appointments = MockAppointmentsData.recentAppointments;
+    final rawAppointments = MockAppointmentsData.recentAppointments;
+    
+    // 1. Filtrar para mantener solo una reserva por día (usando date como clave única)
+    // 2. Limitar a un máximo de 3 elementos
+    final uniqueAppointments = <String, MockAppointmentItem>{};
+    for (final appt in rawAppointments) {
+      if (!uniqueAppointments.containsKey(appt.date)) {
+        uniqueAppointments[appt.date] = appt;
+      }
+    }
+    
+    final appointments = uniqueAppointments.values.take(3).toList();
 
     return Column(
       children: [

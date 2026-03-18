@@ -31,7 +31,7 @@ class MockAppointmentsData {
       hospital: 'Hospital Militar Central',
       date: '14 Mar 2026',
       time: '08:30',
-      status: 'Confirmada',
+      status: 'Completada',
     ),
     MockAppointmentItem(
       id: 'a2',
