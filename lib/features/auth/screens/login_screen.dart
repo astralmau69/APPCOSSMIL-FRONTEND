@@ -134,7 +134,7 @@ class _LoginScreenState extends State<LoginScreen>
         shape: BoxShape.circle,
         boxShadow: [
           BoxShadow(
-            color: AppColors.primary.withOpacity(0.08),
+            color: AppColors.primary.withValues(alpha: 0.08),
             blurRadius: 24,
             spreadRadius: 2,
           ),
@@ -148,7 +148,7 @@ class _LoginScreenState extends State<LoginScreen>
             decoration: BoxDecoration(
               shape: BoxShape.circle,
               color: AppColors.primaryLight,
-              border: Border.all(color: AppColors.primary.withOpacity(0.2)),
+              border: Border.all(color: AppColors.primary.withValues(alpha: 0.2)),
             ),
             child: Icon(
               Icons.shield,
@@ -245,7 +245,7 @@ class _LoginScreenState extends State<LoginScreen>
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
       child: Row(
         children: [
-          Icon(icon, size: 18, color: AppColors.primary.withOpacity(0.6)),
+          Icon(icon, size: 18, color: AppColors.primary.withValues(alpha: 0.6)),
           const SizedBox(width: 12),
           SizedBox(
             width: 88,
@@ -294,7 +294,7 @@ class _LoginScreenState extends State<LoginScreen>
       decoration: BoxDecoration(
         color: AppColors.errorLight,
         borderRadius: BorderRadius.circular(AppTheme.radiusMd),
-        border: Border.all(color: AppColors.error.withOpacity(0.3)),
+        border: Border.all(color: AppColors.error.withValues(alpha: 0.3)),
       ),
       child: Row(
         children: [
@@ -320,7 +320,7 @@ class _LoginScreenState extends State<LoginScreen>
         onPressed: _isLoading ? null : _onLoginPressed,
         style: ElevatedButton.styleFrom(
           backgroundColor: AppColors.primary,
-          disabledBackgroundColor: AppColors.primary.withOpacity(0.5),
+          disabledBackgroundColor: AppColors.primary.withValues(alpha: 0.5),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(AppTheme.radiusLg),
           ),

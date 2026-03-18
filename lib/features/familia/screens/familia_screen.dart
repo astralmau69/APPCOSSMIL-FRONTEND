@@ -54,7 +54,7 @@ class FamiliaScreen extends StatelessWidget {
                   borderRadius: BorderRadius.circular(AppTheme.radiusXl),
                   boxShadow: AppColors.softShadow,
                   border: Border.all(
-                    color: isTitular ? AppColors.primary.withOpacity(0.3) : Colors.transparent,
+                    color: isTitular ? AppColors.primary.withValues(alpha: 0.3) : Colors.transparent,
                     width: isTitular ? 1.5 : 0,
                   ),
                 ),
@@ -68,7 +68,7 @@ class FamiliaScreen extends StatelessWidget {
                         gradient: LinearGradient(
                           colors: [
                             isTitular ? AppColors.primary : AppColors.accent,
-                            (isTitular ? AppColors.primary : AppColors.accent).withOpacity(0.7),
+                            (isTitular ? AppColors.primary : AppColors.accent).withValues(alpha: 0.7),
                           ],
                         ),
                       ),
@@ -100,8 +100,8 @@ class FamiliaScreen extends StatelessWidget {
                             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                             decoration: BoxDecoration(
                               color: isTitular 
-                                ? AppColors.primary.withOpacity(0.1) 
-                                : AppColors.accent.withOpacity(0.1),
+                                ? AppColors.primary.withValues(alpha: 0.1) 
+                                : AppColors.accent.withValues(alpha: 0.1),
                               borderRadius: BorderRadius.circular(8),
                             ),
                             child: Text(

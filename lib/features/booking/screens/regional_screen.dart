@@ -2,8 +2,13 @@ import 'package:flutter/material.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/mock/mock_regional_data.dart';
+import '../../../core/mock/mock_user_data.dart';
 import '../../../core/models/regional_model.dart';
 import '../../../core/models/hospital_model.dart';
+import '../../../core/models/beneficiary_model.dart';
+import '../../../core/widgets/beneficiary_selector_modal.dart';
+import '../../../core/animations/animated_press_button.dart';
+import '../../../core/animations/app_page_route.dart';
 import '../../../shell/tab_shell.dart';
 import 'specialty_screen.dart';
 
@@ -21,9 +26,22 @@ class _RegionalScreenState extends State<RegionalScreen> {
   int _expandedIndex = 0;
 
   @override
+  void initState() {
+    super.initState();
+    // Default to titular if no beneficiary selected
+    final bs = widget.tabShell.bookingState;
+    if (bs.beneficiary == null) {
+      final titular = MockUserData.user.beneficiaries
+          .firstWhere((b) => b.isTitular, orElse: () => MockUserData.user.beneficiaries[0]);
+      bs.beneficiary = titular;
+      bs.beneficiaryLabel = titular.isTitular ? 'Para mí' : titular.fullName;
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final beneficiaryLabel =
-        widget.tabShell.bookingState.beneficiaryLabel ?? 'Para mí';
+    final bs = widget.tabShell.bookingState;
+    final currentBeneficiary = bs.beneficiary;
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -44,39 +62,9 @@ class _RegionalScreenState extends State<RegionalScreen> {
         child: ListView(
           padding: const EdgeInsets.symmetric(vertical: 16),
           children: [
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20),
-              child: Align(
-                alignment: Alignment.centerLeft,
-                child: Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                  decoration: BoxDecoration(
-                    color: AppColors.primary.withOpacity(0.08),
-                    borderRadius: BorderRadius.circular(14),
-                    border:
-                        Border.all(color: AppColors.primary.withOpacity(0.15)),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const Icon(Icons.person,
-                          size: 12, color: AppColors.primary),
-                      const SizedBox(width: 4),
-                      Text(
-                        beneficiaryLabel,
-                        style: const TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w500,
-                          color: AppColors.primary,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-            const SizedBox(height: 16),
+            // ── Active profile selector ─────────────────────────────────
+            _buildActiveProfileCard(currentBeneficiary),
+            const SizedBox(height: 20),
             const Padding(
               padding: EdgeInsets.symmetric(horizontal: 24),
               child: Text(
@@ -96,6 +84,151 @@ class _RegionalScreenState extends State<RegionalScreen> {
       ),
     );
   }
+
+  // ── Profile selector card ────────────────────────────────────────────────
+
+  Widget _buildActiveProfileCard(BeneficiaryModel? beneficiary) {
+    if (beneficiary == null) return const SizedBox.shrink();
+
+    final isTitular = beneficiary.isTitular;
+    final avatarColor = isTitular ? AppColors.primary : AppColors.accent;
+    final label = isTitular ? 'Yo (Titular)' : beneficiary.relationship;
+
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 20),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppColors.white,
+        borderRadius: BorderRadius.circular(AppTheme.radiusXl),
+        boxShadow: AppColors.cardShadow,
+        border: Border.all(
+          color: AppColors.primary.withValues(alpha: 0.15),
+        ),
+      ),
+      child: Row(
+        children: [
+          // Avatar
+          Container(
+            width: 48,
+            height: 48,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              gradient: LinearGradient(
+                colors: [
+                  avatarColor,
+                  avatarColor.withValues(alpha: 0.7),
+                ],
+              ),
+            ),
+            alignment: Alignment.center,
+            child: Text(
+              beneficiary.initial,
+              style: const TextStyle(
+                color: AppColors.white,
+                fontWeight: FontWeight.w800,
+                fontSize: 20,
+              ),
+            ),
+          ),
+          const SizedBox(width: 14),
+          // Name + label
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Reserva para:',
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w500,
+                    color: AppColors.textSecondary,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  beneficiary.fullName,
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.textPrimary,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 8, vertical: 3),
+                  decoration: BoxDecoration(
+                    color: isTitular
+                        ? AppColors.primary.withValues(alpha: 0.1)
+                        : AppColors.accent.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: Text(
+                    label,
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                      color: isTitular
+                          ? AppColors.primary
+                          : AppColors.accentDark,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          // Change button
+          AnimatedPressButton(
+            onTap: _onChangeBeneficiary,
+            child: Container(
+              padding: const EdgeInsets.symmetric(
+                  horizontal: 14, vertical: 8),
+              decoration: BoxDecoration(
+                color: AppColors.primary.withValues(alpha: 0.08),
+                borderRadius: BorderRadius.circular(AppTheme.radiusFull),
+                border: Border.all(
+                  color: AppColors.primary.withValues(alpha: 0.2),
+                ),
+              ),
+              child: const Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.swap_horiz,
+                      size: 14, color: AppColors.primary),
+                  SizedBox(width: 4),
+                  Text(
+                    'Cambiar',
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.primary,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _onChangeBeneficiary() async {
+    final selected = await BeneficiarySelectorModal.show(
+      context: context,
+      beneficiaries: MockUserData.user.beneficiaries,
+      currentId: widget.tabShell.bookingState.beneficiary?.id,
+    );
+    if (selected != null && mounted) {
+      setState(() {
+        widget.tabShell.bookingState.beneficiary = selected;
+        widget.tabShell.bookingState.beneficiaryLabel =
+            selected.isTitular ? 'Para mí' : selected.fullName;
+      });
+    }
+  }
+
+  // ── Regional list ────────────────────────────────────────────────────────
 
   Widget _buildRegionalItem(RegionalModel regional, int index) {
     final isExpanded = _expandedIndex == index;
@@ -117,7 +250,8 @@ class _RegionalScreenState extends State<RegionalScreen> {
             },
             borderRadius: BorderRadius.circular(AppTheme.radiusLg),
             child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+              padding: const EdgeInsets.symmetric(
+                  horizontal: 16, vertical: 14),
               child: Row(
                 children: [
                   const Icon(
@@ -177,13 +311,13 @@ class _RegionalScreenState extends State<RegionalScreen> {
   }
 
   Widget _hospitalCard(RegionalModel regional, HospitalModel hospital) {
-    return GestureDetector(
+    return AnimatedPressButton(
       onTap: () {
         widget.tabShell.bookingState.regional = regional;
         widget.tabShell.bookingState.hospital = hospital;
         Navigator.push(
           context,
-          MaterialPageRoute(
+          AppPageRoute(
             builder: (_) => SpecialtyScreen(tabShell: widget.tabShell),
           ),
         );
@@ -192,8 +326,9 @@ class _RegionalScreenState extends State<RegionalScreen> {
         height: 130,
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(AppTheme.radiusMd),
-          color: AppColors.primary.withOpacity(0.05),
-          border: Border.all(color: AppColors.primary.withOpacity(0.12)),
+          color: AppColors.primary.withValues(alpha: 0.05),
+          border: Border.all(
+              color: AppColors.primary.withValues(alpha: 0.12)),
         ),
         child: Stack(
           children: [
@@ -204,7 +339,7 @@ class _RegionalScreenState extends State<RegionalScreen> {
                 width: 24,
                 height: 24,
                 decoration: BoxDecoration(
-                  color: AppColors.primary.withOpacity(0.12),
+                  color: AppColors.primary.withValues(alpha: 0.12),
                   shape: BoxShape.circle,
                 ),
                 child: const Icon(

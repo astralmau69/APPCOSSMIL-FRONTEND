@@ -89,7 +89,7 @@ class _SummaryScreenState extends State<SummaryScreen>
                         width: 36,
                         height: 36,
                         decoration: BoxDecoration(
-                          color: AppColors.primary.withOpacity(0.1),
+                          color: AppColors.primary.withValues(alpha: 0.1),
                           borderRadius: BorderRadius.circular(10),
                         ),
                         child: const Icon(
@@ -168,7 +168,7 @@ class _SummaryScreenState extends State<SummaryScreen>
                   decoration: BoxDecoration(
                     color: AppColors.infoLight,
                     borderRadius: BorderRadius.circular(AppTheme.radiusMd),
-                    border: Border.all(color: AppColors.info.withOpacity(0.2)),
+                    border: Border.all(color: AppColors.info.withValues(alpha: 0.2)),
                   ),
                   child: const Row(
                     children: [
@@ -283,7 +283,7 @@ class _SummaryScreenState extends State<SummaryScreen>
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(icon, size: 16, color: AppColors.primary.withOpacity(0.5)),
+          Icon(icon, size: 16, color: AppColors.primary.withValues(alpha: 0.5)),
           const SizedBox(width: 10),
           SizedBox(
             width: 100,
@@ -345,7 +345,7 @@ class _SummaryScreenState extends State<SummaryScreen>
                 width: 64,
                 height: 64,
                 decoration: BoxDecoration(
-                  color: AppColors.success.withOpacity(0.1),
+                  color: AppColors.success.withValues(alpha: 0.1),
                   shape: BoxShape.circle,
                 ),
                 child: const Icon(Icons.check_circle, color: AppColors.success, size: 36),

@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import '../constants/app_colors.dart';
 
+/// Paleta de colores centralizada — COSSMIL App.
+/// Azul institucional + verde médico + acentos dorados.
+
 /// Fila de breadcrumb chips scrollable.
 class BreadcrumbChips extends StatelessWidget {
   final List<String> labels;
@@ -9,10 +12,12 @@ class BreadcrumbChips extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
+    return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20),
-      child: Row(
+      child: Wrap(
+        spacing: 6,
+        runSpacing: 8,
+        crossAxisAlignment: WrapCrossAlignment.center,
         children: [
           for (int i = 0; i < labels.length; i++) ...[
             _chip(labels[i], i == labels.length - 1),
@@ -28,13 +33,13 @@ class BreadcrumbChips extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
       decoration: BoxDecoration(
         color: isLast
-            ? AppColors.primary.withOpacity(0.12)
-            : AppColors.primary.withOpacity(0.05),
+            ? AppColors.primary.withValues(alpha: 0.12)
+            : AppColors.primary.withValues(alpha: 0.05),
         borderRadius: BorderRadius.circular(20),
         border: Border.all(
           color: isLast
-              ? AppColors.primary.withOpacity(0.3)
-              : AppColors.primary.withOpacity(0.1),
+              ? AppColors.primary.withValues(alpha: 0.3)
+              : AppColors.primary.withValues(alpha: 0.1),
         ),
       ),
       child: Text(
@@ -55,7 +60,7 @@ class BreadcrumbChips extends StatelessWidget {
       child: Icon(
         Icons.chevron_right,
         size: 12,
-        color: AppColors.textTertiary.withOpacity(0.5),
+        color: AppColors.textTertiary.withValues(alpha: 0.5),
       ),
     );
   }

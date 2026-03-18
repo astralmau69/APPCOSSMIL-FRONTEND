@@ -3,6 +3,9 @@ import 'package:http/http.dart' as http;
 import '../config/app_config.dart';
 import '../constants/api_constants.dart';
 import '../models/auth_token_model.dart';
+import '../models/user_model.dart';
+import '../models/beneficiary_model.dart';
+import '../mock/mock_user_data.dart';
 
 /// Resultado del intento de login.
 /// Separa el caso exitoso del error para que la UI lo maneje limpiamente.
@@ -61,7 +64,35 @@ class AuthService {
 
       if (response.statusCode == 200) {
         final json = jsonDecode(response.body) as Map<String, dynamic>;
-        return AuthSuccess(AuthTokenModel.fromJson(json));
+        final tokenModel = AuthTokenModel.fromJson(json);
+
+        // Actualizar MockUserData con datos de API reales pero preservar email/phone simulados
+        MockUserData.user = UserModel(
+          id: tokenModel.idper.toString(),
+          fullName: '${tokenModel.nom} ${tokenModel.pat} ${tokenModel.mat}'.trim(),
+          rank: MockUserData.user.rank,
+          matricula: tokenModel.matricula,
+          bloodType: MockUserData.user.bloodType,
+          age: tokenModel.edad,
+          role: tokenModel.rol == 'ROLE_ASETIT' ? 'Titular' : tokenModel.rol,
+          isEnabled: true,
+          hasMedicalAppointment: MockUserData.user.hasMedicalAppointment,
+          email: MockUserData.user.email, // Fallback
+          phone: MockUserData.user.phone, // Fallback
+          beneficiaries: MockUserData.user.beneficiaries.map((b) {
+            if (b.relationship == 'Titular') {
+              return BeneficiaryModel(
+                id: tokenModel.idper.toString(),
+                fullName: '${tokenModel.nom} ${tokenModel.pat} ${tokenModel.mat}'.trim(),
+                relationship: 'Titular',
+                age: tokenModel.edad,
+              );
+            }
+            return b;
+          }).toList(),
+        );
+
+        return AuthSuccess(tokenModel);
       }
 
       if (response.statusCode == 401) {

@@ -10,6 +10,8 @@ class UserModel {
   final String role;
   final bool isEnabled;
   final bool hasMedicalAppointment;
+  final String email;
+  final String phone;
   final List<BeneficiaryModel> beneficiaries;
 
   const UserModel({
@@ -22,9 +24,12 @@ class UserModel {
     required this.role,
     this.isEnabled = true,
     this.hasMedicalAppointment = false,
+    this.email = '',
+    this.phone = '',
     required this.beneficiaries,
   });
 
   /// Nombre con rango para mostrar en UI.
-  String get displayName => '$rank $fullName';
+  String get displayName =>
+      rank.isEmpty ? fullName : '$rank $fullName';
 }

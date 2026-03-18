@@ -4,6 +4,7 @@ import '../../../core/theme/app_theme.dart';
 import '../../../core/mock/mock_specialty_data.dart';
 import '../../../core/models/specialty_model.dart';
 import '../../../core/widgets/breadcrumb_chips.dart';
+import '../../../core/animations/app_page_route.dart';
 import '../../../shell/tab_shell.dart';
 import 'schedule_screen.dart';
 
@@ -89,7 +90,7 @@ class SpecialtyScreen extends StatelessWidget {
         borderRadius: BorderRadius.circular(AppTheme.radiusXl),
         boxShadow: [
           BoxShadow(
-            color: AppColors.primary.withOpacity(0.04),
+            color: AppColors.primary.withValues(alpha: 0.04),
             blurRadius: 15,
             offset: const Offset(0, 5),
           ),
@@ -116,7 +117,7 @@ class SpecialtyScreen extends StatelessWidget {
             if (i < specialties.length - 1)
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: Container(height: 0.5, color: AppColors.border.withOpacity(0.5)),
+                child: Container(height: 0.5, color: AppColors.border.withValues(alpha: 0.5)),
               ),
           ],
         ],
@@ -135,7 +136,7 @@ class SpecialtyScreen extends StatelessWidget {
         tabShell.bookingState.specialty = specialty;
         Navigator.push(
           context,
-          MaterialPageRoute(
+          AppPageRoute(
             builder: (_) => ScheduleScreen(tabShell: tabShell),
           ),
         );
@@ -149,8 +150,8 @@ class SpecialtyScreen extends StatelessWidget {
               height: 38,
               decoration: BoxDecoration(
                 color: showBadge
-                    ? AppColors.accent.withOpacity(0.08)
-                    : AppColors.primary.withOpacity(0.08),
+                    ? AppColors.accent.withValues(alpha: 0.08)
+                    : AppColors.primary.withValues(alpha: 0.08),
                 borderRadius: BorderRadius.circular(10),
               ),
               child: Icon(
@@ -191,7 +192,7 @@ class SpecialtyScreen extends StatelessWidget {
                   color: AppColors.accentLight,
                   borderRadius: BorderRadius.circular(8),
                   border: Border.all(
-                    color: AppColors.accent.withOpacity(0.3),
+                    color: AppColors.accent.withValues(alpha: 0.3),
                   ),
                 ),
                 child: const Text(
@@ -209,7 +210,7 @@ class SpecialtyScreen extends StatelessWidget {
             Icon(
               Icons.chevron_right,
               size: 16,
-              color: AppColors.textTertiary.withOpacity(0.5),
+              color: AppColors.textTertiary.withValues(alpha: 0.5),
             ),
           ],
         ),

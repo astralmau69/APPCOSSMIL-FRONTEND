@@ -4,6 +4,7 @@ import '../../../core/theme/app_theme.dart';
 import '../../../core/mock/mock_schedule_data.dart';
 import '../../../core/models/time_slot_model.dart';
 import '../../../core/widgets/breadcrumb_chips.dart';
+import '../../../core/animations/app_page_route.dart';
 import '../../../shell/tab_shell.dart';
 import 'summary_screen.dart';
 
@@ -92,7 +93,7 @@ class _ScheduleScreenState extends State<ScheduleScreen>
                     ),
                     const SizedBox(width: 10),
                     const Text(
-                      'Turnos Mañana',
+                      'Agenda médica',
                       style: TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.w700,
@@ -113,7 +114,7 @@ class _ScheduleScreenState extends State<ScheduleScreen>
                   child: ElevatedButton(
                     style: ElevatedButton.styleFrom(
                       backgroundColor: AppColors.primary,
-                      disabledBackgroundColor: AppColors.primary.withOpacity(0.3),
+                      disabledBackgroundColor: AppColors.primary.withValues(alpha: 0.3),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(AppTheme.radiusLg),
                       ),
@@ -128,7 +129,7 @@ class _ScheduleScreenState extends State<ScheduleScreen>
                                 _selectedTime;
                             Navigator.push(
                               context,
-                              MaterialPageRoute(
+                              AppPageRoute(
                                 builder: (_) => SummaryScreen(
                                     tabShell: widget.tabShell),
                               ),
@@ -267,8 +268,8 @@ class _ScheduleScreenState extends State<ScheduleScreen>
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
                 colors: [
-                  AppColors.primary.withOpacity(0.15),
-                  AppColors.primary.withOpacity(0.08),
+                  AppColors.primary.withValues(alpha: 0.15),
+                  AppColors.primary.withValues(alpha: 0.08),
                 ],
               ),
               borderRadius: BorderRadius.circular(14),
@@ -338,30 +339,21 @@ class _ScheduleScreenState extends State<ScheduleScreen>
     Color textColor;
     Color borderColor;
 
-    // Lógica de semáforo
-    if (isSelected) {
-      bgColor = AppColors.primary;
+    if (isDisabled) {
+      // Ocupadas en rojo tachado
+      bgColor = const Color(0xFFFEE2E2);
+      textColor = const Color(0xFF991B1B).withValues(alpha: 0.6);
+      borderColor = const Color(0xFFFECACA);
+    } else if (isSelected) {
+      // Seleccionada en verde sólido
+      bgColor = AppColors.success;
       textColor = AppColors.white;
-      borderColor = AppColors.primary;
+      borderColor = AppColors.success;
     } else {
-      switch (slot.statusLevel) {
-        case 'high': // Verde - Disponible
-          bgColor = const Color(0xFFDCFCE7);
-          textColor = const Color(0xFF166534);
-          borderColor = const Color(0xFFBBF7D0);
-          break;
-        case 'low': // Amarillo - Poca disponibilidad
-          bgColor = const Color(0xFFFEF9C3);
-          textColor = const Color(0xFF854D0E);
-          borderColor = const Color(0xFFFEF08A);
-          break;
-        case 'none': // Rojo - Ocupado
-        default:
-          bgColor = const Color(0xFFFEE2E2);
-          textColor = const Color(0xFF991B1B).withOpacity(0.5);
-          borderColor = const Color(0xFFFECACA);
-          break;
-      }
+      // Disponible (no seleccionada) en verde claro
+      bgColor = AppColors.successLight;
+      textColor = AppColors.success;
+      borderColor = const Color(0xFFBBF7D0);
     }
 
     return GestureDetector(
@@ -383,7 +375,7 @@ class _ScheduleScreenState extends State<ScheduleScreen>
           boxShadow: isSelected
               ? [
                   BoxShadow(
-                    color: AppColors.primary.withOpacity(0.35),
+                    color: AppColors.primary.withValues(alpha: 0.35),
                     blurRadius: 10,
                     offset: const Offset(0, 4),
                   ),
