@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+import 'package:flutter/services.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
@@ -23,226 +25,166 @@ class PdfService {
         'RES-${now.year}${now.month.toString().padLeft(2, '0')}${now.day.toString().padLeft(2, '0')}-${now.millisecondsSinceEpoch.toString().substring(7)}';
 
     final oliveColor = PdfColor.fromHex('#6B6830');
-    final greyColor = PdfColor.fromHex('#8E8E93');
     final darkColor = PdfColor.fromHex('#1C1C1E');
-    final bgColor = PdfColor.fromHex('#F8F8F5');
-    final borderColor = PdfColor.fromHex('#E5E5EA');
+    final bgColor = PdfColor.fromHex('#F9FAFB');
+    final borderColor = PdfColor.fromHex('#E5E7EB');
+    final greyText = PdfColor.fromHex('#6B7280');
+
+    final format = PdfPageFormat.roll80;
+    
+    // Load local logo image
+    final ByteData bytes = await rootBundle.load('assets/images/cossmil_logo.png');
+    final Uint8List imageBytes = bytes.buffer.asUint8List();
+    final logoImage = pw.MemoryImage(imageBytes);
 
     doc.addPage(
       pw.Page(
-        pageFormat: PdfPageFormat.a4,
-        margin: const pw.EdgeInsets.all(40),
+        pageFormat: format,
+        margin: const pw.EdgeInsets.symmetric(horizontal: 12, vertical: 20),
         build: (context) {
           return pw.Column(
-            crossAxisAlignment: pw.CrossAxisAlignment.start,
+            crossAxisAlignment: pw.CrossAxisAlignment.center,
+            mainAxisSize: pw.MainAxisSize.min,
             children: [
-              // ── Header ────────────────────────────────────────
-              pw.Container(
-                width: double.infinity,
-                padding: const pw.EdgeInsets.all(20),
-                decoration: pw.BoxDecoration(
-                  color: oliveColor,
-                  borderRadius: pw.BorderRadius.circular(8),
-                ),
-                child: pw.Column(
-                  crossAxisAlignment: pw.CrossAxisAlignment.start,
-                  children: [
-                    pw.Text(
-                      'COSSMIL',
-                      style: pw.TextStyle(
-                        fontSize: 28,
-                        fontWeight: pw.FontWeight.bold,
-                        color: PdfColors.white,
-                        letterSpacing: 3,
-                      ),
-                    ),
-                    pw.SizedBox(height: 4),
-                    pw.Text(
-                      'Corporación del Seguro Social Militar',
-                      style: pw.TextStyle(
-                        fontSize: 12,
-                        color: PdfColor.fromHex('#D4D2B8'),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              pw.SizedBox(height: 24),
-
-              // ── Título ────────────────────────────────────────
-              pw.Center(
-                child: pw.Text(
-                  'COMPROBANTE DE RESERVA MÉDICA',
-                  style: pw.TextStyle(
-                    fontSize: 16,
-                    fontWeight: pw.FontWeight.bold,
-                    color: darkColor,
-                    letterSpacing: 1.5,
-                  ),
-                ),
-              ),
-              pw.SizedBox(height: 6),
-              pw.Center(
-                child: pw.Container(
-                  width: 60,
-                  height: 2,
-                  color: oliveColor,
-                ),
-              ),
-              pw.SizedBox(height: 20),
-
-              // ── Código y fecha ────────────────────────────────
-              pw.Container(
-                width: double.infinity,
-                padding: const pw.EdgeInsets.symmetric(
-                    horizontal: 16, vertical: 12),
-                decoration: pw.BoxDecoration(
-                  color: bgColor,
-                  borderRadius: pw.BorderRadius.circular(6),
-                  border: pw.Border.all(color: borderColor),
-                ),
-                child: pw.Row(
-                  mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
-                  children: [
-                    pw.Column(
-                      crossAxisAlignment: pw.CrossAxisAlignment.start,
-                      children: [
+              // Logo & Titulo Principal
+              pw.Row(
+                mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                crossAxisAlignment: pw.CrossAxisAlignment.start,
+                children: [
+                   pw.Column(
+                     crossAxisAlignment: pw.CrossAxisAlignment.start,
+                     children: [
                         pw.Text(
-                          'Código de Reserva',
+                          'TICKET DE',
                           style: pw.TextStyle(
-                            fontSize: 9,
-                            color: greyColor,
+                            fontSize: 10,
+                            fontWeight: pw.FontWeight.bold,
+                            color: oliveColor,
                           ),
                         ),
-                        pw.SizedBox(height: 2),
                         pw.Text(
-                          codigoReserva,
+                          'RESERVA',
                           style: pw.TextStyle(
                             fontSize: 14,
                             fontWeight: pw.FontWeight.bold,
                             color: oliveColor,
                           ),
                         ),
-                      ],
-                    ),
-                    pw.Column(
-                      crossAxisAlignment: pw.CrossAxisAlignment.end,
-                      children: [
-                        pw.Text(
-                          'Fecha de emisión',
-                          style: pw.TextStyle(
-                            fontSize: 9,
-                            color: greyColor,
-                          ),
-                        ),
-                        pw.SizedBox(height: 2),
-                        pw.Text(
-                          formattedDate,
-                          style: pw.TextStyle(
-                            fontSize: 11,
-                            fontWeight: pw.FontWeight.bold,
-                            color: darkColor,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
+                     ]
+                   ),
+                   // Logo real a la derecha
+                   pw.Container(
+                     height: 35,
+                     child: pw.Image(logoImage),
+                   )
+                ]
               ),
-              pw.SizedBox(height: 24),
+              
+              pw.SizedBox(height: 12),
 
-              // ── Datos del paciente ────────────────────────────
-              _sectionTitle('DATOS DEL PACIENTE', oliveColor),
-              pw.SizedBox(height: 8),
-              _infoTable([
-                ['Nombre Completo', paciente],
-                ['Matrícula', user.matricula],
-                ['Grado', '${user.rank} ${user.role}'],
-                ['Grupo Sanguíneo', user.bloodType],
-              ], darkColor, greyColor, borderColor),
-              pw.SizedBox(height: 20),
-
-              // ── Datos de la cita ──────────────────────────────
-              _sectionTitle('DATOS DE LA CITA', oliveColor),
-              pw.SizedBox(height: 8),
-              _infoTable([
-                ['Especialidad', especialidad],
-                ['Establecimiento', '$establecimiento — $ciudad'],
-                ['Médico', medico],
-                ['Fecha', fecha],
-                ['Hora', hora],
-              ], darkColor, greyColor, borderColor),
-              pw.SizedBox(height: 30),
-
-              // ── Nota ──────────────────────────────────────────
               pw.Container(
                 width: double.infinity,
-                padding: const pw.EdgeInsets.all(14),
+                padding: const pw.EdgeInsets.all(8),
                 decoration: pw.BoxDecoration(
-                  color: PdfColor.fromHex('#FFF9E6'),
-                  borderRadius: pw.BorderRadius.circular(6),
-                  border: pw.Border.all(
-                      color: PdfColor.fromHex('#E6D9A3')),
+                  color: bgColor,
+                  border: pw.Border.all(color: borderColor, width: 0.5),
+                  borderRadius: pw.BorderRadius.circular(4),
                 ),
                 child: pw.Column(
-                  crossAxisAlignment: pw.CrossAxisAlignment.start,
                   children: [
                     pw.Text(
-                      'IMPORTANTE',
-                      style: pw.TextStyle(
-                        fontSize: 10,
-                        fontWeight: pw.FontWeight.bold,
-                        color: PdfColor.fromHex('#8B7D2E'),
-                        letterSpacing: 1,
-                      ),
+                      'CÓDIGO',
+                      style: pw.TextStyle(fontSize: 7, color: greyText),
                     ),
-                    pw.SizedBox(height: 4),
                     pw.Text(
-                      '• Presentar este comprobante el día de la cita.\n'
-                      '• Llegar 15 minutos antes de la hora programada.\n'
-                      '• Traer su carnet de identidad y carnet militar vigente.\n'
-                      '• En caso de no poder asistir, cancelar con 24h de anticipación.',
+                      codigoReserva,
                       style: pw.TextStyle(
-                        fontSize: 10,
-                        color: PdfColor.fromHex('#5C5020'),
-                        lineSpacing: 4,
+                        fontSize: 11,
+                        fontWeight: pw.FontWeight.bold,
+                        color: darkColor,
                       ),
                     ),
                   ],
                 ),
               ),
+              pw.SizedBox(height: 12),
 
-              pw.Spacer(),
+              // Detalles Paciente
+              _ticketRow('PACIENTE', paciente),
+              _ticketRow('MATRÍCULA', user.matricula),
+              if (user.rank.isNotEmpty) _ticketRow('GRADO', user.rank),
+              pw.Divider(color: borderColor, thickness: 0.5),
+              pw.SizedBox(height: 4),
 
-              // ── Footer ────────────────────────────────────────
+              // Detalles Cita
+              _ticketRow('ESPECIALIDAD', especialidad),
+              _ticketRow('MÉDICO', medico),
+              _ticketRow('LUGAR', '$establecimiento\n$ciudad'),
+              pw.Divider(color: borderColor, thickness: 0.5),
+              pw.SizedBox(height: 4),
+              
+              // Fecha y Hora
               pw.Container(
                 width: double.infinity,
-                padding: const pw.EdgeInsets.only(top: 12),
+                padding: const pw.EdgeInsets.symmetric(vertical: 6),
                 decoration: pw.BoxDecoration(
-                  border: pw.Border(
-                    top: pw.BorderSide(color: borderColor, width: 0.5),
-                  ),
+                  border: pw.Border.all(color: oliveColor, width: 1),
+                  borderRadius: pw.BorderRadius.circular(4),
                 ),
-                child: pw.Row(
-                  mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                child: pw.Column(
                   children: [
                     pw.Text(
-                      'COSSMIL — Sistema de Citas Médicas',
-                      style: pw.TextStyle(
-                        fontSize: 9,
-                        color: greyColor,
-                      ),
+                      fecha.toUpperCase(),
+                      style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold),
                     ),
                     pw.Text(
-                      'FLOWV1.',
-                      style: pw.TextStyle(
-                        fontSize: 9,
-                        color: greyColor,
-                        letterSpacing: 1,
-                      ),
+                      hora,
+                      style: pw.TextStyle(fontSize: 14, fontWeight: pw.FontWeight.bold, color: oliveColor),
                     ),
                   ],
                 ),
+              ),
+              pw.SizedBox(height: 12),
+              
+              // QR CODE simulado
+              pw.Container(
+                height: 60,
+                width: 60,
+                child: pw.BarcodeWidget(
+                  barcode: pw.Barcode.qrCode(),
+                  data: codigoReserva,
+                  color: darkColor,
+                ),
+              ),
+
+              pw.SizedBox(height: 12),
+              pw.Text(
+                'Presentarse 15 min antes de la hora indicada con carnet de identidad.',
+                textAlign: pw.TextAlign.center,
+                style: pw.TextStyle(fontSize: 7, color: greyText),
+              ),
+              pw.SizedBox(height: 6),
+              
+              // ADVERTENCIA PENALIZACIÓN
+              pw.Container(
+                width: double.infinity,
+                padding: const pw.EdgeInsets.all(6),
+                decoration: pw.BoxDecoration(
+                   color: PdfColor.fromHex('#FEF2F2'),
+                   border: pw.Border.all(color: PdfColor.fromHex('#FECACA'), width: 0.5),
+                   borderRadius: pw.BorderRadius.circular(4),
+                ),
+                child: pw.Text(
+                   'ADVERTENCIA: Si falta 3 veces a sus consultas reservadas por la app será penalizado y no podrá volver a reservar fichas.',
+                   textAlign: pw.TextAlign.center,
+                   style: pw.TextStyle(fontSize: 7, color: PdfColor.fromHex('#991B1B'), fontWeight: pw.FontWeight.bold),
+                ),
+              ),
+              
+              pw.SizedBox(height: 6),
+              pw.Text(
+                'Emitido el: $formattedDate',
+                style: pw.TextStyle(fontSize: 6, color: greyText),
               ),
             ],
           );
@@ -252,71 +194,27 @@ class PdfService {
 
     await Printing.layoutPdf(
       onLayout: (format) async => doc.save(),
-      name: 'Reserva_COSSMIL_$codigoReserva',
+      name: 'Ticket_COSSMIL_$codigoReserva',
     );
   }
 
-  static pw.Widget _sectionTitle(String text, PdfColor color) {
+  static pw.Widget _ticketRow(String label, String value) {
     return pw.Container(
-      padding: const pw.EdgeInsets.only(bottom: 4),
-      decoration: pw.BoxDecoration(
-        border: pw.Border(
-          bottom: pw.BorderSide(color: color, width: 1.5),
-        ),
+      margin: const pw.EdgeInsets.only(bottom: 6),
+      width: double.infinity,
+      child: pw.Column(
+        crossAxisAlignment: pw.CrossAxisAlignment.start,
+        children: [
+          pw.Text(
+            label,
+            style: pw.TextStyle(fontSize: 7, color: PdfColor.fromHex('#6B7280')),
+          ),
+          pw.Text(
+            value,
+            style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold),
+          ),
+        ],
       ),
-      child: pw.Text(
-        text,
-        style: pw.TextStyle(
-          fontSize: 11,
-          fontWeight: pw.FontWeight.bold,
-          color: color,
-          letterSpacing: 1.2,
-        ),
-      ),
-    );
-  }
-
-  static pw.Widget _infoTable(
-    List<List<String>> rows,
-    PdfColor darkColor,
-    PdfColor greyColor,
-    PdfColor borderColor,
-  ) {
-    return pw.Table(
-      border: pw.TableBorder.all(color: borderColor, width: 0.5),
-      columnWidths: {
-        0: const pw.FlexColumnWidth(2),
-        1: const pw.FlexColumnWidth(3),
-      },
-      children: rows.map((row) {
-        return pw.TableRow(
-          children: [
-            pw.Padding(
-              padding: const pw.EdgeInsets.symmetric(
-                  horizontal: 12, vertical: 8),
-              child: pw.Text(
-                row[0],
-                style: pw.TextStyle(
-                  fontSize: 10,
-                  color: greyColor,
-                ),
-              ),
-            ),
-            pw.Padding(
-              padding: const pw.EdgeInsets.symmetric(
-                  horizontal: 12, vertical: 8),
-              child: pw.Text(
-                row[1],
-                style: pw.TextStyle(
-                  fontSize: 11,
-                  fontWeight: pw.FontWeight.bold,
-                  color: darkColor,
-                ),
-              ),
-            ),
-          ],
-        );
-      }).toList(),
     );
   }
 }

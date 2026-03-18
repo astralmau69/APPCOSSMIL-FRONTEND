@@ -332,24 +332,36 @@ class _ScheduleScreenState extends State<ScheduleScreen>
 
   Widget _timeChip(TimeSlotModel slot) {
     final isSelected = _selectedTime == slot.time;
-    final isDisabled = !slot.isAvailable;
+    final isDisabled = !slot.isAvailable || slot.statusLevel == 'none';
 
     Color bgColor;
     Color textColor;
     Color borderColor;
 
-    if (isDisabled) {
-      bgColor = AppColors.background;
-      textColor = AppColors.textTertiary.withOpacity(0.4);
-      borderColor = AppColors.border;
-    } else if (isSelected) {
+    // Lógica de semáforo
+    if (isSelected) {
       bgColor = AppColors.primary;
       textColor = AppColors.white;
       borderColor = AppColors.primary;
     } else {
-      bgColor = AppColors.white;
-      textColor = AppColors.textPrimary;
-      borderColor = AppColors.border;
+      switch (slot.statusLevel) {
+        case 'high': // Verde - Disponible
+          bgColor = const Color(0xFFDCFCE7);
+          textColor = const Color(0xFF166534);
+          borderColor = const Color(0xFFBBF7D0);
+          break;
+        case 'low': // Amarillo - Poca disponibilidad
+          bgColor = const Color(0xFFFEF9C3);
+          textColor = const Color(0xFF854D0E);
+          borderColor = const Color(0xFFFEF08A);
+          break;
+        case 'none': // Rojo - Ocupado
+        default:
+          bgColor = const Color(0xFFFEE2E2);
+          textColor = const Color(0xFF991B1B).withOpacity(0.5);
+          borderColor = const Color(0xFFFECACA);
+          break;
+      }
     }
 
     return GestureDetector(
@@ -371,9 +383,9 @@ class _ScheduleScreenState extends State<ScheduleScreen>
           boxShadow: isSelected
               ? [
                   BoxShadow(
-                    color: AppColors.primary.withOpacity(0.25),
-                    blurRadius: 8,
-                    offset: const Offset(0, 2),
+                    color: AppColors.primary.withOpacity(0.35),
+                    blurRadius: 10,
+                    offset: const Offset(0, 4),
                   ),
                 ]
               : null,
@@ -383,8 +395,10 @@ class _ScheduleScreenState extends State<ScheduleScreen>
             slot.time,
             style: TextStyle(
               fontSize: 14,
-              fontWeight: isSelected ? FontWeight.w700 : FontWeight.w600,
+              fontWeight: isSelected ? FontWeight.w800 : FontWeight.w700,
               color: textColor,
+              decoration: isDisabled ? TextDecoration.lineThrough : null,
+              decorationColor: textColor,
             ),
           ),
         ),

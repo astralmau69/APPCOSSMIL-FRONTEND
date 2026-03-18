@@ -331,54 +331,125 @@ class _SummaryScreenState extends State<SummaryScreen>
 
     await showDialog(
       context: context,
-      builder: (ctx) => AlertDialog(
+      barrierDismissible: false,
+      builder: (ctx) => Dialog(
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(AppTheme.radiusLg),
+          borderRadius: BorderRadius.circular(AppTheme.radiusXl),
         ),
-        title: const Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.check_circle,
-                color: AppColors.success, size: 22),
-            SizedBox(width: 8),
-            Text('Reserva Confirmada'),
-          ],
-        ),
-        content: const Padding(
-          padding: EdgeInsets.only(top: 8),
-          child: Text(
-            'Su cita médica ha sido registrada exitosamente.\n\n'
-            'Se generará un comprobante PDF para descargar.',
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 64,
+                height: 64,
+                decoration: BoxDecoration(
+                  color: AppColors.success.withOpacity(0.1),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(Icons.check_circle, color: AppColors.success, size: 36),
+              ),
+              const SizedBox(height: 16),
+              const Text(
+                '¡Reserva Exitosa!',
+                style: TextStyle(
+                  fontSize: 22,
+                  fontWeight: FontWeight.w800,
+                  color: AppColors.textPrimary,
+                ),
+              ),
+              const SizedBox(height: 8),
+              const Text(
+                'Tu cita médica ha sido confirmada.\nSe ha generado tu ticket virtual de reserva.',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 14,
+                  color: AppColors.textSecondary,
+                  height: 1.3,
+                ),
+              ),
+              const SizedBox(height: 24),
+              
+              // Mock del PDF Preview
+              Container(
+                width: 140,
+                height: 180,
+                decoration: BoxDecoration(
+                  color: AppColors.white,
+                  borderRadius: BorderRadius.circular(8),
+                  boxShadow: AppColors.cardShadow,
+                  border: Border.all(color: AppColors.border),
+                ),
+                child: Column(
+                  children: [
+                    Container(height: 20, color: const Color(0xFF6B6830)),
+                    const SizedBox(height: 10),
+                    Container(width: 80, height: 4, color: AppColors.border),
+                    const SizedBox(height: 10),
+                    Container(width: 100, height: 60, color: AppColors.background),
+                    const Spacer(),
+                    Container(width: 60, height: 20, color: AppColors.border),
+                    const SizedBox(height: 10),
+                  ],
+                ),
+              ),
+              
+              const SizedBox(height: 28),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton.icon(
+                  icon: const Icon(Icons.receipt_long, size: 18),
+                  label: const Text(
+                    'Descargar pdf para su imprecion',
+                    style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
+                  ),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.primary,
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(AppTheme.radiusLg),
+                    ),
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    elevation: 0,
+                  ),
+                  onPressed: () async {
+                    Navigator.pop(ctx);
+                    await PdfService.generateAndShowBookingPdf(
+                      user: user,
+                      paciente: user.displayName,
+                      especialidad: bs.specialty?.name ?? '',
+                      establecimiento: bs.hospital?.shortName ?? '',
+                      ciudad: bs.hospital?.city ?? '',
+                      medico: bs.doctor?.fullName ?? '',
+                      fecha: 'Martes, 18 de Marzo',
+                      hora: bs.selectedTime ?? '',
+                    );
+                    if (mounted) widget.tabShell.finishBooking();
+                  },
+                ),
+              ),
+              const SizedBox(height: 12),
+              SizedBox(
+                width: double.infinity,
+                child: TextButton(
+                  onPressed: () {
+                    Navigator.pop(ctx);
+                    widget.tabShell.finishBooking();
+                  },
+                  child: const Text(
+                    'Volver al Inicio',
+                    style: TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
+                ),
+              ),
+            ],
           ),
         ),
-        actions: [
-          TextButton(
-            child: const Text('Cerrar'),
-            onPressed: () {
-              Navigator.pop(ctx);
-              widget.tabShell.finishBooking();
-            },
-          ),
-          TextButton(
-            child: const Text('Descargar PDF', style: TextStyle(fontWeight: FontWeight.bold)),
-            onPressed: () async {
-              Navigator.pop(ctx);
-              await PdfService.generateAndShowBookingPdf(
-                user: user,
-                paciente: user.displayName,
-                especialidad: bs.specialty?.name ?? '',
-                establecimiento: bs.hospital?.shortName ?? '',
-                ciudad: bs.hospital?.city ?? '',
-                medico: bs.doctor?.fullName ?? '',
-                fecha: 'Martes, 18 de Marzo 2026',
-                hora: bs.selectedTime ?? '',
-              );
-              if (mounted) {
-                widget.tabShell.finishBooking();
-              }
-            },
-          ),
-        ],
       ),
     );
 

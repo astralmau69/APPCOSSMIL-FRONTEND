@@ -64,6 +64,10 @@ class _HomeScreenState extends State<HomeScreen>
               _buildSectionTitle('ÚLTIMAS RESERVAS'),
               const SizedBox(height: 12),
               _buildRecentAppointments(),
+              const SizedBox(height: 28),
+              _buildSectionTitle('COSSMIL TE INFORMA'),
+              const SizedBox(height: 12),
+              _buildCossmilTeInforma(),
               const SizedBox(height: 32),
             ],
           ),
@@ -155,7 +159,7 @@ class _HomeScreenState extends State<HomeScreen>
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      '${user.rank} ${user.fullName}',
+                      user.rank.isEmpty ? user.fullName : '${user.rank} ${user.fullName}',
                       style: const TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.w700,
@@ -409,7 +413,14 @@ class _HomeScreenState extends State<HomeScreen>
             icon: Icons.article,
             label: 'COSSMIL\nte informa',
             color: AppColors.warning,
-            onTap: () {},
+            onTap: () {
+              showModalBottomSheet(
+                context: context,
+                backgroundColor: Colors.transparent,
+                isScrollControlled: true,
+                builder: (ctx) => _buildInformaBottomSheet(ctx),
+              );
+            },
           ),
           _QuickAction(
             icon: Icons.phone,
@@ -601,7 +612,7 @@ class _HomeScreenState extends State<HomeScreen>
       }
     }
     
-    final appointments = uniqueAppointments.values.take(3).toList();
+    final appointments = uniqueAppointments.values.take(5).toList();
 
     return Column(
       children: [
@@ -684,6 +695,22 @@ class _HomeScreenState extends State<HomeScreen>
                 Icons.person_outline,
                 appointment.patientName.split(' ').take(2).join(' '),
               ),
+              const SizedBox(width: 8),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                decoration: BoxDecoration(
+                  color: AppColors.primary.withOpacity(0.08),
+                  borderRadius: BorderRadius.circular(4),
+                ),
+                child: Text(
+                  appointment.relationship,
+                  style: const TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.primary,
+                  ),
+                ),
+              ),
               const Spacer(),
               _detailChip(
                 Icons.calendar_today,
@@ -734,6 +761,249 @@ class _HomeScreenState extends State<HomeScreen>
           ),
         ),
       ],
+    );
+  }
+
+  // ── COSSMIL Te Informa ────────────────────────────────────────────────────
+
+  Widget _buildCossmilTeInforma() {
+    final items = [
+      {
+        'title': 'Actualización de Datos',
+        'desc': 'Mantén tus datos al día para no retrasar tus atenciones médicas.',
+        'icon': Icons.person_search_outlined,
+        'color': const Color(0xFF3B82F6), // Azul
+      },
+      {
+        'title': 'Penalizaciones por falta',
+        'desc': 'ATENCIÓN: Si falta 3 veces a sus reservas por la app será penalizado de reservar fichas por este medio.',
+        'icon': Icons.warning_amber_rounded,
+        'color': const Color(0xFFEF4444), // Rojo Fuerte
+      },
+      {
+        'title': 'Afiliación Familiar',
+        'desc': 'Te recordamos presentar los requisitos vigentes para renovar a tus beneficiarios.',
+        'icon': Icons.family_restroom_outlined,
+        'color': const Color(0xFF10B981), // Verde Esmeralda
+      },
+      {
+        'title': 'Estado de Aportes',
+        'desc': 'Verifica tu vigencia de derechos previendo que tus aportes estén al día.',
+        'icon': Icons.verified_user_outlined,
+        'color': const Color(0xFF6366F1), // Índigo
+      },
+      {
+        'title': 'Puntualidad',
+        'desc': 'Preséntate 15 minutos antes de la hora de tu cita médica.',
+        'icon': Icons.access_time,
+        'color': const Color(0xFFF59E0B), // Naranja
+      },
+    ];
+
+    return SizedBox(
+      height: 140,
+      child: ListView.builder(
+        scrollDirection: Axis.horizontal,
+        clipBehavior: Clip.none,
+        itemCount: items.length,
+        itemBuilder: (context, index) {
+          final item = items[index];
+          final color = item['color'] as Color;
+          
+          return Container(
+            width: 240,
+            margin: EdgeInsets.only(right: index == items.length - 1 ? 0 : 16),
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: AppColors.white,
+              borderRadius: BorderRadius.circular(AppTheme.radiusXl),
+              boxShadow: [
+                BoxShadow(
+                  color: color.withOpacity(0.08),
+                  blurRadius: 15,
+                  offset: const Offset(0, 5),
+                ),
+              ],
+              border: Border.all(color: color.withOpacity(0.1)),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: color.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Icon(item['icon'] as IconData, size: 20, color: color),
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  item['title'] as String,
+                  style: const TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.textPrimary,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Expanded(
+                  child: Text(
+                    item['desc'] as String,
+                    style: const TextStyle(
+                      fontSize: 12,
+                      color: AppColors.textSecondary,
+                      height: 1.3,
+                    ),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              ],
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildInformaBottomSheet(BuildContext context) {
+    final items = [
+      {
+        'title': 'Actualización de Datos',
+        'desc': 'Mantén tus datos al día para no retrasar tus atenciones médicas. Es importante tener tu número de teléfono y dirección actualizados en el sistema para cualquier eventualidad.',
+        'icon': Icons.person_search_outlined,
+        'color': const Color(0xFF3B82F6),
+      },
+      {
+        'title': 'Penalizaciones por falta',
+        'desc': 'ATENCIÓN: Si falta 3 veces a sus reservas por la app será penalizado de reservar fichas por este medio. Le rogamos cancelar con al menos 24 horas de anticipación si no podrá asistir.',
+        'icon': Icons.warning_amber_rounded,
+        'color': const Color(0xFFEF4444),
+      },
+      {
+        'title': 'Afiliación Familiar',
+        'desc': 'Te recordamos presentar los requisitos vigentes para renovar a tus beneficiarios. Revisa los documentos necesarios desde el portal principal antes de apersonarte a las oficinas.',
+        'icon': Icons.family_restroom_outlined,
+        'color': const Color(0xFF10B981),
+      },
+      {
+        'title': 'Estado de Aportes',
+        'desc': 'Verifica tu vigencia de derechos previendo que tus aportes estén al día. Acércate a informaciones si tienes alguna duda sobre tus cotizaciones.',
+        'icon': Icons.verified_user_outlined,
+        'color': const Color(0xFF6366F1),
+      },
+      {
+        'title': 'Puntualidad en Citas',
+        'desc': 'Preséntate mínimo 15 minutos antes de la hora estipulada en tu comprobante de reserva. Lleva siempre contigo tu carnet militar y carnet de identidad vigentes.',
+        'icon': Icons.access_time,
+        'color': const Color(0xFFF59E0B),
+      },
+    ];
+
+    return Container(
+      decoration: const BoxDecoration(
+        color: AppColors.background,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(AppTheme.radiusXl)),
+      ),
+      padding: const EdgeInsets.only(top: 12, bottom: 24),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 40,
+            height: 4,
+            decoration: BoxDecoration(
+              color: AppColors.border,
+              borderRadius: BorderRadius.circular(2),
+            ),
+          ),
+          const SizedBox(height: 16),
+          const Text(
+            'COSSMIL Te Informa',
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.w800,
+              color: AppColors.textPrimary,
+              letterSpacing: -0.5,
+            ),
+          ),
+          const SizedBox(height: 8),
+          const Text(
+            'Información importante para nuestros afiliados',
+            style: TextStyle(
+              fontSize: 14,
+              color: AppColors.textSecondary,
+            ),
+          ),
+          const SizedBox(height: 16),
+          Flexible(
+            child: ListView.separated(
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
+              shrinkWrap: true,
+              itemCount: items.length,
+              separatorBuilder: (context, index) => const SizedBox(height: 12),
+              itemBuilder: (context, index) {
+                final item = items[index];
+                final color = item['color'] as Color;
+                return Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: AppColors.white,
+                    borderRadius: BorderRadius.circular(AppTheme.radiusLg),
+                    border: Border.all(color: color.withOpacity(0.15)),
+                    boxShadow: [
+                      BoxShadow(
+                        color: color.withOpacity(0.05),
+                        blurRadius: 10,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
+                  ),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(10),
+                        decoration: BoxDecoration(
+                          color: color.withOpacity(0.1),
+                          shape: BoxShape.circle,
+                        ),
+                        child: Icon(item['icon'] as IconData, size: 24, color: color),
+                      ),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              item['title'] as String,
+                              style: const TextStyle(
+                                fontSize: 15,
+                                fontWeight: FontWeight.w700,
+                                color: AppColors.textPrimary,
+                              ),
+                            ),
+                            const SizedBox(height: 6),
+                            Text(
+                              item['desc'] as String,
+                              style: const TextStyle(
+                                fontSize: 13,
+                                color: AppColors.textSecondary,
+                                height: 1.4,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              },
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

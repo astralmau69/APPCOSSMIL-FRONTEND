@@ -86,17 +86,37 @@ class SpecialtyScreen extends StatelessWidget {
       margin: const EdgeInsets.symmetric(horizontal: 20),
       decoration: BoxDecoration(
         color: AppColors.white,
-        borderRadius: BorderRadius.circular(AppTheme.radiusLg),
-        boxShadow: AppColors.softShadow,
+        borderRadius: BorderRadius.circular(AppTheme.radiusXl),
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.primary.withOpacity(0.04),
+            blurRadius: 15,
+            offset: const Offset(0, 5),
+          ),
+        ],
       ),
       child: Column(
         children: [
           for (int i = 0; i < specialties.length; i++) ...[
-            _specialtyTile(context, specialties[i], showBadge),
+            TweenAnimationBuilder<double>(
+              tween: Tween(begin: 0.0, end: 1.0),
+              duration: Duration(milliseconds: 300 + (i * 100)),
+              curve: Curves.easeOutCubic,
+              builder: (context, value, child) {
+                return Opacity(
+                  opacity: value,
+                  child: Transform.translate(
+                    offset: Offset(0, 10 * (1 - value)),
+                    child: child,
+                  ),
+                );
+              },
+              child: _specialtyTile(context, specialties[i], showBadge),
+            ),
             if (i < specialties.length - 1)
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: Container(height: 0.5, color: AppColors.border),
+                child: Container(height: 0.5, color: AppColors.border.withOpacity(0.5)),
               ),
           ],
         ],
@@ -199,18 +219,22 @@ class SpecialtyScreen extends StatelessWidget {
 
   IconData _iconForSpecialty(String name) {
     switch (name) {
-      case 'Medicina Gen.':
-        return Icons.favorite;
+      case 'Medicina General':
+        return Icons.health_and_safety_outlined;
+      case 'Medicina Familiar':
+        return Icons.family_restroom_outlined;
+      case 'Pediatría':
+        return Icons.child_care_outlined;
       case 'Odontología':
-        return Icons.sentiment_satisfied;
+        return Icons.sentiment_satisfied_outlined;
       case 'Ginecología':
-        return Icons.pregnant_woman;
+        return Icons.pregnant_woman_outlined;
       case 'Cardiología':
-        return Icons.monitor_heart;
+        return Icons.monitor_heart_outlined;
       case 'Traumatología':
-        return Icons.healing;
+        return Icons.healing_outlined;
       default:
-        return Icons.add_circle;
+        return Icons.medical_services_outlined;
     }
   }
 }

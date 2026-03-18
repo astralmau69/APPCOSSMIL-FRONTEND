@@ -15,8 +15,8 @@ class PerfilScreen extends StatelessWidget {
       backgroundColor: AppColors.background,
       appBar: AppBar(
         title: const Text(
-          'Perfil',
-          style: TextStyle(fontWeight: FontWeight.bold),
+          'MI PERFIL',
+          style: TextStyle(fontWeight: FontWeight.w800, fontSize: 17),
         ),
         backgroundColor: AppColors.white,
         centerTitle: true,
@@ -27,106 +27,185 @@ class PerfilScreen extends StatelessWidget {
         ),
       ),
       body: SafeArea(
-        child: ListView(
-          padding: const EdgeInsets.all(20),
-          children: [
-            const SizedBox(height: 10),
-            Center(
-              child: Container(
-                width: 80,
-                height: 80,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: AppColors.primary.withOpacity(0.12),
+        child: TweenAnimationBuilder<double>(
+          tween: Tween(begin: 0.0, end: 1.0),
+          duration: const Duration(milliseconds: 600),
+          curve: Curves.easeOutCubic,
+          builder: (context, value, child) {
+            return Opacity(
+              opacity: value,
+              child: Transform.translate(
+                offset: Offset(0, 20 * (1 - value)),
+                child: child,
+              ),
+            );
+          },
+          child: ListView(
+            padding: const EdgeInsets.all(20),
+            children: [
+              const SizedBox(height: 10),
+              // Avatar with QR Badge
+              Center(
+                child: Stack(
+                  children: [
+                    Container(
+                      width: 90,
+                      height: 90,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        gradient: LinearGradient(
+                          colors: [
+                            AppColors.primary,
+                            AppColors.primary.withOpacity(0.7),
+                          ],
+                        ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: AppColors.primary.withOpacity(0.3),
+                            blurRadius: 15,
+                            offset: const Offset(0, 8),
+                          ),
+                        ],
+                      ),
+                      alignment: Alignment.center,
+                      child: Text(
+                        user.fullName[0],
+                        style: const TextStyle(
+                          fontSize: 36,
+                          fontWeight: FontWeight.w800,
+                          color: AppColors.white,
+                        ),
+                      ),
+                    ),
+                    Positioned(
+                      bottom: 0,
+                      right: 0,
+                      child: Container(
+                        padding: const EdgeInsets.all(6),
+                        decoration: BoxDecoration(
+                          color: AppColors.white,
+                          shape: BoxShape.circle,
+                          boxShadow: AppColors.softShadow,
+                        ),
+                        child: const Icon(
+                          Icons.qr_code_2,
+                          size: 18,
+                          color: AppColors.primaryDark,
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
-                alignment: Alignment.center,
+              ),
+              const SizedBox(height: 16),
+              Center(
                 child: Text(
-                  user.fullName[0],
+                  user.displayName,
+                  textAlign: TextAlign.center,
                   style: const TextStyle(
-                    fontSize: 32,
-                    fontWeight: FontWeight.bold,
-                    color: AppColors.primary,
+                    fontSize: 22,
+                    fontWeight: FontWeight.w800,
+                    color: AppColors.textPrimary,
+                    letterSpacing: -0.5,
                   ),
                 ),
               ),
-            ),
-            const SizedBox(height: 14),
-            Center(
-              child: Text(
-                user.displayName,
-                textAlign: TextAlign.center,
-                style: const TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                  color: AppColors.textPrimary,
+              const SizedBox(height: 6),
+              Center(
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: AppColors.primary.withOpacity(0.08),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Text(
+                    '${user.rank} • Mat. ${user.matricula}',
+                    style: const TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.primary,
+                    ),
+                  ),
                 ),
               ),
-            ),
-            Center(
-              child: Text(
-                '${user.role} • Mat. ${user.matricula}',
-                style: const TextStyle(
-                  fontSize: 14,
-                  color: AppColors.primary,
-                ),
+              const SizedBox(height: 32),
+              
+              // Tarjetas de Info Interactiva
+              Row(
+                children: [
+                  Expanded(child: _infoCard('SANGRE', user.bloodType, Icons.water_drop, const Color(0xFFEF4444))),
+                  const SizedBox(width: 12),
+                  Expanded(child: _infoCard('EDAD', '${user.age} años', Icons.cake, const Color(0xFFF59E0B))),
+                ],
               ),
-            ),
-            const SizedBox(height: 30),
-            _infoRow('Grupo Sanguíneo', user.bloodType),
-            _infoRow('Edad', '${user.age} años'),
-            _infoRow('Matrícula', user.matricula),
-            const SizedBox(height: 30),
-            ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.error,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(AppTheme.radiusLg),
-                ),
-                padding: const EdgeInsets.symmetric(vertical: 14),
-                elevation: 0,
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  Expanded(child: _infoCard('ESTADO', user.isEnabled ? 'Habilitado' : 'Inactivo', Icons.admin_panel_settings, const Color(0xFF10B981))),
+                  const SizedBox(width: 12),
+                  Expanded(child: _infoCard('FICHA MED.', user.hasMedicalAppointment ? 'Activa' : 'Ninguna', Icons.local_hospital, const Color(0xFF3B82F6))),
+                ],
               ),
-              onPressed: () async {
-                await TokenStorage.deleteToken();
-                if (!context.mounted) return;
-                Navigator.of(context, rootNavigator: true)
-                    .pushReplacementNamed('/login');
-              },
-              child: const Text(
-                'Cerrar Sesión',
-                style: TextStyle(
-                  color: AppColors.white,
-                  fontWeight: FontWeight.w600,
+              
+              const SizedBox(height: 40),
+              ElevatedButton.icon(
+                icon: const Icon(Icons.logout, size: 20),
+                label: const Text(
+                  'Cerrar Sesión',
+                  style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16),
                 ),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.white,
+                  foregroundColor: AppColors.error,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(AppTheme.radiusXl),
+                    side: BorderSide(color: AppColors.error.withOpacity(0.3)),
+                  ),
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  elevation: 0,
+                ),
+                onPressed: () async {
+                  await TokenStorage.deleteToken();
+                  if (!context.mounted) return;
+                  Navigator.of(context, rootNavigator: true)
+                      .pushReplacementNamed('/login');
+                },
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
   }
 
-  Widget _infoRow(String label, String value) {
+  Widget _infoCard(String label, String value, IconData icon, Color color) {
     return Container(
-      margin: const EdgeInsets.only(bottom: 1),
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-      decoration: const BoxDecoration(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
         color: AppColors.white,
-        border: Border(
-          bottom: BorderSide(color: AppColors.border, width: 0.5),
-        ),
+        borderRadius: BorderRadius.circular(AppTheme.radiusXl),
+        boxShadow: AppColors.softShadow,
       ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          Icon(icon, size: 22, color: color),
+          const SizedBox(height: 12),
           Text(
             label,
-            style: const TextStyle(fontSize: 15, color: AppColors.textSecondary),
+            style: const TextStyle(
+              fontSize: 10,
+              fontWeight: FontWeight.w700,
+              letterSpacing: 1.0,
+              color: AppColors.textSecondary,
+            ),
           ),
+          const SizedBox(height: 4),
           Text(
             value,
             style: const TextStyle(
               fontSize: 15,
-              fontWeight: FontWeight.w600,
+              fontWeight: FontWeight.w800,
               color: AppColors.textPrimary,
             ),
           ),

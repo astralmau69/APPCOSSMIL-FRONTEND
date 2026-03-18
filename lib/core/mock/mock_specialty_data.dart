@@ -5,32 +5,42 @@ class MockSpecialtyData {
     // Consulta directa
     SpecialtyModel(
       id: 's1',
-      name: 'Medicina Gen.',
-      description: 'Chequeos de rutina y derivaciones',
+      name: 'Medicina General',
+      description: 'Chequeos de rutina, diagnóstico primario y derivaciones',
     ),
     SpecialtyModel(
       id: 's2',
-      name: 'Odontología',
-      description: 'Salud dental y profilaxis',
+      name: 'Medicina Familiar',
+      description: 'Atención integral y continua para la familia',
     ),
     SpecialtyModel(
       id: 's3',
+      name: 'Pediatría',
+      description: 'Atención médica integral para niños y adolescentes',
+    ),
+    SpecialtyModel(
+      id: 's4',
+      name: 'Odontología',
+      description: 'Salud dental, curaciones y profilaxis',
+    ),
+    SpecialtyModel(
+      id: 's5',
       name: 'Ginecología',
-      description: 'Control integral de la mujer',
+      description: 'Control de salud femenina y obstetricia',
     ),
     // Interconsulta
     SpecialtyModel(
-      id: 's4',
+      id: 's6',
       name: 'Cardiología',
-      description: 'Derivado por Medicina General',
+      description: 'Derivado por Médico Tratante',
       isInterconsulta: true,
       isAuthorized: true,
       referredBy: 'Medicina General',
     ),
     SpecialtyModel(
-      id: 's5',
+      id: 's7',
       name: 'Traumatología',
-      description: 'Derivado por Medicina General',
+      description: 'Derivado por Médico Tratante',
       isInterconsulta: true,
       isAuthorized: true,
       referredBy: 'Medicina General',
