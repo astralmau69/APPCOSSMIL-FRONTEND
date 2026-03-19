@@ -1,0 +1,363 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>COSSMIL App - Flujo de Pantallas</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+        
+        body {
+            margin: 0;
+            padding: 40px;
+            font-family: 'Inter', sans-serif;
+            background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+            color: white;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        h1 { margin-bottom: 10px; font-weight: 800; font-size: 2.5rem; letter-spacing: -1px; text-align: center; }
+        p.subtitle { color: #94a3b8; margin-bottom: 40px; font-size: 1.1rem; text-align: center; max-width: 600px; }
+
+        .frames-container {
+            display: flex;
+            gap: 40px;
+            overflow-x: auto;
+            padding: 20px;
+            width: 100%;
+            max-width: 1400px;
+            justify-content: flex-start;
+        }
+
+        .frame-wrapper {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .step-badge {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 0.9rem;
+            font-weight: 600;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+
+        .phone {
+            width: 320px;
+            height: 650px;
+            background: #F3F4F6;
+            border-radius: 40px;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5), inset 0 0 0 10px #0f172a;
+            position: relative;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            color: #1e293b;
+        }
+
+        /* StatusBar */
+        .status-bar {
+            height: 40px;
+            background: transparent;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0 25px;
+            font-size: 12px;
+            font-weight: 600;
+            z-index: 10;
+        }
+
+        .notch {
+            position: absolute;
+            top: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 120px;
+            height: 25px;
+            background: #0f172a;
+            border-bottom-left-radius: 15px;
+            border-bottom-right-radius: 15px;
+            z-index: 20;
+        }
+
+        /* Screen Contents */
+        .screen {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px;
+        }
+        
+        /* Utility */
+        .flex { display: flex; }
+        .column { display: flex; flex-direction: column; }
+        .items-center { align-items: center; }
+        .justify-between { justify-content: space-between; }
+        .justify-center { justify-content: center; }
+        .gap-2 { gap: 8px; }
+        .gap-4 { gap: 16px; }
+
+        /* Custom UI Elements for mockups */
+        .btn-primary {
+            background: #0E5B85;
+            color: white;
+            padding: 16px;
+            border-radius: 16px;
+            text-align: center;
+            font-weight: 600;
+            cursor: pointer;
+            box-shadow: 0 4px 15px rgba(14, 91, 133, 0.3);
+            transition: transform 0.2s;
+        }
+        .btn-primary:hover { transform: translateY(-2px); }
+
+        .input-fake {
+            background: white;
+            padding: 16px;
+            border-radius: 12px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+            font-size: 14px;
+            color: #64748b;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .card {
+            background: white;
+            border-radius: 20px;
+            padding: 16px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.03);
+            margin-bottom: 16px;
+            transition: transform 0.2s;
+        }
+        .card:hover { transform: translateY(-2px); box-shadow: 0 8px 25px rgba(0,0,0,0.06); }
+
+        .gradient-card {
+            background: linear-gradient(135deg, #0E5B85 0%, #082F49 100%);
+            color: white;
+            border-radius: 24px;
+            padding: 20px;
+            box-shadow: 0 10px 25px rgba(14, 91, 133, 0.4);
+            margin-bottom: 20px;
+        }
+
+        /* Scrollbar hide */
+        .screen::-webkit-scrollbar { display: none; }
+        .frames-container::-webkit-scrollbar { height: 10px; }
+        .frames-container::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); border-radius: 5px; }
+
+    </style>
+</head>
+<body>
+    <h1>Prototipo de Pantallas COSSMIL</h1>
+    <p class="subtitle">Flujo visual extraído estáticamente de la interfaz de la app. Incluye las actualizaciones recientes de perfil, edad y CI.</p>
+    
+    <div class="frames-container">
+        
+        <!-- STEP 1: LOGIN -->
+        <div class="frame-wrapper">
+            <div class="step-badge">1. Inicio de Sesión</div>
+            <div class="phone">
+                <div class="notch"></div>
+                <div class="status-bar"><span>9:41</span><span>📶 🔋</span></div>
+                <div class="screen column" style="padding-top: 60px;">
+                    <div class="column items-center gap-4" style="margin-bottom: 40px;">
+                        <div style="width:80px; height:80px; background:#e2e8f0; border-radius:40px; display:flex; align-items:center; justify-content:center; box-shadow:0 10px 25px rgba(0,0,0,0.1);">
+                            <span style="font-size:30px">🛡️</span>
+                        </div>
+                        <div class="column items-center">
+                            <h2 style="margin:0; font-size: 24px;">Iniciar Sesión</h2>
+                            <span style="font-size: 12px; color: #64748b; letter-spacing: 1px; margin-top:4px;">INGRESA TUS DATOS</span>
+                        </div>
+                    </div>
+                    
+                    <div class="card" style="padding: 8px;">
+                        <div class="input-fake" style="box-shadow:none; border-bottom:1px solid #f1f5f9; border-radius:0; margin:0;">
+                            👤 <strong style="color:#0f172a; font-weight:600;">Matrícula:</strong> 010325AQJ
+                        </div>
+                        <div class="input-fake" style="box-shadow:none; margin:0;">
+                            🔒 <strong style="color:#0f172a; font-weight:600;">Contraseña:</strong> ••••••••
+                        </div>
+                    </div>
+                    
+                    <div class="btn-primary" style="margin-top:20px;">Ingresar</div>
+                    <div style="text-align:center; margin-top:16px; color:#0E5B85; font-size:13px; font-weight:600; cursor:pointer;">¿Olvidaste tu contraseña?</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- STEP 2: HOME -->
+        <div class="frame-wrapper">
+            <div class="step-badge">2. Menú Principal (Home)</div>
+            <div class="phone">
+                <div class="notch"></div>
+                <div class="status-bar"><span>9:41</span><span>📶 🔋</span></div>
+                <div class="screen column">
+                    <div style="margin-bottom: 16px; margin-top:20px;">
+                        <span style="color:#64748b; font-size:13px; font-weight:500;">Bienvenido,</span>
+                        <h2 style="margin:2px 0 0 0; font-size:22px; letter-spacing:-0.5px;">ALDO JAIME ESPINOZA</h2>
+                    </div>
+                    
+                    <div class="gradient-card column gap-2">
+                        <div class="flex items-center gap-4">
+                            <div style="width:40px; height:40px; background:rgba(255,255,255,0.2); border-radius:20px; display:flex; align-items:center; justify-content:center; font-size:18px; font-weight:bold; border:2px solid rgba(255,255,255,0.3);">A</div>
+                            <div class="column">
+                                <span style="font-weight:700; font-size:15px;">ALDO JAIME</span>
+                                <span style="font-size:11px; opacity:0.8; margin-top:2px; display:inline-block; background:rgba(255,255,255,0.15); padding:3px 8px; border-radius:10px;">Titular • Mat. 850612ECA</span>
+                            </div>
+                        </div>
+                        <div style="height:1px; background:rgba(255,255,255,0.1); margin:12px 0;"></div>
+                        <!-- Primera fila -->
+                        <div class="flex justify-between" style="font-size:12px; font-weight:500;">
+                            <div class="flex items-center gap-2"><span style="color:#4ADE80; font-size:10px;">●</span> Estado: Habilitado</div>
+                            <div class="flex items-center gap-2" style="color:rgba(255,255,255,0.9);">🎂 40 años</div>
+                        </div>
+                        <!-- Segunda fila -->
+                        <div class="flex justify-between" style="font-size:12px; margin-top:10px; font-weight:500; opacity:0.9;">
+                            <div class="flex items-center gap-2">✉️ aepinozac7654@g...</div>
+                            <div class="flex items-center gap-2">📞 75421587</div>
+                        </div>
+                        <!-- Tercera fila -->
+                        <div class="flex justify-between" style="font-size:12px; margin-top:10px; font-weight:500; opacity:0.9;">
+                            <div class="flex items-center gap-2" style="background:rgba(255,255,255,0.15); padding:4px 8px; border-radius:6px;">🪪 CI: 4892189</div>
+                        </div>
+                    </div>
+                    
+                    <div class="flex gap-2">
+                        <div class="card flex" style="flex:1; flex-direction:column; align-items:center; margin:0; padding:12px; cursor:pointer;">
+                            <span style="font-size:20px; margin-bottom:4px; padding:8px; background:rgba(14,91,133,0.1); border-radius:10px;">📅</span>
+                            <span style="font-size:10px; font-weight:700; text-align:center; color:#1e293b;">Nueva<br>Reserva</span>
+                        </div>
+                        <div class="card flex" style="flex:1; flex-direction:column; align-items:center; margin:0; padding:12px; cursor:pointer;">
+                            <span style="font-size:20px; margin-bottom:4px; padding:8px; background:rgba(14,91,133,0.1); border-radius:10px;">🕒</span>
+                            <span style="font-size:10px; font-weight:700; text-align:center; color:#1e293b;">Mis<br>Reservas</span>
+                        </div>
+                        <div class="card flex" style="flex:1; flex-direction:column; align-items:center; margin:0; padding:12px; cursor:pointer;">
+                            <span style="font-size:20px; margin-bottom:4px; padding:8px; background:rgba(16,185,129,0.1); border-radius:10px; color:#10B981;">👥</span>
+                            <span style="font-size:10px; font-weight:700; text-align:center; color:#1e293b;">Mi<br>Familia</span>
+                        </div>
+                    </div>
+                </div>
+                <!-- Nav Bar Falsa -->
+                <div style="height:64px; background:white; border-top:1px solid #e2e8f0; display:flex; justify-content:space-around; align-items:center; font-size:22px; color:#cbd5e1; padding-bottom:10px;">
+                    <span style="color:#0E5B85;">🏠</span><span>🕒</span><span>📅</span><span>👥</span><span>👤</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- STEP 3: RESERVA -->
+        <div class="frame-wrapper">
+            <div class="step-badge">3. Nueva Reserva (Paso 1)</div>
+            <div class="phone">
+                <div class="notch"></div>
+                <div class="status-bar"><span>9:41</span><span>📶 🔋</span></div>
+                <div class="screen column" style="background:white; padding:0;">
+                    <div style="background:#F3F4F6; padding:40px 20px 20px 20px; border-bottom:1px solid #e2e8f0;">
+                        <div class="flex items-center gap-4">
+                            <span style="font-size:20px; color:#0E5B85; font-weight:bold;">←</span>
+                            <div class="column">
+                                <span style="font-size:12px; color:#64748b; font-weight:600">PASO 1 DE 3</span>
+                                <h2 style="margin:2px 0 0 0; font-size:20px;">Seleccionar Regional</h2>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="column" style="padding:20px;">
+                        <div style="font-size:12px; color:#94a3b8; margin-bottom:12px; letter-spacing:1px; font-weight:700;">HOSPITALES Y AGENCIAS</div>
+                        
+                        <div class="card flex items-center justify-between" style="cursor:pointer; border-left: 4px solid #0E5B85; margin-bottom:12px;">
+                            <div class="column gap-2">
+                                <span style="font-weight:700; font-size:15px;">H.M.C. La Paz</span>
+                                <span style="font-size:12px; color:#64748b;">Avenida Saavedra, Miraflores</span>
+                            </div>
+                            <div style="width:30px; height:30px; background:rgba(14,91,133,0.1); border-radius:15px; display:flex; align-items:center; justify-content:center;">
+                                <span style="color:#0E5B85; font-size:14px; font-weight:bold;">→</span>
+                            </div>
+                        </div>
+                        
+                        <div class="card flex items-center justify-between" style="cursor:pointer; border-left: 4px solid #94a3b8; box-shadow:none; border:1px solid #e2e8f0; border-left: 4px solid #94a3b8;">
+                            <div class="column gap-2">
+                                <span style="font-weight:600; font-size:15px; color:#475569;">Policlínico Santa Cruz</span>
+                                <span style="font-size:12px; color:#94a3b8;">Agencia Regional SCZ</span>
+                            </div>
+                            <div style="width:30px; height:30px; background:#f1f5f9; border-radius:15px; display:flex; align-items:center; justify-content:center;">
+                                <span style="color:#94a3b8; font-size:14px; font-weight:bold;">→</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <!-- Nav Bar Falsa -->
+                <div style="height:64px; background:white; border-top:1px solid #e2e8f0; display:flex; justify-content:space-around; align-items:center; font-size:22px; color:#cbd5e1; padding-bottom:10px;">
+                    <span>🏠</span><span>🕒</span><div style="background:#0E5B85; width:45px; height:45px; border-radius:25px; display:flex; justify-content:center; align-items:center; box-shadow:0 4px 10px rgba(14,91,133,0.4); margin-top:-10px;"><span style="color:white; font-size:20px;">📅</span></div><span>👥</span><span>👤</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- STEP 4: PERFIL -->
+        <div class="frame-wrapper">
+            <div class="step-badge">4. Mi Perfil</div>
+            <div class="phone">
+                <div class="notch"></div>
+                <div class="status-bar"><span>9:41</span><span>📶 🔋</span></div>
+                <div class="screen column">
+                     <h2 style="margin:20px 0; font-size:16px; text-align:center; font-weight:800; letter-spacing:1px;">MI PERFIL</h2>
+                    
+                    <div class="column items-center gap-2" style="margin-bottom:24px;">
+                        <div style="width:80px; height:80px; background:linear-gradient(to bottom right, #0E5B85, #0ea5e9); box-shadow:0 8px 15px rgba(14,91,133,0.3); border-radius:40px; color:white; display:flex; align-items:center; justify-content:center; font-size:32px; font-weight:800;">A</div>
+                        <h3 style="margin:8px 0 0 0; font-size:20px; font-weight:800;">ALDO JAIME</h3>
+                        <span style="background:rgba(14,91,133,0.1); color:#0E5B85; padding:4px 12px; border-radius:12px; font-size:12px; font-weight:700;">Mat. 850612ECA</span>
+                    </div>
+                    
+                    <div class="flex gap-3" style="margin-bottom:12px;">
+                         <div class="card column items-start" style="flex:1; margin:0; padding:16px;">
+                             <span style="font-size:22px; color:#10B981;">🛡️</span>
+                             <span style="font-size:9px; color:#94a3b8; margin-top:12px; font-weight:700; letter-spacing:1px;">ESTADO</span>
+                             <span style="font-size:14px; font-weight:800; color:#1e293b; margin-top:2px;">Habilitado</span>
+                         </div>
+                         <div class="card column items-start" style="flex:1; margin:0; padding:16px;">
+                             <span style="font-size:22px; color:#3B82F6;">🏥</span>
+                             <span style="font-size:9px; color:#94a3b8; margin-top:12px; font-weight:700; letter-spacing:1px;">FICHA MED.</span>
+                             <span style="font-size:14px; font-weight:800; color:#1e293b; margin-top:2px;">Ninguna</span>
+                         </div>
+                    </div>
+                    <div class="flex gap-3" style="margin-bottom:12px;">
+                         <div class="card column items-start" style="flex:1; margin:0; padding:16px;">
+                             <span style="font-size:22px; color:#EF4444;">🩸</span>
+                             <span style="font-size:9px; color:#94a3b8; margin-top:12px; font-weight:700; letter-spacing:1px;">SANGRE</span>
+                             <span style="font-size:14px; font-weight:800; color:#1e293b; margin-top:2px;">ORH+</span>
+                         </div>
+                         <div class="card column items-start" style="flex:1; margin:0; padding:16px;">
+                             <span style="font-size:22px; color:#F59E0B;">🎂</span>
+                             <span style="font-size:9px; color:#94a3b8; margin-top:12px; font-weight:700; letter-spacing:1px;">EDAD</span>
+                             <span style="font-size:14px; font-weight:800; color:#1e293b; margin-top:2px;">40 años</span>
+                         </div>
+                    </div>
+                    
+                    <!-- CI Card ancha -->
+                    <div class="card flex items-center justify-between" style="padding:16px; margin-bottom:24px;">
+                        <div class="column gap-1">
+                             <div class="flex items-center gap-2"><span style="font-size:20px; color:#8B5CF6;">🪪</span> <span style="font-size:10px; color:#94a3b8; font-weight:700; letter-spacing:1px;">DOCUMENTO CI</span></div>
+                             <span style="font-size:18px; font-weight:800; color:#0f172a; margin-top:4px; margin-left:30px;">4892189</span>
+                        </div>
+                    </div>
+                </div>
+                 <!-- Nav Bar Falsa -->
+                <div style="height:64px; background:white; border-top:1px solid #e2e8f0; display:flex; justify-content:space-around; align-items:center; font-size:22px; color:#cbd5e1; padding-bottom:10px;">
+                    <span>🏠</span><span>🕒</span><span>📅</span><span>👥</span><span style="color:#0E5B85;">👤</span>
+                </div>
+            </div>
+        </div>
+
+    </div>
+</body>
+</html>

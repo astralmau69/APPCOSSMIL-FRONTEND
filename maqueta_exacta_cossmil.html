@@ -1,0 +1,542 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Prototipo Completo - COSSMIL</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+        
+        :root {
+            --primary: #0E5B85; --primaryDark: #0A3D59; --primaryLight: #E7F0F5;
+            --background: #F3F4F6; --white: #FFFFFF;
+            --textPrimary: #0f172a; --textSecondary: #64748b; --textTertiary: #94a3b8;
+            --border: #e2e8f0;
+            --success: #10B981; --successLight: #D1FAE5;
+            --error: #EF4444; --errorLight: #FEE2E2;
+            --accent: #0ea5e9; --accentLight: #e0f2fe; --accentDark: #0284c7;
+            --info: #3B82F6; --infoLight: #EFF6FF;
+            --purple: #9333EA; --orange: #F59E0B;
+        }
+
+        body {
+            margin: 0; padding: 40px; font-family: "Inter", sans-serif;
+            background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+            color: white; min-height: 100vh; display: flex; flex-direction: column; align-items: center;
+        }
+
+        h1 { margin-bottom: 5px; font-weight: 800; font-size: 2.2rem; text-align: center; }
+        p.subtitle { color: #94a3b8; margin-bottom: 30px; font-size: 1rem; text-align: center; }
+
+        .frames-container {
+            display: flex; gap: 40px; overflow-x: auto; padding: 20px 40px; 
+            width: 100%; max-width: 1600px; justify-content: flex-start;
+        }
+        .frames-container::-webkit-scrollbar { height: 10px; }
+        .frames-container::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); border-radius: 5px; }
+
+        .frame-wrapper { display: flex; flex-direction: column; align-items: center; gap: 16px; min-width: 375px; }
+
+        .step-badge {
+            background: rgba(255, 255, 255, 0.1); backdrop-filter: blur(10px);
+            padding: 8px 16px; border-radius: 20px; font-size: 0.9rem; font-weight: 600;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .phone {
+            width: 375px; height: 812px; background: var(--background);
+            border-radius: 40px; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5), inset 0 0 0 12px #0f172a;
+            position: relative; overflow: hidden; display: flex; flex-direction: column; color: var(--textPrimary);
+        }
+
+        .status-bar { height: 44px; display: flex; justify-content: space-between; align-items: center; padding: 0 25px; font-size: 14px; font-weight: 600; z-index: 10; }
+        .notch { position: absolute; top: 12px; left: 50%; transform: translateX(-50%); width: 120px; height: 30px; background: #0f172a; border-radius: 0 0 20px 20px; z-index: 20; }
+        
+        .screen { flex: 1; overflow-y: auto; position: relative; }
+        .screen::-webkit-scrollbar { display: none; }
+
+        .app-bar { height: 44px; background: var(--white); display: flex; align-items: center; justify-content: center; position: relative; border-bottom: 0.5px solid var(--border); font-weight: 800; font-size: 17px; text-transform: uppercase; }
+        .app-bar-left { position: absolute; left: 20px; font-size: 24px; font-weight: 800; cursor: pointer; }
+
+        /* Utility Classes */
+        .flex { display: flex; } .column { display: flex; flex-direction: column; }
+        .items-center { align-items: center; } .items-start { align-items: flex-start; } .items-end { align-items: flex-end; }
+        .justify-center { justify-content: center; } .justify-between { justify-content: space-between; }
+        .flex-1 { flex: 1; } .text-center { text-align: center; } .text-right { text-align: right; }
+        .w-full { width: 100%; } .h-full { height: 100%; }
+        
+        .m-20 { margin: 20px; } .mx-20 { margin-left: 20px; margin-right: 20px; } .my-10 { margin-top: 10px; margin-bottom: 10px; } .mt-16 { margin-top: 16px; } .mb-20 { margin-bottom: 20px; }
+        .p-16 { padding: 16px; } .p-20 { padding: 20px; } .py-16 { padding-top: 16px; padding-bottom: 16px; } .px-20 { padding-left: 20px; padding-right: 20px; }
+        .gap-8 { gap: 8px; } .gap-12 { gap: 12px; } .gap-16 { gap: 16px; }
+
+        .radius-lg { border-radius: 16px; } .radius-xl { border-radius: 24px; } .radius-full { border-radius: 999px; }
+        
+        .bg-white { background: var(--white); } .bg-primary { background: var(--primary); } .bg-primary-light { background: var(--primaryLight); }
+        .bg-error-light { background: var(--errorLight); } .bg-success-light { background: var(--successLight); }
+
+        .text-primary { color: var(--primary); } .text-white { color: var(--white); }
+        .text-t1 { color: var(--textPrimary); } .text-t2 { color: var(--textSecondary); } .text-t3 { color: var(--textTertiary); }
+        
+        .font-500 { font-weight: 500; } .font-600 { font-weight: 600; } .font-700 { font-weight: 700; } .font-800 { font-weight: 800; }
+        .text-10 { font-size: 10px; } .text-11 { font-size: 11px; } .text-12 { font-size: 12px; } .text-13 { font-size: 13px; } .text-14 { font-size: 14px; } .text-15 { font-size: 15px; } .text-16 { font-size: 16px; } .text-17 { font-size: 17px; } .text-18 { font-size: 18px; } .text-22 { font-size: 22px; } .text-24 { font-size: 24px; } .text-28 { font-size: 28px; } .text-36 { font-size: 36px; }
+
+        .shadow { box-shadow: 0 10px 25px rgba(0,0,0,0.03); }
+        .divider { height: 0.5px; background: var(--border); width: 100%; }
+
+        /* Generic Components */
+        .btn-primary { background: var(--primary); color: white; padding: 16px; border-radius: 16px; text-align: center; font-size: 17px; font-weight: 600; }
+        .icon-box { display: flex; align-items: center; justify-content: center; border-radius: 12px; }
+
+        /* Navigation */
+        .bottom-nav { height: 80px; background: var(--white); border-top: 0.5px solid var(--border); display: flex; justify-content: space-around; align-items: center; padding-bottom: 20px; padding-top: 5px; z-index: 100; }
+        .nav-item { display: flex; flex-direction: column; align-items: center; gap: 4px; color: var(--textTertiary); font-size: 10px; font-weight: 600; }
+        .nav-item.active { color: var(--primary); }
+        .nav-fab-container { position: relative; display: flex; flex-direction: column; align-items: center; top: -15px; }
+        .nav-fab { width: 48px; height: 48px; background: var(--primary); border-radius: 24px; display: flex; align-items: center; justify-content: center; box-shadow: 0 6px 15px rgba(14, 91, 133, 0.4); font-size: 22px; color: white; margin-bottom: 4px; }
+
+        /* Breadcrumbs */
+        .breadcrumb { display: flex; align-items: center; padding: 10px 20px; gap: 6px; overflow-x: auto; white-space: nowrap; }
+        .bc-chip { background: rgba(14,91,133,0.1); color: var(--primary); padding: 6px 12px; border-radius: 16px; font-size: 11px; font-weight: 700; border: 1px solid rgba(14,91,133,0.2); }
+        .bc-arrow { font-size: 12px; color: var(--textSecondary); }
+
+        /* Section Header */
+        .section-header { padding-left: 24px; font-size: 11px; font-weight: 700; color: var(--textSecondary); letter-spacing: 1.2px; text-transform: uppercase; margin-bottom: 12px;}
+    </style>
+</head>
+<body>
+    <h1>Prototipo App Completo COSSMIL</h1>
+    <p class="subtitle">Desliza para ver los 9 Frames - 100% exactos al código fuente de Flutter.</p>
+    
+    <div class="frames-container">
+        
+        <!-- 1: LOGIN -->
+        <div class="frame-wrapper">
+            <div class="step-badge">1. Login</div>
+            <div class="phone">
+                <div class="notch"></div><div class="status-bar"><span>9:41</span><span>📶 🔋</span></div>
+                <div class="screen flex column items-center px-20 pt-16">
+                    <div class="icon-box shadow bg-white" style="width:140px; height:140px; border-radius:70px; margin-top:40px; margin-bottom: 32px;">
+                        <img src="assets/images/cossmil_logo.png" alt="Logo" style="width: 80%;">
+                    </div>
+                    <div class="text-28 font-800 text-t1 mb-20" style="letter-spacing:-0.5px;">Iniciar Sesión</div>
+                    <div class="text-13 font-600 text-t2 mb-20" style="letter-spacing:1.5px;">INGRESA TUS DATOS</div>
+                    <div class="bg-white radius-lg shadow w-full mb-20">
+                        <div class="flex items-center p-16">
+                            <span class="text-18 text-primary" style="opacity:0.6; width:30px;">👤</span>
+                            <span class="text-15 font-500 text-t1" style="width:88px;">Matrícula</span>
+                            <span class="text-15 text-t3 flex-1">010325AQJ</span>
+                        </div>
+                        <div class="divider mx-20" style="width:calc(100% - 32px);"></div>
+                        <div class="flex items-center p-16">
+                            <span class="text-18 text-primary" style="opacity:0.6; width:30px;">🔒</span>
+                            <span class="text-15 font-500 text-t1" style="width:88px;">Contraseña</span>
+                            <span class="text-15 text-t3 flex-1">••••••••</span>
+                            <span class="text-18 text-t3">👁️</span>
+                        </div>
+                    </div>
+                    <div class="btn-primary w-full shadow text-17">Ingresar</div>
+                    <div class="mt-16 text-14 font-500 text-primary">¿Olvidaste tu contraseña?</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 2: HOME -->
+        <div class="frame-wrapper">
+            <div class="step-badge">2. Menú Principal (Inicio)</div>
+            <div class="phone">
+                <div class="notch"></div><div class="status-bar"><span>9:41</span><span>📶 🔋</span></div>
+                <div class="screen px-20">
+                    <div class="mt-16 mb-20 flex column">
+                        <span class="text-15 font-500 text-t2">Bienvenido,</span>
+                        <span class="text-24 font-800 text-t1" style="letter-spacing:-0.3px;">ALDO JAIME ESPINOZA</span>
+                    </div>
+                    <div class="radius-xl p-20 shadow text-white mb-20" style="background: linear-gradient(135deg, #0E5B85 0%, #082F49 100%);">
+                        <div class="flex items-center gap-12">
+                            <div class="icon-box text-24 font-800 radius-full" style="width:56px; height:56px; background:rgba(255,255,255,0.15); border:2px solid rgba(255,255,255,0.25);">A</div>
+                            <div class="flex column">
+                                <span class="text-16 font-700">ALDO JAIME</span>
+                                <div class="flex gap-8 my-10">
+                                    <span class="text-11 font-500 radius-full" style="background:rgba(255,255,255,0.15); padding:3px 10px;">Titular</span>
+                                    <span class="text-11 font-500 radius-full" style="background:rgba(255,255,255,0.1); padding:3px 10px;">Mat. 850612ECA</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="divider my-10" style="background:rgba(255,255,255,0.12);"></div>
+                        <div class="flex items-center text-13 mt-16 pb-10">
+                            <div class="flex items-center gap-8 flex-1">
+                                <div style="width:8px; height:8px; background:#4ADE80; border-radius:4px;"></div>
+                                <div class="flex column"><span class="text-10 font-600" style="opacity:0.5;">ESTADO</span><span class="text-14 font-700">Habilitado</span></div>
+                            </div>
+                            <div style="width:0.5px; height:34px; background:rgba(255,255,255,0.12);"></div>
+                            <div class="flex items-center gap-8 flex-1 pl-20" style="opacity:0.85;">🎂 40 años</div>
+                        </div>
+                        <div class="flex items-center text-13 py-10">
+                            <div class="flex items-center gap-8 flex-1" style="opacity:0.85;">✉️ aepinozac7...</div>
+                            <div style="width:0.5px; height:24px; background:rgba(255,255,255,0.12);"></div>
+                            <div class="flex items-center gap-8 flex-1 pl-20" style="opacity:0.85;">📞 75421587</div>
+                        </div>
+                        <div class="flex items-center text-13 pt-10 pb-10">
+                            <div class="flex items-center gap-8 flex-1" style="opacity:0.85;">🪪 CI: 4892189</div>
+                        </div>
+                    </div>
+                    <div class="flex gap-12 mb-20">
+                        <div class="flex-1 bg-white radius-lg shadow flex column items-center p-16">
+                            <div class="icon-box radius-lg text-primary text-20 mb-10" style="width:40px; height:40px; background:rgba(14,91,133,0.1);">📅</div>
+                            <span class="text-11 font-600 text-center text-t1">Nueva<br>Reserva</span>
+                        </div>
+                        <div class="flex-1 bg-white radius-lg shadow flex column items-center p-16">
+                            <div class="icon-box radius-lg text-20 mb-10" style="width:40px; height:40px; color:var(--accent); background:rgba(14,165,233,0.1);">🕒</div>
+                            <span class="text-11 font-600 text-center text-t1">Mis<br>Reservas</span>
+                        </div>
+                        <div class="flex-1 bg-white radius-lg shadow flex column items-center p-16">
+                            <div class="icon-box radius-lg text-20 mb-10" style="width:40px; height:40px; color:var(--success); background:rgba(16,185,129,0.1);">👥</div>
+                            <span class="text-11 font-600 text-center text-t1">Mi<br>Familia</span>
+                        </div>
+                        <div class="flex-1 bg-white radius-lg shadow flex column items-center p-16">
+                            <div class="icon-box radius-lg text-20 mb-10" style="width:40px; height:40px; color:var(--info); background:rgba(59,130,246,0.1);">📞</div>
+                            <span class="text-11 font-600 text-center text-t1"><br>Contactos</span>
+                        </div>
+                    </div>
+                    <div class="section-header" style="padding-left:0;">COSSMIL TE INFORMA</div>
+                    <div class="bg-white radius-lg shadow p-16 flex gap-16 mb-20 items-center">
+                        <div class="icon-box radius-lg bg-primary-light text-primary text-24" style="width:50px; height:50px;">📰</div>
+                        <div class="flex column flex-1">
+                            <span class="text-14 font-700 text-t1">Carnet de Asegurado</span>
+                            <span class="text-12 text-t2 mt-16">Ya puedes recoger tu carnet de asegurado en cualquier agencia de COSSMIL.</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="bottom-nav">
+                    <div class="nav-item active"><span class="text-24">🏠</span>Inicio</div>
+                    <div class="nav-item"><span class="text-24">🕒</span>Reservas</div>
+                    <div class="nav-fab-container"><div class="nav-fab">📅</div><span class="text-10 font-700 text-t3">Reservar</span></div>
+                    <div class="nav-item"><span class="text-24">👥</span>Familia</div>
+                    <div class="nav-item"><span class="text-24">👤</span>Perfil</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 3: REGIONAL -->
+        <div class="frame-wrapper">
+            <div class="step-badge">3. Reserva: Establecimiento</div>
+            <div class="phone">
+                <div class="notch"></div><div class="status-bar"><span>9:41</span><span>📶 🔋</span></div>
+                <div class="app-bar"><span class="app-bar-left">←</span> ESTABLECIMIENTO</div>
+                <div class="screen pt-16">
+                    <div class="mx-20 p-16 bg-white radius-xl shadow flex items-center mb-20 border" style="border: 1px solid rgba(14,91,133,0.15);">
+                        <div class="icon-box radius-full text-white text-20 font-800" style="width:48px; height:48px; background:linear-gradient(180deg, var(--primary) 0%, rgba(14,91,133,0.7) 100%);">A</div>
+                        <div class="flex column flex-1 mx-20" style="margin-left:14px;">
+                            <span class="text-11 font-500 text-t2">Reserva para:</span>
+                            <span class="text-16 font-700 text-t1" style="margin:2px 0 4px 0;">ALDO JAIME</span>
+                            <span class="text-11 font-600 text-primary radius-lg" style="background:rgba(14,91,133,0.1); padding:3px 8px; width:fit-content;">Yo (Titular)</span>
+                        </div>
+                        <div class="flex items-center gap-8 radius-xl" style="padding:8px 14px; background:rgba(14,91,133,0.08); border:1px solid rgba(14,91,133,0.2);">
+                            <span class="text-14 text-primary">⇌</span>
+                            <span class="text-12 font-600 text-primary">Cambiar</span>
+                        </div>
+                    </div>
+                    <div class="px-20 text-18 font-700 text-t1 mb-20">¿Qué establecimiento desea consultar?</div>
+                    <div class="mx-20 bg-white radius-xl shadow mb-10 overflow-hidden">
+                        <div class="p-16 flex items-center">
+                            <span class="text-18 text-primary">📍</span>
+                            <span class="text-16 font-600 text-t1 flex-1 mx-20">La Paz</span>
+                            <span class="text-16 text-t2">∧</span>
+                        </div>
+                        <div class="flex gap-12 px-20 pb-20">
+                            <div class="flex-1 radius-lg relative p-16" style="height:100px; background:rgba(14,91,133,0.05); border:1px solid rgba(14,91,133,0.12);">
+                                <div class="icon-box radius-full bg-primary-light text-primary position-absolute text-12" style="position:absolute; top:8px; right:8px; width:24px; height:24px;">🏢</div>
+                                <div class="flex column" style="position:absolute; bottom:10px; left:10px;">
+                                    <span class="text-13 font-700 text-t1">H.M.C.</span>
+                                    <span class="text-11 text-t2 mt-16" style="margin-top:2px;">Av. Saavedra</span>
+                                </div>
+                            </div>
+                            <div class="flex-1 radius-lg relative p-16" style="height:100px; background:rgba(14,91,133,0.05); border:1px solid rgba(14,91,133,0.12);">
+                                <div class="icon-box radius-full bg-primary-light text-primary position-absolute text-12" style="position:absolute; top:8px; right:8px; width:24px; height:24px;">🏢</div>
+                                <div class="flex column" style="position:absolute; bottom:10px; left:10px;">
+                                    <span class="text-13 font-700 text-t1">Agencia El Alto</span>
+                                    <span class="text-11 text-t2 mt-16" style="margin-top:2px;">Cruce Viacha</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="mx-20 bg-white radius-xl shadow mb-10 p-16 flex items-center">
+                        <span class="text-18 text-primary">📍</span>
+                        <span class="text-16 font-600 text-t1 flex-1 mx-20">Santa Cruz</span>
+                        <span class="text-16 text-t2">∨</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 4: SPECIALTY -->
+        <div class="frame-wrapper">
+            <div class="step-badge">4. Reserva: Especialidad</div>
+            <div class="phone">
+                <div class="notch"></div><div class="status-bar"><span>9:41</span><span>📶 🔋</span></div>
+                <div class="app-bar"><span class="app-bar-left">←</span> ESPECIALIDAD</div>
+                <div class="screen pt-16">
+                    <div class="breadcrumb mb-20">
+                        <div class="bc-chip">Para mí</div><span class="bc-arrow">›</span>
+                        <div class="bc-chip">La Paz</div><span class="bc-arrow">›</span>
+                        <div class="bc-chip">H.M.C.</div>
+                    </div>
+                    <div class="section-header">CONSULTA DIRECTA</div>
+                    <div class="mx-20 bg-white shadow radius-xl mb-20">
+                        <div class="flex items-center p-16">
+                            <div class="icon-box radius-lg text-primary text-18" style="width:38px; height:38px; background:rgba(14,91,133,0.08);">🩺</div>
+                            <div class="flex column flex-1 mx-20" style="margin-left:12px;">
+                                <span class="text-16 font-600 text-t1">Medicina General</span>
+                                <span class="text-13 text-t2">Atención médica integral primaria</span>
+                            </div>
+                            <span class="text-16" style="color:rgba(148,163,184,0.5);">›</span>
+                        </div>
+                        <div class="divider mx-20" style="width:calc(100% - 32px);"></div>
+                        <div class="flex items-center p-16">
+                            <div class="icon-box radius-lg text-primary text-18" style="width:38px; height:38px; background:rgba(14,91,133,0.08);">🦷</div>
+                            <div class="flex column flex-1 mx-20" style="margin-left:12px;">
+                                <span class="text-16 font-600 text-t1">Odontología</span>
+                                <span class="text-13 text-t2">Salud bucodental</span>
+                            </div>
+                            <span class="text-16" style="color:rgba(148,163,184,0.5);">›</span>
+                        </div>
+                    </div>
+                    <div class="section-header">INTERCONSULTA (HABILITADAS)</div>
+                    <div class="mx-20 bg-white shadow radius-xl mb-20">
+                        <div class="flex items-center p-16">
+                            <div class="icon-box radius-lg text-accent text-18" style="width:38px; height:38px; background:rgba(14,165,233,0.08);">👁️</div>
+                            <div class="flex column flex-1 mx-20" style="margin-left:12px;">
+                                <span class="text-16 font-600 text-t1">Oftalmología</span>
+                                <span class="text-13 text-t2">Enfermedades del ojo</span>
+                            </div>
+                            <div class="text-9 font-700 radius-lg text-accent" style="padding:4px 8px; background:var(--accentLight); border:1px solid rgba(14,165,233,0.3); letter-spacing:0.5px; margin-right:6px;">AUTORIZADO</div>
+                            <span class="text-16" style="color:rgba(148,163,184,0.5);">›</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 5: SCHEDULE -->
+        <div class="frame-wrapper">
+            <div class="step-badge">5. Reserva: Horas Disponibles</div>
+            <div class="phone">
+                <div class="notch"></div><div class="status-bar"><span>9:41</span><span>📶 🔋</span></div>
+                <div class="app-bar"><span class="app-bar-left">←</span> HORAS DISPONIBLES</div>
+                <div class="screen pt-16">
+                    <div class="breadcrumb mb-20">
+                        <div class="bc-chip">H.M.C.</div><span class="bc-arrow">›</span>
+                        <div class="bc-chip">Medicina General</div>
+                    </div>
+                    <div class="mx-20 bg-white radius-xl shadow p-16 mb-20">
+                        <div class="flex items-center mb-10">
+                            <div class="icon-box radius-lg text-white" style="width:40px; height:40px; background:linear-gradient(180deg, var(--primary) 0%, var(--primaryDark) 100%);">📅</div>
+                            <div class="flex column mx-20">
+                                <span class="text-17 font-700 text-t1">Martes, 18 de Marzo</span>
+                                <span class="text-13 text-t2">Fecha disponible para reservas</span>
+                            </div>
+                        </div>
+                        <div class="divider mb-10"></div>
+                        <div class="flex items-start">
+                            <span class="text-16 text-info">ℹ️</span>
+                            <span class="text-12 text-t2 mx-20" style="margin-left:8px; line-height:1.3;">Las reservas solo están habilitadas para el día de mañana.</span>
+                        </div>
+                    </div>
+                    <div class="mx-20 bg-white shadow radius-xl p-16 flex items-center mb-20">
+                        <div class="icon-box radius-lg text-22 font-700 text-primary" style="width:52px; height:52px; background:linear-gradient(135deg, rgba(14,91,133,0.15) 0%, rgba(14,91,133,0.08) 100%);">J</div>
+                        <div class="flex column mx-20">
+                            <span class="text-17 font-700 text-t1">Dr. JORGE LUIS MAMANI</span>
+                            <span class="text-12 text-t2 mt-16" style="margin-top:4px;">📍 Consultorio 102</span>
+                        </div>
+                    </div>
+                    <div class="flex items-center px-20 mb-20">
+                        <div style="width:3px; height:18px; background:var(--primary); border-radius:2px;"></div>
+                        <span class="text-16 font-700 text-t1 mx-20" style="margin-left:10px;">Agenda médica</span>
+                    </div>
+                    <div class="flex px-20 gap-8 mb-20" style="flex-wrap:wrap;">
+                        <div class="radius-lg font-700 text-14 text-center" style="width:78px; padding:12px 0; background:var(--errorLight); border:1px solid #FECACA; color:rgba(153,27,27,0.6); text-decoration:line-through;">08:00 AM</div>
+                        <div class="radius-lg font-700 text-14 text-center" style="width:78px; padding:12px 0; background:var(--errorLight); border:1px solid #FECACA; color:rgba(153,27,27,0.6); text-decoration:line-through;">08:30 AM</div>
+                        <div class="radius-lg font-800 text-14 text-center text-white bg-success" style="width:78px; padding:12px 0; border:2px solid var(--success); box-shadow:0 4px 10px rgba(16,185,129,0.35);">10:00 AM</div>
+                        <div class="radius-lg font-700 text-14 text-center" style="width:78px; padding:12px 0; background:var(--successLight); border:1px solid #BBF7D0; color:var(--success);">10:30 AM</div>
+                    </div>
+                    <div class="btn-primary" style="margin:20px 40px;">Continuar →</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 6: SUMMARY -->
+        <div class="frame-wrapper">
+            <div class="step-badge">6. Reserva: Ticket</div>
+            <div class="phone">
+                <div class="notch"></div><div class="status-bar"><span>9:41</span><span>📶 🔋</span></div>
+                <div class="app-bar"><span class="app-bar-left">←</span> Resumen</div>
+                <div class="screen pt-16">
+                    <div class="flex items-center px-20 mb-20">
+                        <div class="icon-box text-16 radius-lg text-primary" style="width:36px; height:36px; background:rgba(14,91,133,0.1);">📄</div>
+                        <div class="flex column mx-20" style="margin-left:12px;">
+                            <span class="text-16 font-700 text-t1">Verifique su información</span>
+                            <span class="text-13 text-t2">Antes de confirmar la reserva</span>
+                        </div>
+                    </div>
+                    <div class="mx-20 bg-white radius-xl shadow mb-20">
+                        <div class="flex p-16 items-center"><span class="text-16" style="opacity:0.5;">👤</span><span class="text-13 text-t2 mx-20" style="width:100px;">Paciente</span><span class="flex-1 text-right text-15 font-700 text-t1">ALDO JAIME</span></div>
+                        <div class="divider mx-20" style="width:calc(100% - 32px);"></div>
+                        <div class="flex p-16 items-center"><span class="text-16" style="opacity:0.5;">❤️</span><span class="text-13 text-t2 mx-20" style="width:100px;">Especialidad</span><span class="flex-1 text-right text-15 font-700 text-t1">Med. General</span></div>
+                        <div class="divider mx-20" style="width:calc(100% - 32px);"></div>
+                        <div class="flex p-16 items-center"><span class="text-16" style="opacity:0.5;">🏢</span><span class="text-13 text-t2 mx-20" style="width:100px;">Establecimiento</span><span class="flex-1 text-right text-15 font-700 text-t1">H.M.C.</span></div>
+                        <div class="divider mx-20" style="width:calc(100% - 32px);"></div>
+                        <div class="flex p-16 items-center"><span class="text-16" style="opacity:0.5;">👨‍⚕️</span><span class="text-13 text-t2 mx-20" style="width:100px;">Médico</span><span class="flex-1 text-right text-15 font-700 text-t1">Dr. JORGE MAMANI</span></div>
+                        <div class="divider mx-20" style="width:calc(100% - 32px);"></div>
+                        <div class="flex p-16 items-center"><span class="text-16" style="opacity:0.5;">🕒</span><span class="text-13 text-t2 mx-20" style="width:100px;">Fecha y Hora</span><span class="flex-1 text-right text-15 font-700 text-t1">Mar 18, 10:00 AM</span></div>
+                    </div>
+                    <div class="mx-20 p-16 radius-lg bg-info-light border flex items-start mb-20" style="background:var(--infoLight); border:1px solid rgba(59,130,246,0.2);">
+                        <span class="text-18 text-info">ℹ️</span>
+                        <span class="text-13 text-info mx-20" style="margin-left:10px; line-height:1.3;">Al confirmar se generará un comprobante PDF descargable.</span>
+                    </div>
+                    <div class="flex px-20 gap-16">
+                        <div class="flex-1 text-center text-15 font-600 bg-error-light text-error py-16 radius-xl" style="padding:15px 0;">Cancelar</div>
+                        <div class="flex-1 text-center text-15 font-700 bg-primary text-white py-16 radius-xl" style="padding:15px 0; flex:2;">🛡️ Confirmar Reserva</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 7: RESERVAS -->
+        <div class="frame-wrapper">
+            <div class="step-badge">7. Mis Reservas</div>
+            <div class="phone">
+                <div class="notch"></div><div class="status-bar"><span>9:41</span><span>📶 🔋</span></div>
+                <div class="app-bar">MIS RESERVAS</div>
+                <div class="screen pt-16 px-20">
+                    <div class="bg-white shadow radius-xl flex p-16 mb-20 text-center items-center">
+                        <div class="flex-1 column">
+                            <span class="text-22 font-800" style="color:var(--accent);">4</span>
+                            <span class="text-11 font-500 text-t2">Completados</span>
+                        </div>
+                        <div class="divider" style="width:0.5px; height:32px;"></div>
+                        <div class="flex-1 column">
+                            <span class="text-22 font-800" style="color:var(--purple);">0</span>
+                            <span class="text-11 font-500 text-t2">Faltas</span>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-8 mb-10">
+                        <div style="width:3px; height:16px; background:var(--primary); border-radius:2px;"></div>
+                        <span class="text-12 font-700 text-t2" style="letter-spacing:1px;">HISTORIAL DE ATENCIONES</span>
+                        <div class="radius-lg font-700 text-11 text-primary" style="padding:2px 7px; background:rgba(14,91,133,0.12);">4</div>
+                    </div>
+                    <div class="bg-white shadow radius-xl p-16 mb-20">
+                        <div class="flex justify-between items-center mb-10">
+                            <span class="text-12 font-700 text-t2">Lun, 10 de Marzo • 09:30 AM</span>
+                            <div class="text-9 font-700 text-white bg-success radius-lg" style="padding:4px 8px;">COMPLETADO</div>
+                        </div>
+                        <div class="text-16 font-700 text-t1 mb-10">Medicina General</div>
+                        <div class="flex items-center mt-16 text-13" style="margin-top:4px;">
+                            <span class="text-16 text-t3">👨‍⚕️</span><span class="text-t2 mx-20" style="margin-left:6px;">Dr. Juan Perez</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="bottom-nav">
+                    <div class="nav-item"><span class="text-24">🏠</span>Inicio</div>
+                    <div class="nav-item active"><span class="text-24">🕒</span>Reservas</div>
+                    <div class="nav-fab-container"><div class="nav-fab">📅</div><span class="text-10 font-700 text-t3">Reservar</span></div>
+                    <div class="nav-item"><span class="text-24">👥</span>Familia</div>
+                    <div class="nav-item"><span class="text-24">👤</span>Perfil</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 8: FAMILIA -->
+        <div class="frame-wrapper">
+            <div class="step-badge">8. Grupo Familiar</div>
+            <div class="phone">
+                <div class="notch"></div><div class="status-bar"><span>9:41</span><span>📶 🔋</span></div>
+                <div class="app-bar">MI GRUPO FAMILIAR</div>
+                <div class="screen pt-16 px-20">
+                    <div class="bg-white shadow radius-xl p-16 mb-10 flex items-center" style="border:1.5px solid rgba(14,91,133,0.3);">
+                        <div class="icon-box text-white text-18 font-800 radius-full" style="width:48px; height:48px; background:linear-gradient(180deg, var(--primary) 0%, rgba(14,91,133,0.7) 100%);">A</div>
+                        <div class="flex column flex-1 mx-20" style="margin-left:14px;">
+                            <span class="text-15 font-700 text-t1">ALDO JAIME ESPINOZA</span>
+                            <div class="text-11 font-700 text-primary radius-lg mt-16" style="background:rgba(14,91,133,0.1); padding:4px 8px; width:fit-content; margin-top:6px;">Titular</div>
+                        </div>
+                        <div class="icon-box radius-lg bg-background" style="width:32px; height:32px;"><span class="text-16 text-t2">📊</span></div>
+                    </div>
+                    <div class="bg-white shadow radius-xl p-16 mb-10 flex items-center">
+                        <div class="icon-box text-white text-18 font-800 radius-full" style="width:48px; height:48px; background:linear-gradient(180deg, var(--accent) 0%, rgba(14,165,233,0.7) 100%);">M</div>
+                        <div class="flex column flex-1 mx-20" style="margin-left:14px;">
+                            <span class="text-15 font-700 text-t1">MARIA DEL CARMEN</span>
+                            <div class="text-11 font-700 radius-lg mt-16" style="background:rgba(14,165,233,0.1); color:var(--accentDark); padding:4px 8px; width:fit-content; margin-top:6px;">Beneficiario: Esposa</div>
+                        </div>
+                        <div class="icon-box radius-lg bg-background" style="width:32px; height:32px;"><span class="text-16 text-t2">📊</span></div>
+                    </div>
+                </div>
+                <div class="bottom-nav">
+                    <div class="nav-item"><span class="text-24">🏠</span>Inicio</div>
+                    <div class="nav-item"><span class="text-24">🕒</span>Reservas</div>
+                    <div class="nav-fab-container"><div class="nav-fab">📅</div><span class="text-10 font-700 text-t3">Reservar</span></div>
+                    <div class="nav-item active"><span class="text-24">👥</span>Familia</div>
+                    <div class="nav-item"><span class="text-24">👤</span>Perfil</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 9: PERFIL -->
+        <div class="frame-wrapper">
+            <div class="step-badge">9. Perfil de Usuario</div>
+            <div class="phone">
+                <div class="notch"></div><div class="status-bar"><span>9:41</span><span>📶 🔋</span></div>
+                <div class="app-bar">MI PERFIL</div>
+                <div class="screen pt-16 px-20">
+                    <div class="flex column items-center mb-20">
+                        <div class="icon-box radius-full text-white text-36 font-800 shadow mb-10" style="width:90px; height:90px; background:linear-gradient(180deg, var(--primary) 0%, rgba(14,91,133,0.7) 100%); box-shadow:0 8px 15px rgba(14,91,133,0.3);">A</div>
+                        <span class="text-22 font-800 text-t1 text-center" style="letter-spacing:-0.5px;">ALDO JAIME<br>ESPINOZA</span>
+                        <div class="text-13 font-600 text-primary radius-lg mt-16" style="background:rgba(14,91,133,0.08); padding:4px 12px; margin-top:6px;">Mat. 850612ECA</div>
+                    </div>
+                    
+                    <div class="flex gap-12 mb-10">
+                        <div class="flex-1 bg-white shadow radius-xl p-16 column">
+                            <span class="text-22" style="color:#10B981;">🛡️</span>
+                            <span class="text-10 font-700 text-t2 my-10" style="letter-spacing:1px; margin:12px 0 4px 0;">ESTADO</span>
+                            <span class="text-15 font-800 text-t1">Habilitado</span>
+                        </div>
+                        <div class="flex-1 bg-white shadow radius-xl p-16 column">
+                            <span class="text-22 text-info">🏥</span>
+                            <span class="text-10 font-700 text-t2 my-10" style="letter-spacing:1px; margin:12px 0 4px 0;">FICHA MED.</span>
+                            <span class="text-15 font-800 text-t1">Ninguna</span>
+                        </div>
+                    </div>
+
+                    <div class="section-header pt-16" style="padding-left:4px;">SEGURIDAD Y ACCESO</div>
+                    <div class="bg-white shadow radius-xl p-16 flex items-center mb-20">
+                        <div class="flex column flex-1">
+                            <span class="text-14 font-600 text-t1">Autenticación Biométrica</span>
+                            <span class="text-12 text-t2 mt-16" style="margin-top:2px;">Huella digital / Face ID + PIN</span>
+                        </div>
+                        <div class="icon-box radius-lg bg-success-light text-success p-16" style="padding:8px;"><span class="text-16">👆</span></div>
+                    </div>
+
+                    <div class="section-header" style="padding-left:4px;">IDENTIFICACIÓN</div>
+                    <div class="bg-white shadow radius-xl p-16 flex items-center mb-20">
+                        <div class="icon-box radius-lg text-primary text-22" style="width:44px; height:44px; background:rgba(14,91,133,0.08);">📱</div>
+                        <div class="flex column flex-1 mx-20" style="margin-left:14px;">
+                            <span class="text-15 font-700 text-t1">Mi Código QR</span>
+                            <span class="text-13 text-t2 mt-16" style="margin-top:2px;">Identificación rápida en ventanilla</span>
+                        </div>
+                        <span class="text-16 text-t3">›</span>
+                    </div>
+
+                    <div class="flex justify-center p-16 radius-xl text-16 font-700 text-error bg-white shadow mb-20 border" style="padding:16px; border:1px solid rgba(239,68,68,0.3);">
+                        Cerrar Sesión
+                    </div>
+                </div>
+                <div class="bottom-nav">
+                    <div class="nav-item"><span class="text-24">🏠</span>Inicio</div>
+                    <div class="nav-item"><span class="text-24">🕒</span>Reservas</div>
+                    <div class="nav-fab-container"><div class="nav-fab">📅</div><span class="text-10 font-700 text-t3">Reservar</span></div>
+                    <div class="nav-item"><span class="text-24">👥</span>Familia</div>
+                    <div class="nav-item active"><span class="text-24">👤</span>Perfil</div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+</body>
+</html>

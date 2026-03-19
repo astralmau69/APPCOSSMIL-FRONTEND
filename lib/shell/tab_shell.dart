@@ -95,7 +95,7 @@ class TabShellState extends State<TabShell> {
       body: CupertinoTabScaffold(
         controller: _tabController,
         tabBar: CupertinoTabBar(
-          backgroundColor: AppColors.white,
+          backgroundColor: AppColors.white.withValues(alpha: 0.85),
           activeColor: AppColors.primary,
           inactiveColor: AppColors.textTertiary,
           border: const Border(
@@ -103,19 +103,19 @@ class TabShellState extends State<TabShell> {
           ),
           items: [
             BottomNavigationBarItem(
-              icon: _AnimatedNavIcon(icon: Icons.home, isSelected: false),
-              activeIcon: _AnimatedNavIcon(icon: Icons.home, isSelected: true),
+              icon: const _AnimatedNavIcon(icon: CupertinoIcons.house, isSelected: false),
+              activeIcon: const _AnimatedNavIcon(icon: CupertinoIcons.house_fill, isSelected: true),
               label: 'Inicio',
             ),
             BottomNavigationBarItem(
-              icon: _AnimatedNavIcon(icon: Icons.calendar_today, isSelected: false),
-              activeIcon: _AnimatedNavIcon(icon: Icons.calendar_today, isSelected: true),
+              icon: const _AnimatedNavIcon(icon: CupertinoIcons.time, isSelected: false),
+              activeIcon: const _AnimatedNavIcon(icon: CupertinoIcons.time_solid, isSelected: true),
               label: 'Reservas',
             ),
             BottomNavigationBarItem(
               icon: TweenAnimationBuilder<double>(
-                duration: const Duration(milliseconds: 300),
-                curve: Curves.elasticOut,
+                duration: const Duration(milliseconds: 200),
+                curve: Curves.easeOutBack,
                 tween: Tween(begin: 1.0, end: _tabController.index == 2 ? 1.15 : 1.0),
                 builder: (context, scale, child) => Transform.scale(
                   scale: scale,
@@ -124,20 +124,24 @@ class TabShellState extends State<TabShell> {
                 child: Container(
                   width: 48,
                   height: 48,
-                  margin: const EdgeInsets.only(bottom: 2),
+                  margin: const EdgeInsets.only(bottom: 2, top: 2),
                   decoration: BoxDecoration(
-                    color: AppColors.primary,
+                    gradient: const LinearGradient(
+                      colors: [AppColors.primary, Color(0xFF0C4A6E)],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
                     shape: BoxShape.circle,
                     boxShadow: [
                       BoxShadow(
-                        color: AppColors.primary.withValues(alpha: 0.3),
+                        color: AppColors.primary.withValues(alpha: 0.35),
                         blurRadius: 8,
-                        offset: const Offset(0, 2),
+                        offset: const Offset(0, 3),
                       ),
                     ],
                   ),
                   child: const Icon(
-                    Icons.calendar_month,
+                    CupertinoIcons.calendar_badge_plus,
                     color: AppColors.white,
                     size: 26,
                   ),
@@ -146,13 +150,13 @@ class TabShellState extends State<TabShell> {
               label: 'Reservar',
             ),
             BottomNavigationBarItem(
-              icon: _AnimatedNavIcon(icon: Icons.people, isSelected: false),
-              activeIcon: _AnimatedNavIcon(icon: Icons.people, isSelected: true),
+              icon: const _AnimatedNavIcon(icon: CupertinoIcons.person_2, isSelected: false),
+              activeIcon: const _AnimatedNavIcon(icon: CupertinoIcons.person_2_fill, isSelected: true),
               label: 'Mi Grupo Familiar',
             ),
             BottomNavigationBarItem(
-              icon: _AnimatedNavIcon(icon: Icons.person, isSelected: false),
-              activeIcon: _AnimatedNavIcon(icon: Icons.person, isSelected: true),
+              icon: const _AnimatedNavIcon(icon: CupertinoIcons.person_crop_circle, isSelected: false),
+              activeIcon: const _AnimatedNavIcon(icon: CupertinoIcons.person_crop_circle_fill, isSelected: true),
               label: 'Perfil',
             ),
           ],
@@ -189,13 +193,16 @@ class _AnimatedNavIcon extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return TweenAnimationBuilder<double>(
-      duration: const Duration(milliseconds: 300),
+      duration: const Duration(milliseconds: 200),
       curve: Curves.easeOutBack,
       tween: Tween<double>(begin: 1.0, end: isSelected ? 1.25 : 1.0),
       builder: (context, scale, child) {
         return Transform.scale(
           scale: scale,
-          child: Icon(icon, size: 24),
+          child: Padding(
+            padding: EdgeInsets.only(bottom: isSelected ? 2.0 : 0.0),
+            child: Icon(icon, size: 26),
+          ),
         );
       },
     );

@@ -17,6 +17,8 @@ class AuthTokenModel {
   final int edad;
   final String rol;
   final int idper;
+  final String numeroCelular;
+  final String correo;
 
   const AuthTokenModel({
     required this.accessToken,
@@ -33,6 +35,8 @@ class AuthTokenModel {
     this.edad = 0,
     this.rol = '',
     this.idper = 0,
+    this.numeroCelular = '',
+    this.correo = '',
   });
 
   factory AuthTokenModel.fromJson(Map<String, dynamic> json) {
@@ -51,6 +55,8 @@ class AuthTokenModel {
       edad: json['edad'] as int? ?? 0,
       rol: json['rol'] as String? ?? '',
       idper: json['idper'] as int? ?? 0,
+      numeroCelular: json['numeroCelular'] as String? ?? '',
+      correo: json['correo'] as String? ?? '',
     );
   }
 
@@ -69,5 +75,7 @@ class AuthTokenModel {
         'edad': edad,
         'rol': rol,
         'idper': idper,
+        'numeroCelular': numeroCelular,
+        'correo': correo,
       };
 }

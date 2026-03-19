@@ -12,6 +12,7 @@ class UserModel {
   final bool hasMedicalAppointment;
   final String email;
   final String phone;
+  final String ci;
   final List<BeneficiaryModel> beneficiaries;
 
   const UserModel({
@@ -26,6 +27,7 @@ class UserModel {
     this.hasMedicalAppointment = false,
     this.email = '',
     this.phone = '',
+    this.ci = '',
     required this.beneficiaries,
   });
 

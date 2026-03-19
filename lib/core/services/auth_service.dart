@@ -37,6 +37,7 @@ class AuthService {
     required String password,
   }) async {
     // Mock: bypass HTTP cuando el backend no está disponible
+    /*
     if (AppConfig.useMockData) {
       await Future.delayed(const Duration(milliseconds: 800));
       return AuthSuccess(AuthTokenModel(
@@ -47,6 +48,7 @@ class AuthService {
         jti: 'mock-jti',
       ));
     }
+    */
 
     try {
       final response = await _client.post(
@@ -77,8 +79,9 @@ class AuthService {
           role: tokenModel.rol == 'ROLE_ASETIT' ? 'Titular' : tokenModel.rol,
           isEnabled: true,
           hasMedicalAppointment: MockUserData.user.hasMedicalAppointment,
-          email: MockUserData.user.email, // Fallback
-          phone: MockUserData.user.phone, // Fallback
+          email: tokenModel.correo.isNotEmpty ? tokenModel.correo : MockUserData.user.email,
+          phone: tokenModel.numeroCelular.isNotEmpty ? tokenModel.numeroCelular : MockUserData.user.phone,
+          ci: tokenModel.ci,
           beneficiaries: MockUserData.user.beneficiaries.map((b) {
             if (b.relationship == 'Titular') {
               return BeneficiaryModel(

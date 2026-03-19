@@ -30,6 +30,12 @@ class AppTheme {
         fontFamily: '.SF Pro Text',
       ),
     ),
+    pageTransitionsTheme: const PageTransitionsTheme(
+      builders: {
+        TargetPlatform.android: CupertinoPageTransitionsBuilder(),
+        TargetPlatform.iOS: CupertinoPageTransitionsBuilder(),
+      },
+    ),
   );
 
   // ── Spacing constants ─────────────────────────────────────────────────────

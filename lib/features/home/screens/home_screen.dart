@@ -199,27 +199,45 @@ class _HomeScreenState extends State<HomeScreen>
             color: AppColors.white.withValues(alpha: 0.12),
           ),
           const SizedBox(height: 14),
-          // Status + Contact info
+          // Status + Edad
           Row(
             children: [
               // Estado
               _statusBadge(user),
               _verticalDivider(),
-              // Email
+              // Edad
               _contactInfo(
-                icon: Icons.email_outlined,
-                value: user.email.isNotEmpty ? user.email : 'Sin correo',
+                icon: Icons.cake_outlined,
+                value: '${user.age} años',
               ),
             ],
           ),
           const SizedBox(height: 10),
           Row(
             children: [
+              // Email
+              _contactInfo(
+                icon: Icons.email_outlined,
+                value: user.email.isNotEmpty ? user.email : 'Sin correo',
+              ),
+              _verticalDivider(),
               // Phone
               _contactInfo(
                 icon: Icons.phone_outlined,
                 value: user.phone.isNotEmpty ? user.phone : 'Sin teléfono',
               ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Row(
+            children: [
+              // CI
+              _contactInfo(
+                icon: Icons.badge_outlined,
+                value: user.ci.isNotEmpty ? 'CI: ${user.ci}' : 'Sin CI',
+              ),
+              const SizedBox(width: 24), // Invisible divider space for alignment
+              const Expanded(child: SizedBox()),
             ],
           ),
         ],
@@ -339,7 +357,7 @@ class _HomeScreenState extends State<HomeScreen>
             icon: Icons.schedule,
             label: 'Mis\nReservas',
             color: AppColors.accent,
-            onTap: () {},
+            onTap: () => widget.tabShell.goToTab(1),
           ),
           _QuickAction(
             icon: Icons.people,

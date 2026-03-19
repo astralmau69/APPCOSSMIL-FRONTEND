@@ -175,6 +175,15 @@ class _PerfilScreenState extends State<PerfilScreen> {
                           Icons.cake, const Color(0xFFF59E0B))),
                 ],
               ),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  Expanded(
+                    child: _infoCard('DOCUMENTO CI', user.ci.isNotEmpty ? user.ci : 'Sin registro',
+                        Icons.badge, const Color(0xFF8B5CF6)),
+                  ),
+                ],
+              ),
 
               const SizedBox(height: 28),
 
