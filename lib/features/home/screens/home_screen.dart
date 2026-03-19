@@ -342,10 +342,16 @@ class _HomeScreenState extends State<HomeScreen>
             onTap: () {},
           ),
           _QuickAction(
-            icon: Icons.phone,
-            label: 'Línea\nDirecta',
+            icon: Icons.people,
+            label: 'Mi\nFamilia',
+            color: AppColors.success,
+            onTap: () => widget.tabShell.goToTab(3),
+          ),
+          _QuickAction(
+            icon: Icons.contact_phone,
+            label: 'Contactos',
             color: AppColors.info,
-            onTap: () {},
+            onTap: () => _showContactosBottomSheet(context),
           ),
         ];
 
@@ -353,7 +359,7 @@ class _HomeScreenState extends State<HomeScreen>
           children: [
             for (int i = 0; i < items.length; i++) ...[
               Expanded(child: _buildActionCard(items[i])),
-              if (i < items.length - 1) const SizedBox(width: 10),
+              if (i < items.length - 1) const SizedBox(width: 8),
             ],
           ],
         );
@@ -532,6 +538,171 @@ class _HomeScreenState extends State<HomeScreen>
       ),
     );
   }
+
+  // ── Bottom Sheet (Contactos) ──────────────────────────────────────────────
+
+  void _showContactosBottomSheet(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (ctx) => Container(
+        constraints: BoxConstraints(
+          maxHeight: MediaQuery.of(context).size.height * 0.85,
+        ),
+        decoration: const BoxDecoration(
+          color: AppColors.background,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(AppTheme.radiusXl)),
+        ),
+        padding: const EdgeInsets.only(top: 12, bottom: 24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: AppColors.border,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            const SizedBox(height: 16),
+            const Text(
+              'Contactos y Ubicaciones',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.w800,
+                color: AppColors.textPrimary,
+                letterSpacing: -0.5,
+              ),
+            ),
+            const SizedBox(height: 8),
+            const Text(
+              'Líneas de atención al asegurado',
+              style: TextStyle(
+                fontSize: 14,
+                color: AppColors.textSecondary,
+              ),
+            ),
+            const SizedBox(height: 16),
+            Flexible(
+              child: ListView(
+                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
+                shrinkWrap: true,
+                children: [
+                  _buildContactSection('Contactos Gerencias', [
+                    _ContactItem('Telf. Junta Superior de Decisiones', '2434455', Icons.account_balance),
+                    _ContactItem('Telf. Gerencia General', '2315060 - 2314236', Icons.business_center),
+                    _ContactItem('Telf. Gerencia de Finanzas', '2373044', Icons.monetization_on),
+                    _ContactItem('Telf. Gerencia de Seguros', '2310570', Icons.shield),
+                    _ContactItem('Telf. Gerencia de Vivienda', '2906229', Icons.home_work),
+                    _ContactItem('Telf. Gerencia de Empresas', '2204176', Icons.store),
+                    _ContactItem('Telf. Gerencia de Salud', '2229106', Icons.medical_services),
+                  ]),
+                  const SizedBox(height: 24),
+                  _buildContactSection('Contactos H.M.C.', [
+                    _ContactItem('Telf. Hosp. Militar Central', '2223049', Icons.local_hospital),
+                    _ContactItem('Telf. Citas Médicas H.M.C.', '2242058', Icons.calendar_month),
+                    _ContactItem('WIN Corp. Citas Médicas', '72027824', Icons.phone_android),
+                    _ContactItem('WIN Corp. Citas Médicas', '72022794', Icons.phone_android),
+                    _ContactItem('Línea Gratuita Emergencias', '164', Icons.emergency, isEmergency: true),
+                  ]),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildContactSection(String title, List<_ContactItem> items) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          title,
+          style: const TextStyle(
+            fontSize: 13,
+            fontWeight: FontWeight.w800,
+            color: AppColors.primary,
+            letterSpacing: 1.0,
+          ),
+        ),
+        const SizedBox(height: 12),
+        Container(
+          decoration: BoxDecoration(
+            color: AppColors.white,
+            borderRadius: BorderRadius.circular(AppTheme.radiusXl),
+            boxShadow: AppColors.softShadow,
+          ),
+          child: ListView.separated(
+            padding: EdgeInsets.zero,
+            physics: const NeverScrollableScrollPhysics(),
+            shrinkWrap: true,
+            itemCount: items.length,
+            separatorBuilder: (_, __) => const Divider(height: 1, color: AppColors.border),
+            itemBuilder: (context, index) {
+              final item = items[index];
+              return ListTile(
+                contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                leading: Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: item.isEmergency 
+                        ? AppColors.error.withValues(alpha: 0.1) 
+                        : AppColors.primary.withValues(alpha: 0.08),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Icon(
+                    item.icon,
+                    size: 20,
+                    color: item.isEmergency ? AppColors.error : AppColors.primary,
+                  ),
+                ),
+                title: Text(
+                  item.title,
+                  style: const TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.textPrimary,
+                  ),
+                ),
+                subtitle: Padding(
+                  padding: const EdgeInsets.only(top: 4.0),
+                  child: Text(
+                    item.phone,
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w800,
+                      color: item.isEmergency ? AppColors.error : AppColors.textSecondary,
+                    ),
+                  ),
+                ),
+                trailing: Icon(
+                  Icons.arrow_forward_ios,
+                  size: 14,
+                  color: AppColors.textTertiary.withValues(alpha: 0.5),
+                ),
+                onTap: () {
+                  // Acción de llamar (requeriría url_launcher)
+                },
+              );
+            },
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _ContactItem {
+  final String title;
+  final String phone;
+  final IconData icon;
+  final bool isEmergency;
+
+  _ContactItem(this.title, this.phone, this.icon, {this.isEmergency = false});
 }
 
 class _QuickAction {

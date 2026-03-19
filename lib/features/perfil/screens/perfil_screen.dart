@@ -19,6 +19,7 @@ class _PerfilScreenState extends State<PerfilScreen> {
   late String _phone;
   bool _isEditingEmail = false;
   bool _isEditingPhone = false;
+  bool _isBiometricEnabled = false;
   late final TextEditingController _emailCtrl;
   late final TextEditingController _phoneCtrl;
 
@@ -222,6 +223,54 @@ class _PerfilScreenState extends State<PerfilScreen> {
                     _isEditingPhone = false;
                   });
                 },
+              ),
+
+              const SizedBox(height: 28),
+
+              // ── Security Section ───────────────────────────────────────
+              _sectionHeader('SEGURIDAD Y ACCESO'),
+              const SizedBox(height: 12),
+              Container(
+                decoration: BoxDecoration(
+                  color: AppColors.white,
+                  borderRadius: BorderRadius.circular(AppTheme.radiusXl),
+                  boxShadow: AppColors.softShadow,
+                ),
+                child: SwitchListTile(
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                  title: const Text(
+                    'Autenticación Biométrica',
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.textPrimary,
+                    ),
+                  ),
+                  subtitle: const Text(
+                    'Huella digital / Face ID + PIN',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
+                  secondary: Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: AppColors.success.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: const Icon(Icons.fingerprint, color: AppColors.success),
+                  ),
+                  value: _isBiometricEnabled,
+                  activeTrackColor: AppColors.primary,
+                  onChanged: (val) {
+                    if (val) {
+                      _showPinSetupModal();
+                    } else {
+                      setState(() => _isBiometricEnabled = false);
+                    }
+                  },
+                ),
               ),
 
               const SizedBox(height: 28),
@@ -498,6 +547,87 @@ class _PerfilScreenState extends State<PerfilScreen> {
             ),
         ],
       ),
+    );
+  }
+
+  // ── Fake PIN Setup Modal ────────────────────────────────────────────────
+
+  void _showPinSetupModal() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (ctx) {
+        return Container(
+          decoration: const BoxDecoration(
+            color: AppColors.background,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(AppTheme.radiusXl)),
+          ),
+          padding: const EdgeInsets.fromLTRB(24, 24, 24, 48),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(Icons.dialpad, size: 48, color: AppColors.primary),
+              const SizedBox(height: 16),
+              const Text(
+                'Configurar PIN de Acceso',
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.w800,
+                  color: AppColors.textPrimary,
+                ),
+              ),
+              const SizedBox(height: 8),
+              const Text(
+                'Crea un PIN de 4 dígitos para usar junto con tu huella digital o Face ID.',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 14,
+                  color: AppColors.textSecondary,
+                ),
+              ),
+              const SizedBox(height: 32),
+              // Fake PIN circles
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: List.generate(4, (index) => Container(
+                  margin: const EdgeInsets.symmetric(horizontal: 8),
+                  width: 16,
+                  height: 16,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: AppColors.border,
+                  ),
+                )),
+              ),
+              const SizedBox(height: 48),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.primary,
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(AppTheme.radiusXl),
+                    ),
+                  ),
+                  onPressed: () {
+                    Navigator.pop(ctx);
+                    setState(() => _isBiometricEnabled = true);
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Seguridad Biométrica y PIN activados exitosamente'),
+                        backgroundColor: AppColors.success,
+                      ),
+                    );
+                  },
+                  child: const Text('Simular Configuración Guardada'),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 }
