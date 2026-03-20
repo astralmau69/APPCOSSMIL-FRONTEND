@@ -7,7 +7,10 @@ import '../../../core/models/user_model.dart';
 import '../../../core/widgets/news_card.dart';
 import '../../../core/animations/animated_press_button.dart';
 import '../../../core/animations/fade_slide_in.dart';
+import '../../../core/animations/app_page_route.dart';
 import '../../../shell/tab_shell.dart';
+import 'contactos_screen.dart';
+import 'noticias_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   final TabShellState tabShell;
@@ -369,7 +372,10 @@ class _HomeScreenState extends State<HomeScreen>
             icon: Icons.contact_phone,
             label: 'Contactos',
             color: AppColors.info,
-            onTap: () => _showContactosBottomSheet(context),
+            onTap: () => Navigator.push(
+              context,
+              AppPageRoute(builder: (_) => const ContactosScreen()),
+            ),
           ),
         ];
 
@@ -444,283 +450,51 @@ class _HomeScreenState extends State<HomeScreen>
 
   Widget _buildNewsSection() {
     final news = MockNewsData.news;
+    final previewCount = news.length > 2 ? 2 : news.length;
 
     return Column(
       children: [
-        for (int i = 0; i < news.length && i < 4; i++) ...[
+        for (int i = 0; i < previewCount; i++) ...[
           NewsCard(item: news[i]),
-          if (i < 3 && i < news.length - 1) const SizedBox(height: 10),
+          if (i < previewCount - 1) const SizedBox(height: 10),
         ],
-        if (news.length > 4) ...[
-          const SizedBox(height: 12),
-          GestureDetector(
-            onTap: () {
-              showModalBottomSheet(
-                context: context,
-                backgroundColor: Colors.transparent,
-                isScrollControlled: true,
-                builder: (ctx) => _buildInformaBottomSheet(ctx),
-              );
-            },
-            child: Container(
-              padding: const EdgeInsets.symmetric(vertical: 12),
-              decoration: BoxDecoration(
-                color: AppColors.primary.withValues(alpha: 0.06),
-                borderRadius: BorderRadius.circular(AppTheme.radiusMd),
-                border: Border.all(
-                  color: AppColors.primary.withValues(alpha: 0.12),
-                ),
-              ),
-              child: const Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Text(
-                    'Ver todos los comunicados',
-                    style: TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w600,
-                      color: AppColors.primary,
-                    ),
-                  ),
-                  SizedBox(width: 6),
-                  Icon(Icons.arrow_forward,
-                      size: 14, color: AppColors.primary),
-                ],
-              ),
-            ),
-          ),
-        ],
-      ],
-    );
-  }
-
-  // ── Bottom Sheet (detalle de comunicados) ─────────────────────────────────
-
-  Widget _buildInformaBottomSheet(BuildContext context) {
-    final news = MockNewsData.news;
-
-    return Container(
-      constraints: BoxConstraints(
-        maxHeight: MediaQuery.of(context).size.height * 0.75,
-      ),
-      decoration: const BoxDecoration(
-        color: AppColors.background,
-        borderRadius: BorderRadius.vertical(
-            top: Radius.circular(AppTheme.radiusXl)),
-      ),
-      padding: const EdgeInsets.only(top: 12, bottom: 24),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Container(
-            width: 40,
-            height: 4,
-            decoration: BoxDecoration(
-              color: AppColors.border,
-              borderRadius: BorderRadius.circular(2),
-            ),
-          ),
-          const SizedBox(height: 16),
-          const Text(
-            'COSSMIL Te Informa',
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.w800,
-              color: AppColors.textPrimary,
-              letterSpacing: -0.5,
-            ),
-          ),
-          const SizedBox(height: 8),
-          const Text(
-            'Información importante para nuestros afiliados',
-            style: TextStyle(
-              fontSize: 14,
-              color: AppColors.textSecondary,
-            ),
-          ),
-          const SizedBox(height: 16),
-          Flexible(
-            child: ListView.separated(
-              padding: const EdgeInsets.symmetric(
-                  horizontal: 24, vertical: 8),
-              shrinkWrap: true,
-              itemCount: news.length,
-              separatorBuilder: (_, __) =>
-                  const SizedBox(height: 12),
-              itemBuilder: (context, index) {
-                return NewsCard(item: news[index]);
-              },
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  // ── Bottom Sheet (Contactos) ──────────────────────────────────────────────
-
-  void _showContactosBottomSheet(BuildContext context) {
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: Colors.transparent,
-      isScrollControlled: true,
-      builder: (ctx) => Container(
-        constraints: BoxConstraints(
-          maxHeight: MediaQuery.of(context).size.height * 0.85,
-        ),
-        decoration: const BoxDecoration(
-          color: AppColors.background,
-          borderRadius: BorderRadius.vertical(top: Radius.circular(AppTheme.radiusXl)),
-        ),
-        padding: const EdgeInsets.only(top: 12, bottom: 24),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              width: 40,
-              height: 4,
-              decoration: BoxDecoration(
-                color: AppColors.border,
-                borderRadius: BorderRadius.circular(2),
-              ),
-            ),
-            const SizedBox(height: 16),
-            const Text(
-              'Contactos y Ubicaciones',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.w800,
-                color: AppColors.textPrimary,
-                letterSpacing: -0.5,
-              ),
-            ),
-            const SizedBox(height: 8),
-            const Text(
-              'Líneas de atención al asegurado',
-              style: TextStyle(
-                fontSize: 14,
-                color: AppColors.textSecondary,
-              ),
-            ),
-            const SizedBox(height: 16),
-            Flexible(
-              child: ListView(
-                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
-                shrinkWrap: true,
-                children: [
-                  _buildContactSection('Contactos Gerencias', [
-                    _ContactItem('Telf. Junta Superior de Decisiones', '2434455', Icons.account_balance),
-                    _ContactItem('Telf. Gerencia General', '2315060 - 2314236', Icons.business_center),
-                    _ContactItem('Telf. Gerencia de Finanzas', '2373044', Icons.monetization_on),
-                    _ContactItem('Telf. Gerencia de Seguros', '2310570', Icons.shield),
-                    _ContactItem('Telf. Gerencia de Vivienda', '2906229', Icons.home_work),
-                    _ContactItem('Telf. Gerencia de Empresas', '2204176', Icons.store),
-                    _ContactItem('Telf. Gerencia de Salud', '2229106', Icons.medical_services),
-                  ]),
-                  const SizedBox(height: 24),
-                  _buildContactSection('Contactos H.M.C.', [
-                    _ContactItem('Telf. Hosp. Militar Central', '2223049', Icons.local_hospital),
-                    _ContactItem('Telf. Citas Médicas H.M.C.', '2242058', Icons.calendar_month),
-                    _ContactItem('WIN Corp. Citas Médicas', '72027824', Icons.phone_android),
-                    _ContactItem('WIN Corp. Citas Médicas', '72022794', Icons.phone_android),
-                    _ContactItem('Línea Gratuita Emergencias', '164', Icons.emergency, isEmergency: true),
-                  ]),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildContactSection(String title, List<_ContactItem> items) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          title,
-          style: const TextStyle(
-            fontSize: 13,
-            fontWeight: FontWeight.w800,
-            color: AppColors.primary,
-            letterSpacing: 1.0,
-          ),
-        ),
         const SizedBox(height: 12),
-        Container(
-          decoration: BoxDecoration(
-            color: AppColors.white,
-            borderRadius: BorderRadius.circular(AppTheme.radiusXl),
-            boxShadow: AppColors.softShadow,
+        GestureDetector(
+          onTap: () => Navigator.push(
+            context,
+            AppPageRoute(builder: (_) => const NoticiasScreen()),
           ),
-          child: ListView.separated(
-            padding: EdgeInsets.zero,
-            physics: const NeverScrollableScrollPhysics(),
-            shrinkWrap: true,
-            itemCount: items.length,
-            separatorBuilder: (_, __) => const Divider(height: 1, color: AppColors.border),
-            itemBuilder: (context, index) {
-              final item = items[index];
-              return ListTile(
-                contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-                leading: Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: item.isEmergency 
-                        ? AppColors.error.withValues(alpha: 0.1) 
-                        : AppColors.primary.withValues(alpha: 0.08),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Icon(
-                    item.icon,
-                    size: 20,
-                    color: item.isEmergency ? AppColors.error : AppColors.primary,
-                  ),
-                ),
-                title: Text(
-                  item.title,
-                  style: const TextStyle(
+          child: Container(
+            padding: const EdgeInsets.symmetric(vertical: 12),
+            decoration: BoxDecoration(
+              color: AppColors.primary.withValues(alpha: 0.06),
+              borderRadius: BorderRadius.circular(AppTheme.radiusMd),
+              border: Border.all(
+                color: AppColors.primary.withValues(alpha: 0.12),
+              ),
+            ),
+            child: const Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text(
+                  'Ver todos los comunicados',
+                  style: TextStyle(
                     fontSize: 13,
                     fontWeight: FontWeight.w600,
-                    color: AppColors.textPrimary,
+                    color: AppColors.primary,
                   ),
                 ),
-                subtitle: Padding(
-                  padding: const EdgeInsets.only(top: 4.0),
-                  child: Text(
-                    item.phone,
-                    style: TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w800,
-                      color: item.isEmergency ? AppColors.error : AppColors.textSecondary,
-                    ),
-                  ),
-                ),
-                trailing: Icon(
-                  Icons.arrow_forward_ios,
-                  size: 14,
-                  color: AppColors.textTertiary.withValues(alpha: 0.5),
-                ),
-                onTap: () {
-                  // Acción de llamar (requeriría url_launcher)
-                },
-              );
-            },
+                SizedBox(width: 6),
+                Icon(Icons.arrow_forward,
+                    size: 14, color: AppColors.primary),
+              ],
+            ),
           ),
         ),
       ],
     );
   }
-}
 
-class _ContactItem {
-  final String title;
-  final String phone;
-  final IconData icon;
-  final bool isEmergency;
-
-  _ContactItem(this.title, this.phone, this.icon, {this.isEmergency = false});
 }
 
 class _QuickAction {

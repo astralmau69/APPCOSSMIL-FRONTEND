@@ -20,4 +20,23 @@ class ApiConstants {
 
   // URL completa del endpoint de token
   static Uri get tokenUri => Uri.parse('$baseUrl$tokenEndpoint');
+
+  // ─── Programación (endpoints protegidos con Bearer) ────────────────────────
+
+  /// Regionales por departamento.
+  static String regionalesPorDepartamento(int idins) =>
+      '/api/programacion/regionales/departamento/$idins';
+
+  /// Todas las regionales.
+  static String regionales(int idins) =>
+      '/api/programacion/regionales/$idins';
+
+  /// Especialidades directas de una sucursal.
+  static String especialidadesDirectas(int idins, int idsuc) =>
+      '/api/programacion/especialidades/directas/$idins/$idsuc';
+
+  /// Especialidades de interconsulta para un asegurado.
+  static String especialidadesInterconsulta(int idper) =>
+      '/api/programacion/especialidades/interconsulta/$idper';
 }
+

@@ -1,5 +1,6 @@
-import 'package:flutter/material.dart';
+import 'dart:ui';
 import 'package:flutter/cupertino.dart';
+import 'package:flutter/material.dart';
 import '../core/constants/app_colors.dart';
 import '../core/models/beneficiary_model.dart';
 import '../core/models/regional_model.dart';
@@ -40,11 +41,11 @@ class TabShell extends StatefulWidget {
   State<TabShell> createState() => TabShellState();
 }
 
-class TabShellState extends State<TabShell> {
-  late final CupertinoTabController _tabController;
+class TabShellState extends State<TabShell>
+    with SingleTickerProviderStateMixin {
+  int _currentIndex = 0;
   final bookingState = BookingState();
 
-  // Keys to access the nested navigators.
   final List<GlobalKey<NavigatorState>> _tabNavKeys = [
     GlobalKey<NavigatorState>(),
     GlobalKey<NavigatorState>(),
@@ -53,20 +54,25 @@ class TabShellState extends State<TabShell> {
     GlobalKey<NavigatorState>(),
   ];
 
+  late final AnimationController _pulseCtrl;
+
   @override
   void initState() {
     super.initState();
-    _tabController = CupertinoTabController(initialIndex: 0);
+    _pulseCtrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 2000),
+    )..repeat(reverse: true);
   }
 
   @override
   void dispose() {
-    _tabController.dispose();
+    _pulseCtrl.dispose();
     super.dispose();
   }
 
   void goToTab(int index) {
-    _tabController.index = index;
+    setState(() => _currentIndex = index);
   }
 
   /// Llamado desde HomeScreen al seleccionar un beneficiario.
@@ -74,69 +80,212 @@ class TabShellState extends State<TabShell> {
     bookingState.reset();
     bookingState.beneficiaryLabel = label;
     bookingState.beneficiary = beneficiary;
-    
-    // Jump to the booking tab
-    _tabController.index = 2;
-    // Reset the booking tab's navigation stack so it starts fresh at RegionalScreen
+    setState(() => _currentIndex = 2);
     _tabNavKeys[2].currentState?.popUntil((route) => route.isFirst);
   }
 
   /// Vuelve al tab Inicio después de confirmar reserva.
   void finishBooking() {
     bookingState.reset();
-    _tabController.index = 0;
-    // Reset the booking tab just in case
+    setState(() => _currentIndex = 0);
     _tabNavKeys[2].currentState?.popUntil((route) => route.isFirst);
+  }
+
+  Widget _screenForIndex(int index) {
+    return switch (index) {
+      0 => HomeScreen(tabShell: this),
+      1 => const ReservasScreen(),
+      2 => RegionalScreen(tabShell: this),
+      3 => const FamiliaScreen(),
+      4 => const PerfilScreen(),
+      _ => const SizedBox.shrink(),
+    };
   }
 
   @override
   Widget build(BuildContext context) {
+    final bottomPadding = MediaQuery.of(context).padding.bottom;
+
     return Scaffold(
-      body: CupertinoTabScaffold(
-        controller: _tabController,
-        tabBar: CupertinoTabBar(
-          backgroundColor: AppColors.white.withValues(alpha: 0.85),
-          activeColor: AppColors.primary,
-          inactiveColor: AppColors.textTertiary,
-          border: const Border(
-            top: BorderSide(color: AppColors.border, width: 0.5),
+      extendBody: true,
+      body: IndexedStack(
+        index: _currentIndex,
+        children: List.generate(
+          5,
+          (i) => CupertinoTabView(
+            navigatorKey: _tabNavKeys[i],
+            builder: (_) => _screenForIndex(i),
           ),
-          items: [
-            BottomNavigationBarItem(
-              icon: const _AnimatedNavIcon(icon: CupertinoIcons.house, isSelected: false),
-              activeIcon: const _AnimatedNavIcon(icon: CupertinoIcons.house_fill, isSelected: true),
-              label: 'Inicio',
-            ),
-            BottomNavigationBarItem(
-              icon: const _AnimatedNavIcon(icon: CupertinoIcons.time, isSelected: false),
-              activeIcon: const _AnimatedNavIcon(icon: CupertinoIcons.time_solid, isSelected: true),
-              label: 'Reservas',
-            ),
-            BottomNavigationBarItem(
-              icon: TweenAnimationBuilder<double>(
-                duration: const Duration(milliseconds: 200),
-                curve: Curves.easeOutBack,
-                tween: Tween(begin: 1.0, end: _tabController.index == 2 ? 1.15 : 1.0),
-                builder: (context, scale, child) => Transform.scale(
-                  scale: scale,
-                  child: child,
-                ),
+        ),
+      ),
+      bottomNavigationBar: _buildBar(bottomPadding),
+    );
+  }
+
+  // ── Premium Bottom Bar ──────────────────────────────────────────────────
+
+  static const _barH = 62.0;
+  static const _protrusion = 22.0;
+
+  Widget _buildBar(double bottomPad) {
+    return SizedBox(
+      height: _barH + bottomPad + _protrusion,
+      child: Stack(
+        clipBehavior: Clip.none,
+        children: [
+          // Glass background
+          Positioned(
+            left: 0,
+            right: 0,
+            bottom: 0,
+            height: _barH + bottomPad,
+            child: ClipRect(
+              child: BackdropFilter(
+                filter: ImageFilter.blur(sigmaX: 25, sigmaY: 25),
                 child: Container(
-                  width: 48,
-                  height: 48,
-                  margin: const EdgeInsets.only(bottom: 2, top: 2),
+                  decoration: BoxDecoration(
+                    color: AppColors.white.withValues(alpha: 0.88),
+                    border: Border(
+                      top: BorderSide(
+                        color: AppColors.border.withValues(alpha: 0.35),
+                        width: 0.5,
+                      ),
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color:
+                            const Color(0xFF0F172A).withValues(alpha: 0.05),
+                        blurRadius: 12,
+                        offset: const Offset(0, -3),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+
+          // Regular tab items
+          Positioned(
+            left: 0,
+            right: 0,
+            bottom: bottomPad,
+            height: _barH,
+            child: Row(
+              children: [
+                _tab(0, CupertinoIcons.house, CupertinoIcons.house_fill,
+                    'Inicio'),
+                _tab(1, CupertinoIcons.time, CupertinoIcons.time_solid,
+                    'Reservas'),
+                const Expanded(child: SizedBox()),
+                _tab(3, CupertinoIcons.person_2,
+                    CupertinoIcons.person_2_fill, 'Familia'),
+                _tab(4, CupertinoIcons.person_crop_circle,
+                    CupertinoIcons.person_crop_circle_fill, 'Perfil'),
+              ],
+            ),
+          ),
+
+          // Central floating button
+          Positioned(
+            top: 0,
+            left: 0,
+            right: 0,
+            child: Center(child: _centralButton()),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ── Regular Tab Item ────────────────────────────────────────────────────
+
+  Widget _tab(int idx, IconData icon, IconData activeIcon, String label) {
+    final active = _currentIndex == idx;
+    return Expanded(
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: () => setState(() => _currentIndex = idx),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            TweenAnimationBuilder<double>(
+              tween: Tween(begin: 0, end: active ? 1.0 : 0.0),
+              duration: const Duration(milliseconds: 280),
+              curve: Curves.easeOutCubic,
+              builder: (_, v, __) => Transform.scale(
+                scale: 1.0 + 0.15 * v,
+                child: Icon(
+                  active ? activeIcon : icon,
+                  size: 24,
+                  color: Color.lerp(
+                      AppColors.textTertiary, AppColors.primary, v),
+                ),
+              ),
+            ),
+            const SizedBox(height: 3),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 10,
+                fontWeight: active ? FontWeight.w600 : FontWeight.w400,
+                color: active ? AppColors.primary : AppColors.textTertiary,
+              ),
+            ),
+            const SizedBox(height: 3),
+            AnimatedContainer(
+              duration: const Duration(milliseconds: 280),
+              curve: Curves.easeOutCubic,
+              width: active ? 5 : 0,
+              height: 5,
+              decoration: const BoxDecoration(
+                color: AppColors.primary,
+                shape: BoxShape.circle,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // ── Central Floating Reservar Button ────────────────────────────────────
+
+  Widget _centralButton() {
+    final active = _currentIndex == 2;
+    return GestureDetector(
+      onTap: () => setState(() => _currentIndex = 2),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          AnimatedBuilder(
+            animation: _pulseCtrl,
+            builder: (_, __) {
+              final glow = active
+                  ? Tween<double>(begin: 0.25, end: 0.50).evaluate(
+                      CurvedAnimation(
+                          parent: _pulseCtrl, curve: Curves.easeInOut))
+                  : 0.25;
+              return AnimatedScale(
+                scale: active ? 1.08 : 1.0,
+                duration: const Duration(milliseconds: 300),
+                curve: Curves.easeOutBack,
+                child: Container(
+                  width: 58,
+                  height: 58,
                   decoration: BoxDecoration(
                     gradient: const LinearGradient(
-                      colors: [AppColors.primary, Color(0xFF0C4A6E)],
                       begin: Alignment.topLeft,
                       end: Alignment.bottomRight,
+                      colors: [Color(0xFF1D8FCC), Color(0xFF0C4A6E)],
                     ),
                     shape: BoxShape.circle,
                     boxShadow: [
                       BoxShadow(
-                        color: AppColors.primary.withValues(alpha: 0.35),
-                        blurRadius: 8,
-                        offset: const Offset(0, 3),
+                        color: AppColors.primary.withValues(alpha: glow),
+                        blurRadius: active ? 20 : 12,
+                        offset: const Offset(0, 4),
+                        spreadRadius: active ? 2 : 0,
                       ),
                     ],
                   ),
@@ -146,65 +295,20 @@ class TabShellState extends State<TabShell> {
                     size: 26,
                   ),
                 ),
-              ),
-              label: 'Reservar',
-            ),
-            BottomNavigationBarItem(
-              icon: const _AnimatedNavIcon(icon: CupertinoIcons.person_2, isSelected: false),
-              activeIcon: const _AnimatedNavIcon(icon: CupertinoIcons.person_2_fill, isSelected: true),
-              label: 'Mi Grupo Familiar',
-            ),
-            BottomNavigationBarItem(
-              icon: const _AnimatedNavIcon(icon: CupertinoIcons.person_crop_circle, isSelected: false),
-              activeIcon: const _AnimatedNavIcon(icon: CupertinoIcons.person_crop_circle_fill, isSelected: true),
-              label: 'Perfil',
-            ),
-          ],
-        ),
-        tabBuilder: (context, index) {
-          return CupertinoTabView(
-            navigatorKey: _tabNavKeys[index],
-            builder: (context) {
-              return switch (index) {
-                0 => HomeScreen(tabShell: this),
-                1 => const ReservasScreen(),
-                2 => RegionalScreen(tabShell: this),
-                3 => const FamiliaScreen(),
-                4 => const PerfilScreen(),
-                _ => const SizedBox.shrink(),
-              };
+              );
             },
-          );
-        },
-      ),
-    );
-  }
-}
-
-class _AnimatedNavIcon extends StatelessWidget {
-  final IconData icon;
-  final bool isSelected;
-
-  const _AnimatedNavIcon({
-    required this.icon,
-    required this.isSelected,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return TweenAnimationBuilder<double>(
-      duration: const Duration(milliseconds: 200),
-      curve: Curves.easeOutBack,
-      tween: Tween<double>(begin: 1.0, end: isSelected ? 1.25 : 1.0),
-      builder: (context, scale, child) {
-        return Transform.scale(
-          scale: scale,
-          child: Padding(
-            padding: EdgeInsets.only(bottom: isSelected ? 2.0 : 0.0),
-            child: Icon(icon, size: 26),
           ),
-        );
-      },
+          const SizedBox(height: 4),
+          Text(
+            'Reservar',
+            style: TextStyle(
+              fontSize: 10,
+              fontWeight: active ? FontWeight.w700 : FontWeight.w500,
+              color: active ? AppColors.primary : AppColors.textTertiary,
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

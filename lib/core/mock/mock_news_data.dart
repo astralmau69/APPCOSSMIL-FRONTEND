@@ -13,6 +13,7 @@ class MockNewsData {
       date: '18 Mar 2026',
       category: 'Aviso',
       importance: NewsImportance.warning,
+      isFeatured: true,
     ),
     NewsItemModel(
       id: 'n2',
@@ -32,6 +33,7 @@ class MockNewsData {
       date: '12 Mar 2026',
       category: 'Alerta',
       importance: NewsImportance.critical,
+      isFeatured: true,
     ),
     NewsItemModel(
       id: 'n4',

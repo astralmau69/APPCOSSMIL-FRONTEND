@@ -37,7 +37,6 @@ class AuthService {
     required String password,
   }) async {
     // Mock: bypass HTTP cuando el backend no está disponible
-    /*
     if (AppConfig.useMockData) {
       await Future.delayed(const Duration(milliseconds: 800));
       return AuthSuccess(AuthTokenModel(
@@ -48,7 +47,6 @@ class AuthService {
         jti: 'mock-jti',
       ));
     }
-    */
 
     try {
       final response = await _client.post(

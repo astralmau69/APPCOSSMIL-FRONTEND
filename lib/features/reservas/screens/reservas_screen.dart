@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/mock/mock_appointments_data.dart';
@@ -14,55 +14,69 @@ class ReservasScreen extends StatelessWidget {
     final completed = MockAppointmentsData.completedCount;
     final missed = MockAppointmentsData.missedCount;
 
-    return Scaffold(
+    return CupertinoPageScaffold(
       backgroundColor: AppColors.background,
-      appBar: AppBar(
-        title: const Text(
-          'MIS RESERVAS',
-          style: TextStyle(fontWeight: FontWeight.w800, fontSize: 17),
-        ),
-        backgroundColor: AppColors.white,
-        centerTitle: true,
-        elevation: 0,
-        bottom: PreferredSize(
-          preferredSize: const Size.fromHeight(0.5),
-          child: Container(color: AppColors.border, height: 0.5),
-        ),
-      ),
-      body: SafeArea(
-        child: history.isEmpty
-            ? _emptyState()
-            : ListView(
-                padding: const EdgeInsets.fromLTRB(20, 16, 20, 32),
-                children: [
-                  // ── Summary bar ─────────────────────────────────────────
-                  FadeSlideIn(
-                    duration: const Duration(milliseconds: 350),
-                    child: _buildSummaryBar(completed, missed),
-                  ),
-                  const SizedBox(height: 20),
-
-                  // ── Section header ──────────────────────────────────────
-                  FadeSlideIn(
-                    delay: const Duration(milliseconds: 100),
-                    child: _sectionHeader(
-                      'HISTORIAL DE ATENCIONES',
-                      history.length,
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-
-                  // ── Appointment cards ───────────────────────────────────
-                  for (int i = 0; i < history.length; i++) ...[
-                    FadeSlideIn(
-                      delay: Duration(milliseconds: 150 + (i * 80)),
-                      child: AppointmentCard(appointment: history[i]),
-                    ),
-                    if (i < history.length - 1) const SizedBox(height: 12),
-                  ],
-                ],
+      child: history.isEmpty
+          ? _emptyState()
+          : CustomScrollView(
+              physics: const BouncingScrollPhysics(
+                parent: AlwaysScrollableScrollPhysics(),
               ),
-      ),
+              slivers: [
+                // ── iOS Large Title Nav Bar ─────────────────────────
+                CupertinoSliverNavigationBar(
+                  largeTitle: const Text('Mis Reservas'),
+                  backgroundColor:
+                      AppColors.white.withValues(alpha: 0.92),
+                  border: Border(
+                    bottom: BorderSide(
+                      color: AppColors.border.withValues(alpha: 0.5),
+                      width: 0.5,
+                    ),
+                  ),
+                ),
+
+                // ── Content ────────────────────────────────────────
+                SliverPadding(
+                  padding:
+                      const EdgeInsets.fromLTRB(20, 16, 20, 32),
+                  sliver: SliverList(
+                    delegate: SliverChildListDelegate([
+                      // ── Summary bar ──────────────────────────
+                      FadeSlideIn(
+                        duration:
+                            const Duration(milliseconds: 350),
+                        child: _buildSummaryBar(completed, missed),
+                      ),
+                      const SizedBox(height: 20),
+
+                      // ── Section header ───────────────────────
+                      FadeSlideIn(
+                        delay:
+                            const Duration(milliseconds: 100),
+                        child: _sectionHeader(
+                          'HISTORIAL DE ATENCIONES',
+                          history.length,
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+
+                      // ── Appointment cards ────────────────────
+                      for (int i = 0; i < history.length; i++) ...[
+                        FadeSlideIn(
+                          delay: Duration(
+                              milliseconds: 150 + (i * 80)),
+                          child: AppointmentCard(
+                              appointment: history[i]),
+                        ),
+                        if (i < history.length - 1)
+                          const SizedBox(height: 12),
+                      ],
+                    ]),
+                  ),
+                ),
+              ],
+            ),
     );
   }
 
@@ -160,35 +174,54 @@ class ReservasScreen extends StatelessWidget {
   }
 
   Widget _emptyState() {
-    return Center(
-      child: FadeSlideIn(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              Icons.calendar_today,
-              size: 56,
-              color: AppColors.textTertiary.withValues(alpha: 0.4),
-            ),
-            const SizedBox(height: 16),
-            const Text(
-              'No tiene atenciones registradas',
-              style: TextStyle(
-                fontSize: 16,
-                color: AppColors.textSecondary,
-              ),
-            ),
-            const SizedBox(height: 8),
-            const Text(
-              'El historial de atenciones aparecerá aquí',
-              style: TextStyle(
-                fontSize: 13,
-                color: AppColors.textTertiary,
-              ),
-            ),
-          ],
-        ),
+    return CustomScrollView(
+      physics: const BouncingScrollPhysics(
+        parent: AlwaysScrollableScrollPhysics(),
       ),
+      slivers: [
+        CupertinoSliverNavigationBar(
+          largeTitle: const Text('Mis Reservas'),
+          backgroundColor: AppColors.white.withValues(alpha: 0.92),
+          border: Border(
+            bottom: BorderSide(
+              color: AppColors.border.withValues(alpha: 0.5),
+              width: 0.5,
+            ),
+          ),
+        ),
+        SliverFillRemaining(
+          child: Center(
+            child: FadeSlideIn(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    CupertinoIcons.calendar,
+                    size: 56,
+                    color: AppColors.textTertiary.withValues(alpha: 0.4),
+                  ),
+                  const SizedBox(height: 16),
+                  const Text(
+                    'No tiene atenciones registradas',
+                    style: TextStyle(
+                      fontSize: 16,
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  const Text(
+                    'El historial de atenciones aparecerá aquí',
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: AppColors.textTertiary,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ],
     );
   }
 }
