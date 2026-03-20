@@ -1,11 +1,12 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/theme/app_theme.dart';
-import '../../../core/mock/mock_regional_data.dart';
 import '../../../core/mock/mock_user_data.dart';
 import '../../../core/models/regional_model.dart';
 import '../../../core/models/hospital_model.dart';
 import '../../../core/models/beneficiary_model.dart';
+import '../../../core/services/programacion_service.dart';
 import '../../../core/widgets/beneficiary_selector_modal.dart';
 import '../../../core/animations/animated_press_button.dart';
 import '../../../core/animations/app_page_route.dart';
@@ -22,8 +23,11 @@ class RegionalScreen extends StatefulWidget {
 }
 
 class _RegionalScreenState extends State<RegionalScreen> {
-  final _regionals = MockRegionalData.regionals;
-  int _expandedIndex = 0;
+  final _service = ProgramacionService();
+  List<RegionalModel> _regionals = [];
+  bool _isLoading = true;
+  String? _errorMessage;
+  int _expandedIndex = -1;
 
   @override
   void initState() {
@@ -35,6 +39,32 @@ class _RegionalScreenState extends State<RegionalScreen> {
           .firstWhere((b) => b.isTitular, orElse: () => MockUserData.user.beneficiaries[0]);
       bs.beneficiary = titular;
       bs.beneficiaryLabel = titular.isTitular ? 'Para mí' : titular.fullName;
+    }
+    _fetchData();
+  }
+
+  Future<void> _fetchData() async {
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
+    try {
+      // Usamos idins = 1 por defecto (COSSMIL)
+      // Cambiado a getRegionalesPorDepartamento según corrección del usuario
+      final data = await _service.getRegionalesPorDepartamento(1);
+      if (mounted) {
+        setState(() {
+          _regionals = data;
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _errorMessage = e.toString();
+          _isLoading = false;
+        });
+      }
     }
   }
 
@@ -59,28 +89,52 @@ class _RegionalScreenState extends State<RegionalScreen> {
         ),
       ),
       body: SafeArea(
-        child: ListView(
-          padding: const EdgeInsets.symmetric(vertical: 16),
-          children: [
-            // ── Active profile selector ─────────────────────────────────
-            _buildActiveProfileCard(currentBeneficiary),
-            const SizedBox(height: 20),
-            const Padding(
-              padding: EdgeInsets.symmetric(horizontal: 24),
-              child: Text(
-                '¿Qué establecimiento desea consultar?',
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w700,
-                  color: AppColors.textPrimary,
-                ),
-              ),
-            ),
-            const SizedBox(height: 10),
-            for (int i = 0; i < _regionals.length; i++)
-              _buildRegionalItem(_regionals[i], i),
-          ],
-        ),
+        child: _isLoading
+            ? const Center(child: CircularProgressIndicator())
+            : _errorMessage != null
+                ? Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Text('Error: $_errorMessage',
+                            textAlign: TextAlign.center),
+                        const SizedBox(height: 16),
+                        ElevatedButton(
+                            onPressed: _fetchData, child: const Text('Reintentar')),
+                      ],
+                    ),
+                  )
+                : RefreshIndicator(
+                    onRefresh: _fetchData,
+                    child: ListView(
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      children: [
+                        // ── Active profile selector ─────────────────────────────────
+                        _buildActiveProfileCard(currentBeneficiary),
+                        const SizedBox(height: 20),
+                        const Padding(
+                          padding: EdgeInsets.symmetric(horizontal: 24),
+                          child: Text(
+                            '¿Qué establecimiento desea consultar?',
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.w700,
+                              color: AppColors.textPrimary,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 10),
+                        for (int i = 0; i < _regionals.length; i++)
+                          _buildRegionalItem(_regionals[i], i),
+                        if (_regionals.isEmpty)
+                          const Padding(
+                            padding: EdgeInsets.all(40),
+                            child: Center(
+                                child: Text('No hay establecimientos disponibles.')),
+                          ),
+                      ],
+                    ),
+                  ),
       ),
     );
   }
@@ -109,10 +163,17 @@ class _RegionalScreenState extends State<RegionalScreen> {
         children: [
           // Avatar
           Container(
-            width: 48,
-            height: 48,
+            width: 85,
+            height: 85,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
+              boxShadow: [
+                BoxShadow(
+                  color: avatarColor.withValues(alpha: 0.3),
+                  blurRadius: 8,
+                  spreadRadius: 2,
+                ),
+              ],
               gradient: LinearGradient(
                 colors: [
                   avatarColor,
@@ -120,14 +181,22 @@ class _RegionalScreenState extends State<RegionalScreen> {
                 ],
               ),
             ),
-            alignment: Alignment.center,
-            child: Text(
-              beneficiary.initial,
-              style: const TextStyle(
-                color: AppColors.white,
-                fontWeight: FontWeight.w800,
-                fontSize: 20,
-              ),
+            child: ClipOval(
+              child: (isTitular && MockUserData.user.photoBase64.isNotEmpty)
+                  ? Image.memory(
+                      base64Decode(MockUserData.user.photoBase64),
+                      fit: BoxFit.cover,
+                    )
+                  : Center(
+                      child: Text(
+                        beneficiary.initial,
+                        style: const TextStyle(
+                          color: AppColors.white,
+                          fontWeight: FontWeight.w800,
+                        fontSize: 32,
+                        ),
+                      ),
+                    ),
             ),
           ),
           const SizedBox(width: 14),
@@ -138,36 +207,36 @@ class _RegionalScreenState extends State<RegionalScreen> {
               children: [
                 const Text(
                   'Reserva para:',
-                  style: TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w500,
-                    color: AppColors.textSecondary,
-                  ),
+                    style: TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.textSecondary,
+                    ),
                 ),
-                const SizedBox(height: 2),
+                const SizedBox(height: 4),
                 Text(
                   beneficiary.fullName,
                   style: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w700,
+                    fontSize: 24,
+                    fontWeight: FontWeight.w800,
                     color: AppColors.textPrimary,
                   ),
                 ),
-                const SizedBox(height: 4),
+                const SizedBox(height: 6),
                 Container(
                   padding: const EdgeInsets.symmetric(
-                      horizontal: 8, vertical: 3),
+                      horizontal: 10, vertical: 4),
                   decoration: BoxDecoration(
                     color: isTitular
                         ? AppColors.primary.withValues(alpha: 0.1)
                         : AppColors.accent.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(6),
+                    borderRadius: BorderRadius.circular(8),
                   ),
                   child: Text(
                     label,
                     style: TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w600,
+                      fontSize: 15,
+                      fontWeight: FontWeight.w700,
                       color: isTitular
                           ? AppColors.primary
                           : AppColors.accentDark,
@@ -264,8 +333,8 @@ class _RegionalScreenState extends State<RegionalScreen> {
                     child: Text(
                       regional.name,
                       style: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
+                        fontSize: 22,
+                        fontWeight: FontWeight.w700,
                         color: AppColors.textPrimary,
                       ),
                     ),
@@ -296,14 +365,12 @@ class _RegionalScreenState extends State<RegionalScreen> {
 
   Widget _buildHospitalCards(RegionalModel regional) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
-      child: Row(
+      padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+      child: Column(
         children: [
           for (int i = 0; i < regional.hospitals.length; i++) ...[
-            if (i > 0) const SizedBox(width: 10),
-            Expanded(
-              child: _hospitalCard(regional, regional.hospitals[i]),
-            ),
+            if (i > 0) const SizedBox(height: 12),
+            _hospitalCard(regional, regional.hospitals[i]),
           ],
         ],
       ),
@@ -323,59 +390,58 @@ class _RegionalScreenState extends State<RegionalScreen> {
         );
       },
       child: Container(
-        height: 130,
+        width: double.infinity,
+        padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(AppTheme.radiusMd),
+          borderRadius: BorderRadius.circular(AppTheme.radiusLg),
           color: AppColors.primary.withValues(alpha: 0.05),
           border: Border.all(
-              color: AppColors.primary.withValues(alpha: 0.12)),
+              color: AppColors.primary.withValues(alpha: 0.15), width: 1.5),
         ),
-        child: Stack(
+        child: Row(
           children: [
-            Positioned(
-              top: 8,
-              right: 8,
-              child: Container(
-                width: 24,
-                height: 24,
-                decoration: BoxDecoration(
-                  color: AppColors.primary.withValues(alpha: 0.12),
-                  shape: BoxShape.circle,
-                ),
-                child: const Icon(
-                  Icons.apartment,
-                  size: 12,
-                  color: AppColors.primary,
-                ),
+            Container(
+              width: 48,
+              height: 48,
+              decoration: BoxDecoration(
+                color: AppColors.primary.withValues(alpha: 0.1),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(
+                Icons.apartment,
+                size: 24,
+                color: AppColors.primary,
               ),
             ),
-            Positioned(
-              left: 10,
-              right: 10,
-              bottom: 10,
+            const SizedBox(width: 16),
+            Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Text(
-                    hospital.shortName,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
+                    hospital.name,
                     style: const TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w700,
+                      fontSize: 20,
+                      fontWeight: FontWeight.w800,
                       color: AppColors.textPrimary,
                     ),
                   ),
-                  const SizedBox(height: 2),
+                  const SizedBox(height: 4),
                   Text(
                     hospital.address,
                     style: const TextStyle(
-                      fontSize: 11,
+                      fontSize: 15,
+                      fontWeight: FontWeight.w500,
                       color: AppColors.textSecondary,
                     ),
                   ),
                 ],
               ),
+            ),
+            const Icon(
+              Icons.chevron_right,
+              color: AppColors.primary,
             ),
           ],
         ),

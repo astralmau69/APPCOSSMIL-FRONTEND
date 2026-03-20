@@ -59,7 +59,7 @@ class _SummaryScreenState extends State<SummaryScreen>
       appBar: AppBar(
         title: const Text(
           'Resumen',
-          style: TextStyle(fontWeight: FontWeight.w800, fontSize: 17),
+          style: TextStyle(fontWeight: FontWeight.w900, fontSize: 22),
         ),
         backgroundColor: AppColors.white,
         centerTitle: true,
@@ -106,16 +106,18 @@ class _SummaryScreenState extends State<SummaryScreen>
                             Text(
                               'Verifique su información',
                               style: TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.w700,
+                                fontSize: 22,
+                                fontWeight: FontWeight.w900,
                                 color: AppColors.textPrimary,
+                                letterSpacing: -0.5,
                               ),
                             ),
                             Text(
                               'Antes de confirmar la reserva',
                               style: TextStyle(
-                                fontSize: 13,
+                                fontSize: 17,
                                 color: AppColors.textSecondary,
+                                fontWeight: FontWeight.w500,
                               ),
                             ),
                           ],
@@ -216,8 +218,8 @@ class _SummaryScreenState extends State<SummaryScreen>
                           child: const Text(
                             'Cancelar',
                             style: TextStyle(
-                              fontSize: 15,
-                              fontWeight: FontWeight.w600,
+                              fontSize: 18,
+                              fontWeight: FontWeight.w800,
                             ),
                           ),
                         ),
@@ -256,8 +258,8 @@ class _SummaryScreenState extends State<SummaryScreen>
                                     Text(
                                       'Confirmar Reserva',
                                       style: TextStyle(
-                                        fontSize: 16,
-                                        fontWeight: FontWeight.w700,
+                                        fontSize: 20,
+                                        fontWeight: FontWeight.w900,
                                         color: Colors.white,
                                       ),
                                     ),
@@ -279,19 +281,20 @@ class _SummaryScreenState extends State<SummaryScreen>
 
   Widget _row(IconData icon, String label, String value) {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 15),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(icon, size: 16, color: AppColors.primary.withValues(alpha: 0.5)),
-          const SizedBox(width: 10),
+          Icon(icon, size: 22, color: AppColors.primary.withValues(alpha: 0.6)),
+          const SizedBox(width: 12),
           SizedBox(
-            width: 100,
+            width: 120,
             child: Text(
               label,
               style: const TextStyle(
-                fontSize: 13,
+                fontSize: 17,
                 color: AppColors.textSecondary,
+                fontWeight: FontWeight.w500,
               ),
             ),
           ),
@@ -300,9 +303,10 @@ class _SummaryScreenState extends State<SummaryScreen>
               value,
               textAlign: TextAlign.end,
               style: const TextStyle(
-                fontSize: 15,
-                fontWeight: FontWeight.w700,
+                fontSize: 20,
+                fontWeight: FontWeight.w800,
                 color: AppColors.textPrimary,
+                height: 1.2,
               ),
             ),
           ),
@@ -354,9 +358,10 @@ class _SummaryScreenState extends State<SummaryScreen>
               const Text(
                 '¡Reserva Exitosa!',
                 style: TextStyle(
-                  fontSize: 22,
-                  fontWeight: FontWeight.w800,
+                  fontSize: 28,
+                  fontWeight: FontWeight.w900,
                   color: AppColors.textPrimary,
+                  letterSpacing: -0.5,
                 ),
               ),
               const SizedBox(height: 8),
@@ -364,8 +369,9 @@ class _SummaryScreenState extends State<SummaryScreen>
                 'Tu cita médica ha sido confirmada.\nSe ha generado tu ticket virtual de reserva.',
                 textAlign: TextAlign.center,
                 style: TextStyle(
-                  fontSize: 14,
+                  fontSize: 18,
                   color: AppColors.textSecondary,
+                  fontWeight: FontWeight.w500,
                   height: 1.3,
                 ),
               ),
@@ -401,8 +407,8 @@ class _SummaryScreenState extends State<SummaryScreen>
                 child: ElevatedButton.icon(
                   icon: const Icon(Icons.receipt_long, size: 18),
                   label: const Text(
-                    'Descargar pdf para su imprecion',
-                    style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
+                    'Descargar comprobante PDF',
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
                   ),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppColors.primary,
@@ -440,8 +446,8 @@ class _SummaryScreenState extends State<SummaryScreen>
                   child: const Text(
                     'Volver al Inicio',
                     style: TextStyle(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w600,
+                      fontSize: 18,
+                      fontWeight: FontWeight.w700,
                       color: AppColors.textSecondary,
                     ),
                   ),

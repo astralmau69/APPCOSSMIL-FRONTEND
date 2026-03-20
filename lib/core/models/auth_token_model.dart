@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 /// Modelo que representa la respuesta del servidor al hacer login.
 /// Mapea el JSON del endpoint OAuth2.
 class AuthTokenModel {
@@ -16,6 +18,7 @@ class AuthTokenModel {
   final String matricula;
   final int edad;
   final String rol;
+  final String grado;
   final int idper;
   final String numeroCelular;
   final String correo;
@@ -34,29 +37,52 @@ class AuthTokenModel {
     this.matricula = '',
     this.edad = 0,
     this.rol = '',
+    this.grado = '',
     this.idper = 0,
     this.numeroCelular = '',
     this.correo = '',
   });
 
   factory AuthTokenModel.fromJson(Map<String, dynamic> json) {
+    final accessToken = json['access_token'] as String? ?? '';
+    
+    // Decodificar payload secundario del token JWT por si el response raíz no incluye estos datos
+    Map<String, dynamic> payload = {};
+    if (accessToken.split('.').length == 3) {
+      try {
+        final payloadBase64 = accessToken.split('.')[1];
+        String normalized = payloadBase64.replaceAll('-', '+').replaceAll('_', '/');
+        while (normalized.length % 4 != 0) {
+          normalized += '=';
+        }
+        final payloadStr = utf8.decode(base64Decode(normalized));
+        payload = jsonDecode(payloadStr) as Map<String, dynamic>;
+      } catch (e) {
+        // Fallback silencioso
+      }
+    }
+
+    // Función auxiliar para buscar en payload del JWT primero, luego en root json
+    dynamic val(String key) => payload[key] ?? json[key];
+
     return AuthTokenModel(
-      accessToken: json['access_token'] as String? ?? '',
+      accessToken: accessToken,
       refreshToken: json['refresh_token'] as String? ?? '',
       tokenType: json['token_type'] as String? ?? '',
       expiresIn: json['expires_in'] as int? ?? 0,
       scope: json['scope'] as String? ?? '',
-      jti: json['jti'] as String? ?? '',
-      mat: json['mat'] as String? ?? '',
-      pat: json['pat'] as String? ?? '',
-      nom: json['nom'] as String? ?? '',
-      ci: json['ci'] as String? ?? '',
-      matricula: json['matricula'] as String? ?? '',
-      edad: json['edad'] as int? ?? 0,
-      rol: json['rol'] as String? ?? '',
-      idper: json['idper'] as int? ?? 0,
-      numeroCelular: json['numeroCelular'] as String? ?? '',
-      correo: json['correo'] as String? ?? '',
+      jti: val('jti') as String? ?? '',
+      mat: val('mat') as String? ?? '',
+      pat: val('pat') as String? ?? '',
+      nom: val('nom') as String? ?? '',
+      ci: val('ci') as String? ?? '',
+      matricula: val('matricula') as String? ?? '',
+      edad: val('edad') as int? ?? 0,
+      rol: val('rol') as String? ?? '',
+      grado: val('grado') as String? ?? '',
+      idper: (val('idper') ?? int.tryParse(val('idusr')?.toString() ?? '')) as int? ?? 0,
+      numeroCelular: val('numeroCelular') as String? ?? '',
+      correo: val('correo') as String? ?? '',
     );
   }
 
@@ -74,6 +100,7 @@ class AuthTokenModel {
         'matricula': matricula,
         'edad': edad,
         'rol': rol,
+        'grado': grado,
         'idper': idper,
         'numeroCelular': numeroCelular,
         'correo': correo,

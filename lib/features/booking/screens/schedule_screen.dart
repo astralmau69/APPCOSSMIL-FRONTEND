@@ -57,7 +57,7 @@ class _ScheduleScreenState extends State<ScheduleScreen>
       appBar: AppBar(
         title: const Text(
           'HORAS DISPONIBLES',
-          style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16),
+          style: TextStyle(fontWeight: FontWeight.w900, fontSize: 20),
         ),
         backgroundColor: AppColors.white,
         centerTitle: true,
@@ -141,8 +141,8 @@ class _ScheduleScreenState extends State<ScheduleScreen>
                         Text(
                           'Continuar',
                           style: TextStyle(
-                            fontSize: 17,
-                            fontWeight: FontWeight.w700,
+                            fontSize: 21,
+                            fontWeight: FontWeight.w900,
                             color: Colors.white,
                           ),
                         ),
@@ -202,17 +202,19 @@ class _ScheduleScreenState extends State<ScheduleScreen>
                     Text(
                       'Martes, 18 de Marzo',
                       style: TextStyle(
-                        fontSize: 17,
-                        fontWeight: FontWeight.w700,
+                        fontSize: 22,
+                        fontWeight: FontWeight.w900,
                         color: AppColors.textPrimary,
+                        letterSpacing: -0.5,
                       ),
                     ),
                     SizedBox(height: 2),
                     Text(
                       'Fecha disponible para reservas',
                       style: TextStyle(
-                        fontSize: 13,
+                        fontSize: 16,
                         color: AppColors.textSecondary,
+                        fontWeight: FontWeight.w500,
                       ),
                     ),
                   ],
@@ -236,9 +238,10 @@ class _ScheduleScreenState extends State<ScheduleScreen>
                 child: Text(
                   'Las reservas solo están habilitadas para el día de mañana.',
                   style: TextStyle(
-                    fontSize: 12,
+                    fontSize: 16,
                     color: AppColors.textSecondary,
                     height: 1.3,
+                    fontWeight: FontWeight.w500,
                   ),
                 ),
               ),
@@ -292,9 +295,10 @@ class _ScheduleScreenState extends State<ScheduleScreen>
                 Text(
                   _doctor.fullName,
                   style: const TextStyle(
-                    fontSize: 17,
-                    fontWeight: FontWeight.w700,
+                    fontSize: 22,
+                    fontWeight: FontWeight.w900,
                     color: AppColors.textPrimary,
+                    letterSpacing: -0.5,
                   ),
                 ),
                 const SizedBox(height: 4),
@@ -306,8 +310,9 @@ class _ScheduleScreenState extends State<ScheduleScreen>
                     Text(
                       _doctor.office,
                       style: const TextStyle(
-                        fontSize: 14,
+                        fontSize: 17,
                         color: AppColors.textSecondary,
+                        fontWeight: FontWeight.w600,
                       ),
                     ),
                   ],
@@ -366,8 +371,8 @@ class _ScheduleScreenState extends State<ScheduleScreen>
             },
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
-        width: 78,
-        padding: const EdgeInsets.symmetric(vertical: 12),
+        width: 95,
+        padding: const EdgeInsets.symmetric(vertical: 16),
         decoration: BoxDecoration(
           color: bgColor,
           borderRadius: BorderRadius.circular(AppTheme.radiusMd),
@@ -386,8 +391,8 @@ class _ScheduleScreenState extends State<ScheduleScreen>
           child: Text(
             slot.time,
             style: TextStyle(
-              fontSize: 14,
-              fontWeight: isSelected ? FontWeight.w800 : FontWeight.w700,
+              fontSize: 18,
+              fontWeight: isSelected ? FontWeight.w900 : FontWeight.w800,
               color: textColor,
               decoration: isDisabled ? TextDecoration.lineThrough : null,
               decorationColor: textColor,

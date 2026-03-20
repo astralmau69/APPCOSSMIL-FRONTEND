@@ -124,8 +124,8 @@ class TabShellState extends State<TabShell>
 
   // ── Premium Bottom Bar ──────────────────────────────────────────────────
 
-  static const _barH = 62.0;
-  static const _protrusion = 22.0;
+  static const _barH = 82.0;
+  static const _protrusion = 28.0;
 
   Widget _buildBar(double bottomPad) {
     return SizedBox(
@@ -217,7 +217,7 @@ class TabShellState extends State<TabShell>
                 scale: 1.0 + 0.15 * v,
                 child: Icon(
                   active ? activeIcon : icon,
-                  size: 24,
+                  size: 32,
                   color: Color.lerp(
                       AppColors.textTertiary, AppColors.primary, v),
                 ),
@@ -227,8 +227,8 @@ class TabShellState extends State<TabShell>
             Text(
               label,
               style: TextStyle(
-                fontSize: 10,
-                fontWeight: active ? FontWeight.w600 : FontWeight.w400,
+                fontSize: 14,
+                fontWeight: active ? FontWeight.w700 : FontWeight.w500,
                 color: active ? AppColors.primary : AppColors.textTertiary,
               ),
             ),
@@ -271,8 +271,8 @@ class TabShellState extends State<TabShell>
                 duration: const Duration(milliseconds: 300),
                 curve: Curves.easeOutBack,
                 child: Container(
-                  width: 58,
-                  height: 58,
+                  width: 78,
+                  height: 78,
                   decoration: BoxDecoration(
                     gradient: const LinearGradient(
                       begin: Alignment.topLeft,
@@ -292,7 +292,7 @@ class TabShellState extends State<TabShell>
                   child: const Icon(
                     CupertinoIcons.calendar_badge_plus,
                     color: AppColors.white,
-                    size: 26,
+                    size: 38,
                   ),
                 ),
               );
@@ -302,8 +302,8 @@ class TabShellState extends State<TabShell>
           Text(
             'Reservar',
             style: TextStyle(
-              fontSize: 10,
-              fontWeight: active ? FontWeight.w700 : FontWeight.w500,
+              fontSize: 14,
+              fontWeight: active ? FontWeight.w800 : FontWeight.w600,
               color: active ? AppColors.primary : AppColors.textTertiary,
             ),
           ),

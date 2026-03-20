@@ -38,5 +38,9 @@ class ApiConstants {
   /// Especialidades de interconsulta para un asegurado.
   static String especialidadesInterconsulta(int idper) =>
       '/api/programacion/especialidades/interconsulta/$idper';
+
+  /// Foto y datos básicos del asegurado por matrícula.
+  static String aseguradoFoto(String matricula) =>
+      '/api/safil/asegurado/foto/${matricula.trim()}';
 }
 

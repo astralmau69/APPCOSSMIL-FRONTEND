@@ -1,21 +1,84 @@
 import 'package:flutter/material.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/theme/app_theme.dart';
-import '../../../core/mock/mock_specialty_data.dart';
+import '../../../core/mock/mock_user_data.dart';
 import '../../../core/models/specialty_model.dart';
+import '../../../core/services/programacion_service.dart';
 import '../../../core/widgets/breadcrumb_chips.dart';
 import '../../../core/animations/app_page_route.dart';
 import '../../../shell/tab_shell.dart';
 import 'schedule_screen.dart';
 
-class SpecialtyScreen extends StatelessWidget {
+class SpecialtyScreen extends StatefulWidget {
   final TabShellState tabShell;
 
   const SpecialtyScreen({super.key, required this.tabShell});
 
   @override
+  State<SpecialtyScreen> createState() => _SpecialtyScreenState();
+}
+
+class _SpecialtyScreenState extends State<SpecialtyScreen> {
+  final _service = ProgramacionService();
+  List<SpecialtyModel> _directas = [];
+  List<SpecialtyModel> _interconsultas = [];
+  bool _isLoading = true;
+  String? _errorMessage;
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchData();
+  }
+
+  Future<void> _fetchData() async {
+    if (!mounted) return;
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
+
+    try {
+      final bs = widget.tabShell.bookingState;
+      final idsuc = int.tryParse(bs.hospital?.id ?? '') ?? 0;
+      final idper = int.tryParse(MockUserData.user.id) ?? 0;
+
+      // Realizamos las peticiones. Si una falla, la otra puede seguir.
+      final directasFuture = _service.getEspecialidadesDirectas(1, idsuc);
+      final interFuture = _service.getEspecialidadesInterconsulta(idper);
+
+      try {
+        _directas = await directasFuture;
+      } catch (e) {
+        debugPrint('Error cargando directas: $e');
+        _directas = [];
+      }
+
+      try {
+        _interconsultas = await interFuture;
+      } catch (e) {
+        debugPrint('Error cargando interconsultas: $e');
+        _interconsultas = [];
+      }
+
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _errorMessage = e.toString();
+          _isLoading = false;
+        });
+      }
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final bs = tabShell.bookingState;
+    final bs = widget.tabShell.bookingState;
     final breadcrumbs = [
       bs.beneficiaryLabel ?? 'Para mí',
       bs.regional?.name ?? '',
@@ -38,27 +101,57 @@ class SpecialtyScreen extends StatelessWidget {
         ),
       ),
       body: SafeArea(
-        child: ListView(
-          padding: const EdgeInsets.symmetric(vertical: 16),
-          children: [
-            BreadcrumbChips(labels: breadcrumbs),
-            const SizedBox(height: 20),
-            _sectionHeader('CONSULTA DIRECTA'),
-            const SizedBox(height: 8),
-            _buildSpecialtyList(
-              context,
-              MockSpecialtyData.directas,
-            ),
-            const SizedBox(height: 24),
-            _sectionHeader('INTERCONSULTA (HABILITADAS)'),
-            const SizedBox(height: 8),
-            _buildSpecialtyList(
-              context,
-              MockSpecialtyData.interconsultas,
-              showBadge: true,
-            ),
-          ],
-        ),
+        child: _isLoading
+            ? const Center(child: CircularProgressIndicator())
+            : _errorMessage != null
+                ? Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Text('Error: $_errorMessage',
+                            textAlign: TextAlign.center),
+                        const SizedBox(height: 16),
+                        ElevatedButton(
+                            onPressed: _fetchData, child: const Text('Reintentar')),
+                      ],
+                    ),
+                  )
+                : RefreshIndicator(
+                    onRefresh: _fetchData,
+                    child: ListView(
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      children: [
+                        BreadcrumbChips(labels: breadcrumbs),
+                        const SizedBox(height: 20),
+                        _sectionHeader('CONSULTA DIRECTA'),
+                        const SizedBox(height: 8),
+                        if (_directas.isEmpty)
+                          const Padding(
+                            padding: EdgeInsets.symmetric(vertical: 20, horizontal: 40),
+                            child: Text('No hay especialidades directas disponibles.', textAlign: TextAlign.center, style: TextStyle(fontSize: 13, color: AppColors.textSecondary)),
+                          )
+                        else
+                          _buildSpecialtyList(
+                            context,
+                            _directas,
+                          ),
+                        const SizedBox(height: 24),
+                        _sectionHeader('INTERCONSULTA (HABILITADAS)'),
+                        const SizedBox(height: 8),
+                        if (_interconsultas.isEmpty)
+                          const Padding(
+                            padding: EdgeInsets.symmetric(vertical: 20, horizontal: 40),
+                            child: Text('No tiene órdenes de interconsulta habilitadas.', textAlign: TextAlign.center, style: TextStyle(fontSize: 13, color: AppColors.textSecondary)),
+                          )
+                        else
+                          _buildSpecialtyList(
+                            context,
+                            _interconsultas,
+                            showBadge: true,
+                          ),
+                      ],
+                    ),
+                  ),
       ),
     );
   }
@@ -69,10 +162,10 @@ class SpecialtyScreen extends StatelessWidget {
       child: Text(
         text,
         style: const TextStyle(
-          fontSize: 12,
-          fontWeight: FontWeight.w600,
+          fontSize: 18,
+          fontWeight: FontWeight.w800,
           color: AppColors.textSecondary,
-          letterSpacing: 1.2,
+          letterSpacing: 1.5,
         ),
       ),
     );
@@ -133,30 +226,30 @@ class SpecialtyScreen extends StatelessWidget {
     return InkWell(
       borderRadius: BorderRadius.circular(AppTheme.radiusLg),
       onTap: () {
-        tabShell.bookingState.specialty = specialty;
+        widget.tabShell.bookingState.specialty = specialty;
         Navigator.push(
           context,
           AppPageRoute(
-            builder: (_) => ScheduleScreen(tabShell: tabShell),
+            builder: (_) => ScheduleScreen(tabShell: widget.tabShell),
           ),
         );
       },
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 18),
         child: Row(
           children: [
             Container(
-              width: 38,
-              height: 38,
+              width: 44,
+              height: 44,
               decoration: BoxDecoration(
                 color: showBadge
                     ? AppColors.accent.withValues(alpha: 0.08)
                     : AppColors.primary.withValues(alpha: 0.08),
-                borderRadius: BorderRadius.circular(10),
+                borderRadius: BorderRadius.circular(12),
               ),
               child: Icon(
                 _iconForSpecialty(specialty.name),
-                size: 18,
+                size: 22,
                 color: showBadge ? AppColors.accent : AppColors.primary,
               ),
             ),
@@ -168,19 +261,33 @@ class SpecialtyScreen extends StatelessWidget {
                   Text(
                     specialty.name,
                     style: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
+                      fontSize: 22,
+                      fontWeight: FontWeight.w800,
                       color: AppColors.textPrimary,
                     ),
                   ),
-                  const SizedBox(height: 2),
-                  Text(
-                    specialty.description,
-                    style: const TextStyle(
-                      fontSize: 13,
-                      color: AppColors.textSecondary,
+                  if (specialty.description.isNotEmpty) ...[
+                    const SizedBox(height: 2),
+                    Text(
+                      specialty.description,
+                      style: const TextStyle(
+                        fontSize: 17,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.textSecondary,
+                      ),
                     ),
-                  ),
+                  ] else ...[
+                    const SizedBox(height: 2),
+                    const Text(
+                      'Especialidad Médica',
+                      style: TextStyle(
+                        fontSize: 16,
+                        color: AppColors.textSecondary,
+                        fontStyle: FontStyle.italic,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ],
                 ],
               ),
             ),

@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/theme/app_theme.dart';
@@ -89,25 +90,16 @@ class _HomeScreenState extends State<HomeScreen>
   // ── Saludo ────────────────────────────────────────────────────────────────
 
   Widget _buildGreeting(UserModel user) {
-    return Column(
+    return const Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
-          'Bienvenido,',
-          style: TextStyle(
-            fontSize: 15,
-            color: AppColors.textSecondary,
-            fontWeight: FontWeight.w500,
-          ),
-        ),
-        const SizedBox(height: 2),
         Text(
-          user.displayName,
-          style: const TextStyle(
-            fontSize: 24,
-            fontWeight: FontWeight.w800,
+          'Bienvenido',
+          style: TextStyle(
+            fontSize: 32,
+            fontWeight: FontWeight.w900,
             color: AppColors.textPrimary,
-            letterSpacing: -0.3,
+            letterSpacing: -1.0,
           ),
         ),
       ],
@@ -142,25 +134,25 @@ class _HomeScreenState extends State<HomeScreen>
           Row(
             children: [
               // Avatar
-              Container(
-                width: 56,
-                height: 56,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: AppColors.white.withValues(alpha: 0.15),
-                  border: Border.all(
-                    color: AppColors.white.withValues(alpha: 0.25),
-                    width: 2,
-                  ),
-                ),
-                alignment: Alignment.center,
-                child: Text(
-                  user.fullName[0],
-                  style: const TextStyle(
-                    fontSize: 24,
-                    fontWeight: FontWeight.bold,
-                    color: AppColors.white,
-                  ),
+              CircleAvatar(
+                radius: 50,
+                backgroundColor: AppColors.white.withValues(alpha: 0.2),
+                child: ClipOval(
+                  child: user.photoBase64.isNotEmpty
+                      ? Image.memory(
+                          base64Decode(user.photoBase64),
+                          width: 100,
+                          height: 100,
+                          fit: BoxFit.cover,
+                        )
+                      : Text(
+                          user.fullName.isNotEmpty ? user.fullName[0] : 'U',
+                          style: const TextStyle(
+                            color: AppColors.white,
+                            fontWeight: FontWeight.w800,
+                            fontSize: 40,
+                          ),
+                        ),
                 ),
               ),
               const SizedBox(width: 14),
@@ -169,27 +161,22 @@ class _HomeScreenState extends State<HomeScreen>
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      user.displayName,
+                      user.fullName,
                       style: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w700,
                         color: AppColors.white,
-                        height: 1.3,
+                        fontSize: 28,
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: -0.5,
                       ),
                     ),
-                    const SizedBox(height: 6),
-                    Row(
-                      children: [
-                        _profileChip(
-                          user.role,
-                          AppColors.white.withValues(alpha: 0.15),
-                        ),
-                        const SizedBox(width: 8),
-                        _profileChip(
-                          'Mat. ${user.matricula}',
-                          AppColors.white.withValues(alpha: 0.10),
-                        ),
-                      ],
+                    Text(
+                      '${user.rank} • Mat: ${user.matricula}',
+                      style: TextStyle(
+                        color: AppColors.white.withValues(alpha: 0.9),
+                        fontSize: 20,
+                        fontWeight: FontWeight.w700,
+                        fontFamily: '.SF Pro Text',
+                      ),
                     ),
                   ],
                 ),
@@ -218,10 +205,10 @@ class _HomeScreenState extends State<HomeScreen>
           const SizedBox(height: 10),
           Row(
             children: [
-              // Email
+              // CI
               _contactInfo(
-                icon: Icons.email_outlined,
-                value: user.email.isNotEmpty ? user.email : 'Sin correo',
+                icon: Icons.badge_outlined,
+                value: user.ci.isNotEmpty ? 'CI: ${user.ci}' : 'Sin CI',
               ),
               _verticalDivider(),
               // Phone
@@ -231,16 +218,14 @@ class _HomeScreenState extends State<HomeScreen>
               ),
             ],
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: 12),
           Row(
             children: [
-              // CI
+              // Email (Full width)
               _contactInfo(
-                icon: Icons.badge_outlined,
-                value: user.ci.isNotEmpty ? 'CI: ${user.ci}' : 'Sin CI',
+                icon: Icons.email_outlined,
+                value: user.email.isNotEmpty ? user.email : 'Sin correo',
               ),
-              const SizedBox(width: 24), // Invisible divider space for alignment
-              const Expanded(child: SizedBox()),
             ],
           ),
         ],
@@ -248,23 +233,6 @@ class _HomeScreenState extends State<HomeScreen>
     );
   }
 
-  Widget _profileChip(String text, Color color) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
-      decoration: BoxDecoration(
-        color: color,
-        borderRadius: BorderRadius.circular(AppTheme.radiusFull),
-      ),
-      child: Text(
-        text,
-        style: TextStyle(
-          fontSize: 11,
-          color: AppColors.white.withValues(alpha: 0.9),
-          fontWeight: FontWeight.w500,
-        ),
-      ),
-    );
-  }
 
   Widget _statusBadge(UserModel user) {
     final enabled = user.isEnabled;
@@ -288,17 +256,17 @@ class _HomeScreenState extends State<HomeScreen>
               Text(
                 'ESTADO',
                 style: TextStyle(
-                  fontSize: 9,
-                  fontWeight: FontWeight.w600,
-                  color: AppColors.white.withValues(alpha: 0.5),
-                  letterSpacing: 0.5,
+                  fontSize: 11,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.white.withValues(alpha: 0.6),
+                  letterSpacing: 0.8,
                 ),
               ),
               Text(
                 enabled ? 'Habilitado' : 'Inactivo',
                 style: const TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w700,
+                  fontSize: 20,
+                  fontWeight: FontWeight.w900,
                   color: AppColors.white,
                 ),
               ),
@@ -316,15 +284,15 @@ class _HomeScreenState extends State<HomeScreen>
     return Expanded(
       child: Row(
         children: [
-          Icon(icon, size: 14, color: AppColors.white.withValues(alpha: 0.5)),
+          Icon(icon, size: 22, color: AppColors.white.withValues(alpha: 0.7)),
           const SizedBox(width: 8),
           Expanded(
             child: Text(
               value,
               style: TextStyle(
-                fontSize: 13,
-                fontWeight: FontWeight.w500,
-                color: AppColors.white.withValues(alpha: 0.85),
+                fontSize: 20,
+                fontWeight: FontWeight.w700,
+                color: AppColors.white.withValues(alpha: 0.95),
               ),
               overflow: TextOverflow.ellipsis,
             ),
@@ -410,17 +378,17 @@ class _HomeScreenState extends State<HomeScreen>
                 color: action.color.withValues(alpha: 0.10),
                 borderRadius: BorderRadius.circular(AppTheme.radiusMd),
               ),
-              child: Icon(action.icon, size: 20, color: action.color),
+              child: Icon(action.icon, size: 36, color: action.color),
             ),
             const SizedBox(height: 8),
             Text(
               action.label,
               textAlign: TextAlign.center,
               style: const TextStyle(
-                fontSize: 11,
-                fontWeight: FontWeight.w600,
+                fontSize: 18,
+                fontWeight: FontWeight.w800,
                 color: AppColors.textPrimary,
-                height: 1.3,
+                height: 1.2,
               ),
             ),
           ],
@@ -437,10 +405,10 @@ class _HomeScreenState extends State<HomeScreen>
       child: Text(
         title,
         style: const TextStyle(
-          fontSize: 11,
-          fontWeight: FontWeight.w700,
+          fontSize: 18,
+          fontWeight: FontWeight.w900,
           color: AppColors.textSecondary,
-          letterSpacing: 1.2,
+          letterSpacing: 1.8,
         ),
       ),
     );
@@ -479,8 +447,8 @@ class _HomeScreenState extends State<HomeScreen>
                 Text(
                   'Ver todos los comunicados',
                   style: TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w600,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w700,
                     color: AppColors.primary,
                   ),
                 ),

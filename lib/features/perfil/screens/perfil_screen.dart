@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:flutter/cupertino.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/theme/app_theme.dart';
@@ -61,6 +62,7 @@ class _PerfilScreenState extends State<PerfilScreen> {
               ),
             ),
           ),
+          // ── Header & Profile Info ───────────────────────────
           SliverToBoxAdapter(
             child: TweenAnimationBuilder<double>(
               tween: Tween(begin: 0.0, end: 1.0),
@@ -76,40 +78,57 @@ class _PerfilScreenState extends State<PerfilScreen> {
                 );
               },
               child: Padding(
-                padding: const EdgeInsets.all(20),
+                padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
                 child: Column(
                   children: [
                     const SizedBox(height: 10),
                     // Avatar
                     Center(
                       child: Container(
-                        width: 90,
-                        height: 90,
+                        width: 130,
+                        height: 130,
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
-                          gradient: LinearGradient(
-                            colors: [
-                              AppColors.primary,
-                              AppColors.primary.withValues(alpha: 0.7),
-                            ],
+                          color: AppColors.white,
+                          border: Border.all(
+                            color: AppColors.primary.withValues(alpha: 0.2),
+                            width: 3,
                           ),
                           boxShadow: [
                             BoxShadow(
-                              color:
-                                  AppColors.primary.withValues(alpha: 0.3),
-                              blurRadius: 15,
-                              offset: const Offset(0, 8),
+                              color: AppColors.primary.withValues(alpha: 0.15),
+                              blurRadius: 20,
+                              offset: const Offset(0, 10),
                             ),
                           ],
                         ),
-                        alignment: Alignment.center,
-                        child: Text(
-                          user.fullName[0],
-                          style: const TextStyle(
-                            fontSize: 36,
-                            fontWeight: FontWeight.w800,
-                            color: AppColors.white,
-                          ),
+                        child: ClipOval(
+                          child: user.photoBase64.isNotEmpty
+                              ? Image.memory(
+                                  base64Decode(user.photoBase64),
+                                  fit: BoxFit.cover,
+                                )
+                              : Container(
+                                  decoration: BoxDecoration(
+                                    gradient: LinearGradient(
+                                      colors: [
+                                        AppColors.primary,
+                                        AppColors.primary.withValues(alpha: 0.7),
+                                      ],
+                                    ),
+                                  ),
+                                  alignment: Alignment.center,
+                                  child: Text(
+                                    user.fullName.isNotEmpty
+                                        ? user.fullName[0]
+                                        : 'U',
+                                    style: const TextStyle(
+                                      fontSize: 40,
+                                      fontWeight: FontWeight.w800,
+                                      color: AppColors.white,
+                                    ),
+                                  ),
+                                ),
                         ),
                       ),
                     ),
@@ -119,10 +138,10 @@ class _PerfilScreenState extends State<PerfilScreen> {
                         user.displayName,
                         textAlign: TextAlign.center,
                         style: const TextStyle(
-                          fontSize: 22,
-                          fontWeight: FontWeight.w800,
+                          fontSize: 32,
+                          fontWeight: FontWeight.w900,
                           color: AppColors.textPrimary,
-                          letterSpacing: -0.5,
+                          letterSpacing: -1.0,
                         ),
                       ),
                     ),
@@ -132,309 +151,332 @@ class _PerfilScreenState extends State<PerfilScreen> {
                         padding: const EdgeInsets.symmetric(
                             horizontal: 12, vertical: 4),
                         decoration: BoxDecoration(
-                          color:
-                              AppColors.primary.withValues(alpha: 0.08),
+                          color: AppColors.primary.withValues(alpha: 0.08),
                           borderRadius: BorderRadius.circular(12),
                         ),
                         child: Text(
                           'Mat. ${user.matricula}',
                           style: const TextStyle(
-                            fontSize: 13,
-                            fontWeight: FontWeight.w600,
+                            fontSize: 18,
+                            fontWeight: FontWeight.w700,
                             color: AppColors.primary,
                           ),
                         ),
                       ),
                     ),
-                    const SizedBox(height: 28),
+                  ],
+                ),
+              ),
+            ),
+          ),
 
-                    // ── Info Cards ──────────────────────────────
-                    Row(
-                      children: [
-                        Expanded(
-                            child: _infoCard(
-                                'ESTADO',
-                                user.isEnabled
-                                    ? 'Habilitado'
-                                    : 'Inactivo',
-                                CupertinoIcons
-                                    .checkmark_shield_fill,
-                                const Color(0xFF10B981))),
-                        const SizedBox(width: 12),
-                        Expanded(
-                            child: _infoCard(
-                                'FICHA MED.',
-                                user.hasMedicalAppointment
-                                    ? 'Activa'
-                                    : 'Ninguna',
-                                CupertinoIcons.heart_fill,
-                                const Color(0xFF3B82F6))),
-                      ],
-                    ),
-                    const SizedBox(height: 12),
-                    Row(
-                      children: [
-                        Expanded(
-                            child: _infoCard(
-                                'SANGRE',
-                                user.bloodType,
-                                CupertinoIcons.drop_fill,
-                                const Color(0xFFEF4444))),
-                        const SizedBox(width: 12),
-                        Expanded(
-                            child: _infoCard(
-                                'EDAD',
-                                '${user.age} años',
-                                CupertinoIcons.gift_fill,
-                                const Color(0xFFF59E0B))),
-                      ],
-                    ),
-                    const SizedBox(height: 12),
-                    Row(
-                      children: [
+          // ── Dashboard Metrics ──────────────────────────────
+          SliverPadding(
+            padding: const EdgeInsets.all(20),
+            sliver: SliverToBoxAdapter(
+              child: Column(
+                children: [
+                  Row(
+                    children: [
+                      Expanded(
+                          child: _infoCard(
+                              'ESTADO',
+                              user.isEnabled ? 'Habilitado' : 'Inactivo',
+                              CupertinoIcons.checkmark_shield_fill,
+                              const Color(0xFF10B981))),
+                      const SizedBox(width: 12),
+                      Expanded(
+                          child: _infoCard(
+                              'FICHA MED.',
+                              user.hasMedicalAppointment
+                                  ? 'Activa'
+                                  : 'Ninguna',
+                              CupertinoIcons.heart_fill,
+                              const Color(0xFF3B82F6))),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      Expanded(
+                          child: _infoCard(
+                              'SANGRE',
+                              user.bloodType,
+                              CupertinoIcons.drop_fill,
+                              const Color(0xFFEF4444))),
+                      const SizedBox(width: 12),
+                      Expanded(
+                          child: _infoCard(
+                              'EDAD',
+                              '${user.age} años',
+                              CupertinoIcons.gift_fill,
+                              const Color(0xFFF59E0B))),
+                    ],
+                  ),
+                  Row(
+                    children: [
                         Expanded(
                           child: _infoCard(
                               'DOCUMENTO CI',
-                              user.ci.isNotEmpty
-                                  ? user.ci
-                                  : 'Sin registro',
-                              CupertinoIcons
-                                  .person_crop_rectangle,
+                              user.ci.isNotEmpty ? user.ci : 'Sin registro',
+                              CupertinoIcons.person_crop_rectangle,
                               const Color(0xFF8B5CF6)),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: _infoCard(
+                              'FECHA NAC.',
+                              user.birthDate.isNotEmpty
+                                  ? user.birthDate.split(' ')[0]
+                                  : 'Sin registro',
+                              CupertinoIcons.calendar,
+                              const Color(0xFFE91E63)),
                         ),
                       ],
                     ),
+                ],
+              ),
+            ),
+          ),
 
-                    const SizedBox(height: 28),
+          // ── Contact Section ─────────────────────────
+          SliverPadding(
+            padding: const EdgeInsets.symmetric(horizontal: 20),
+            sliver: SliverToBoxAdapter(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _sectionHeader('DATOS DE CONTACTO'),
+                  const SizedBox(height: 12),
+                  _editableField(
+                    icon: CupertinoIcons.mail,
+                    label: 'Correo electrónico',
+                    value: _email,
+                    isEditing: _isEditingEmail,
+                    controller: _emailCtrl,
+                    keyboardType: TextInputType.emailAddress,
+                    onEdit: () => setState(() => _isEditingEmail = true),
+                    onSave: () {
+                      setState(() {
+                        _email = _emailCtrl.text.trim();
+                        _isEditingEmail = false;
+                      });
+                    },
+                    onCancel: () {
+                      setState(() {
+                        _emailCtrl.text = _email;
+                        _isEditingEmail = false;
+                      });
+                    },
+                  ),
+                  const SizedBox(height: 10),
+                  _editableField(
+                    icon: CupertinoIcons.phone,
+                    label: 'Teléfono / Celular',
+                    value: _phone,
+                    isEditing: _isEditingPhone,
+                    controller: _phoneCtrl,
+                    keyboardType: TextInputType.phone,
+                    onEdit: () => setState(() => _isEditingPhone = true),
+                    onSave: () {
+                      setState(() {
+                        _phone = _phoneCtrl.text.trim();
+                        _isEditingPhone = false;
+                      });
+                    },
+                    onCancel: () {
+                      setState(() {
+                        _phoneCtrl.text = _phone;
+                        _isEditingPhone = false;
+                      });
+                    },
+                  ),
+                ],
+              ),
+            ),
+          ),
 
-                    // ── Contact Section ─────────────────────────
-                    _sectionHeader('DATOS DE CONTACTO'),
-                    const SizedBox(height: 12),
-                    _editableField(
-                      icon: CupertinoIcons.mail,
-                      label: 'Correo electrónico',
-                      value: _email,
-                      isEditing: _isEditingEmail,
-                      controller: _emailCtrl,
-                      keyboardType: TextInputType.emailAddress,
-                      onEdit: () =>
-                          setState(() => _isEditingEmail = true),
-                      onSave: () {
-                        setState(() {
-                          _email = _emailCtrl.text.trim();
-                          _isEditingEmail = false;
-                        });
-                      },
-                      onCancel: () {
-                        setState(() {
-                          _emailCtrl.text = _email;
-                          _isEditingEmail = false;
-                        });
-                      },
+          // ── Security Section ────────────────────────
+          SliverPadding(
+            padding: const EdgeInsets.fromLTRB(20, 28, 20, 0),
+            sliver: SliverToBoxAdapter(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _sectionHeader('SEGURIDAD Y ACCESO'),
+                  const SizedBox(height: 12),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 16, vertical: 14),
+                    decoration: BoxDecoration(
+                      color: AppColors.white,
+                      borderRadius: BorderRadius.circular(AppTheme.radiusXl),
+                      boxShadow: AppColors.softShadow,
                     ),
-                    const SizedBox(height: 10),
-                    _editableField(
-                      icon: CupertinoIcons.phone,
-                      label: 'Teléfono',
-                      value: _phone,
-                      isEditing: _isEditingPhone,
-                      controller: _phoneCtrl,
-                      keyboardType: TextInputType.phone,
-                      onEdit: () =>
-                          setState(() => _isEditingPhone = true),
-                      onSave: () {
-                        setState(() {
-                          _phone = _phoneCtrl.text.trim();
-                          _isEditingPhone = false;
-                        });
-                      },
-                      onCancel: () {
-                        setState(() {
-                          _phoneCtrl.text = _phone;
-                          _isEditingPhone = false;
-                        });
-                      },
+                    child: Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: AppColors.success.withValues(alpha: 0.1),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: const Icon(
+                            CupertinoIcons.lock_shield_fill,
+                            color: AppColors.success,
+                            size: 22,
+                          ),
+                        ),
+                        const SizedBox(width: 14),
+                        const Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Autenticación Biométrica',
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w600,
+                                  color: AppColors.textPrimary,
+                                ),
+                              ),
+                              SizedBox(height: 2),
+                              Text(
+                                'Huella digital / Face ID + PIN',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: AppColors.textSecondary,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        CupertinoSwitch(
+                          value: _isBiometricEnabled,
+                          activeTrackColor: AppColors.primary,
+                          onChanged: (val) {
+                            if (val) {
+                              _showPinSetupModal();
+                            } else {
+                              setState(() => _isBiometricEnabled = false);
+                            }
+                          },
+                        ),
+                      ],
                     ),
+                  ),
+                ],
+              ),
+            ),
+          ),
 
-                    const SizedBox(height: 28),
-
-                    // ── Security Section ────────────────────────
-                    _sectionHeader('SEGURIDAD Y ACCESO'),
-                    const SizedBox(height: 12),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 16, vertical: 14),
+          // ── Identification Section ───────────────────
+          SliverPadding(
+            padding: const EdgeInsets.fromLTRB(20, 28, 20, 0),
+            sliver: SliverToBoxAdapter(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _sectionHeader('IDENTIFICACIÓN'),
+                  const SizedBox(height: 12),
+                  AnimatedPressButton(
+                    onTap: () => ProfileQrModal.show(
+                      context: context,
+                      user: user,
+                    ),
+                    child: Container(
+                      padding: const EdgeInsets.all(16),
                       decoration: BoxDecoration(
                         color: AppColors.white,
-                        borderRadius:
-                            BorderRadius.circular(AppTheme.radiusXl),
+                        borderRadius: BorderRadius.circular(AppTheme.radiusXl),
                         boxShadow: AppColors.softShadow,
                       ),
                       child: Row(
                         children: [
                           Container(
-                            padding: const EdgeInsets.all(8),
+                            width: 44,
+                            height: 44,
                             decoration: BoxDecoration(
-                              color: AppColors.success
-                                  .withValues(alpha: 0.1),
-                              borderRadius: BorderRadius.circular(8),
+                              color: AppColors.primary.withValues(alpha: 0.08),
+                              borderRadius:
+                                  BorderRadius.circular(AppTheme.radiusMd),
                             ),
-                            child: const Icon(
-                              CupertinoIcons.lock_shield_fill,
-                              color: AppColors.success,
-                              size: 22,
-                            ),
+                            child: const Icon(CupertinoIcons.qrcode,
+                                size: 22, color: AppColors.primary),
                           ),
                           const SizedBox(width: 14),
-                          Expanded(
+                          const Expanded(
                             child: Column(
-                              crossAxisAlignment:
-                                  CrossAxisAlignment.start,
+                              crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                const Text(
-                                  'Autenticación Biométrica',
+                                Text(
+                                  'Mi Código QR',
                                   style: TextStyle(
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.w600,
+                                    fontSize: 15,
+                                    fontWeight: FontWeight.w700,
                                     color: AppColors.textPrimary,
                                   ),
                                 ),
-                                const SizedBox(height: 2),
-                                const Text(
-                                  'Huella digital / Face ID + PIN',
+                                SizedBox(height: 2),
+                                Text(
+                                  'Identificación rápida en ventanilla',
                                   style: TextStyle(
-                                    fontSize: 12,
+                                    fontSize: 13,
                                     color: AppColors.textSecondary,
                                   ),
                                 ),
                               ],
                             ),
                           ),
-                          CupertinoSwitch(
-                            value: _isBiometricEnabled,
-                            activeTrackColor: AppColors.primary,
-                            onChanged: (val) {
-                              if (val) {
-                                _showPinSetupModal();
-                              } else {
-                                setState(
-                                    () => _isBiometricEnabled = false);
-                              }
-                            },
-                          ),
+                          const Icon(CupertinoIcons.chevron_right,
+                              size: 16, color: AppColors.textTertiary),
                         ],
                       ),
                     ),
+                  ),
+                ],
+              ),
+            ),
+          ),
 
-                    const SizedBox(height: 28),
-
-                    // ── QR Button ───────────────────────────────
-                    _sectionHeader('IDENTIFICACIÓN'),
-                    const SizedBox(height: 12),
-                    AnimatedPressButton(
-                      onTap: () => ProfileQrModal.show(
-                        context: context,
-                        user: user,
-                      ),
-                      child: Container(
-                        padding: const EdgeInsets.all(16),
-                        decoration: BoxDecoration(
-                          color: AppColors.white,
-                          borderRadius: BorderRadius.circular(
-                              AppTheme.radiusXl),
-                          boxShadow: AppColors.softShadow,
-                        ),
-                        child: Row(
-                          children: [
-                            Container(
-                              width: 44,
-                              height: 44,
-                              decoration: BoxDecoration(
-                                color: AppColors.primary
-                                    .withValues(alpha: 0.08),
-                                borderRadius: BorderRadius.circular(
-                                    AppTheme.radiusMd),
-                              ),
-                              child: const Icon(
-                                  CupertinoIcons.qrcode,
-                                  size: 22,
-                                  color: AppColors.primary),
-                            ),
-                            const SizedBox(width: 14),
-                            const Expanded(
-                              child: Column(
-                                crossAxisAlignment:
-                                    CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    'Mi Código QR',
-                                    style: TextStyle(
-                                      fontSize: 15,
-                                      fontWeight: FontWeight.w700,
-                                      color: AppColors.textPrimary,
-                                    ),
-                                  ),
-                                  SizedBox(height: 2),
-                                  Text(
-                                    'Identificación rápida en ventanilla',
-                                    style: TextStyle(
-                                      fontSize: 13,
-                                      color:
-                                          AppColors.textSecondary,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                            const Icon(
-                                CupertinoIcons.chevron_right,
-                                size: 16,
-                                color: AppColors.textTertiary),
-                          ],
-                        ),
-                      ),
+          // ── Logout Button ───────────────────────────
+          SliverPadding(
+            padding: const EdgeInsets.fromLTRB(20, 48, 20, 60),
+            sliver: SliverToBoxAdapter(
+              child: AnimatedPressButton(
+                onTap: () async {
+                  await TokenStorage.deleteToken();
+                  if (!context.mounted) return;
+                  Navigator.of(context, rootNavigator: true)
+                      .pushReplacementNamed('/login');
+                },
+                child: Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(vertical: 18),
+                  decoration: BoxDecoration(
+                    color: AppColors.errorLight.withValues(alpha: 0.5),
+                    borderRadius: BorderRadius.circular(AppTheme.radiusXl),
+                    border: Border.all(
+                      color: AppColors.error.withValues(alpha: 0.15),
                     ),
-
-                    const SizedBox(height: 32),
-
-                    // ── Logout ──────────────────────────────────
-                    SizedBox(
-                      width: double.infinity,
-                      child: CupertinoButton(
-                        padding: const EdgeInsets.symmetric(
-                            vertical: 14),
-                        borderRadius: BorderRadius.circular(
-                            AppTheme.radiusXl),
-                        color: CupertinoColors.white,
-                        pressedOpacity: 0.7,
-                        onPressed: () async {
-                          await TokenStorage.deleteToken();
-                          if (!context.mounted) return;
-                          Navigator.of(context,
-                                  rootNavigator: true)
-                              .pushReplacementNamed('/login');
-                        },
-                        child: Row(
-                          mainAxisAlignment:
-                              MainAxisAlignment.center,
-                          children: [
-                            Icon(CupertinoIcons.square_arrow_left,
-                                size: 20,
-                                color: AppColors.error),
-                            const SizedBox(width: 8),
-                            Text(
-                              'Cerrar Sesión',
-                              style: TextStyle(
-                                fontWeight: FontWeight.w700,
-                                fontSize: 16,
-                                color: AppColors.error,
-                              ),
-                            ),
-                          ],
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(CupertinoIcons.square_arrow_left,
+                          size: 20, color: AppColors.error),
+                      const SizedBox(width: 10),
+                      Text(
+                        'Cerrar Sesión',
+                        style: TextStyle(
+                          fontWeight: FontWeight.w900,
+                          fontSize: 18,
+                          color: AppColors.error,
+                          letterSpacing: 0.5,
                         ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
             ),
@@ -450,10 +492,10 @@ class _PerfilScreenState extends State<PerfilScreen> {
       child: Text(
         text,
         style: const TextStyle(
-          fontSize: 11,
-          fontWeight: FontWeight.w700,
+          fontSize: 16,
+          fontWeight: FontWeight.w900,
           color: AppColors.textSecondary,
-          letterSpacing: 1.2,
+          letterSpacing: 1.8,
         ),
       ),
     );
@@ -471,14 +513,14 @@ class _PerfilScreenState extends State<PerfilScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(icon, size: 22, color: color),
+          Icon(icon, size: 26, color: color),
           const SizedBox(height: 12),
           Text(
             label,
             style: const TextStyle(
-              fontSize: 10,
-              fontWeight: FontWeight.w700,
-              letterSpacing: 1.0,
+              fontSize: 14,
+              fontWeight: FontWeight.w800,
+              letterSpacing: 1.2,
               color: AppColors.textSecondary,
             ),
           ),
@@ -486,8 +528,8 @@ class _PerfilScreenState extends State<PerfilScreen> {
           Text(
             value,
             style: const TextStyle(
-              fontSize: 15,
-              fontWeight: FontWeight.w800,
+              fontSize: 22,
+              fontWeight: FontWeight.w900,
               color: AppColors.textPrimary,
             ),
           ),
@@ -522,7 +564,7 @@ class _PerfilScreenState extends State<PerfilScreen> {
       ),
       child: Row(
         children: [
-          Icon(icon, size: 20, color: AppColors.primary),
+          Icon(icon, size: 24, color: AppColors.primary),
           const SizedBox(width: 14),
           Expanded(
             child: Column(
@@ -531,10 +573,10 @@ class _PerfilScreenState extends State<PerfilScreen> {
                 Text(
                   label,
                   style: const TextStyle(
-                    fontSize: 10,
-                    fontWeight: FontWeight.w600,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
                     color: AppColors.textSecondary,
-                    letterSpacing: 0.5,
+                    letterSpacing: 0.8,
                   ),
                 ),
                 const SizedBox(height: 4),
@@ -546,8 +588,8 @@ class _PerfilScreenState extends State<PerfilScreen> {
                     padding: EdgeInsets.zero,
                     decoration: const BoxDecoration(),
                     style: const TextStyle(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w600,
+                      fontSize: 17,
+                      fontWeight: FontWeight.w700,
                       color: AppColors.textPrimary,
                     ),
                     onSubmitted: (_) => onSave(),
@@ -556,8 +598,8 @@ class _PerfilScreenState extends State<PerfilScreen> {
                   Text(
                     value.isNotEmpty ? value : 'Sin registrar',
                     style: TextStyle(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w600,
+                      fontSize: 17,
+                      fontWeight: FontWeight.w700,
                       color: value.isNotEmpty
                           ? AppColors.textPrimary
                           : AppColors.textTertiary,

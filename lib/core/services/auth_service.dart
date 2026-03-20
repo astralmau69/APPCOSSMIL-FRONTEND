@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import '../config/app_config.dart';
 import '../constants/api_constants.dart';
@@ -6,9 +7,10 @@ import '../models/auth_token_model.dart';
 import '../models/user_model.dart';
 import '../models/beneficiary_model.dart';
 import '../mock/mock_user_data.dart';
+import 'api_client.dart';
+import '../storage/token_storage.dart';
 
 /// Resultado del intento de login.
-/// Separa el caso exitoso del error para que la UI lo maneje limpiamente.
 sealed class AuthResult {
   const AuthResult();
 }
@@ -24,19 +26,19 @@ class AuthError extends AuthResult {
 }
 
 /// Servicio de autenticación.
-/// Solo hace llamadas HTTP — sin lógica de UI ni estado.
 class AuthService {
   final http.Client _client;
+  final ApiClient _api;
 
-  AuthService({http.Client? client}) : _client = client ?? http.Client();
+  AuthService({http.Client? client, ApiClient? api}) 
+      : _client = client ?? http.Client(),
+        _api = api ?? ApiClient();
 
   /// Login con credenciales del usuario.
-  /// Usa OAuth2 Password Grant con Basic Auth de la app.
   Future<AuthResult> login({
     required String username,
     required String password,
   }) async {
-    // Mock: bypass HTTP cuando el backend no está disponible
     if (AppConfig.useMockData) {
       await Future.delayed(const Duration(milliseconds: 800));
       return AuthSuccess(AuthTokenModel(
@@ -54,6 +56,7 @@ class AuthService {
         headers: {
           'Authorization': ApiConstants.basicAuthHeader,
           'Content-Type': 'application/x-www-form-urlencoded',
+          'User-Agent': 'insomnia/2023.5.8',
         },
         body: {
           'grant_type': 'password',
@@ -66,12 +69,15 @@ class AuthService {
         final json = jsonDecode(response.body) as Map<String, dynamic>;
         final tokenModel = AuthTokenModel.fromJson(json);
 
-        // Actualizar MockUserData con datos de API reales pero preservar email/phone simulados
+        // Guardar token primero para que ApiClient pueda usarlo
+        await TokenStorage.saveToken(tokenModel.accessToken);
+
+        // Mapear datos básicos a MockUserData.user
         MockUserData.user = UserModel(
           id: tokenModel.idper.toString(),
           fullName: '${tokenModel.nom} ${tokenModel.pat} ${tokenModel.mat}'.trim(),
-          rank: MockUserData.user.rank,
-          matricula: tokenModel.matricula,
+          rank: tokenModel.grado.isNotEmpty ? tokenModel.grado : MockUserData.user.rank,
+          matricula: tokenModel.matricula.trim(),
           bloodType: MockUserData.user.bloodType,
           age: tokenModel.edad,
           role: tokenModel.rol == 'ROLE_ASETIT' ? 'Titular' : tokenModel.rol,
@@ -93,6 +99,19 @@ class AuthService {
           }).toList(),
         );
 
+        // Intentar cargar la foto y fecha de nacimiento (Extra Data)
+        try {
+          final extraData = await fetchProfileExtraData(tokenModel.matricula);
+          if (extraData != null) {
+            MockUserData.user = MockUserData.user.copyWith(
+              photoBase64: extraData['foto2'] as String? ?? '',
+              birthDate: extraData['fecnac'] as String? ?? '',
+            );
+          }
+        } catch (e) {
+          debugPrint('Error cargando foto/perfil extra: $e');
+        }
+
         return AuthSuccess(tokenModel);
       }
 
@@ -100,11 +119,20 @@ class AuthService {
         return const AuthError('Usuario o contraseña incorrectos.');
       }
 
-      return AuthError(
-        'Error del servidor (${response.statusCode}). Intente más tarde.',
-      );
+      return AuthError('Error del servidor (${response.statusCode}).');
     } on Exception catch (e) {
       return AuthError('No se pudo conectar al servidor: $e');
     }
+  }
+
+  /// Recupera foto y fecha de nacimiento desde el endpoint de Safil.
+  Future<Map<String, dynamic>?> fetchProfileExtraData(String matricula) async {
+    if (AppConfig.useMockData) return null;
+
+    final response = await _api.get(ApiConstants.aseguradoFoto(matricula));
+    if (response is ApiSuccess) {
+      return response.data as Map<String, dynamic>;
+    }
+    return null;
   }
 }

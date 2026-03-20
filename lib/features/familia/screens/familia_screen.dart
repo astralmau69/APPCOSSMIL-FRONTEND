@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import '../../../core/constants/app_colors.dart';
@@ -83,14 +84,24 @@ class FamiliaScreen extends StatelessWidget {
                                 ],
                               ),
                             ),
-                            alignment: Alignment.center,
-                            child: Text(
-                              b.fullName[0],
-                              style: const TextStyle(
-                                color: AppColors.white,
-                                fontWeight: FontWeight.w800,
-                                fontSize: 18,
-                              ),
+                            child: ClipOval(
+                              child: (isTitular && MockUserData.user.photoBase64.isNotEmpty)
+                                  ? Image.memory(
+                                      base64Decode(MockUserData.user.photoBase64),
+                                      fit: BoxFit.cover,
+                                      width: 48,
+                                      height: 48,
+                                    )
+                                  : Center(
+                                      child: Text(
+                                        b.fullName[0],
+                                        style: const TextStyle(
+                                          color: AppColors.white,
+                                          fontWeight: FontWeight.w800,
+                                          fontSize: 18,
+                                        ),
+                                      ),
+                                    ),
                             ),
                           ),
                           const SizedBox(width: 14),

@@ -78,18 +78,18 @@ class _NewsCardState extends State<NewsCard>
                     child: Text(
                       widget.item.category.toUpperCase(),
                       style: TextStyle(
-                        fontSize: 10,
-                        fontWeight: FontWeight.w700,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w800,
                         color: accentColor,
-                        letterSpacing: 0.5,
+                        letterSpacing: 0.8,
                       ),
                     ),
                   ),
                   Text(
                     widget.item.date,
                     style: const TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w500,
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
                       color: AppColors.textTertiary,
                     ),
                   ),
@@ -100,10 +100,10 @@ class _NewsCardState extends State<NewsCard>
               Text(
                 widget.item.title,
                 style: const TextStyle(
-                  fontSize: 15,
-                  fontWeight: FontWeight.w700,
+                  fontSize: 18,
+                  fontWeight: FontWeight.w800,
                   color: AppColors.textPrimary,
-                  height: 1.3,
+                  height: 1.2,
                 ),
               ),
               const SizedBox(height: 6),
@@ -113,9 +113,10 @@ class _NewsCardState extends State<NewsCard>
                 maxLines: 3,
                 overflow: TextOverflow.ellipsis,
                 style: const TextStyle(
-                  fontSize: 13,
+                  fontSize: 16,
                   color: AppColors.textSecondary,
                   height: 1.4,
+                  fontWeight: FontWeight.w500,
                 ),
               ),
             ],

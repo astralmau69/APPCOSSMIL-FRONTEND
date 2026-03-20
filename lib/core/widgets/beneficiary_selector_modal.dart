@@ -1,6 +1,8 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import '../constants/app_colors.dart';
 import '../models/beneficiary_model.dart';
+import '../mock/mock_user_data.dart';
 
 /// Modal reutilizable para seleccionar un miembro del grupo familiar.
 /// Diseñado para ser reutilizado en cualquier flujo (booking, perfil, etc.).
@@ -74,9 +76,10 @@ class _ModalContent extends StatelessWidget {
                 Text(
                   '¿Para quién es la reserva?',
                   style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w700,
+                    fontSize: 24,
+                    fontWeight: FontWeight.w900,
                     color: AppColors.textPrimary,
+                    letterSpacing: -0.5,
                   ),
                 ),
               ],
@@ -88,7 +91,8 @@ class _ModalContent extends StatelessWidget {
             child: Text(
               'Selecciona el miembro de tu grupo familiar',
               style: TextStyle(
-                fontSize: 13,
+                fontSize: 17,
+                fontWeight: FontWeight.w600,
                 color: AppColors.textSecondary,
               ),
             ),
@@ -147,8 +151,8 @@ class _BeneficiaryTile extends StatelessWidget {
           children: [
             // Avatar
             Container(
-              width: 46,
-              height: 46,
+              width: 70,
+              height: 70,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
                 gradient: LinearGradient(
@@ -158,14 +162,22 @@ class _BeneficiaryTile extends StatelessWidget {
                   ],
                 ),
               ),
-              alignment: Alignment.center,
-              child: Text(
-                beneficiary.initial,
-                style: const TextStyle(
-                  color: AppColors.white,
-                  fontWeight: FontWeight.w800,
-                  fontSize: 18,
-                ),
+              child: ClipOval(
+                child: (isTitular && MockUserData.user.photoBase64.isNotEmpty)
+                    ? Image.memory(
+                        base64Decode(MockUserData.user.photoBase64),
+                        fit: BoxFit.cover,
+                      )
+                    : Center(
+                        child: Text(
+                          beneficiary.initial,
+                          style: const TextStyle(
+                            color: AppColors.white,
+                            fontWeight: FontWeight.w900,
+                            fontSize: 28,
+                          ),
+                        ),
+                      ),
               ),
             ),
             const SizedBox(width: 14),
@@ -177,8 +189,8 @@ class _BeneficiaryTile extends StatelessWidget {
                   Text(
                     beneficiary.fullName,
                     style: const TextStyle(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w600,
+                      fontSize: 22,
+                      fontWeight: FontWeight.w800,
                       color: AppColors.textPrimary,
                     ),
                   ),
@@ -195,8 +207,8 @@ class _BeneficiaryTile extends StatelessWidget {
                     child: Text(
                       label,
                       style: TextStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w600,
+                        fontSize: 15,
+                        fontWeight: FontWeight.w700,
                         color: isTitular
                             ? AppColors.primary
                             : AppColors.accentDark,

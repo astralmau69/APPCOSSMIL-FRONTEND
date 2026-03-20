@@ -202,6 +202,15 @@ class _LoginScreenState extends State<LoginScreen>
             placeholder: '010325AQJ',
             icon: Icons.person,
             isLast: false,
+            textCapitalization: TextCapitalization.characters,
+            onChanged: (val) {
+              if (val != val.toUpperCase()) {
+                _usernameController.value = _usernameController.value.copyWith(
+                  text: val.toUpperCase(),
+                  selection: _usernameController.selection,
+                );
+              }
+            },
           ),
           Container(
             height: 0.5,
@@ -217,8 +226,8 @@ class _LoginScreenState extends State<LoginScreen>
             isLast: true,
             trailing: IconButton(
               padding: EdgeInsets.zero,
-              constraints: const BoxConstraints(minWidth: 30, minHeight: 30),
-              iconSize: 18,
+              constraints: const BoxConstraints(minWidth: 30, minHeight: 40),
+              iconSize: 22,
               onPressed: () =>
                   setState(() => _obscurePassword = !_obscurePassword),
               icon: Icon(
@@ -240,6 +249,8 @@ class _LoginScreenState extends State<LoginScreen>
     bool obscureText = false,
     required bool isLast,
     Widget? trailing,
+    TextCapitalization textCapitalization = TextCapitalization.none,
+    ValueChanged<String>? onChanged,
   }) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
@@ -248,12 +259,12 @@ class _LoginScreenState extends State<LoginScreen>
           Icon(icon, size: 18, color: AppColors.primary.withValues(alpha: 0.6)),
           const SizedBox(width: 12),
           SizedBox(
-            width: 88,
+            width: 100,
             child: Text(
               label,
               style: const TextStyle(
-                fontSize: 15,
-                fontWeight: FontWeight.w500,
+                fontSize: 18,
+                fontWeight: FontWeight.w600,
                 color: AppColors.textPrimary,
               ),
             ),
@@ -263,19 +274,22 @@ class _LoginScreenState extends State<LoginScreen>
               controller: controller,
               obscureText: obscureText,
               enabled: !_isLoading,
+              textCapitalization: textCapitalization,
+              onChanged: onChanged,
               decoration: InputDecoration(
                 hintText: placeholder,
                 border: InputBorder.none,
                 isDense: true,
-                contentPadding: const EdgeInsets.symmetric(vertical: 16),
+                contentPadding: const EdgeInsets.symmetric(vertical: 20),
                 hintStyle: const TextStyle(
                   color: AppColors.textTertiary,
-                  fontSize: 15,
+                  fontSize: 18,
                 ),
               ),
               style: const TextStyle(
-                fontSize: 15,
+                fontSize: 18,
                 color: AppColors.textPrimary,
+                fontWeight: FontWeight.w500,
               ),
               textInputAction:
                   isLast ? TextInputAction.done : TextInputAction.next,
