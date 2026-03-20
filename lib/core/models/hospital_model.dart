@@ -23,6 +23,6 @@ class HospitalModel {
     );
   }
 
-  /// e.g. "Hosp. Militar Central — La Paz"
-  String get displayName => '$shortName — $city';
+  /// e.g. "Hospital Militar Central — La Paz"
+  String get displayName => '$name — $city';
 }

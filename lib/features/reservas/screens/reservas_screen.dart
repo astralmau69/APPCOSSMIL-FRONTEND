@@ -110,17 +110,18 @@ class ReservasScreen extends StatelessWidget {
           Text(
             count,
             style: TextStyle(
-              fontSize: 22,
-              fontWeight: FontWeight.w800,
+              fontSize: 32,
+              fontWeight: FontWeight.w900,
               color: color,
+              letterSpacing: -1,
             ),
           ),
           const SizedBox(height: 2),
           Text(
             label,
             style: const TextStyle(
-              fontSize: 11,
-              fontWeight: FontWeight.w500,
+              fontSize: 16,
+              fontWeight: FontWeight.w700,
               color: AppColors.textSecondary,
             ),
           ),
@@ -146,10 +147,10 @@ class ReservasScreen extends StatelessWidget {
           Text(
             text,
             style: const TextStyle(
-              fontSize: 12,
-              fontWeight: FontWeight.w700,
+              fontSize: 18,
+              fontWeight: FontWeight.w800,
               color: AppColors.textSecondary,
-              letterSpacing: 1.0,
+              letterSpacing: 1.5,
             ),
           ),
           const SizedBox(width: 8),
@@ -162,8 +163,8 @@ class ReservasScreen extends StatelessWidget {
             child: Text(
               '$count',
               style: const TextStyle(
-                fontSize: 11,
-                fontWeight: FontWeight.w700,
+                fontSize: 15,
+                fontWeight: FontWeight.w800,
                 color: AppColors.primary,
               ),
             ),
@@ -197,22 +198,25 @@ class ReservasScreen extends StatelessWidget {
                 children: [
                   Icon(
                     CupertinoIcons.calendar,
-                    size: 56,
-                    color: AppColors.textTertiary.withValues(alpha: 0.4),
+                    size: 100,
+                    color: AppColors.textTertiary.withValues(alpha: 0.3),
                   ),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 24),
                   const Text(
                     'No tiene atenciones registradas',
                     style: TextStyle(
-                      fontSize: 16,
+                      fontSize: 24,
+                      fontWeight: FontWeight.w800,
                       color: AppColors.textSecondary,
+                      letterSpacing: -0.5,
                     ),
                   ),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: 12),
                   const Text(
                     'El historial de atenciones aparecerá aquí',
                     style: TextStyle(
-                      fontSize: 13,
+                      fontSize: 17,
+                      fontWeight: FontWeight.w500,
                       color: AppColors.textTertiary,
                     ),
                   ),

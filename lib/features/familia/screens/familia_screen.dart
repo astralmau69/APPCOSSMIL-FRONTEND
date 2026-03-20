@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/mock/mock_user_data.dart';
+import '../../../core/animations/fade_slide_in.dart';
 
 class FamiliaScreen extends StatelessWidget {
   const FamiliaScreen({super.key});
@@ -37,19 +38,9 @@ class FamiliaScreen extends StatelessWidget {
                   final b = beneficiaries[index];
                   final isTitular = b.relationship == 'Titular';
 
-                  return TweenAnimationBuilder<double>(
-                    tween: Tween(begin: 0.0, end: 1.0),
-                    duration: Duration(milliseconds: 300 + (index * 120)),
-                    curve: Curves.easeOutCubic,
-                    builder: (context, value, child) {
-                      return Opacity(
-                        opacity: value,
-                        child: Transform.translate(
-                          offset: Offset(0, 15 * (1 - value)),
-                          child: child,
-                        ),
-                      );
-                    },
+                  return FadeSlideIn(
+                    delay: Duration(milliseconds: 100 + (index * 80)),
+                    offsetY: 15,
                     child: Container(
                       margin: const EdgeInsets.only(bottom: 16),
                       padding: const EdgeInsets.all(16),
@@ -68,8 +59,8 @@ class FamiliaScreen extends StatelessWidget {
                       child: Row(
                         children: [
                           Container(
-                            width: 48,
-                            height: 48,
+                            width: 64,
+                            height: 64,
                             decoration: BoxDecoration(
                               shape: BoxShape.circle,
                               gradient: LinearGradient(
@@ -85,23 +76,23 @@ class FamiliaScreen extends StatelessWidget {
                               ),
                             ),
                             child: ClipOval(
-                              child: (isTitular && MockUserData.user.photoBase64.isNotEmpty)
-                                  ? Image.memory(
-                                      base64Decode(MockUserData.user.photoBase64),
-                                      fit: BoxFit.cover,
-                                      width: 48,
-                                      height: 48,
-                                    )
-                                  : Center(
-                                      child: Text(
-                                        b.fullName[0],
-                                        style: const TextStyle(
-                                          color: AppColors.white,
-                                          fontWeight: FontWeight.w800,
-                                          fontSize: 18,
-                                        ),
-                                      ),
+                          child: (isTitular && MockUserData.user.photoBase64.isNotEmpty)
+                              ? Image.memory(
+                                  base64Decode(MockUserData.user.photoBase64),
+                                  fit: BoxFit.cover,
+                                  width: 64,
+                                  height: 64,
+                                )
+                              : Center(
+                                  child: Text(
+                                    b.fullName[0],
+                                    style: const TextStyle(
+                                      color: AppColors.white,
+                                      fontWeight: FontWeight.w900,
+                                      fontSize: 24,
                                     ),
+                                  ),
+                                ),
                             ),
                           ),
                           const SizedBox(width: 14),
@@ -113,10 +104,13 @@ class FamiliaScreen extends StatelessWidget {
                                 Text(
                                   b.fullName,
                                   style: const TextStyle(
-                                    fontSize: 15,
-                                    fontWeight: FontWeight.w700,
+                                    fontSize: 22,
+                                    fontWeight: FontWeight.w900,
                                     color: AppColors.textPrimary,
+                                    letterSpacing: -0.5,
                                   ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
                                 ),
                                 const SizedBox(height: 6),
                                 Container(
@@ -136,8 +130,8 @@ class FamiliaScreen extends StatelessWidget {
                                         ? 'Titular'
                                         : 'Beneficiario: ${b.relationship}',
                                     style: TextStyle(
-                                      fontSize: 11,
-                                      fontWeight: FontWeight.w700,
+                                      fontSize: 15,
+                                      fontWeight: FontWeight.w800,
                                       color: isTitular
                                           ? AppColors.primary
                                           : AppColors.accentDark,
@@ -149,15 +143,15 @@ class FamiliaScreen extends StatelessWidget {
                           ),
                           const SizedBox(width: 8),
                           Container(
-                            width: 32,
-                            height: 32,
+                            width: 40,
+                            height: 40,
                             decoration: BoxDecoration(
                               color: AppColors.background,
                               borderRadius: BorderRadius.circular(10),
                             ),
                             child: const Icon(
                               CupertinoIcons.chart_bar,
-                              size: 16,
+                              size: 24,
                               color: AppColors.textSecondary,
                             ),
                           ),

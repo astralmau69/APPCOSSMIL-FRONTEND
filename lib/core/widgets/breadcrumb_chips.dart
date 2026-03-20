@@ -30,12 +30,12 @@ class BreadcrumbChips extends StatelessWidget {
 
   Widget _chip(String label, bool isLast) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
+      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
       decoration: BoxDecoration(
         color: isLast
             ? AppColors.primary.withValues(alpha: 0.12)
             : AppColors.primary.withValues(alpha: 0.05),
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(24),
         border: Border.all(
           color: isLast
               ? AppColors.primary.withValues(alpha: 0.3)
@@ -45,8 +45,8 @@ class BreadcrumbChips extends StatelessWidget {
       child: Text(
         label,
         style: TextStyle(
-          fontSize: 12,
-          fontWeight: isLast ? FontWeight.w600 : FontWeight.w500,
+          fontSize: 16,
+          fontWeight: isLast ? FontWeight.w800 : FontWeight.w600,
           color: AppColors.primary,
           letterSpacing: 0.1,
         ),
@@ -56,10 +56,10 @@ class BreadcrumbChips extends StatelessWidget {
 
   Widget _separator() {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 6),
+      padding: const EdgeInsets.symmetric(horizontal: 4),
       child: Icon(
         Icons.chevron_right,
-        size: 12,
+        size: 16,
         color: AppColors.textTertiary.withValues(alpha: 0.5),
       ),
     );

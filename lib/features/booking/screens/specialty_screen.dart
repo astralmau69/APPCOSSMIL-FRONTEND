@@ -6,6 +6,7 @@ import '../../../core/models/specialty_model.dart';
 import '../../../core/services/programacion_service.dart';
 import '../../../core/widgets/breadcrumb_chips.dart';
 import '../../../core/animations/app_page_route.dart';
+import '../../../core/animations/fade_slide_in.dart';
 import '../../../shell/tab_shell.dart';
 import 'schedule_screen.dart';
 
@@ -82,7 +83,7 @@ class _SpecialtyScreenState extends State<SpecialtyScreen> {
     final breadcrumbs = [
       bs.beneficiaryLabel ?? 'Para mí',
       bs.regional?.name ?? '',
-      bs.hospital?.shortName ?? '',
+      bs.hospital?.name ?? '',
     ];
 
     return Scaffold(
@@ -90,7 +91,7 @@ class _SpecialtyScreenState extends State<SpecialtyScreen> {
       appBar: AppBar(
         title: const Text(
           'ESPECIALIDAD',
-          style: TextStyle(fontWeight: FontWeight.w800, fontSize: 17),
+          style: TextStyle(fontWeight: FontWeight.w900, fontSize: 22),
         ),
         backgroundColor: AppColors.white,
         centerTitle: true,
@@ -121,9 +122,16 @@ class _SpecialtyScreenState extends State<SpecialtyScreen> {
                     child: ListView(
                       padding: const EdgeInsets.symmetric(vertical: 16),
                       children: [
-                        BreadcrumbChips(labels: breadcrumbs),
+                        FadeSlideIn(
+                          offsetY: 10,
+                          child: BreadcrumbChips(labels: breadcrumbs),
+                        ),
                         const SizedBox(height: 20),
-                        _sectionHeader('CONSULTA DIRECTA'),
+                        FadeSlideIn(
+                          delay: const Duration(milliseconds: 100),
+                          offsetY: 10,
+                          child: _sectionHeader('CONSULTA DIRECTA'),
+                        ),
                         const SizedBox(height: 8),
                         if (_directas.isEmpty)
                           const Padding(
@@ -134,9 +142,14 @@ class _SpecialtyScreenState extends State<SpecialtyScreen> {
                           _buildSpecialtyList(
                             context,
                             _directas,
+                            startDelay: 200,
                           ),
                         const SizedBox(height: 24),
-                        _sectionHeader('INTERCONSULTA (HABILITADAS)'),
+                        FadeSlideIn(
+                          delay: const Duration(milliseconds: 400),
+                          offsetY: 10,
+                          child: _sectionHeader('INTERCONSULTA (HABILITADAS)'),
+                        ),
                         const SizedBox(height: 8),
                         if (_interconsultas.isEmpty)
                           const Padding(
@@ -148,6 +161,7 @@ class _SpecialtyScreenState extends State<SpecialtyScreen> {
                             context,
                             _interconsultas,
                             showBadge: true,
+                            startDelay: 500,
                           ),
                       ],
                     ),
@@ -162,10 +176,10 @@ class _SpecialtyScreenState extends State<SpecialtyScreen> {
       child: Text(
         text,
         style: const TextStyle(
-          fontSize: 18,
-          fontWeight: FontWeight.w800,
+          fontSize: 22,
+          fontWeight: FontWeight.w900,
           color: AppColors.textSecondary,
-          letterSpacing: 1.5,
+          letterSpacing: 2.0,
         ),
       ),
     );
@@ -175,6 +189,7 @@ class _SpecialtyScreenState extends State<SpecialtyScreen> {
     BuildContext context,
     List<SpecialtyModel> specialties, {
     bool showBadge = false,
+    int startDelay = 0,
   }) {
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 20),
@@ -192,19 +207,9 @@ class _SpecialtyScreenState extends State<SpecialtyScreen> {
       child: Column(
         children: [
           for (int i = 0; i < specialties.length; i++) ...[
-            TweenAnimationBuilder<double>(
-              tween: Tween(begin: 0.0, end: 1.0),
-              duration: Duration(milliseconds: 300 + (i * 100)),
-              curve: Curves.easeOutCubic,
-              builder: (context, value, child) {
-                return Opacity(
-                  opacity: value,
-                  child: Transform.translate(
-                    offset: Offset(0, 10 * (1 - value)),
-                    child: child,
-                  ),
-                );
-              },
+            FadeSlideIn(
+              delay: Duration(milliseconds: startDelay + (i * 80)),
+              offsetY: 15,
               child: _specialtyTile(context, specialties[i], showBadge),
             ),
             if (i < specialties.length - 1)
@@ -239,8 +244,8 @@ class _SpecialtyScreenState extends State<SpecialtyScreen> {
         child: Row(
           children: [
             Container(
-              width: 44,
-              height: 44,
+              width: 56,
+              height: 56,
               decoration: BoxDecoration(
                 color: showBadge
                     ? AppColors.accent.withValues(alpha: 0.08)
@@ -249,7 +254,7 @@ class _SpecialtyScreenState extends State<SpecialtyScreen> {
               ),
               child: Icon(
                 _iconForSpecialty(specialty.name),
-                size: 22,
+                size: 30,
                 color: showBadge ? AppColors.accent : AppColors.primary,
               ),
             ),
@@ -261,30 +266,35 @@ class _SpecialtyScreenState extends State<SpecialtyScreen> {
                   Text(
                     specialty.name,
                     style: const TextStyle(
-                      fontSize: 22,
-                      fontWeight: FontWeight.w800,
+                      fontSize: 26,
+                      fontWeight: FontWeight.w900,
                       color: AppColors.textPrimary,
+                      letterSpacing: -0.5,
                     ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                   ),
                   if (specialty.description.isNotEmpty) ...[
                     const SizedBox(height: 2),
                     Text(
                       specialty.description,
                       style: const TextStyle(
-                        fontSize: 17,
-                        fontWeight: FontWeight.w600,
+                        fontSize: 20,
+                        fontWeight: FontWeight.w700,
                         color: AppColors.textSecondary,
                       ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
                   ] else ...[
                     const SizedBox(height: 2),
                     const Text(
                       'Especialidad Médica',
                       style: TextStyle(
-                        fontSize: 16,
+                        fontSize: 18,
                         color: AppColors.textSecondary,
                         fontStyle: FontStyle.italic,
-                        fontWeight: FontWeight.w500,
+                        fontWeight: FontWeight.w600,
                       ),
                     ),
                   ],
@@ -305,10 +315,10 @@ class _SpecialtyScreenState extends State<SpecialtyScreen> {
                 child: const Text(
                   'AUTORIZADO',
                   style: TextStyle(
-                    fontSize: 9,
-                    fontWeight: FontWeight.w700,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w900,
                     color: AppColors.accentDark,
-                    letterSpacing: 0.5,
+                    letterSpacing: 0.8,
                   ),
                 ),
               ),

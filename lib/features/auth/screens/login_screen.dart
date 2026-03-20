@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart';
 import '../../../core/constants/app_colors.dart';
-import '../../../core/theme/app_theme.dart';
 import '../../../core/services/auth_service.dart';
 import '../../../core/storage/token_storage.dart';
+import '../../../core/animations/fade_slide_in.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -21,29 +22,13 @@ class _LoginScreenState extends State<LoginScreen>
   bool _obscurePassword = true;
   String? _errorMessage;
 
-  late final AnimationController _animCtrl;
-  late final Animation<double> _fadeIn;
-  late final Animation<Offset> _slideUp;
-
   @override
   void initState() {
     super.initState();
-    _animCtrl = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 800),
-    );
-    _fadeIn = CurvedAnimation(parent: _animCtrl, curve: Curves.easeOut);
-    _slideUp = Tween<Offset>(
-      begin: const Offset(0, 0.05),
-      end: Offset.zero,
-    ).animate(CurvedAnimation(parent: _animCtrl, curve: Curves.easeOutCubic));
-
-    _animCtrl.forward();
   }
 
   @override
   void dispose() {
-    _animCtrl.dispose();
     _usernameController.dispose();
     _passwordController.dispose();
     super.dispose();
@@ -86,41 +71,73 @@ class _LoginScreenState extends State<LoginScreen>
 
   @override
   Widget build(BuildContext context) {
-    final screenWidth = MediaQuery.of(context).size.width;
-    final padding = AppTheme.horizontalPadding(screenWidth);
-    final logoSize = AppTheme.logoSize(screenWidth);
 
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: const Color(0xFFF2F2F7), // iOS System Grey 6
       body: SafeArea(
-        child: FadeTransition(
-          opacity: _fadeIn,
-          child: SlideTransition(
-            position: _slideUp,
-            child: SingleChildScrollView(
-              padding: EdgeInsets.symmetric(horizontal: padding),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  SizedBox(height: screenWidth * 0.1),
-                  _buildLogo(logoSize),
-                  const SizedBox(height: 32),
-                  _buildHeader(),
-                  const SizedBox(height: 32),
-                  _buildForm(),
-                  const SizedBox(height: 24),
-                  if (_errorMessage != null) ...[
-                    _buildErrorBanner(),
-                    const SizedBox(height: 16),
-                  ],
-                  _buildLoginButton(),
-                  const SizedBox(height: 16),
-                  _buildForgotPassword(),
-                  const SizedBox(height: 40),
-                ],
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final double availableHeight = constraints.maxHeight;
+            final double logoSize = availableHeight < 600 ? 90 : 120;
+            
+            return SingleChildScrollView(
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              physics: const BouncingScrollPhysics(),
+              child: ConstrainedBox(
+                constraints: BoxConstraints(
+                  minHeight: availableHeight,
+                ),
+                child: Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const SizedBox(height: 20),
+                      // SECCIÓN DE MARCA
+                      FadeSlideIn(
+                        offsetY: 30,
+                        child: Column(
+                          children: [
+                            _buildLogo(logoSize),
+                            const SizedBox(height: 24),
+                            _buildHeader(),
+                          ],
+                        ),
+                      ),
+                      
+                      const SizedBox(height: 40),
+                      
+                      // SECCIÓN DE FORMULARIO (iOS Inset Grouped style)
+                      FadeSlideIn(
+                        delay: const Duration(milliseconds: 200),
+                        offsetY: 30,
+                        child: Column(
+                          children: [
+                            _buildForm(),
+                            const SizedBox(height: 32),
+                            if (_errorMessage != null) ...[
+                              _buildErrorBanner(),
+                              const SizedBox(height: 20),
+                            ],
+                            _buildLoginButton(),
+                          ],
+                        ),
+                      ),
+                      
+                      const SizedBox(height: 32),
+                      
+                      // ACCIONES ADICIONALES
+                      FadeSlideIn(
+                        delay: const Duration(milliseconds: 400),
+                        child: _buildForgotPassword(),
+                      ),
+                      
+                      const SizedBox(height: 40),
+                    ],
+                  ),
+                ),
               ),
-            ),
-          ),
+            );
+          },
         ),
       ),
     );
@@ -132,26 +149,23 @@ class _LoginScreenState extends State<LoginScreen>
       height: size,
       decoration: BoxDecoration(
         shape: BoxShape.circle,
+        color: AppColors.white,
         boxShadow: [
           BoxShadow(
-            color: AppColors.primary.withValues(alpha: 0.08),
-            blurRadius: 24,
-            spreadRadius: 2,
+            color: Colors.black.withValues(alpha: 0.05),
+            blurRadius: 20,
+            offset: const Offset(0, 10),
           ),
         ],
       ),
       child: ClipOval(
-        child: Image.asset(
-          'assets/images/cossmil_logo.png',
-          fit: BoxFit.contain,
-          errorBuilder: (_, __, ___) => Container(
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: AppColors.primaryLight,
-              border: Border.all(color: AppColors.primary.withValues(alpha: 0.2)),
-            ),
-            child: Icon(
-              Icons.shield,
+        child: Padding(
+          padding: const EdgeInsets.all(12),
+          child: Image.asset(
+            'assets/images/cossmil_logo.png',
+            fit: BoxFit.contain,
+            errorBuilder: (_, __, ___) => Icon(
+              CupertinoIcons.shield_fill,
               size: size * 0.4,
               color: AppColors.primary,
             ),
@@ -161,25 +175,25 @@ class _LoginScreenState extends State<LoginScreen>
     );
   }
 
-  Widget _buildHeader() {
+  static Widget _buildHeader() {
     return Column(
       children: [
         const Text(
           'Iniciar Sesión',
           style: TextStyle(
-            fontSize: 28,
+            fontSize: 34,
             fontWeight: FontWeight.w800,
             color: AppColors.textPrimary,
-            letterSpacing: -0.5,
+            letterSpacing: -1.2,
           ),
         ),
-        const SizedBox(height: 8),
+        const SizedBox(height: 6),
         Text(
-          'INGRESA TUS DATOS',
+          'INGRESA TUS CREDENCIALES',
           style: TextStyle(
             fontSize: 13,
             fontWeight: FontWeight.w600,
-            color: AppColors.textSecondary,
+            color: AppColors.textSecondary.withValues(alpha: 0.7),
             letterSpacing: 1.5,
           ),
         ),
@@ -191,16 +205,15 @@ class _LoginScreenState extends State<LoginScreen>
     return Container(
       decoration: BoxDecoration(
         color: AppColors.white,
-        borderRadius: BorderRadius.circular(AppTheme.radiusLg),
-        boxShadow: AppColors.cardShadow,
+        borderRadius: BorderRadius.circular(14),
       ),
       child: Column(
         children: [
           _buildInputField(
             label: 'Matrícula',
             controller: _usernameController,
-            placeholder: '010325AQJ',
-            icon: Icons.person,
+            placeholder: 'Ej. 010325AQJ',
+            icon: CupertinoIcons.person_crop_circle,
             isLast: false,
             textCapitalization: TextCapitalization.characters,
             onChanged: (val) {
@@ -212,26 +225,27 @@ class _LoginScreenState extends State<LoginScreen>
               }
             },
           ),
-          Container(
+          Divider(
             height: 0.5,
-            margin: const EdgeInsets.symmetric(horizontal: 16),
-            color: AppColors.border,
+            thickness: 0.5,
+            indent: 54,
+            color: AppColors.border.withValues(alpha: 0.5),
           ),
           _buildInputField(
             label: 'Contraseña',
             controller: _passwordController,
-            placeholder: '••••••••',
-            icon: Icons.lock,
+            placeholder: 'Requerido',
+            icon: CupertinoIcons.lock_fill,
             obscureText: _obscurePassword,
             isLast: true,
-            trailing: IconButton(
+            trailing: CupertinoButton(
               padding: EdgeInsets.zero,
-              constraints: const BoxConstraints(minWidth: 30, minHeight: 40),
-              iconSize: 22,
+              minimumSize: Size.zero,
               onPressed: () =>
                   setState(() => _obscurePassword = !_obscurePassword),
-              icon: Icon(
-                _obscurePassword ? Icons.visibility_off : Icons.visibility,
+              child: Icon(
+                _obscurePassword ? CupertinoIcons.eye_slash_fill : CupertinoIcons.eye_fill,
+                size: 20,
                 color: AppColors.textTertiary,
               ),
             ),
@@ -253,76 +267,89 @@ class _LoginScreenState extends State<LoginScreen>
     ValueChanged<String>? onChanged,
   }) {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+      padding: const EdgeInsets.symmetric(horizontal: 16),
       child: Row(
         children: [
-          Icon(icon, size: 18, color: AppColors.primary.withValues(alpha: 0.6)),
-          const SizedBox(width: 12),
-          SizedBox(
-            width: 100,
-            child: Text(
-              label,
-              style: const TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.w600,
-                color: AppColors.textPrimary,
-              ),
-            ),
-          ),
+          Icon(icon, size: 24, color: AppColors.primary),
+          const SizedBox(width: 16),
           Expanded(
-            child: TextField(
-              controller: controller,
-              obscureText: obscureText,
-              enabled: !_isLoading,
-              textCapitalization: textCapitalization,
-              onChanged: onChanged,
-              decoration: InputDecoration(
-                hintText: placeholder,
-                border: InputBorder.none,
-                isDense: true,
-                contentPadding: const EdgeInsets.symmetric(vertical: 20),
-                hintStyle: const TextStyle(
-                  color: AppColors.textTertiary,
-                  fontSize: 18,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const SizedBox(height: 8),
+                Text(
+                  label,
+                  style: const TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.textSecondary,
+                    letterSpacing: -0.1,
+                  ),
                 ),
-              ),
-              style: const TextStyle(
-                fontSize: 18,
-                color: AppColors.textPrimary,
-                fontWeight: FontWeight.w500,
-              ),
-              textInputAction:
-                  isLast ? TextInputAction.done : TextInputAction.next,
-              onSubmitted: isLast ? (_) => _onLoginPressed() : null,
+                TextField(
+                  controller: controller,
+                  obscureText: obscureText,
+                  enabled: !_isLoading,
+                  textCapitalization: textCapitalization,
+                  onChanged: onChanged,
+                  textAlign: TextAlign.left,
+                  decoration: InputDecoration(
+                    hintText: placeholder,
+                    border: InputBorder.none,
+                    isDense: true,
+                    contentPadding: const EdgeInsets.only(top: 4, bottom: 8),
+                    hintStyle: TextStyle(
+                      color: AppColors.textTertiary.withValues(alpha: 0.5),
+                      fontSize: 17,
+                    ),
+                  ),
+                  style: const TextStyle(
+                    fontSize: 17,
+                    color: AppColors.textPrimary,
+                    fontWeight: FontWeight.w500,
+                  ),
+                  textInputAction:
+                      isLast ? TextInputAction.done : TextInputAction.next,
+                  onSubmitted: isLast ? (_) => _onLoginPressed() : null,
+                ),
+              ],
             ),
           ),
-          if (trailing != null) trailing,
+          if (trailing != null) ...[
+            const SizedBox(width: 8),
+            trailing,
+            const SizedBox(width: 8),
+          ] else
+            const SizedBox(width: 16),
         ],
       ),
     );
   }
 
   Widget _buildErrorBanner() {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-      decoration: BoxDecoration(
-        color: AppColors.errorLight,
-        borderRadius: BorderRadius.circular(AppTheme.radiusMd),
-        border: Border.all(color: AppColors.error.withValues(alpha: 0.3)),
-      ),
-      child: Row(
-        children: [
-          const Icon(Icons.error_outline,
-              color: AppColors.error, size: 17),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Text(
-              _errorMessage!,
-              style: const TextStyle(
-                  color: AppColors.error, fontSize: 13.5, height: 1.3),
+    return FadeSlideIn(
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        decoration: BoxDecoration(
+          color: const Color(0xFFFFE5E5),
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: AppColors.error.withValues(alpha: 0.2)),
+        ),
+        child: Row(
+          children: [
+            const Icon(CupertinoIcons.exclamationmark_circle_fill,
+                color: AppColors.error, size: 20),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                _errorMessage!,
+                style: const TextStyle(
+                    color: AppColors.error, fontSize: 14, fontWeight: FontWeight.w600),
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -330,55 +357,52 @@ class _LoginScreenState extends State<LoginScreen>
   Widget _buildLoginButton() {
     return SizedBox(
       width: double.infinity,
-      child: ElevatedButton(
+      child: CupertinoButton(
+        padding: EdgeInsets.zero,
         onPressed: _isLoading ? null : _onLoginPressed,
-        style: ElevatedButton.styleFrom(
-          backgroundColor: AppColors.primary,
-          disabledBackgroundColor: AppColors.primary.withValues(alpha: 0.5),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(AppTheme.radiusLg),
-          ),
-          padding: const EdgeInsets.symmetric(vertical: 16),
-          elevation: 0,
-        ),
-        child: _isLoading
-            ? const SizedBox(
-                width: 20,
-                height: 20,
-                child: CircularProgressIndicator(
-                  color: AppColors.white,
-                  strokeWidth: 2,
-                ),
-              )
-            : const Text(
-                'Ingresar',
-                style: TextStyle(
-                  fontSize: 17,
-                  fontWeight: FontWeight.w600,
-                  color: AppColors.white,
-                  letterSpacing: 0.3,
-                ),
+        child: Container(
+          width: double.infinity,
+          height: 56,
+          decoration: BoxDecoration(
+            color: AppColors.primary,
+            borderRadius: BorderRadius.circular(14),
+            boxShadow: [
+              BoxShadow(
+                color: AppColors.primary.withValues(alpha: 0.2),
+                blurRadius: 15,
+                offset: const Offset(0, 5),
               ),
+            ],
+          ),
+          alignment: Alignment.center,
+          child: _isLoading
+              ? const CupertinoActivityIndicator(color: AppColors.white)
+              : const Text(
+                  'Ingresar',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.white,
+                    letterSpacing: -0.2,
+                  ),
+                ),
+        ),
       ),
     );
   }
 
   Widget _buildForgotPassword() {
-    return TextButton(
-      style: TextButton.styleFrom(
-        padding: EdgeInsets.zero,
-        minimumSize: Size.zero,
-        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-      ),
+    return CupertinoButton(
+      padding: EdgeInsets.zero,
       onPressed: () {
         // TODO: navegar a recuperar contraseña
       },
       child: const Text(
         '¿Olvidaste tu contraseña?',
         style: TextStyle(
-          fontSize: 14,
+          fontSize: 15,
           color: AppColors.primary,
-          fontWeight: FontWeight.w500,
+          fontWeight: FontWeight.w600,
         ),
       ),
     );

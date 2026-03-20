@@ -5,6 +5,7 @@ import '../../../core/mock/mock_schedule_data.dart';
 import '../../../core/models/time_slot_model.dart';
 import '../../../core/widgets/breadcrumb_chips.dart';
 import '../../../core/animations/app_page_route.dart';
+import '../../../core/animations/fade_slide_in.dart';
 import '../../../shell/tab_shell.dart';
 import 'summary_screen.dart';
 
@@ -23,24 +24,6 @@ class _ScheduleScreenState extends State<ScheduleScreen>
   final _slots = MockScheduleData.timeSlots;
   String? _selectedTime;
 
-  late final AnimationController _animCtrl;
-  late final Animation<double> _fadeIn;
-
-  @override
-  void initState() {
-    super.initState();
-    _animCtrl = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 500),
-    )..forward();
-    _fadeIn = CurvedAnimation(parent: _animCtrl, curve: Curves.easeOut);
-  }
-
-  @override
-  void dispose() {
-    _animCtrl.dispose();
-    super.dispose();
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -48,7 +31,7 @@ class _ScheduleScreenState extends State<ScheduleScreen>
     final breadcrumbs = [
       bs.beneficiaryLabel ?? 'Para mí',
       bs.regional?.name ?? '',
-      bs.hospital?.shortName ?? '',
+      bs.hospital?.name ?? '',
       bs.specialty?.name ?? '',
     ];
 
@@ -68,18 +51,30 @@ class _ScheduleScreenState extends State<ScheduleScreen>
         ),
       ),
       body: SafeArea(
-        child: FadeTransition(
-          opacity: _fadeIn,
-          child: ListView(
-            padding: const EdgeInsets.symmetric(vertical: 16),
-            children: [
-              BreadcrumbChips(labels: breadcrumbs),
-              const SizedBox(height: 16),
-              _buildDateAndInfoHeader(),
-              const SizedBox(height: 18),
-              _buildDoctorCard(),
-              const SizedBox(height: 24),
-              Padding(
+        child: ListView(
+          padding: const EdgeInsets.symmetric(vertical: 16),
+          children: [
+            FadeSlideIn(
+              offsetY: 10,
+              child: BreadcrumbChips(labels: breadcrumbs),
+            ),
+            const SizedBox(height: 16),
+            FadeSlideIn(
+              delay: const Duration(milliseconds: 100),
+              offsetY: 15,
+              child: _buildDateAndInfoHeader(),
+            ),
+            const SizedBox(height: 18),
+            FadeSlideIn(
+              delay: const Duration(milliseconds: 200),
+              offsetY: 20,
+              child: _buildDoctorCard(),
+            ),
+            const SizedBox(height: 24),
+            FadeSlideIn(
+              delay: const Duration(milliseconds: 300),
+              offsetY: 10,
+              child: Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 24),
                 child: Row(
                   children: [
@@ -103,11 +98,14 @@ class _ScheduleScreenState extends State<ScheduleScreen>
                   ],
                 ),
               ),
-              const SizedBox(height: 14),
-              _buildTimeGrid(),
-              const SizedBox(height: 32),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 40),
+            ),
+            const SizedBox(height: 14),
+            _buildTimeGrid(),
+            const SizedBox(height: 32),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 40),
+              child: FadeSlideIn(
+                delay: const Duration(milliseconds: 600),
                 child: AnimatedOpacity(
                   opacity: _selectedTime != null ? 1.0 : 0.5,
                   duration: const Duration(milliseconds: 250),
@@ -157,9 +155,9 @@ class _ScheduleScreenState extends State<ScheduleScreen>
                   ),
                 ),
               ),
-              const SizedBox(height: 32),
-            ],
-          ),
+            ),
+            const SizedBox(height: 32),
+          ],
         ),
       ),
     );
@@ -300,6 +298,8 @@ class _ScheduleScreenState extends State<ScheduleScreen>
                     color: AppColors.textPrimary,
                     letterSpacing: -0.5,
                   ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
                 const SizedBox(height: 4),
                 Row(
@@ -314,6 +314,8 @@ class _ScheduleScreenState extends State<ScheduleScreen>
                         color: AppColors.textSecondary,
                         fontWeight: FontWeight.w600,
                       ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
                   ],
                 ),
@@ -331,7 +333,13 @@ class _ScheduleScreenState extends State<ScheduleScreen>
       child: Wrap(
         spacing: 10,
         runSpacing: 10,
-        children: _slots.map((slot) => _timeChip(slot)).toList(),
+        children: List.generate(_slots.length, (i) {
+          return FadeSlideIn(
+            delay: Duration(milliseconds: 400 + (i * 50)),
+            offsetY: 10,
+            child: _timeChip(_slots[i]),
+          );
+        }),
       ),
     );
   }

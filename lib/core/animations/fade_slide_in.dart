@@ -71,11 +71,13 @@ class _FadeSlideInState extends State<FadeSlideIn>
 
   @override
   Widget build(BuildContext context) {
-    return FadeTransition(
-      opacity: _opacity,
-      child: SlideTransition(
-        position: _slideOffset,
-        child: widget.child,
+    return RepaintBoundary(
+      child: FadeTransition(
+        opacity: _opacity,
+        child: SlideTransition(
+          position: _slideOffset,
+          child: widget.child,
+        ),
       ),
     );
   }

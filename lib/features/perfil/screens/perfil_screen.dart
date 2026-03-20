@@ -6,6 +6,7 @@ import '../../../core/mock/mock_user_data.dart';
 import '../../../core/storage/token_storage.dart';
 import '../../../core/widgets/profile_qr_modal.dart';
 import '../../../core/animations/animated_press_button.dart';
+import '../../../core/animations/fade_slide_in.dart';
 
 class PerfilScreen extends StatefulWidget {
   const PerfilScreen({super.key});
@@ -64,19 +65,8 @@ class _PerfilScreenState extends State<PerfilScreen> {
           ),
           // ── Header & Profile Info ───────────────────────────
           SliverToBoxAdapter(
-            child: TweenAnimationBuilder<double>(
-              tween: Tween(begin: 0.0, end: 1.0),
-              duration: const Duration(milliseconds: 600),
-              curve: Curves.easeOutCubic,
-              builder: (context, value, child) {
-                return Opacity(
-                  opacity: value,
-                  child: Transform.translate(
-                    offset: Offset(0, 20 * (1 - value)),
-                    child: child,
-                  ),
-                );
-              },
+            child: FadeSlideIn(
+              offsetY: 20,
               child: Padding(
                 padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
                 child: Column(
@@ -85,8 +75,8 @@ class _PerfilScreenState extends State<PerfilScreen> {
                     // Avatar
                     Center(
                       child: Container(
-                        width: 130,
-                        height: 130,
+                        width: 160,
+                        height: 160,
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
                           color: AppColors.white,
@@ -138,11 +128,13 @@ class _PerfilScreenState extends State<PerfilScreen> {
                         user.displayName,
                         textAlign: TextAlign.center,
                         style: const TextStyle(
-                          fontSize: 32,
+                          fontSize: 38,
                           fontWeight: FontWeight.w900,
                           color: AppColors.textPrimary,
-                          letterSpacing: -1.0,
+                          letterSpacing: -1.2,
                         ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                       ),
                     ),
                     const SizedBox(height: 6),
@@ -157,8 +149,8 @@ class _PerfilScreenState extends State<PerfilScreen> {
                         child: Text(
                           'Mat. ${user.matricula}',
                           style: const TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.w700,
+                            fontSize: 22,
+                            fontWeight: FontWeight.w800,
                             color: AppColors.primary,
                           ),
                         ),
@@ -402,7 +394,7 @@ class _PerfilScreenState extends State<PerfilScreen> {
                                   BorderRadius.circular(AppTheme.radiusMd),
                             ),
                             child: const Icon(CupertinoIcons.qrcode,
-                                size: 22, color: AppColors.primary),
+                                size: 30, color: AppColors.primary),
                           ),
                           const SizedBox(width: 14),
                           const Expanded(
@@ -412,17 +404,18 @@ class _PerfilScreenState extends State<PerfilScreen> {
                                 Text(
                                   'Mi Código QR',
                                   style: TextStyle(
-                                    fontSize: 15,
-                                    fontWeight: FontWeight.w700,
+                                    fontSize: 20,
+                                    fontWeight: FontWeight.w900,
                                     color: AppColors.textPrimary,
                                   ),
                                 ),
-                                SizedBox(height: 2),
+                                SizedBox(height: 4),
                                 Text(
                                   'Identificación rápida en ventanilla',
                                   style: TextStyle(
-                                    fontSize: 13,
+                                    fontSize: 17,
                                     color: AppColors.textSecondary,
+                                    fontWeight: FontWeight.w500,
                                   ),
                                 ),
                               ],
@@ -492,10 +485,10 @@ class _PerfilScreenState extends State<PerfilScreen> {
       child: Text(
         text,
         style: const TextStyle(
-          fontSize: 16,
+          fontSize: 20,
           fontWeight: FontWeight.w900,
           color: AppColors.textSecondary,
-          letterSpacing: 1.8,
+          letterSpacing: 2.0,
         ),
       ),
     );
@@ -504,7 +497,7 @@ class _PerfilScreenState extends State<PerfilScreen> {
   Widget _infoCard(
       String label, String value, IconData icon, Color color) {
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: AppColors.white,
         borderRadius: BorderRadius.circular(AppTheme.radiusXl),
@@ -513,24 +506,25 @@ class _PerfilScreenState extends State<PerfilScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(icon, size: 26, color: color),
-          const SizedBox(height: 12),
+          Icon(icon, size: 32, color: color),
+          const SizedBox(height: 14),
           Text(
             label,
             style: const TextStyle(
-              fontSize: 14,
-              fontWeight: FontWeight.w800,
-              letterSpacing: 1.2,
+              fontSize: 18,
+              fontWeight: FontWeight.w900,
+              letterSpacing: 1.5,
               color: AppColors.textSecondary,
             ),
           ),
-          const SizedBox(height: 4),
+          const SizedBox(height: 6),
           Text(
             value,
             style: const TextStyle(
-              fontSize: 22,
+              fontSize: 26,
               fontWeight: FontWeight.w900,
               color: AppColors.textPrimary,
+              height: 1.1,
             ),
           ),
         ],
@@ -564,7 +558,7 @@ class _PerfilScreenState extends State<PerfilScreen> {
       ),
       child: Row(
         children: [
-          Icon(icon, size: 24, color: AppColors.primary),
+          Icon(icon, size: 30, color: AppColors.primary),
           const SizedBox(width: 14),
           Expanded(
             child: Column(
@@ -573,10 +567,10 @@ class _PerfilScreenState extends State<PerfilScreen> {
                 Text(
                   label,
                   style: const TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w700,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w800,
                     color: AppColors.textSecondary,
-                    letterSpacing: 0.8,
+                    letterSpacing: 1.0,
                   ),
                 ),
                 const SizedBox(height: 4),
@@ -598,12 +592,14 @@ class _PerfilScreenState extends State<PerfilScreen> {
                   Text(
                     value.isNotEmpty ? value : 'Sin registrar',
                     style: TextStyle(
-                      fontSize: 17,
-                      fontWeight: FontWeight.w700,
+                      fontSize: 22,
+                      fontWeight: FontWeight.w800,
                       color: value.isNotEmpty
                           ? AppColors.textPrimary
                           : AppColors.textTertiary,
                     ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                   ),
               ],
             ),

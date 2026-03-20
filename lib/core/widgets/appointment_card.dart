@@ -51,9 +51,10 @@ class AppointmentCard extends StatelessWidget {
                       Text(
                         appointment.patientName,
                         style: const TextStyle(
-                          fontSize: 15,
-                          fontWeight: FontWeight.w700,
+                          fontSize: 22,
+                          fontWeight: FontWeight.w800,
                           color: AppColors.textPrimary,
+                          letterSpacing: -0.5,
                         ),
                         overflow: TextOverflow.ellipsis,
                       ),
@@ -94,17 +95,22 @@ class AppointmentCard extends StatelessWidget {
                       Text(
                         appointment.specialty,
                         style: const TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w600,
+                          fontSize: 18,
+                          fontWeight: FontWeight.w700,
                           color: AppColors.textPrimary,
                         ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                       ),
                       Text(
                         appointment.doctorName,
                         style: const TextStyle(
-                          fontSize: 12,
+                          fontSize: 16,
+                          fontWeight: FontWeight.w500,
                           color: AppColors.textSecondary,
                         ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                       ),
                     ],
                   ),
@@ -138,13 +144,13 @@ class AppointmentCard extends StatelessWidget {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     const Icon(Icons.confirmation_number_outlined,
-                        size: 12, color: AppColors.textTertiary),
+                        size: 16, color: AppColors.textTertiary),
                     const SizedBox(width: 5),
                     Text(
                       appointment.codigoReserva!,
                       style: const TextStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w600,
+                        fontSize: 15,
+                        fontWeight: FontWeight.w700,
                         color: AppColors.textSecondary,
                         letterSpacing: 0.3,
                       ),
@@ -164,8 +170,8 @@ class AppointmentCard extends StatelessWidget {
     final color = isTitular ? AppColors.primary : AppColors.accent;
 
     return Container(
-      width: 44,
-      height: 44,
+      width: 64,
+      height: 64,
       decoration: BoxDecoration(
         shape: BoxShape.circle,
         gradient: LinearGradient(
@@ -177,8 +183,8 @@ class AppointmentCard extends StatelessWidget {
         appointment.avatarLetter,
         style: const TextStyle(
           color: AppColors.white,
-          fontWeight: FontWeight.w800,
-          fontSize: 18,
+          fontWeight: FontWeight.w900,
+          fontSize: 24,
         ),
       ),
     );
@@ -190,7 +196,7 @@ class AppointmentCard extends StatelessWidget {
     final label = isTitular ? 'Titular' : appointment.relationship;
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(
         color: color.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(6),
@@ -198,8 +204,8 @@ class AppointmentCard extends StatelessWidget {
       child: Text(
         label,
         style: TextStyle(
-          fontSize: 10,
-          fontWeight: FontWeight.w700,
+          fontSize: 14,
+          fontWeight: FontWeight.w800,
           color: color,
         ),
       ),
@@ -210,15 +216,15 @@ class AppointmentCard extends StatelessWidget {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Icon(icon, size: 12, color: AppColors.textTertiary),
-        const SizedBox(width: 4),
+        Icon(icon, size: 18, color: AppColors.textTertiary),
+        const SizedBox(width: 6),
         Flexible(
           child: Text(
             text,
             style: const TextStyle(
-              fontSize: 12,
+              fontSize: 17,
               color: AppColors.textSecondary,
-              fontWeight: FontWeight.w500,
+              fontWeight: FontWeight.w600,
             ),
             overflow: TextOverflow.ellipsis,
           ),

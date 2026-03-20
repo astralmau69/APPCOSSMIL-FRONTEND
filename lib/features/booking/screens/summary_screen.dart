@@ -4,6 +4,7 @@ import '../../../core/theme/app_theme.dart';
 import '../../../core/mock/mock_user_data.dart';
 import '../../../core/services/pdf_service.dart';
 import '../../../core/widgets/breadcrumb_chips.dart';
+import '../../../core/animations/fade_slide_in.dart';
 import '../../../shell/tab_shell.dart';
 
 class SummaryScreen extends StatefulWidget {
@@ -15,31 +16,16 @@ class SummaryScreen extends StatefulWidget {
   State<SummaryScreen> createState() => _SummaryScreenState();
 }
 
-class _SummaryScreenState extends State<SummaryScreen>
-    with SingleTickerProviderStateMixin {
-  late final AnimationController _animCtrl;
-  late final Animation<double> _fadeIn;
-  late final Animation<Offset> _slideUp;
+class _SummaryScreenState extends State<SummaryScreen> {
   bool _isConfirming = false;
 
   @override
   void initState() {
     super.initState();
-    _animCtrl = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 500),
-    );
-    _fadeIn = CurvedAnimation(parent: _animCtrl, curve: Curves.easeOut);
-    _slideUp = Tween<Offset>(
-      begin: const Offset(0, 0.08),
-      end: Offset.zero,
-    ).animate(CurvedAnimation(parent: _animCtrl, curve: Curves.easeOutCubic));
-    _animCtrl.forward();
   }
 
   @override
   void dispose() {
-    _animCtrl.dispose();
     super.dispose();
   }
 
@@ -50,7 +36,7 @@ class _SummaryScreenState extends State<SummaryScreen>
     final breadcrumbs = [
       bs.beneficiaryLabel ?? 'Para mí',
       bs.regional?.name ?? '',
-      bs.hospital?.shortName ?? '',
+      bs.hospital?.name ?? '',
       bs.specialty?.name ?? '',
     ];
 
@@ -70,210 +56,177 @@ class _SummaryScreenState extends State<SummaryScreen>
         ),
       ),
       body: SafeArea(
-        child: FadeTransition(
-          opacity: _fadeIn,
-          child: SlideTransition(
-            position: _slideUp,
-            child: ListView(
-              padding: const EdgeInsets.symmetric(vertical: 16),
-              children: [
-                BreadcrumbChips(labels: breadcrumbs),
-                const SizedBox(height: 24),
+        child: ListView(
+          padding: const EdgeInsets.symmetric(vertical: 16),
+          children: [
+            FadeSlideIn(
+              offsetY: 10,
+              child: BreadcrumbChips(labels: breadcrumbs),
+            ),
+            const SizedBox(height: 24),
 
-                // Header
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 24),
-                  child: Row(
-                    children: [
-                      Container(
-                        width: 36,
-                        height: 36,
-                        decoration: BoxDecoration(
-                          color: AppColors.primary.withValues(alpha: 0.1),
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        child: const Icon(
-                          Icons.description,
-                          size: 18,
-                          color: AppColors.primary,
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      const Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'Verifique su información',
-                              style: TextStyle(
-                                fontSize: 22,
-                                fontWeight: FontWeight.w900,
-                                color: AppColors.textPrimary,
-                                letterSpacing: -0.5,
-                              ),
-                            ),
-                            Text(
-                              'Antes de confirmar la reserva',
-                              style: TextStyle(
-                                fontSize: 17,
-                                color: AppColors.textSecondary,
-                                fontWeight: FontWeight.w500,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
+            // Header
+            FadeSlideIn(
+              delay: const Duration(milliseconds: 100),
+              offsetY: 15,
+              child: _buildHeader(),
+            ),
+            const SizedBox(height: 20),
+
+            // Card resumen
+            FadeSlideIn(
+              delay: const Duration(milliseconds: 200),
+              offsetY: 20,
+              child: Container(
+                margin: const EdgeInsets.symmetric(horizontal: 20),
+                decoration: BoxDecoration(
+                  color: AppColors.white,
+                  borderRadius: BorderRadius.circular(AppTheme.radiusLg),
+                  boxShadow: AppColors.cardShadow,
                 ),
-                const SizedBox(height: 20),
-
-                // Card resumen
-                Container(
-                  margin: const EdgeInsets.symmetric(horizontal: 20),
-                  decoration: BoxDecoration(
-                    color: AppColors.white,
-                    borderRadius: BorderRadius.circular(AppTheme.radiusLg),
-                    boxShadow: AppColors.cardShadow,
-                  ),
-                  child: Column(
-                    children: [
-                      _row(Icons.person, 'Paciente',
-                          user.displayName),
-                      _divider(),
-                      _row(Icons.favorite, 'Especialidad',
-                          bs.specialty?.name ?? ''),
-                      _divider(),
-                      _row(
-                        Icons.apartment,
-                        'Establecimiento',
-                        bs.hospital?.displayName ?? '',
-                      ),
-                      _divider(),
-                      _row(Icons.person_add, 'Médico',
-                          bs.doctor?.fullName ?? ''),
-                      _divider(),
-                      _row(Icons.calendar_today, 'Fecha',
-                          'Martes, 18 de Marzo'),
-                      _divider(),
-                      _row(Icons.schedule, 'Hora',
-                          bs.selectedTime ?? ''),
-                    ],
-                  ),
+                child: Column(
+                  children: [
+                    _row(Icons.person, 'Paciente',
+                        user.displayName),
+                    _divider(),
+                    _row(Icons.favorite, 'Especialidad',
+                        bs.specialty?.name ?? ''),
+                    _divider(),
+                    _row(
+                      Icons.apartment,
+                      'Establecimiento',
+                      bs.hospital?.displayName ?? '',
+                    ),
+                    _divider(),
+                    _row(Icons.person_add, 'Médico',
+                        bs.doctor?.fullName ?? ''),
+                    _divider(),
+                    _row(Icons.calendar_today, 'Fecha',
+                        'Martes, 18 de Marzo'),
+                    _divider(),
+                    _row(Icons.schedule, 'Hora',
+                        bs.selectedTime ?? ''),
+                  ],
                 ),
-                const SizedBox(height: 16),
+              ),
+            ),
+            const SizedBox(height: 16),
 
-                // Info nota
-                Container(
-                  margin: const EdgeInsets.symmetric(horizontal: 20),
-                  padding: const EdgeInsets.all(14),
-                  decoration: BoxDecoration(
-                    color: AppColors.infoLight,
-                    borderRadius: BorderRadius.circular(AppTheme.radiusMd),
-                    border: Border.all(color: AppColors.info.withValues(alpha: 0.2)),
-                  ),
-                  child: const Row(
-                    children: [
-                      Icon(
-                        Icons.info,
-                        size: 18,
-                        color: AppColors.info,
+            // Info nota
+            FadeSlideIn(
+              delay: const Duration(milliseconds: 300),
+              child: Container(
+                margin: const EdgeInsets.symmetric(horizontal: 20),
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  color: AppColors.infoLight,
+                  borderRadius: BorderRadius.circular(AppTheme.radiusMd),
+                  border: Border.all(color: AppColors.info.withValues(alpha: 0.2)),
+                ),
+                child: const Row(
+                  children: [
+                    Icon(
+                      Icons.info,
+                      size: 18,
+                      color: AppColors.info,
+                    ),
+                    SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        'Al confirmar se generará un comprobante PDF descargable.',
+                        style: TextStyle(
+                          fontSize: 13,
+                          color: AppColors.info,
+                          height: 1.3,
+                        ),
                       ),
-                      SizedBox(width: 10),
-                      Expanded(
-                        child: Text(
-                          'Al confirmar se generará un comprobante PDF descargable.',
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 32),
+
+            // Botones
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              child: FadeSlideIn(
+                delay: const Duration(milliseconds: 400),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.errorLight,
+                          foregroundColor: AppColors.error,
+                          elevation: 0,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(AppTheme.radiusLg),
+                          ),
+                          padding: const EdgeInsets.symmetric(vertical: 15),
+                        ),
+                        onPressed: () {
+                          Navigator.popUntil(
+                              context, (route) => route.isFirst);
+                        },
+                        child: const Text(
+                          'Cancelar',
                           style: TextStyle(
-                            fontSize: 13,
-                            color: AppColors.info,
-                            height: 1.3,
+                            fontSize: 18,
+                            fontWeight: FontWeight.w800,
                           ),
                         ),
                       ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 32),
-
-                // Botones
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 20),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: ElevatedButton(
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: AppColors.errorLight,
-                            foregroundColor: AppColors.error,
-                            elevation: 0,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(AppTheme.radiusLg),
-                            ),
-                            padding: const EdgeInsets.symmetric(vertical: 15),
+                    ),
+                    const SizedBox(width: 14),
+                    Expanded(
+                      flex: 2,
+                      child: ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.primary,
+                          foregroundColor: Colors.white,
+                          elevation: 0,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(AppTheme.radiusLg),
                           ),
-                          onPressed: () {
-                            Navigator.popUntil(
-                                context, (route) => route.isFirst);
-                          },
-                          child: const Text(
-                            'Cancelar',
-                            style: TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.w800,
-                            ),
-                          ),
+                          padding: const EdgeInsets.symmetric(vertical: 15),
                         ),
-                      ),
-                      const SizedBox(width: 14),
-                      Expanded(
-                        flex: 2,
-                        child: ElevatedButton(
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: AppColors.primary,
-                            foregroundColor: Colors.white,
-                            elevation: 0,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(AppTheme.radiusLg),
-                            ),
-                            padding: const EdgeInsets.symmetric(vertical: 15),
-                          ),
-                          onPressed:
-                              _isConfirming ? null : () => _confirmBooking(),
-                          child: _isConfirming
-                              ? const SizedBox(
-                                  width: 20,
-                                  height: 20,
-                                  child: CircularProgressIndicator(
-                                      color: Colors.white, strokeWidth: 2),
-                                )
-                              : const Row(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    Icon(
-                                      Icons.verified_user,
-                                      size: 18,
+                        onPressed:
+                            _isConfirming ? null : () => _confirmBooking(),
+                        child: _isConfirming
+                            ? const SizedBox(
+                                width: 20,
+                                height: 20,
+                                child: CircularProgressIndicator(
+                                    color: Colors.white, strokeWidth: 2),
+                              )
+                            : const Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Icon(
+                                    Icons.verified_user,
+                                    size: 18,
+                                    color: Colors.white,
+                                  ),
+                                  SizedBox(width: 8),
+                                  Text(
+                                    'Confirmar Reserva',
+                                    style: TextStyle(
+                                      fontSize: 20,
+                                      fontWeight: FontWeight.w900,
                                       color: Colors.white,
                                     ),
-                                    SizedBox(width: 8),
-                                    Text(
-                                      'Confirmar Reserva',
-                                      style: TextStyle(
-                                        fontSize: 20,
-                                        fontWeight: FontWeight.w900,
-                                        color: Colors.white,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                        ),
+                                  ),
+                                ],
+                              ),
                       ),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
-                const SizedBox(height: 40),
-              ],
+              ),
             ),
-          ),
+            const SizedBox(height: 40),
+          ],
         ),
       ),
     );
@@ -281,36 +234,44 @@ class _SummaryScreenState extends State<SummaryScreen>
 
   Widget _row(IconData icon, String label, String value) {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Icon(icon, size: 22, color: AppColors.primary.withValues(alpha: 0.6)),
-          const SizedBox(width: 12),
-          SizedBox(
-            width: 120,
-            child: Text(
-              label,
-              style: const TextStyle(
-                fontSize: 17,
-                color: AppColors.textSecondary,
-                fontWeight: FontWeight.w500,
-              ),
+      padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 20),
+      child: Center(
+        child: RichText(
+          textAlign: TextAlign.center,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          text: TextSpan(
+            style: const TextStyle(
+              fontSize: 24,
+              color: AppColors.textPrimary,
             ),
-          ),
-          Expanded(
-            child: Text(
-              value,
-              textAlign: TextAlign.end,
-              style: const TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.w800,
-                color: AppColors.textPrimary,
-                height: 1.2,
+            children: [
+              WidgetSpan(
+                alignment: PlaceholderAlignment.middle,
+                child: Padding(
+                  padding: const EdgeInsets.only(right: 8),
+                  child: Icon(icon, size: 20, color: AppColors.primary.withValues(alpha: 0.7)),
+                ),
               ),
-            ),
+              TextSpan(
+                text: '$label: ',
+                style: const TextStyle(
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.textSecondary,
+                  fontSize: 18,
+                ),
+              ),
+              TextSpan(
+                text: value,
+                style: const TextStyle(
+                  fontWeight: FontWeight.w900,
+                  fontSize: 24,
+                  letterSpacing: -0.5,
+                ),
+              ),
+            ],
           ),
-        ],
+        ),
       ),
     );
   }
@@ -425,7 +386,7 @@ class _SummaryScreenState extends State<SummaryScreen>
                       user: user,
                       paciente: user.displayName,
                       especialidad: bs.specialty?.name ?? '',
-                      establecimiento: bs.hospital?.shortName ?? '',
+                      establecimiento: bs.hospital?.name ?? '',
                       ciudad: bs.hospital?.city ?? '',
                       medico: bs.doctor?.fullName ?? '',
                       fecha: 'Martes, 18 de Marzo',
@@ -462,5 +423,31 @@ class _SummaryScreenState extends State<SummaryScreen>
     if (mounted) {
       setState(() => _isConfirming = false);
     }
+  }
+
+  Widget _buildHeader() {
+    return const Column(
+      children: [
+        Text(
+          'Resumen de su Cita',
+          style: TextStyle(
+            fontSize: 28,
+            fontWeight: FontWeight.w900,
+            color: AppColors.textPrimary,
+            letterSpacing: -0.5,
+          ),
+        ),
+        SizedBox(height: 6),
+        Text(
+          'VERIFIQUE LOS DETALLES',
+          style: TextStyle(
+            fontSize: 15,
+            fontWeight: FontWeight.w800,
+            color: AppColors.textSecondary,
+            letterSpacing: 2.0,
+          ),
+        ),
+      ],
+    );
   }
 }

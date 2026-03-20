@@ -163,9 +163,10 @@ class ContactosScreen extends StatelessWidget {
                     child: Text(
                       'Líneas de atención, emergencias y contactos institucionales de COSSMIL.',
                       style: TextStyle(
-                        fontSize: 15,
+                        fontSize: 18,
                         color: AppColors.textSecondary,
                         height: 1.4,
+                        fontWeight: FontWeight.w500,
                       ),
                     ),
                   ),
@@ -240,10 +241,10 @@ class ContactosScreen extends StatelessWidget {
           Text(
             text,
             style: const TextStyle(
-              fontSize: 12,
-              fontWeight: FontWeight.w700,
+              fontSize: 18,
+              fontWeight: FontWeight.w800,
               color: AppColors.textSecondary,
-              letterSpacing: 1.0,
+              letterSpacing: 1.5,
             ),
           ),
         ],
@@ -312,7 +313,7 @@ class _EmergencyCard extends StatelessWidget {
                 child: const Icon(
                   CupertinoIcons.bell_fill,
                   color: AppColors.white,
-                  size: 22,
+                  size: 30,
                 ),
               ),
               const SizedBox(width: 12),
@@ -330,10 +331,10 @@ class _EmergencyCard extends StatelessWidget {
                       child: const Text(
                         'EMERGENCIA',
                         style: TextStyle(
-                          fontSize: 10,
-                          fontWeight: FontWeight.w800,
+                          fontSize: 15,
+                          fontWeight: FontWeight.w900,
                           color: AppColors.white,
-                          letterSpacing: 1.2,
+                          letterSpacing: 1.5,
                         ),
                       ),
                     ),
@@ -341,10 +342,12 @@ class _EmergencyCard extends StatelessWidget {
                     Text(
                       contact.title,
                       style: TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w600,
+                        fontSize: 18,
+                        fontWeight: FontWeight.w700,
                         color: AppColors.white.withValues(alpha: 0.9),
                       ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
                   ],
                 ),
@@ -358,7 +361,7 @@ class _EmergencyCard extends StatelessWidget {
             child: Text(
               contact.phone,
               style: const TextStyle(
-                fontSize: 48,
+                fontSize: 60,
                 fontWeight: FontWeight.w900,
                 color: AppColors.white,
                 letterSpacing: 4,
@@ -370,9 +373,9 @@ class _EmergencyCard extends StatelessWidget {
             child: Text(
               contact.subtitle ?? '',
               style: TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.w500,
-                color: AppColors.white.withValues(alpha: 0.7),
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+                color: AppColors.white.withValues(alpha: 0.8),
               ),
             ),
           ),
@@ -392,13 +395,13 @@ class _EmergencyCard extends StatelessWidget {
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Icon(CupertinoIcons.phone_fill,
-                      size: 18, color: AppColors.white),
+                      size: 24, color: AppColors.white),
                   SizedBox(width: 8),
                   Text(
                     'Llamar ahora',
                     style: TextStyle(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w700,
+                      fontSize: 20,
+                      fontWeight: FontWeight.w800,
                       color: AppColors.white,
                     ),
                   ),
@@ -438,13 +441,13 @@ class _ContactCard extends StatelessWidget {
         children: [
           // Icon
           Container(
-            width: 44,
-            height: 44,
+            width: 60,
+            height: 60,
             decoration: BoxDecoration(
               color: accentColor.withValues(alpha: 0.08),
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(14),
             ),
-            child: Icon(contact.icon, size: 22, color: accentColor),
+            child: Icon(contact.icon, size: 30, color: accentColor),
           ),
           const SizedBox(width: 14),
 
@@ -466,10 +469,10 @@ class _ContactCard extends StatelessWidget {
                       child: const Text(
                         'LÍNEA GRATUITA',
                         style: TextStyle(
-                          fontSize: 9,
-                          fontWeight: FontWeight.w700,
+                          fontSize: 13,
+                          fontWeight: FontWeight.w900,
                           color: AppColors.accentDark,
-                          letterSpacing: 0.5,
+                          letterSpacing: 0.8,
                         ),
                       ),
                     ),
@@ -477,19 +480,22 @@ class _ContactCard extends StatelessWidget {
                 Text(
                   contact.title,
                   style: const TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w700,
+                    fontSize: 20,
+                    fontWeight: FontWeight.w800,
                     color: AppColors.textPrimary,
+                    letterSpacing: -0.5,
                   ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
                 const SizedBox(height: 4),
                 Text(
                   contact.phone,
                   style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w800,
+                    fontSize: 26,
+                    fontWeight: FontWeight.w900,
                     color: accentColor,
-                    letterSpacing: 0.5,
+                    letterSpacing: 1.0,
                   ),
                 ),
                 if (contact.subtitle != null) ...[
@@ -497,7 +503,8 @@ class _ContactCard extends StatelessWidget {
                   Text(
                     contact.subtitle!,
                     style: const TextStyle(
-                      fontSize: 12,
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
                       color: AppColors.textSecondary,
                       height: 1.3,
                     ),
@@ -518,14 +525,14 @@ class _ContactCard extends StatelessWidget {
                   // TODO: Integrar url_launcher
                 },
                 child: Container(
-                  width: 36,
-                  height: 36,
+                  width: 52,
+                  height: 52,
                   decoration: BoxDecoration(
                     color: accentColor.withValues(alpha: 0.10),
-                    borderRadius: BorderRadius.circular(10),
+                    borderRadius: BorderRadius.circular(12),
                   ),
                   child: Icon(CupertinoIcons.phone_fill,
-                      size: 16, color: accentColor),
+                      size: 24, color: accentColor),
                 ),
               ),
               const SizedBox(height: 6),
@@ -535,14 +542,14 @@ class _ContactCard extends StatelessWidget {
                 minimumSize: const Size.square(36),
                 onPressed: onCopy,
                 child: Container(
-                  width: 36,
-                  height: 36,
+                  width: 52,
+                  height: 52,
                   decoration: BoxDecoration(
                     color: AppColors.background,
-                    borderRadius: BorderRadius.circular(10),
+                    borderRadius: BorderRadius.circular(12),
                   ),
                   child: const Icon(CupertinoIcons.doc_on_clipboard,
-                      size: 16, color: AppColors.textSecondary),
+                      size: 24, color: AppColors.textSecondary),
                 ),
               ),
             ],
@@ -616,13 +623,13 @@ class _GroupedRow extends StatelessWidget {
         child: Row(
           children: [
             Container(
-              width: 32,
-              height: 32,
+              width: 44,
+              height: 44,
               decoration: BoxDecoration(
                 color: AppColors.primary.withValues(alpha: 0.08),
-                borderRadius: BorderRadius.circular(8),
+                borderRadius: BorderRadius.circular(10),
               ),
-              child: Icon(item.icon, size: 16, color: AppColors.primary),
+              child: Icon(item.icon, size: 22, color: AppColors.primary),
             ),
             const SizedBox(width: 12),
             Expanded(
@@ -632,18 +639,21 @@ class _GroupedRow extends StatelessWidget {
                   Text(
                     item.title,
                     style: const TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w600,
+                      fontSize: 18,
+                      fontWeight: FontWeight.w700,
                       color: AppColors.textPrimary,
                     ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                   ),
                   const SizedBox(height: 2),
                   Text(
                     item.phone,
                     style: const TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w800,
+                      fontSize: 22,
+                      fontWeight: FontWeight.w900,
                       color: AppColors.primary,
+                      letterSpacing: 0.5,
                     ),
                   ),
                 ],
@@ -651,7 +661,7 @@ class _GroupedRow extends StatelessWidget {
             ),
             const Icon(
               CupertinoIcons.chevron_right,
-              size: 14,
+              size: 20,
               color: AppColors.textTertiary,
             ),
           ],
