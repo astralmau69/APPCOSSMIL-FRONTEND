@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 
 /// Envuelve un hijo con entrada animada fade+slide, util para items de lista.
 ///
+/// Usa [FadeTransition] y [SlideTransition] (compositing-optimized)
+/// en vez de [Opacity] + [Transform.translate] para evitar saveLayer.
+///
 /// Uso individual:
 /// ```dart
 /// FadeSlideIn(
@@ -33,7 +36,7 @@ class _FadeSlideInState extends State<FadeSlideIn>
     with SingleTickerProviderStateMixin {
   late final AnimationController _ctrl;
   late final Animation<double> _opacity;
-  late final Animation<Offset> _offset;
+  late final Animation<Offset> _slideOffset;
 
   @override
   void initState() {
@@ -42,11 +45,14 @@ class _FadeSlideInState extends State<FadeSlideIn>
       vsync: this,
       duration: widget.duration,
     );
-    _opacity = CurvedAnimation(parent: _ctrl, curve: widget.curve);
-    _offset = Tween<Offset>(
-      begin: Offset(0, widget.offsetY),
+    final curved = CurvedAnimation(parent: _ctrl, curve: widget.curve);
+    _opacity = curved;
+    // SlideTransition uses fractional offsets relative to child size.
+    // Convert pixel offsetY to a reasonable fraction (offsetY / 100).
+    _slideOffset = Tween<Offset>(
+      begin: Offset(0, widget.offsetY / 100),
       end: Offset.zero,
-    ).animate(CurvedAnimation(parent: _ctrl, curve: widget.curve));
+    ).animate(curved);
 
     if (widget.delay == Duration.zero) {
       _ctrl.forward();
@@ -65,18 +71,12 @@ class _FadeSlideInState extends State<FadeSlideIn>
 
   @override
   Widget build(BuildContext context) {
-    return AnimatedBuilder(
-      animation: _ctrl,
-      builder: (context, child) {
-        return Opacity(
-          opacity: _opacity.value,
-          child: Transform.translate(
-            offset: _offset.value,
-            child: child,
-          ),
-        );
-      },
-      child: widget.child,
+    return FadeTransition(
+      opacity: _opacity,
+      child: SlideTransition(
+        position: _slideOffset,
+        child: widget.child,
+      ),
     );
   }
 }
