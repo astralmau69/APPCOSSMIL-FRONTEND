@@ -50,13 +50,14 @@ class _NewsCardState extends State<NewsCard>
       onTap: widget.onTap,
       child: ScaleTransition(
         scale: _scaleAnim,
-        child: Container(
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: AppColors.white,
-            borderRadius: BorderRadius.circular(AppTheme.radiusLg),
-            boxShadow: AppColors.softShadow,
-            border: widget.item.importance == NewsImportance.critical
+        child: RepaintBoundary(
+          child: Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: AppColors.white,
+              borderRadius: BorderRadius.circular(AppTheme.radiusLg),
+              boxShadow: AppColors.softShadow,
+              border: widget.item.importance == NewsImportance.critical
                 ? Border.all(
                     color: AppColors.error.withValues(alpha: 0.25), width: 1)
                 : null,
@@ -121,6 +122,7 @@ class _NewsCardState extends State<NewsCard>
               ),
             ],
           ),
+        ),
         ),
       ),
     );

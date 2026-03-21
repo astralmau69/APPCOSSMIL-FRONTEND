@@ -59,6 +59,15 @@ class _CossmilAppState extends State<CossmilApp> with WidgetsBindingObserver {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
+      builder: (context, child) {
+        final mediaQuery = MediaQuery.of(context);
+        return MediaQuery(
+          data: mediaQuery.copyWith(
+            textScaler: const TextScaler.linear(0.88),
+          ),
+          child: child!,
+        );
+      },
       navigatorKey: _navigatorKey,
       title: 'COSSMIL Flow',
       debugShowCheckedModeBanner: false,

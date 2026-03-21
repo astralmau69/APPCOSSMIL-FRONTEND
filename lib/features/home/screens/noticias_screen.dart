@@ -34,59 +34,66 @@ class NoticiasScreen extends StatelessWidget {
             ),
           ),
           SliverPadding(
-            padding: const EdgeInsets.fromLTRB(20, 12, 20, 40),
-            sliver: SliverList(
-              delegate: SliverChildListDelegate([
-                // Subtitle
-                const FadeSlideIn(
-                  child: Padding(
-                    padding: EdgeInsets.only(bottom: 16),
-                    child: Text(
-                      'Comunicados, avisos y anuncios importantes para nuestros asegurados.',
-                      style: TextStyle(
-                        fontSize: 15,
-                        color: AppColors.textSecondary,
-                        height: 1.4,
+            padding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
+            sliver: SliverToBoxAdapter(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  // Subtitle
+                  const FadeSlideIn(
+                    child: Padding(
+                      padding: EdgeInsets.only(bottom: 16),
+                      child: Text(
+                        'Comunicados, avisos y anuncios importantes para nuestros asegurados.',
+                        style: TextStyle(
+                          fontSize: 15,
+                          color: AppColors.textSecondary,
+                          height: 1.4,
+                        ),
                       ),
                     ),
                   ),
-                ),
 
-                // ── Featured / Destacados ───────────────────────
-                if (featured.isNotEmpty) ...[
+                  // ── Featured / Destacados ───────────────────────
+                  if (featured.isNotEmpty) ...[
+                    FadeSlideIn(
+                      delay: const Duration(milliseconds: 80),
+                      child: _sectionHeader('DESTACADOS', featured.length),
+                    ),
+                    const SizedBox(height: 10),
+                    for (int i = 0; i < featured.length; i++) ...[
+                      FadeSlideIn(
+                        delay: Duration(milliseconds: 120 + i * 80),
+                        child: _FeaturedCard(item: featured[i]),
+                      ),
+                      const SizedBox(height: 12),
+                    ],
+                    const SizedBox(height: 16),
+                  ],
+
+                  // ── All news chronological header ───────────────
                   FadeSlideIn(
-                    delay: const Duration(milliseconds: 80),
-                    child: _sectionHeader('DESTACADOS', featured.length),
+                    delay: Duration(milliseconds: 200 + featured.length * 80),
+                    child: _sectionHeader('TODOS LOS COMUNICADOS', allNews.length),
                   ),
                   const SizedBox(height: 10),
-                  for (int i = 0; i < featured.length; i++) ...[
-                    FadeSlideIn(
-                      delay: Duration(milliseconds: 120 + i * 80),
-                      child: _FeaturedCard(item: featured[i]),
-                    ),
-                    const SizedBox(height: 12),
-                  ],
-                  const SizedBox(height: 16),
                 ],
-
-                // ── All news chronological ──────────────────────
-                FadeSlideIn(
-                  delay: Duration(milliseconds: 200 + featured.length * 80),
-                  child: _sectionHeader('TODOS LOS COMUNICADOS', allNews.length),
-                ),
-                const SizedBox(height: 10),
-                for (int i = 0; i < regular.length; i++) ...[
-                  FadeSlideIn(
-                    delay: Duration(
-                        milliseconds: 240 + featured.length * 80 + i * 60),
+              ),
+            ),
+          ),
+          SliverPadding(
+            padding: const EdgeInsets.fromLTRB(20, 0, 20, 40),
+            sliver: SliverList.builder(
+              itemCount: regular.length,
+              itemBuilder: (context, i) {
+                return Padding(
+                  padding: EdgeInsets.only(bottom: i < regular.length - 1 ? 10 : 24),
+                  child: FadeSlideIn(
+                    delay: Duration(milliseconds: 240 + featured.length * 80 + i * 60),
                     child: NewsCard(item: regular[i]),
                   ),
-                  if (i < regular.length - 1) const SizedBox(height: 10),
-                ],
-
-                // Extra space at bottom for floating bar
-                const SizedBox(height: 24),
-              ]),
+                );
+              },
             ),
           ),
         ],

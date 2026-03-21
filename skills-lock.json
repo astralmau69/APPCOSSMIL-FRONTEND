@@ -1,6 +1,11 @@
 {
   "version": 1,
   "skills": {
+    "flutter-adding-home-screen-widgets": {
+      "source": "flutter/skills",
+      "sourceType": "github",
+      "computedHash": "49b66b1756a171a8b3fbde1aeb46baaa49e9eb26ea03b7b7ccc20e415a199edd"
+    },
     "flutter-animating-apps": {
       "source": "flutter/skills",
       "sourceType": "github",
@@ -10,6 +15,16 @@
       "source": "flutter/skills",
       "sourceType": "github",
       "computedHash": "1010c7fbc41061aa1c7d215cbea36cb9ffbb851bd33aea2e4175f74215e7b602"
+    },
+    "flutter-localizing-apps": {
+      "source": "flutter/skills",
+      "sourceType": "github",
+      "computedHash": "b6ab528e59ce5fc2a1475ae61cf5a223455f7e58881dd5a166447ad4e8a81617"
+    },
+    "flutter-testing-apps": {
+      "source": "flutter/skills",
+      "sourceType": "github",
+      "computedHash": "0c45c74285a0f0241189b4d383026b52ad4bb84d0be8424ca2c5a77d8cb768d5"
     }
   }
 }

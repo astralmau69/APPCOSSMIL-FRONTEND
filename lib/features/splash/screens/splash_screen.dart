@@ -185,61 +185,64 @@ class _SplashScreenState extends State<SplashScreen>
       opacity: _logoFade,
       child: ScaleTransition(
         scale: _logoScale,
-        child: AnimatedBuilder(
-          animation: _glowOpacity,
-          builder: (context, child) {
-            return Container(
-              width: logoSize + 40,
-              height: logoSize + 40,
+        child: Stack(
+          alignment: Alignment.center,
+          children: [
+            // Composited glow pulse (saves GPU from recalculating 40px blur per frame)
+            FadeTransition(
+              opacity: _glowOpacity,
+              child: Container(
+                width: logoSize + 40,
+                height: logoSize + 40,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  boxShadow: [
+                    BoxShadow(
+                      color: AppColors.primary,
+                      blurRadius: 32,
+                      spreadRadius: 8,
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            // Static Logo Body
+            Container(
+              width: logoSize,
+              height: logoSize,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
                 boxShadow: [
                   BoxShadow(
-                    color: AppColors.primary.withValues(alpha: _glowOpacity.value),
-                    blurRadius: 40,
-                    spreadRadius: 8,
+                    color: const Color(0xFF000000).withValues(alpha: 0.08),
+                    blurRadius: 24,
+                    spreadRadius: 2,
                   ),
                 ],
               ),
-              alignment: Alignment.center,
-              child: child,
-            );
-          },
-          child: Container(
-            width: logoSize,
-            height: logoSize,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              boxShadow: [
-                BoxShadow(
-                  color: const Color(0xFF000000).withValues(alpha: 0.08),
-                  blurRadius: 24,
-                  spreadRadius: 2,
-                ),
-              ],
-            ),
-            child: ClipOval(
-              child: Image.asset(
-                'assets/images/cossmil_logo.png',
-                fit: BoxFit.contain,
-                errorBuilder: (_, __, ___) => Container(
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: AppColors.primaryLight,
-                    border: Border.all(
-                      color: AppColors.primary.withValues(alpha: 0.2),
-                      width: 2,
+              child: ClipOval(
+                child: Image.asset(
+                  'assets/images/cossmil_logo.png',
+                  fit: BoxFit.contain,
+                  errorBuilder: (_, __, ___) => Container(
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: AppColors.primaryLight,
+                      border: Border.all(
+                        color: AppColors.primary.withValues(alpha: 0.2),
+                        width: 2,
+                      ),
                     ),
-                  ),
-                  child: Icon(
-                    Icons.shield,
-                    size: logoSize * 0.4,
-                    color: AppColors.primary,
+                    child: Icon(
+                      Icons.shield,
+                      size: logoSize * 0.4,
+                      color: AppColors.primary,
+                    ),
                   ),
                 ),
               ),
             ),
-          ),
+          ],
         ),
       ),
     );

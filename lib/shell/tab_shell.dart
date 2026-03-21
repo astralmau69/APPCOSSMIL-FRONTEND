@@ -260,7 +260,7 @@ class TabShellState extends State<TabShell>
         children: [
           AnimatedBuilder(
             animation: _pulseCtrl,
-            builder: (_, __) {
+            builder: (_, child) {
               final glow = active
                   ? Tween<double>(begin: 0.25, end: 0.50).evaluate(
                       CurvedAnimation(
@@ -277,7 +277,7 @@ class TabShellState extends State<TabShell>
                     gradient: const LinearGradient(
                       begin: Alignment.topLeft,
                       end: Alignment.bottomRight,
-                      colors: [Color(0xFF1D8FCC), Color(0xFF0C4A6E)],
+                      colors: const [Color(0xFF1D8FCC), Color(0xFF0C4A6E)],
                     ),
                     shape: BoxShape.circle,
                     boxShadow: [
@@ -289,14 +289,15 @@ class TabShellState extends State<TabShell>
                       ),
                     ],
                   ),
-                  child: const Icon(
-                    CupertinoIcons.calendar_badge_plus,
-                    color: AppColors.white,
-                    size: 38,
-                  ),
+                  child: child,
                 ),
               );
             },
+            child: const Icon(
+              CupertinoIcons.calendar_badge_plus,
+              color: AppColors.white,
+              size: 38,
+            ),
           ),
           const SizedBox(height: 4),
           Text(

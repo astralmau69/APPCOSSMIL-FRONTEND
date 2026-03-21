@@ -36,43 +36,40 @@ class ReservasScreen extends StatelessWidget {
                   ),
                 ),
 
-                // ── Content ────────────────────────────────────────
+                // ── Headers ────────────────────────────────────────
                 SliverPadding(
-                  padding:
-                      const EdgeInsets.fromLTRB(20, 16, 20, 32),
+                  padding: const EdgeInsets.fromLTRB(20, 16, 20, 12),
                   sliver: SliverList(
                     delegate: SliverChildListDelegate([
-                      // ── Summary bar ──────────────────────────
                       FadeSlideIn(
-                        duration:
-                            const Duration(milliseconds: 350),
+                        duration: const Duration(milliseconds: 350),
                         child: _buildSummaryBar(completed, missed),
                       ),
                       const SizedBox(height: 20),
-
-                      // ── Section header ───────────────────────
                       FadeSlideIn(
-                        delay:
-                            const Duration(milliseconds: 100),
-                        child: _sectionHeader(
-                          'HISTORIAL DE ATENCIONES',
-                          history.length,
-                        ),
+                        delay: const Duration(milliseconds: 100),
+                        child: _sectionHeader('HISTORIAL DE ATENCIONES', history.length),
                       ),
-                      const SizedBox(height: 12),
-
-                      // ── Appointment cards ────────────────────
-                      for (int i = 0; i < history.length; i++) ...[
-                        FadeSlideIn(
-                          delay: Duration(
-                              milliseconds: 150 + (i * 80)),
-                          child: AppointmentCard(
-                              appointment: history[i]),
-                        ),
-                        if (i < history.length - 1)
-                          const SizedBox(height: 12),
-                      ],
                     ]),
+                  ),
+                ),
+
+                // ── Lazy Appointment cards ─────────────────────────
+                SliverPadding(
+                  padding: const EdgeInsets.fromLTRB(20, 0, 20, 32),
+                  sliver: SliverList(
+                    delegate: SliverChildBuilderDelegate(
+                      (context, index) {
+                        final i = index ~/ 2;
+                        if (index.isOdd) return const SizedBox(height: 12);
+                        
+                        return FadeSlideIn(
+                          delay: Duration(milliseconds: 150 + ((i > 10 ? 10 : i) * 60)),
+                          child: AppointmentCard(appointment: history[i]),
+                        );
+                      },
+                      childCount: history.isEmpty ? 0 : history.length * 2 - 1,
+                    ),
                   ),
                 ),
               ],

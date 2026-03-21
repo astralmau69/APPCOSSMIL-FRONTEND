@@ -71,14 +71,8 @@ class _AnimatedPressButtonState extends State<AnimatedPressButton>
       onTapUp: _onTapUp,
       onTapCancel: _onTapCancel,
       onTap: widget.onTap,
-      child: AnimatedBuilder(
-        animation: _scaleAnim,
-        builder: (context, child) {
-          return Transform.scale(
-            scale: _scaleAnim.value,
-            child: child,
-          );
-        },
+      child: ScaleTransition(
+        scale: _scaleAnim,
         child: widget.child,
       ),
     );

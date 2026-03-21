@@ -54,33 +54,39 @@ class _HomeScreenState extends State<HomeScreen>
       body: SafeArea(
         child: FadeTransition(
           opacity: _fadeIn,
-          child: ListView(
-            padding: EdgeInsets.symmetric(horizontal: hPadding),
-            children: [
-              const SizedBox(height: 16),
-              FadeSlideIn(
-                duration: const Duration(milliseconds: 400),
-                child: _buildGreeting(user),
+          child: Align(
+            alignment: Alignment.topCenter,
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 650),
+              child: ListView(
+                padding: EdgeInsets.symmetric(horizontal: hPadding),
+                children: [
+                  const SizedBox(height: 16),
+                  FadeSlideIn(
+                    duration: const Duration(milliseconds: 400),
+                    child: _buildGreeting(user),
+                  ),
+                  const SizedBox(height: 20),
+                  FadeSlideIn(
+                    delay: const Duration(milliseconds: 100),
+                    child: _buildProfileCard(user),
+                  ),
+                  const SizedBox(height: 24),
+                  FadeSlideIn(
+                    delay: const Duration(milliseconds: 200),
+                    child: _buildQuickActions(),
+                  ),
+                  const SizedBox(height: 28),
+                  FadeSlideIn(
+                    delay: const Duration(milliseconds: 300),
+                    child: _buildSectionTitle('COSSMIL TE INFORMA'),
+                  ),
+                  const SizedBox(height: 12),
+                  _buildNewsSection(),
+                  const SizedBox(height: 32),
+                ],
               ),
-              const SizedBox(height: 20),
-              FadeSlideIn(
-                delay: const Duration(milliseconds: 100),
-                child: _buildProfileCard(user),
-              ),
-              const SizedBox(height: 24),
-              FadeSlideIn(
-                delay: const Duration(milliseconds: 200),
-                child: _buildQuickActions(),
-              ),
-              const SizedBox(height: 28),
-              FadeSlideIn(
-                delay: const Duration(milliseconds: 300),
-                child: _buildSectionTitle('COSSMIL TE INFORMA'),
-              ),
-              const SizedBox(height: 12),
-              _buildNewsSection(),
-              const SizedBox(height: 32),
-            ],
+            ),
           ),
         ),
       ),
@@ -372,23 +378,26 @@ class _HomeScreenState extends State<HomeScreen>
         child: Column(
           children: [
             Container(
-              width: 40,
-              height: 40,
+              width: 44,
+              height: 44,
               decoration: BoxDecoration(
                 color: action.color.withValues(alpha: 0.10),
                 borderRadius: BorderRadius.circular(AppTheme.radiusMd),
               ),
-              child: Icon(action.icon, size: 36, color: action.color),
+              child: Icon(action.icon, size: 30, color: action.color),
             ),
             const SizedBox(height: 8),
-            Text(
-              action.label,
-              textAlign: TextAlign.center,
-              style: const TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.w800,
-                color: AppColors.textPrimary,
-                height: 1.2,
+            FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Text(
+                action.label,
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w800,
+                  color: AppColors.textPrimary,
+                  height: 1.2,
+                ),
               ),
             ),
           ],

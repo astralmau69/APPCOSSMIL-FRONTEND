@@ -88,51 +88,54 @@ class _LoginScreenState extends State<LoginScreen>
                   minHeight: availableHeight,
                 ),
                 child: Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      const SizedBox(height: 20),
-                      // SECCIÓN DE MARCA
-                      FadeSlideIn(
-                        offsetY: 30,
-                        child: Column(
-                          children: [
-                            _buildLogo(logoSize),
-                            const SizedBox(height: 24),
-                            _buildHeader(),
-                          ],
-                        ),
-                      ),
-                      
-                      const SizedBox(height: 40),
-                      
-                      // SECCIÓN DE FORMULARIO (iOS Inset Grouped style)
-                      FadeSlideIn(
-                        delay: const Duration(milliseconds: 200),
-                        offsetY: 30,
-                        child: Column(
-                          children: [
-                            _buildForm(),
-                            const SizedBox(height: 32),
-                            if (_errorMessage != null) ...[
-                              _buildErrorBanner(),
-                              const SizedBox(height: 20),
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 450),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const SizedBox(height: 20),
+                        // SECCIÓN DE MARCA
+                        FadeSlideIn(
+                          offsetY: 30,
+                          child: Column(
+                            children: [
+                              _buildLogo(logoSize),
+                              const SizedBox(height: 24),
+                              _buildHeader(),
                             ],
-                            _buildLoginButton(),
-                          ],
+                          ),
                         ),
-                      ),
-                      
-                      const SizedBox(height: 32),
-                      
-                      // ACCIONES ADICIONALES
-                      FadeSlideIn(
-                        delay: const Duration(milliseconds: 400),
-                        child: _buildForgotPassword(),
-                      ),
-                      
-                      const SizedBox(height: 40),
-                    ],
+                        
+                        const SizedBox(height: 40),
+                        
+                        // SECCIÓN DE FORMULARIO (iOS Inset Grouped style)
+                        FadeSlideIn(
+                          delay: const Duration(milliseconds: 200),
+                          offsetY: 30,
+                          child: Column(
+                            children: [
+                              _buildForm(),
+                              const SizedBox(height: 32),
+                              if (_errorMessage != null) ...[
+                                _buildErrorBanner(),
+                                const SizedBox(height: 20),
+                              ],
+                              _buildLoginButton(),
+                            ],
+                          ),
+                        ),
+                        
+                        const SizedBox(height: 32),
+                        
+                        // ACCIONES ADICIONALES
+                        FadeSlideIn(
+                          delay: const Duration(milliseconds: 400),
+                          child: _buildForgotPassword(),
+                        ),
+                        
+                        const SizedBox(height: 40),
+                      ],
+                    ),
                   ),
                 ),
               ),

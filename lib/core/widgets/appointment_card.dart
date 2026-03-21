@@ -24,13 +24,14 @@ class AppointmentCard extends StatelessWidget {
 
     return AnimatedPressButton(
       onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: AppColors.white,
-          borderRadius: BorderRadius.circular(AppTheme.radiusLg),
-          boxShadow: AppColors.softShadow,
-          border: config.isHighlighted
+      child: RepaintBoundary(
+        child: Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: AppColors.white,
+            borderRadius: BorderRadius.circular(AppTheme.radiusLg),
+            boxShadow: AppColors.softShadow,
+            border: config.isHighlighted
               ? Border.all(color: config.color.withValues(alpha: 0.2), width: 1.5)
               : null,
         ),
@@ -161,6 +162,7 @@ class AppointmentCard extends StatelessWidget {
             ],
           ],
         ),
+      ),
       ),
     );
   }
