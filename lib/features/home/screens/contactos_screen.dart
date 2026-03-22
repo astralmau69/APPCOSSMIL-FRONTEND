@@ -1,4 +1,5 @@
 import 'package:flutter/cupertino.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/theme/app_theme.dart';
@@ -135,16 +136,20 @@ class ContactosScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return CupertinoPageScaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       child: CustomScrollView(
         physics: const BouncingScrollPhysics(
           parent: AlwaysScrollableScrollPhysics(),
         ),
         slivers: [
           CupertinoSliverNavigationBar(
-            largeTitle: const Text('Contactos'),
-            backgroundColor: AppColors.white.withValues(alpha: 0.92),
+            largeTitle: Text('Contactos', style: TextStyle(color: Theme.of(context).textTheme.bodyLarge?.color)),
+            backgroundColor: isDark 
+                ? const Color(0xFF1C1C1E).withValues(alpha: 0.92)
+                : AppColors.white.withValues(alpha: 0.92),
             border: Border(
               bottom: BorderSide(
                 color: AppColors.border.withValues(alpha: 0.5),
@@ -424,15 +429,16 @@ class _ContactCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final accentColor =
         contact.isFreeCall ? AppColors.accent : AppColors.primary;
 
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: AppColors.white,
+        color: isDark ? const Color(0xFF1C1C1E) : AppColors.white,
         borderRadius: BorderRadius.circular(AppTheme.radiusXl),
-        boxShadow: AppColors.softShadow,
+        boxShadow: isDark ? [] : AppColors.softShadow,
         border: Border.all(
           color: accentColor.withValues(alpha: 0.12),
         ),
@@ -479,10 +485,10 @@ class _ContactCard extends StatelessWidget {
                   ),
                 Text(
                   contact.title,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 20,
                     fontWeight: FontWeight.w800,
-                    color: AppColors.textPrimary,
+                    color: Theme.of(context).textTheme.bodyLarge?.color ?? AppColors.textPrimary,
                     letterSpacing: -0.5,
                   ),
                   maxLines: 1,
@@ -569,11 +575,12 @@ class _GroupedContactList extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Container(
       decoration: BoxDecoration(
-        color: AppColors.white,
+        color: isDark ? const Color(0xFF1C1C1E) : AppColors.white,
         borderRadius: BorderRadius.circular(AppTheme.radiusXl),
-        boxShadow: AppColors.softShadow,
+        boxShadow: isDark ? [] : AppColors.softShadow,
       ),
       child: Column(
         children: [
@@ -638,10 +645,10 @@ class _GroupedRow extends StatelessWidget {
                 children: [
                   Text(
                     item.title,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 18,
                       fontWeight: FontWeight.w700,
-                      color: AppColors.textPrimary,
+                      color: Theme.of(context).textTheme.bodyLarge?.color ?? AppColors.textPrimary,
                     ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,

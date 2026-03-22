@@ -40,6 +40,42 @@ class AppTheme {
     ),
   );
 
+  static ThemeData darkTheme = ThemeData(
+    primaryColor: AppColors.primary,
+    brightness: Brightness.dark,
+    scaffoldBackgroundColor: const Color(0xFF111111), // Dark mode background
+    appBarTheme: const AppBarTheme(
+      backgroundColor: Color(0xFF1C1C1E),
+      titleTextStyle: TextStyle(
+        color: Colors.white,
+        fontSize: 17,
+        fontWeight: FontWeight.w600,
+        fontFamily: '.SF Pro Text',
+      ),
+      iconTheme: IconThemeData(color: Colors.white),
+    ),
+    textTheme: const TextTheme(
+      bodyLarge: TextStyle(
+        color: Colors.white,
+        fontSize: 16,
+        fontFamily: '.SF Pro Text',
+        decoration: TextDecoration.none,
+      ),
+      bodyMedium: TextStyle(
+        color: Colors.white,
+        fontSize: 16,
+        fontFamily: '.SF Pro Text',
+        decoration: TextDecoration.none,
+      ),
+    ),
+    pageTransitionsTheme: const PageTransitionsTheme(
+      builders: {
+        TargetPlatform.android: CupertinoPageTransitionsBuilder(),
+        TargetPlatform.iOS: CupertinoPageTransitionsBuilder(),
+      },
+    ),
+  );
+
   // ── Spacing constants ─────────────────────────────────────────────────────
   static const double spacingXs = 4;
   static const double spacingSm = 8;

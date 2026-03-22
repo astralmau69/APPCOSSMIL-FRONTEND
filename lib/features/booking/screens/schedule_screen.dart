@@ -30,6 +30,7 @@ class _ScheduleScreenState extends State<ScheduleScreen>
   @override
   Widget build(BuildContext context) {
     final bs = widget.tabShell.bookingState;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final breadcrumbs = [
       bs.beneficiaryLabel ?? 'Para mí',
       bs.regional?.name ?? '',
@@ -38,13 +39,15 @@ class _ScheduleScreenState extends State<ScheduleScreen>
     ];
 
     return CupertinoPageScaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       navigationBar: CupertinoNavigationBar(
-        middle: const Text(
+        middle: Text(
           'Horas Disponibles',
-          style: TextStyle(fontWeight: FontWeight.w700, fontSize: 17),
+          style: TextStyle(fontWeight: FontWeight.w700, fontSize: 17, color: Theme.of(context).textTheme.bodyLarge?.color),
         ),
-        backgroundColor: AppColors.white.withValues(alpha: 0.92),
+        backgroundColor: isDark 
+            ? const Color(0xFF1C1C1E).withValues(alpha: 0.92)
+            : AppColors.white.withValues(alpha: 0.92),
         border: Border(
           bottom: BorderSide(
             color: AppColors.border.withValues(alpha: 0.3),
@@ -61,13 +64,13 @@ class _ScheduleScreenState extends State<ScheduleScreen>
             FadeSlideIn(
               delay: const Duration(milliseconds: 50),
               offsetY: 10,
-              child: _buildDateAndInfoHeader(),
+              child: _buildDateAndInfoHeader(context, isDark),
             ),
             const SizedBox(height: 18),
             FadeSlideIn(
               delay: const Duration(milliseconds: 100),
               offsetY: 15,
-              child: _buildDoctorCard(),
+              child: _buildDoctorCard(context, isDark),
             ),
             const SizedBox(height: 24),
             FadeSlideIn(
@@ -95,7 +98,7 @@ class _ScheduleScreenState extends State<ScheduleScreen>
               ),
             ),
             const SizedBox(height: 14),
-            _buildTimeGrid(),
+            _buildTimeGrid(context, isDark),
             const SizedBox(height: 32),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 40),
@@ -147,14 +150,15 @@ class _ScheduleScreenState extends State<ScheduleScreen>
     );
   }
 
-  Widget _buildDateAndInfoHeader() {
+  Widget _buildDateAndInfoHeader(BuildContext context, bool isDark) {
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 20),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: AppColors.white,
+        color: isDark ? const Color(0xFF1C1C1E) : AppColors.white,
         borderRadius: BorderRadius.circular(AppTheme.radiusLg),
-        boxShadow: AppColors.cardShadow,
+        boxShadow: isDark ? [] : AppColors.cardShadow,
+        border: isDark ? Border.all(color: Colors.white.withValues(alpha: 0.1)) : null,
       ),
       child: Column(
         children: [
@@ -231,14 +235,15 @@ class _ScheduleScreenState extends State<ScheduleScreen>
     );
   }
 
-  Widget _buildDoctorCard() {
+  Widget _buildDoctorCard(BuildContext context, bool isDark) {
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 20),
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
-        color: AppColors.white,
+        color: isDark ? const Color(0xFF1C1C1E) : AppColors.white,
         borderRadius: BorderRadius.circular(AppTheme.radiusLg),
-        boxShadow: AppColors.cardShadow,
+        boxShadow: isDark ? [] : AppColors.cardShadow,
+        border: isDark ? Border.all(color: Colors.white.withValues(alpha: 0.1)) : null,
       ),
       child: Row(
         children: [
@@ -305,7 +310,7 @@ class _ScheduleScreenState extends State<ScheduleScreen>
     );
   }
 
-  Widget _buildTimeGrid() {
+  Widget _buildTimeGrid(BuildContext context, bool isDark) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20),
       child: Wrap(
@@ -315,14 +320,14 @@ class _ScheduleScreenState extends State<ScheduleScreen>
           return FadeSlideIn(
             delay: Duration(milliseconds: 400 + (i * 50)),
             offsetY: 10,
-            child: _timeChip(_slots[i]),
+            child: _timeChip(context, _slots[i], isDark),
           );
         }),
       ),
     );
   }
 
-  Widget _timeChip(TimeSlotModel slot) {
+  Widget _timeChip(BuildContext context, TimeSlotModel slot, bool isDark) {
     final isSelected = _selectedTime == slot.time;
     final isDisabled = !slot.isAvailable || slot.statusLevel == 'none';
 
@@ -332,9 +337,9 @@ class _ScheduleScreenState extends State<ScheduleScreen>
 
     if (isDisabled) {
       // Ocupadas en rojo tachado
-      bgColor = const Color(0xFFFEE2E2);
-      textColor = const Color(0xFF991B1B).withValues(alpha: 0.6);
-      borderColor = const Color(0xFFFECACA);
+      bgColor = isDark ? const Color(0xFF451A18) : const Color(0xFFFEE2E2);
+      textColor = isDark ? const Color(0xFFFCA5A5) : const Color(0xFF991B1B).withValues(alpha: 0.6);
+      borderColor = isDark ? const Color(0xFF7F1D1D) : const Color(0xFFFECACA);
     } else if (isSelected) {
       // Seleccionada en verde sólido
       bgColor = AppColors.success;
@@ -342,9 +347,9 @@ class _ScheduleScreenState extends State<ScheduleScreen>
       borderColor = AppColors.success;
     } else {
       // Disponible (no seleccionada) en verde claro
-      bgColor = AppColors.successLight;
-      textColor = AppColors.success;
-      borderColor = const Color(0xFFBBF7D0);
+      bgColor = isDark ? AppColors.success.withValues(alpha: 0.15) : AppColors.successLight;
+      textColor = isDark ? AppColors.successLight : AppColors.success;
+      borderColor = isDark ? AppColors.success.withValues(alpha: 0.3) : const Color(0xFFBBF7D0);
     }
 
     return GestureDetector(

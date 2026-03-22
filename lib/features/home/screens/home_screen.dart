@@ -31,14 +31,16 @@ class _HomeScreenState extends State<HomeScreen> {
     final responsive = ResponsiveData.of(context);
     final horizontalPadding = responsive.isSmallPhone ? 12.0 : (responsive.isPhone ? 14.0 : 20.0);
 
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return CupertinoPageScaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       child: CustomScrollView(
         physics: const AlwaysScrollableScrollPhysics(),
         slivers: [
           CupertinoSliverNavigationBar(
-            largeTitle: const Text('Inicio'),
-            backgroundColor: AppColors.background.withValues(alpha: 0.95),
+            largeTitle: Text('Inicio', style: TextStyle(color: Theme.of(context).textTheme.bodyLarge?.color)),
+            backgroundColor: Theme.of(context).scaffoldBackgroundColor.withValues(alpha: 0.95),
             border: null,
           ),
           SliverPadding(
@@ -334,16 +336,17 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildActionCard(_QuickAction action) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return OptimizedPressButton(
       onTap: action.onTap,
       scaleDown: 0.95,
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 14),
         decoration: BoxDecoration(
-          color: AppColors.white,
+          color: isDark ? const Color(0xFF1C1C1E) : AppColors.white,
           borderRadius: BorderRadius.circular(AppSpacing.radiusLg),
-          border: Border.all(color: AppColors.border, width: 0.5),
-          boxShadow: [
+          border: Border.all(color: isDark ? Colors.white.withValues(alpha: 0.1) : AppColors.border, width: 0.5),
+          boxShadow: isDark ? [] : [
             BoxShadow(
               color: Colors.black.withValues(alpha: 0.02),
               blurRadius: 4,
@@ -369,7 +372,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 action.label,
                 textAlign: TextAlign.center,
                 style: AppTypography.labelMedium.copyWith(
-                  color: AppColors.textPrimary,
+                  color: Theme.of(context).textTheme.bodyLarge?.color ?? AppColors.textPrimary,
                   fontSize: 13,
                   height: 1.2,
                 ),

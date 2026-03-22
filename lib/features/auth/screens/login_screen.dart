@@ -6,6 +6,7 @@ import '../../../core/extensions/responsive_extensions.dart';
 import '../../../core/animations/optimized_animations.dart';
 import '../../../core/services/auth_service.dart';
 import '../../../core/storage/token_storage.dart';
+import '../../../core/theme/theme_manager.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -81,81 +82,108 @@ class _LoginScreenState extends State<LoginScreen>
         : 120.0;
 
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: SafeArea(
-        child: SingleChildScrollView(
-          physics: const BouncingScrollPhysics(),
-          padding: EdgeInsets.symmetric(horizontal: padding),
-          child: ConstrainedBox(
-            constraints: BoxConstraints(
-              minHeight: responsive.screenHeight - MediaQuery.of(context).padding.vertical,
-            ),
-            child: Center(
-              child: ResponsiveContainer(
-                maxWidth: responsive.isTablet ? 500 : double.infinity,
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    const SizedBox(height: 20),
-                    // Logo
-                    FadeSlideIn(
-                      duration: AppDurations.slow,
-                      child: _buildLogo(logoSize),
+        child: Stack(
+          children: [
+            SingleChildScrollView(
+              physics: const BouncingScrollPhysics(),
+              padding: EdgeInsets.symmetric(horizontal: padding),
+              child: ConstrainedBox(
+                constraints: BoxConstraints(
+                  minHeight: responsive.screenHeight - MediaQuery.of(context).padding.vertical,
+                ),
+                child: Center(
+                  child: ResponsiveContainer(
+                    maxWidth: responsive.isTablet ? 500 : double.infinity,
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const SizedBox(height: 20),
+                        // Logo
+                        FadeSlideIn(
+                          duration: AppDurations.slow,
+                          child: _buildLogo(logoSize),
+                        ),
+                        
+                        const SizedBox(height: 24),
+                        
+                        // Header
+                        FadeSlideIn(
+                          duration: AppDurations.slow,
+                          delay: const Duration(milliseconds: 100),
+                          child: _buildHeader(responsive),
+                        ),
+                        
+                        const SizedBox(height: 40),
+                        
+                        // Form
+                        FadeSlideIn(
+                          duration: AppDurations.normal,
+                          delay: const Duration(milliseconds: 200),
+                          child: _buildForm(responsive),
+                        ),
+                        
+                        const SizedBox(height: 20),
+                        
+                        // Error message
+                        if (_errorMessage != null) ...[
+                          FadeSlideIn(
+                            duration: AppDurations.fast,
+                            child: _buildErrorBanner(),
+                          ),
+                          const SizedBox(height: 16),
+                        ],
+                        
+                        // Login button
+                        FadeSlideIn(
+                          duration: AppDurations.normal,
+                          delay: const Duration(milliseconds: 250),
+                          child: _buildLoginButton(),
+                        ),
+                        
+                        const SizedBox(height: 28),
+                        
+                        // Forgot password
+                        FadeSlideIn(
+                          duration: AppDurations.normal,
+                          delay: const Duration(milliseconds: 300),
+                          child: _buildForgotPassword(),
+                        ),
+                        
+                        const SizedBox(height: 40),
+                      ],
                     ),
-                    
-                    const SizedBox(height: 24),
-                    
-                    // Header
-                    FadeSlideIn(
-                      duration: AppDurations.slow,
-                      delay: const Duration(milliseconds: 100),
-                      child: _buildHeader(responsive),
-                    ),
-                    
-                    const SizedBox(height: 40),
-                    
-                    // Form
-                    FadeSlideIn(
-                      duration: AppDurations.normal,
-                      delay: const Duration(milliseconds: 200),
-                      child: _buildForm(responsive),
-                    ),
-                    
-                    const SizedBox(height: 20),
-                    
-                    // Error message
-                    if (_errorMessage != null) ...[
-                      FadeSlideIn(
-                        duration: AppDurations.fast,
-                        child: _buildErrorBanner(),
-                      ),
-                      const SizedBox(height: 16),
-                    ],
-                    
-                    // Login button
-                    FadeSlideIn(
-                      duration: AppDurations.normal,
-                      delay: const Duration(milliseconds: 250),
-                      child: _buildLoginButton(),
-                    ),
-                    
-                    const SizedBox(height: 28),
-                    
-                    // Forgot password
-                    FadeSlideIn(
-                      duration: AppDurations.normal,
-                      delay: const Duration(milliseconds: 300),
-                      child: _buildForgotPassword(),
-                    ),
-                    
-                    const SizedBox(height: 40),
-                  ],
+                  ),
                 ),
               ),
             ),
-          ),
+            Positioned(
+              top: 10,
+              right: 16,
+              child: _buildThemeToggle(),
+            ),
+          ],
         ),
       ),
+    );
+  }
+
+  Widget _buildThemeToggle() {
+    return ValueListenableBuilder<ThemeMode>(
+      valueListenable: ThemeManager.themeNotifier,
+      builder: (context, mode, child) {
+        final isDark = mode == ThemeMode.dark;
+        return CupertinoButton(
+          padding: EdgeInsets.zero,
+          onPressed: ThemeManager.toggleTheme,
+          child: Icon(
+            isDark ? CupertinoIcons.moon_stars_fill : CupertinoIcons.sun_max_fill,
+            color: isDark ? AppColors.gold : AppColors.primary,
+            size: 28,
+          ),
+        );
+      },
     );
   }
 
@@ -207,11 +235,12 @@ class _LoginScreenState extends State<LoginScreen>
   }
 
   Widget _buildForm(ResponsiveData responsive) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Container(
       decoration: BoxDecoration(
-        color: AppColors.white,
+        color: isDark ? const Color(0xFF1C1C1E) : AppColors.white,
         borderRadius: BorderRadius.circular(AppSpacing.radiusLg),
-        boxShadow: AppShadows.soft,
+        boxShadow: isDark ? [] : AppShadows.soft,
       ),
       child: Column(
         children: [
@@ -286,7 +315,9 @@ class _LoginScreenState extends State<LoginScreen>
                 const SizedBox(height: 6),
                 Text(
                   label,
-                  style: AppTypography.labelSmall,
+                  style: AppTypography.labelSmall.copyWith(
+                    color: Theme.of(context).textTheme.bodyLarge?.color,
+                  ),
                 ),
                 const SizedBox(height: 4),
                 CupertinoTextField(
@@ -303,7 +334,9 @@ class _LoginScreenState extends State<LoginScreen>
                   ),
                   decoration: null,
                   padding: const EdgeInsets.only(top: 2, bottom: 6),
-                  style: AppTypography.bodyLarge,
+                  style: AppTypography.bodyLarge.copyWith(
+                    color: Theme.of(context).textTheme.bodyLarge?.color,
+                  ),
                   textInputAction:
                       isLast ? TextInputAction.done : TextInputAction.next,
                   onSubmitted: isLast ? (_) => _onLoginPressed() : null,

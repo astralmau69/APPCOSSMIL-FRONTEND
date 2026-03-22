@@ -12,15 +12,18 @@ class ProfileQrModal {
   }) {
     showDialog(
       context: context,
-      builder: (ctx) => Dialog(
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(AppTheme.radiusXl),
-        ),
-        child: Padding(
-          padding: const EdgeInsets.all(28),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
+      builder: (ctx) {
+        final isDark = Theme.of(context).brightness == Brightness.dark;
+        return Dialog(
+          backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(AppTheme.radiusXl),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(28),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
               // Avatar
               Container(
                 width: 56,
@@ -48,10 +51,10 @@ class ProfileQrModal {
               Text(
                 user.displayName,
                 textAlign: TextAlign.center,
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 17,
                   fontWeight: FontWeight.w700,
-                  color: AppColors.textPrimary,
+                  color: Theme.of(context).textTheme.bodyLarge?.color ?? AppColors.textPrimary,
                 ),
               ),
               const SizedBox(height: 4),
@@ -70,13 +73,13 @@ class ProfileQrModal {
                 height: 180,
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: AppColors.white,
+                  color: isDark ? const Color(0xFF1C1C1E) : AppColors.white,
                   borderRadius: BorderRadius.circular(AppTheme.radiusMd),
-                  border: Border.all(color: AppColors.border, width: 1.5),
+                  border: Border.all(color: isDark ? Colors.white.withValues(alpha: 0.1) : AppColors.border, width: 1.5),
                 ),
                 child: Container(
                   decoration: BoxDecoration(
-                    color: AppColors.background,
+                    color: isDark ? const Color(0xFF2C2C2E) : AppColors.background,
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Column(
@@ -129,7 +132,8 @@ class ProfileQrModal {
             ],
           ),
         ),
-      ),
+      );
+      },
     );
   }
 }

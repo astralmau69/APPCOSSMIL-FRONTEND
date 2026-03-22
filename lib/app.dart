@@ -4,6 +4,7 @@ import 'core/theme/app_theme.dart';
 import 'features/splash/screens/splash_screen.dart';
 import 'features/auth/screens/login_screen.dart';
 import 'shell/tab_shell.dart';
+import 'core/theme/theme_manager.dart';
 
 class CossmilApp extends StatefulWidget {
   const CossmilApp({super.key});
@@ -59,28 +60,34 @@ class _CossmilAppState extends State<CossmilApp> with WidgetsBindingObserver {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      builder: (context, child) {
-        // Ensures ALL Text widgets have decoration:none by default,
-        // preventing the yellow double-underline that appears when Text
-        // is used inside CupertinoPageScaffold (no Material ancestor).
-        return DefaultTextStyle(
-          style: const TextStyle(
-            decoration: TextDecoration.none,
-            color: AppColors.textPrimary,
-            fontFamily: '.SF Pro Text',
-          ),
-          child: child!,
+    return ValueListenableBuilder<ThemeMode>(
+      valueListenable: ThemeManager.themeNotifier,
+      builder: (context, currentThemeMode, child) {
+        return MaterialApp(
+          builder: (context, appChild) {
+            // Ensures ALL Text widgets have decoration:none by default.
+            final defaultColor = currentThemeMode == ThemeMode.dark ? Colors.white : AppColors.textPrimary;
+            return DefaultTextStyle(
+              style: TextStyle(
+                decoration: TextDecoration.none,
+                color: defaultColor,
+                fontFamily: '.SF Pro Text',
+              ),
+              child: appChild!,
+            );
+          },
+          navigatorKey: _navigatorKey,
+          title: 'COSSMIL Flow',
+          debugShowCheckedModeBanner: false,
+          theme: AppTheme.theme,
+          darkTheme: AppTheme.darkTheme,
+          themeMode: currentThemeMode,
+          home: const SplashScreen(),
+          routes: {
+            '/login': (context) => const LoginScreen(),
+            '/home': (context) => const TabShell(),
+          },
         );
-      },
-      navigatorKey: _navigatorKey,
-      title: 'COSSMIL Flow',
-      debugShowCheckedModeBanner: false,
-      theme: AppTheme.theme,
-      home: const SplashScreen(),
-      routes: {
-        '/login': (context) => const LoginScreen(),
-        '/home': (context) => const TabShell(),
       },
     );
   }

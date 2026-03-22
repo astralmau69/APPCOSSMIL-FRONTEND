@@ -41,6 +41,7 @@ class _NewsCardState extends State<NewsCard>
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final accentColor = _accentForImportance(widget.item.importance);
 
     return GestureDetector(
@@ -54,15 +55,15 @@ class _NewsCardState extends State<NewsCard>
           child: Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: AppColors.white,
+              color: isDark ? const Color(0xFF1C1C1E) : AppColors.white,
               borderRadius: BorderRadius.circular(AppTheme.radiusLg),
               border: Border.all(
                 color: widget.item.importance == NewsImportance.critical
                     ? AppColors.error.withValues(alpha: 0.25)
-                    : AppColors.border,
+                    : (isDark ? Colors.white.withValues(alpha: 0.1) : AppColors.border),
                 width: 0.5,
               ),
-              boxShadow: [
+              boxShadow: isDark ? [] : [
                 BoxShadow(
                   color: Colors.black.withValues(alpha: 0.02),
                   blurRadius: 4,
@@ -108,10 +109,10 @@ class _NewsCardState extends State<NewsCard>
               // Title
               Text(
                 widget.item.title,
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 15,
                   fontWeight: FontWeight.w700,
-                  color: AppColors.textPrimary,
+                  color: Theme.of(context).textTheme.bodyLarge?.color ?? AppColors.textPrimary,
                   height: 1.2,
                 ),
               ),

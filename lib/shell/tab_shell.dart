@@ -11,6 +11,7 @@ import '../features/reservas/screens/reservas_screen.dart';
 import '../features/booking/screens/regional_screen.dart';
 import '../features/familia/screens/familia_screen.dart';
 import '../features/perfil/screens/perfil_screen.dart';
+import 'widgets/floating_nav_bar.dart';
 
 /// Estado mutable del flujo de reserva, compartido entre pantallas.
 class BookingState {
@@ -101,81 +102,27 @@ class TabShellState extends State<TabShell>
 
   @override
   Widget build(BuildContext context) {
-    return CupertinoTabScaffold(
-      controller: _tabController,
-      backgroundColor: AppColors.background,
-      tabBar: CupertinoTabBar(
-        backgroundColor: AppColors.white.withValues(alpha: 0.92),
-        activeColor: AppColors.primary,
-        inactiveColor: AppColors.textTertiary,
-        border: Border(
-          top: BorderSide(
-            color: AppColors.border.withValues(alpha: 0.3),
-            width: 0.5,
-          ),
-        ),
+    return Scaffold(
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+      extendBody: true,
+      body: IndexedStack(
+        index: _currentIndex,
+        children: List.generate(5, (index) {
+          return CupertinoTabView(
+            navigatorKey: _tabNavKeys[index],
+            builder: (context) => _screenForIndex(index),
+          );
+        }),
+      ),
+      bottomNavigationBar: FloatingNavBar(
+        currentIndex: _currentIndex,
         onTap: (index) {
           if (index == _currentIndex) {
             _tabNavKeys[index].currentState?.popUntil((route) => route.isFirst);
+          } else {
+            goToTab(index);
           }
-          setState(() => _currentIndex = index);
         },
-        items: [
-          const BottomNavigationBarItem(
-            icon: Icon(CupertinoIcons.house, size: 28),
-            activeIcon: Icon(CupertinoIcons.house_fill, size: 28),
-            label: 'Inicio',
-          ),
-          const BottomNavigationBarItem(
-            icon: Icon(CupertinoIcons.time, size: 28),
-            activeIcon: Icon(CupertinoIcons.time_solid, size: 28),
-            label: 'Reservas',
-          ),
-          BottomNavigationBarItem(
-            icon: _ReservingTabIcon(isActive: _currentIndex == 2),
-            label: 'Reservar',
-          ),
-          const BottomNavigationBarItem(
-            icon: Icon(CupertinoIcons.person_2, size: 28),
-            activeIcon: Icon(CupertinoIcons.person_2_fill, size: 28),
-            label: 'Familia',
-          ),
-          const BottomNavigationBarItem(
-            icon: Icon(CupertinoIcons.person_crop_circle, size: 28),
-            activeIcon: Icon(CupertinoIcons.person_crop_circle_fill, size: 28),
-            label: 'Perfil',
-          ),
-        ],
-      ),
-      tabBuilder: (context, index) {
-        return CupertinoTabView(
-          navigatorKey: _tabNavKeys[index],
-          builder: (context) => _screenForIndex(index),
-        );
-      },
-    );
-  }
-}
-
-/// Tab icon for reservations (Reservar) - extracted to avoid rebuild on every TabShell setState
-class _ReservingTabIcon extends StatelessWidget {
-  final bool isActive;
-
-  const _ReservingTabIcon({required this.isActive});
-
-  @override
-  Widget build(BuildContext context) {
-    return AnimatedContainer(
-      duration: const Duration(milliseconds: 200),
-      padding: const EdgeInsets.all(6),
-      decoration: BoxDecoration(
-        color: isActive ? AppColors.primary : Colors.transparent,
-        shape: BoxShape.circle,
-      ),
-      child: Icon(
-        CupertinoIcons.calendar_badge_plus,
-        size: 24,
-        color: isActive ? AppColors.white : AppColors.primary,
       ),
     );
   }

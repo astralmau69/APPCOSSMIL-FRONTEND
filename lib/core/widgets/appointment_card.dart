@@ -23,6 +23,7 @@ class AppointmentCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final config = _statusConfig(appointment.status);
     final responsive = ResponsiveData.of(context);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Padding(
       padding: EdgeInsets.symmetric(horizontal: responsive.isSmallPhone ? 8 : 12),
@@ -33,15 +34,15 @@ class AppointmentCard extends StatelessWidget {
           child: Container(
             padding: EdgeInsets.all(responsive.isSmallPhone ? 12 : 14),
             decoration: BoxDecoration(
-              color: AppColors.white,
+              color: isDark ? const Color(0xFF1C1C1E) : AppColors.white,
               borderRadius: BorderRadius.circular(AppSpacing.radiusLg),
               border: Border.all(
                 color: config.isHighlighted
                     ? config.color.withValues(alpha: 0.3)
-                    : AppColors.border,
+                    : (isDark ? Colors.white.withValues(alpha: 0.1) : AppColors.border),
                 width: 0.5,
               ),
-              boxShadow: AppShadows.soft,
+              boxShadow: isDark ? [] : AppShadows.soft,
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -59,6 +60,7 @@ class AppointmentCard extends StatelessWidget {
                             appointment.patientName,
                             style: AppTypography.titleLarge.copyWith(
                               fontSize: responsive.isSmallPhone ? 16 : 18,
+                              color: Theme.of(context).textTheme.bodyLarge?.color ?? AppColors.textPrimary,
                             ),
                             overflow: TextOverflow.ellipsis,
                             maxLines: 1,
@@ -98,13 +100,17 @@ class AppointmentCard extends StatelessWidget {
                         children: [
                           Text(
                             appointment.specialty,
-                            style: AppTypography.titleSmall,
+                            style: AppTypography.titleSmall.copyWith(
+                              color: Theme.of(context).textTheme.bodyLarge?.color ?? AppColors.textPrimary,
+                            ),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                           ),
                           Text(
                             appointment.doctorName,
-                            style: AppTypography.bodySmall,
+                            style: AppTypography.bodySmall.copyWith(
+                              color: isDark ? AppColors.textSecondary : AppColors.textPrimary,
+                            ),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                           ),
@@ -131,9 +137,9 @@ class AppointmentCard extends StatelessWidget {
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
                     decoration: BoxDecoration(
-                      color: AppColors.background,
+                      color: isDark ? Colors.white.withValues(alpha: 0.05) : AppColors.background,
                       borderRadius: BorderRadius.circular(AppSpacing.radiusSm),
-                      border: Border.all(color: AppColors.border, width: 0.5),
+                      border: Border.all(color: isDark ? Colors.transparent : AppColors.border, width: 0.5),
                     ),
                     child: Row(
                       mainAxisSize: MainAxisSize.min,

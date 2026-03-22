@@ -1,4 +1,5 @@
 import 'package:flutter/cupertino.dart';
+import 'package:flutter/material.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/theme/app_constants.dart';
 import '../../../core/animations/optimized_animations.dart';
@@ -13,11 +14,12 @@ class ReservasScreen extends StatelessWidget {
     final history = MockAppointmentsData.history;
     final completed = MockAppointmentsData.completedCount;
     final missed = MockAppointmentsData.missedCount;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return CupertinoPageScaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       child: history.isEmpty
-          ? _emptyState()
+          ? _emptyState(context, isDark)
           : CustomScrollView(
               physics: const BouncingScrollPhysics(
                 parent: AlwaysScrollableScrollPhysics(),
@@ -25,9 +27,10 @@ class ReservasScreen extends StatelessWidget {
               slivers: [
                 // ── iOS Large Title Nav Bar ─────────────────────────
                 CupertinoSliverNavigationBar(
-                  largeTitle: const Text('Mis Reservas'),
-                  backgroundColor:
-                      AppColors.white.withValues(alpha: 0.92),
+                  largeTitle: Text('Mis Reservas', style: TextStyle(color: Theme.of(context).textTheme.bodyLarge?.color)),
+                  backgroundColor: isDark 
+                      ? const Color(0xFF1C1C1E).withValues(alpha: 0.92)
+                      : AppColors.white.withValues(alpha: 0.92),
                   border: Border(
                     bottom: BorderSide(
                       color: AppColors.border.withValues(alpha: 0.5),
@@ -43,7 +46,7 @@ class ReservasScreen extends StatelessWidget {
                     delegate: SliverChildListDelegate([
                       FadeSlideIn(
                         duration: const Duration(milliseconds: 350),
-                        child: _buildSummaryBar(completed, missed),
+                        child: _buildSummaryBar(context, completed, missed, isDark),
                       ),
                       FadeSlideIn(
                         duration: AppDurations.slow,
@@ -93,13 +96,17 @@ class ReservasScreen extends StatelessWidget {
   }
 
   /// Summary bar: Completados / Faltas.
-  Widget _buildSummaryBar(int completed, int missed) {
+  Widget _buildSummaryBar(BuildContext context, int completed, int missed, bool isDark) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       decoration: BoxDecoration(
-        color: AppColors.white,
+        color: isDark ? const Color(0xFF1C1C1E) : AppColors.white,
         borderRadius: BorderRadius.circular(AppSpacing.radiusLg),
-        boxShadow: AppShadows.soft,
+        boxShadow: isDark ? [] : AppShadows.soft,
+        border: Border.all(
+          color: isDark ? Colors.white.withValues(alpha: 0.1) : Colors.transparent, 
+          width: 0.5
+        ),
       ),
       child: Row(
         children: [
@@ -183,15 +190,17 @@ class ReservasScreen extends StatelessWidget {
     );
   }
 
-  Widget _emptyState() {
+  Widget _emptyState(BuildContext context, bool isDark) {
     return CustomScrollView(
       physics: const BouncingScrollPhysics(
         parent: AlwaysScrollableScrollPhysics(),
       ),
       slivers: [
         CupertinoSliverNavigationBar(
-          largeTitle: const Text('Mis Reservas'),
-          backgroundColor: AppColors.white.withValues(alpha: 0.92),
+          largeTitle: Text('Mis Reservas', style: TextStyle(color: Theme.of(context).textTheme.bodyLarge?.color)),
+          backgroundColor: isDark 
+              ? const Color(0xFF1C1C1E).withValues(alpha: 0.92)
+              : AppColors.white.withValues(alpha: 0.92),
           border: Border(
             bottom: BorderSide(
               color: AppColors.border.withValues(alpha: 0.5),

@@ -75,15 +75,18 @@ class _RegionalScreenState extends State<RegionalScreen> {
   Widget build(BuildContext context) {
     final bs = widget.tabShell.bookingState;
     final currentBeneficiary = bs.beneficiary;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return CupertinoPageScaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       navigationBar: CupertinoNavigationBar(
-        middle: const Text(
+        middle: Text(
           'Establecimiento',
-          style: TextStyle(fontWeight: FontWeight.w700, fontSize: 17),
+          style: TextStyle(fontWeight: FontWeight.w700, fontSize: 17, color: Theme.of(context).textTheme.bodyLarge?.color),
         ),
-        backgroundColor: AppColors.white.withValues(alpha: 0.92),
+        backgroundColor: isDark 
+            ? const Color(0xFF1C1C1E).withValues(alpha: 0.92)
+            : AppColors.white.withValues(alpha: 0.92),
         border: Border(
           bottom: BorderSide(
             color: AppColors.border.withValues(alpha: 0.3),
@@ -115,14 +118,16 @@ class _RegionalScreenState extends State<RegionalScreen> {
                         // ── Active profile selector ─────────────────────────────────
                         FadeSlideIn(
                           offsetY: 30,
-                          child: _buildActiveProfileCard(currentBeneficiary),
+                          child: _buildActiveProfileCard(context, currentBeneficiary, isDark),
                         ),
                         const SizedBox(height: 20),
                         Padding(
                           padding: const EdgeInsets.symmetric(horizontal: 24),
                           child: Text(
                             '¿Qué establecimiento desea consultar?',
-                            style: AppTypography.headlineSmall,
+                            style: AppTypography.headlineSmall.copyWith(
+                              color: Theme.of(context).textTheme.bodyLarge?.color,
+                            ),
                           ),
                         ),
                         const SizedBox(height: 10),
@@ -130,7 +135,7 @@ class _RegionalScreenState extends State<RegionalScreen> {
                           FadeSlideIn(
                             delay: Duration(milliseconds: 60 * (i + 1).clamp(0, 5)),
                             offsetY: 15,
-                            child: _buildRegionalItem(_regionals[i], i),
+                            child: _buildRegionalItem(context, _regionals[i], i, isDark),
                           ),
                         if (_regionals.isEmpty)
                           const Padding(
@@ -147,7 +152,7 @@ class _RegionalScreenState extends State<RegionalScreen> {
 
   // ── Profile selector card ────────────────────────────────────────────────
 
-  Widget _buildActiveProfileCard(BeneficiaryModel? beneficiary) {
+  Widget _buildActiveProfileCard(BuildContext context, BeneficiaryModel? beneficiary, bool isDark) {
     if (beneficiary == null) return const SizedBox.shrink();
 
     final isTitular = beneficiary.isTitular;
@@ -158,11 +163,11 @@ class _RegionalScreenState extends State<RegionalScreen> {
       margin: const EdgeInsets.symmetric(horizontal: 20),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: AppColors.white,
+        color: isDark ? const Color(0xFF1C1C1E) : AppColors.white,
         borderRadius: BorderRadius.circular(AppTheme.radiusXl),
-        boxShadow: AppColors.cardShadow,
+        boxShadow: isDark ? [] : AppColors.cardShadow,
         border: Border.all(
-          color: AppColors.primary.withValues(alpha: 0.15),
+          color: isDark ? Colors.white.withValues(alpha: 0.1) : AppColors.primary.withValues(alpha: 0.15),
         ),
       ),
       child: Row(
@@ -215,7 +220,9 @@ class _RegionalScreenState extends State<RegionalScreen> {
                 const SizedBox(height: 4),
                 Text(
                   beneficiary.fullName,
-                  style: AppTypography.headlineMedium,
+                  style: AppTypography.headlineMedium.copyWith(
+                    color: Theme.of(context).textTheme.bodyLarge?.color ?? AppColors.textPrimary,
+                  ),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                 ),
@@ -296,15 +303,16 @@ class _RegionalScreenState extends State<RegionalScreen> {
 
   // ── Regional list ────────────────────────────────────────────────────────
 
-  Widget _buildRegionalItem(RegionalModel regional, int index) {
+  Widget _buildRegionalItem(BuildContext context, RegionalModel regional, int index, bool isDark) {
     final isExpanded = _expandedIndex == index;
 
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
       decoration: BoxDecoration(
-        color: AppColors.white,
+        color: isDark ? const Color(0xFF1C1C1E) : AppColors.white,
         borderRadius: BorderRadius.circular(AppTheme.radiusLg),
-        boxShadow: AppColors.softShadow,
+        boxShadow: isDark ? [] : AppColors.softShadow,
+        border: isDark ? Border.all(color: Colors.white.withValues(alpha: 0.1)) : null,
       ),
       child: Column(
         children: [
@@ -329,7 +337,9 @@ class _RegionalScreenState extends State<RegionalScreen> {
                   Expanded(
                     child: Text(
                       regional.name,
-                      style: AppTypography.titleMedium,
+                      style: AppTypography.titleMedium.copyWith(
+                         color: Theme.of(context).textTheme.bodyLarge?.color ?? AppColors.textPrimary,
+                      ),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
@@ -347,27 +357,27 @@ class _RegionalScreenState extends State<RegionalScreen> {
           ),
           // Simple conditional instead of AnimatedCrossFade — avoids rendering
           // both children simultaneously (double layout cost).
-          if (isExpanded) _buildHospitalCards(regional),
+          if (isExpanded) _buildHospitalCards(context, regional, isDark),
         ],
       ),
     );
   }
 
-  Widget _buildHospitalCards(RegionalModel regional) {
+  Widget _buildHospitalCards(BuildContext context, RegionalModel regional, bool isDark) {
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
       child: Column(
         children: [
           for (int i = 0; i < regional.hospitals.length; i++) ...[
             if (i > 0) const SizedBox(height: 12),
-            _hospitalCard(regional, regional.hospitals[i]),
+            _hospitalCard(context, regional, regional.hospitals[i], isDark),
           ],
         ],
       ),
     );
   }
 
-  Widget _hospitalCard(RegionalModel regional, HospitalModel hospital) {
+  Widget _hospitalCard(BuildContext context, RegionalModel regional, HospitalModel hospital, bool isDark) {
     return AnimatedPressButton(
       onTap: () {
         widget.tabShell.bookingState.regional = regional;
@@ -384,7 +394,7 @@ class _RegionalScreenState extends State<RegionalScreen> {
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(AppTheme.radiusLg),
-          color: AppColors.primary.withValues(alpha: 0.05),
+          color: isDark ? AppColors.primary.withValues(alpha: 0.15) : AppColors.primary.withValues(alpha: 0.05),
           border: Border.all(
               color: AppColors.primary.withValues(alpha: 0.15), width: 1.5),
         ),
@@ -413,6 +423,7 @@ class _RegionalScreenState extends State<RegionalScreen> {
                     hospital.name,
                     style: AppTypography.titleMedium.copyWith(
                       fontWeight: FontWeight.w800,
+                      color: Theme.of(context).textTheme.bodyLarge?.color ?? AppColors.textPrimary,
                     ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,

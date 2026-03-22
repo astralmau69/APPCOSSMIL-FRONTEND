@@ -83,6 +83,7 @@ class _SpecialtyScreenState extends State<SpecialtyScreen> {
   @override
   Widget build(BuildContext context) {
     final bs = widget.tabShell.bookingState;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final breadcrumbs = [
       bs.beneficiaryLabel ?? 'Para mí',
       bs.regional?.name ?? '',
@@ -90,13 +91,15 @@ class _SpecialtyScreenState extends State<SpecialtyScreen> {
     ];
 
     return CupertinoPageScaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       navigationBar: CupertinoNavigationBar(
-        middle: const Text(
+        middle: Text(
           'Especialidad',
-          style: TextStyle(fontWeight: FontWeight.w700, fontSize: 17),
+          style: TextStyle(fontWeight: FontWeight.w700, fontSize: 17, color: Theme.of(context).textTheme.bodyLarge?.color),
         ),
-        backgroundColor: AppColors.white.withValues(alpha: 0.92),
+        backgroundColor: isDark 
+            ? const Color(0xFF1C1C1E).withValues(alpha: 0.92)
+            : AppColors.white.withValues(alpha: 0.92),
         border: Border(
           bottom: BorderSide(
             color: AppColors.border.withValues(alpha: 0.3),
@@ -173,12 +176,14 @@ class _SpecialtyScreenState extends State<SpecialtyScreen> {
     bool showBadge = false,
     int startDelay = 0,
   }) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 20),
       decoration: BoxDecoration(
-        color: AppColors.white,
+        color: isDark ? const Color(0xFF1C1C1E) : AppColors.white,
         borderRadius: BorderRadius.circular(AppTheme.radiusXl),
-        boxShadow: [
+        border: isDark ? Border.all(color: Colors.white.withValues(alpha: 0.1)) : null,
+        boxShadow: isDark ? [] : [
           BoxShadow(
             color: AppColors.primary.withValues(alpha: 0.04),
             blurRadius: 15,
@@ -250,7 +255,9 @@ class _SpecialtyScreenState extends State<SpecialtyScreen> {
                 children: [
                   Text(
                     specialty.name,
-                    style: AppTypography.titleMedium,
+                    style: AppTypography.titleMedium.copyWith(
+                      color: Theme.of(context).textTheme.bodyLarge?.color ?? AppColors.textPrimary,
+                    ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),

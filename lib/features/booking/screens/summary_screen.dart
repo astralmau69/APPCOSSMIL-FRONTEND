@@ -36,14 +36,18 @@ class _SummaryScreenState extends State<SummaryScreen> {
   Widget build(BuildContext context) {
     final bs = widget.tabShell.bookingState;
     final user = MockUserData.user;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return CupertinoPageScaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       navigationBar: CupertinoNavigationBar(
-        middle: const Text(
+        middle: Text(
           'Resumen',
-          style: TextStyle(fontWeight: FontWeight.w700, fontSize: 17),
+          style: TextStyle(fontWeight: FontWeight.w700, fontSize: 17, color: Theme.of(context).textTheme.bodyLarge?.color),
         ),
-        backgroundColor: AppColors.white.withValues(alpha: 0.92),
+        backgroundColor: isDark 
+            ? const Color(0xFF1C1C1E).withValues(alpha: 0.92)
+            : AppColors.white.withValues(alpha: 0.92),
         border: Border(
           bottom: BorderSide(
             color: AppColors.border.withValues(alpha: 0.3),
@@ -70,9 +74,10 @@ class _SummaryScreenState extends State<SummaryScreen> {
               child: Container(
                 margin: const EdgeInsets.symmetric(horizontal: 20),
                 decoration: BoxDecoration(
-                  color: AppColors.white,
+                  color: isDark ? const Color(0xFF1C1C1E) : AppColors.white,
                   borderRadius: BorderRadius.circular(AppTheme.radiusLg),
-                  boxShadow: AppColors.cardShadow,
+                  boxShadow: isDark ? [] : AppColors.cardShadow,
+                  border: isDark ? Border.all(color: Colors.white.withValues(alpha: 0.1)) : null,
                 ),
                 child: Column(
                   children: [
@@ -109,7 +114,7 @@ class _SummaryScreenState extends State<SummaryScreen> {
                 margin: const EdgeInsets.symmetric(horizontal: 20),
                 padding: const EdgeInsets.all(14),
                 decoration: BoxDecoration(
-                  color: AppColors.infoLight,
+                  color: isDark ? AppColors.info.withValues(alpha: 0.12) : AppColors.infoLight,
                   borderRadius: BorderRadius.circular(AppTheme.radiusMd),
                   border: Border.all(color: AppColors.info.withValues(alpha: 0.2)),
                 ),
@@ -207,6 +212,7 @@ class _SummaryScreenState extends State<SummaryScreen> {
   }
 
   Widget _row(IconData icon, String label, String value) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 20),
       child: Center(
@@ -215,9 +221,9 @@ class _SummaryScreenState extends State<SummaryScreen> {
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
           text: TextSpan(
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 16,
-              color: AppColors.textPrimary,
+              color: Theme.of(context).textTheme.bodyLarge?.color ?? AppColors.textPrimary,
             ),
             children: [
               WidgetSpan(
@@ -250,10 +256,11 @@ class _SummaryScreenState extends State<SummaryScreen> {
   }
 
   Widget _divider() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16),
       height: 0.5,
-      color: AppColors.border,
+      color: isDark ? Colors.white.withValues(alpha: 0.1) : AppColors.border,
     );
   }
 

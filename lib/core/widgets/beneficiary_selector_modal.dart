@@ -48,9 +48,9 @@ class _ModalContent extends StatelessWidget {
       constraints: BoxConstraints(
         maxHeight: MediaQuery.of(context).size.height * 0.65,
       ),
-      decoration: const BoxDecoration(
-        color: AppColors.white,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      decoration: BoxDecoration(
+        color: Theme.of(context).brightness == Brightness.dark ? const Color(0xFF1C1C1E) : AppColors.white,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -67,18 +67,18 @@ class _ModalContent extends StatelessWidget {
           ),
           const SizedBox(height: 20),
           // Title
-          const Padding(
-            padding: EdgeInsets.symmetric(horizontal: 24),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 24),
             child: Row(
               children: [
-                Icon(Icons.people_alt, size: 20, color: AppColors.primary),
-                SizedBox(width: 10),
+                const Icon(Icons.people_alt, size: 20, color: AppColors.primary),
+                const SizedBox(width: 10),
                 Text(
                   '¿Para quién es la reserva?',
                   style: TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.w800,
-                    color: AppColors.textPrimary,
+                    color: Theme.of(context).textTheme.bodyLarge?.color ?? AppColors.textPrimary,
                     letterSpacing: -0.3,
                   ),
                 ),
@@ -135,6 +135,7 @@ class _BeneficiaryTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final isTitular = beneficiary.isTitular;
     final avatarColor = isTitular ? AppColors.primary : AppColors.accent;
     final label = isTitular ? 'Yo (Titular)' : beneficiary.relationship;
@@ -145,7 +146,7 @@ class _BeneficiaryTile extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
         color: isSelected
-            ? AppColors.primaryLight
+            ? (isDark ? AppColors.primary.withValues(alpha: 0.15) : AppColors.primaryLight)
             : Colors.transparent,
         child: Row(
           children: [
@@ -188,10 +189,10 @@ class _BeneficiaryTile extends StatelessWidget {
                 children: [
                   Text(
                     beneficiary.fullName,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.w700,
-                      color: AppColors.textPrimary,
+                      color: Theme.of(context).textTheme.bodyLarge?.color ?? AppColors.textPrimary,
                     ),
                   ),
                   const SizedBox(height: 4),

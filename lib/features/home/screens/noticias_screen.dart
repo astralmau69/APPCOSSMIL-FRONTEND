@@ -1,4 +1,5 @@
 import 'package:flutter/cupertino.dart';
+import 'package:flutter/material.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/mock/mock_news_data.dart';
@@ -16,16 +17,20 @@ class NoticiasScreen extends StatelessWidget {
     final featured = allNews.where((n) => n.isFeatured).toList();
     final regular = allNews.where((n) => !n.isFeatured).toList();
 
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return CupertinoPageScaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       child: CustomScrollView(
         physics: const BouncingScrollPhysics(
           parent: AlwaysScrollableScrollPhysics(),
         ),
         slivers: [
           CupertinoSliverNavigationBar(
-            largeTitle: const Text('COSSMIL te informa'),
-            backgroundColor: AppColors.white.withValues(alpha: 0.92),
+            largeTitle: Text('COSSMIL te informa', style: TextStyle(color: Theme.of(context).textTheme.bodyLarge?.color)),
+            backgroundColor: isDark 
+                ? const Color(0xFF1C1C1E).withValues(alpha: 0.92)
+                : AppColors.white.withValues(alpha: 0.92),
             border: Border(
               bottom: BorderSide(
                 color: AppColors.border.withValues(alpha: 0.5),
@@ -153,6 +158,7 @@ class _FeaturedCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final accentColor = switch (item.importance) {
       NewsImportance.critical => AppColors.error,
       NewsImportance.warning => AppColors.warning,
@@ -161,11 +167,11 @@ class _FeaturedCard extends StatelessWidget {
 
     return Container(
       decoration: BoxDecoration(
-        color: AppColors.white,
+        color: isDark ? const Color(0xFF1C1C1E) : AppColors.white,
         borderRadius: BorderRadius.circular(AppTheme.radiusLg),
-        boxShadow: AppColors.softShadow,
+        boxShadow: isDark ? [] : AppColors.softShadow,
         border: Border.all(
-          color: accentColor.withValues(alpha: 0.20),
+          color: isDark ? Colors.white.withValues(alpha: 0.1) : accentColor.withValues(alpha: 0.20),
           width: 1,
         ),
       ),
@@ -238,10 +244,10 @@ class _FeaturedCard extends StatelessWidget {
                   // Title
                   Text(
                     item.title,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 15,
                       fontWeight: FontWeight.w800,
-                      color: AppColors.textPrimary,
+                      color: Theme.of(context).textTheme.bodyLarge?.color ?? AppColors.textPrimary,
                       height: 1.3,
                     ),
                   ),

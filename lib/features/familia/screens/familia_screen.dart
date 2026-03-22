@@ -11,17 +11,20 @@ class FamiliaScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final beneficiaries = MockUserData.user.beneficiaries;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return CupertinoPageScaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       child: CustomScrollView(
         physics: const BouncingScrollPhysics(
           parent: AlwaysScrollableScrollPhysics(),
         ),
         slivers: [
           CupertinoSliverNavigationBar(
-            largeTitle: const Text('Mi Grupo Familiar'),
-            backgroundColor: AppColors.white.withValues(alpha: 0.92),
+            largeTitle: Text('Mi Grupo Familiar', style: TextStyle(color: Theme.of(context).textTheme.bodyLarge?.color)),
+            backgroundColor: isDark 
+                ? const Color(0xFF1C1C1E).withValues(alpha: 0.92)
+                : AppColors.white.withValues(alpha: 0.92),
             border: Border(
               bottom: BorderSide(
                 color: AppColors.border.withValues(alpha: 0.5),
@@ -43,6 +46,7 @@ class FamiliaScreen extends StatelessWidget {
                     delay: Duration(milliseconds: 100 + (index * 80)),
                     offsetY: 15,
                     child: CupertinoListTile(
+                      backgroundColor: isDark ? const Color(0xFF1C1C1E) : AppColors.white,
                       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                       leadingSize: 56,
                       leading: Container(
@@ -79,10 +83,10 @@ class FamiliaScreen extends StatelessWidget {
                       ),
                       title: Text(
                         b.fullName,
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.w700,
-                          color: AppColors.textPrimary,
+                          color: Theme.of(context).textTheme.bodyLarge?.color ?? AppColors.textPrimary,
                         ),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,

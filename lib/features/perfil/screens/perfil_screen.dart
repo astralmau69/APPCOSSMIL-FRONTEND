@@ -1,11 +1,14 @@
 import 'dart:convert';
 import 'package:flutter/cupertino.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/mock/mock_user_data.dart';
 import '../../../core/storage/token_storage.dart';
 import '../../../core/widgets/profile_qr_modal.dart';
 import '../../../core/animations/optimized_animations.dart';
+import '../../../core/theme/theme_manager.dart';
 
 class PerfilScreen extends StatefulWidget {
   const PerfilScreen({super.key});
@@ -46,15 +49,17 @@ class _PerfilScreenState extends State<PerfilScreen> {
     final user = MockUserData.user;
 
     return CupertinoPageScaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       child: CustomScrollView(
         physics: const BouncingScrollPhysics(
           parent: AlwaysScrollableScrollPhysics(),
         ),
         slivers: [
           CupertinoSliverNavigationBar(
-            largeTitle: const Text('Mi Perfil'),
-            backgroundColor: AppColors.white.withValues(alpha: 0.92),
+            largeTitle: Text('Mi Perfil', style: TextStyle(color: Theme.of(context).textTheme.bodyLarge?.color)),
+            backgroundColor: Theme.of(context).brightness == Brightness.dark 
+                ? const Color(0xFF1C1C1E).withValues(alpha: 0.92)
+                : AppColors.white.withValues(alpha: 0.92),
             border: Border(
               bottom: BorderSide(
                 color: AppColors.border.withValues(alpha: 0.5),
@@ -321,6 +326,33 @@ class _PerfilScreenState extends State<PerfilScreen> {
                   ),
                   CupertinoListSection.insetGrouped(
                     backgroundColor: const Color(0x00000000),
+                    header: Text('APARIENCIA', style: TextStyle(fontWeight: FontWeight.w700, letterSpacing: 1.2, color: Theme.of(context).textTheme.bodyLarge?.color)),
+                    children: [
+                      ValueListenableBuilder<ThemeMode>(
+                        valueListenable: ThemeManager.themeNotifier,
+                        builder: (context, mode, child) {
+                          final isDark = mode == ThemeMode.dark;
+                          return CupertinoListTile(
+                            leading: Container(
+                              padding: const EdgeInsets.all(4),
+                              decoration: BoxDecoration(color: isDark ? AppColors.textPrimary : AppColors.primary, borderRadius: BorderRadius.circular(6)),
+                              child: Icon(isDark ? CupertinoIcons.moon_fill : CupertinoIcons.sun_max_fill, color: AppColors.white, size: 20),
+                            ),
+                            title: Text('Modo Oscuro', style: TextStyle(fontWeight: FontWeight.w600, color: Theme.of(context).textTheme.bodyLarge?.color)),
+                            trailing: CupertinoSwitch(
+                              value: isDark,
+                              activeTrackColor: AppColors.primary,
+                              onChanged: (val) {
+                                ThemeManager.setThemeMode(val ? ThemeMode.dark : ThemeMode.light);
+                              },
+                            ),
+                          );
+                        },
+                      ),
+                    ],
+                  ),
+                  CupertinoListSection.insetGrouped(
+                    backgroundColor: const Color(0x00000000),
                     margin: const EdgeInsets.only(top: 20, left: 20, right: 20),
                     children: [
                       CupertinoListTile(
@@ -392,12 +424,13 @@ class _PerfilScreenState extends State<PerfilScreen> {
   }
 
   Widget _infoCard(String label, String value, IconData icon, Color color) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: AppColors.white,
+        color: isDark ? const Color(0xFF1C1C1E) : AppColors.white,
         borderRadius: BorderRadius.circular(AppTheme.radiusXl),
-        boxShadow: AppColors.softShadow,
+        boxShadow: isDark ? [] : AppColors.softShadow,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -416,10 +449,10 @@ class _PerfilScreenState extends State<PerfilScreen> {
           const SizedBox(height: 4),
           Text(
             value,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.w800,
-              color: AppColors.textPrimary,
+              color: Theme.of(context).textTheme.bodyLarge?.color ?? AppColors.textPrimary,
               height: 1.1,
             ),
           ),
