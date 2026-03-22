@@ -4,7 +4,7 @@ import '../../../core/theme/app_theme.dart';
 import '../../../core/mock/mock_news_data.dart';
 import '../../../core/models/news_item_model.dart';
 import '../../../core/widgets/news_card.dart';
-import '../../../core/animations/fade_slide_in.dart';
+import '../../../core/animations/optimized_animations.dart';
 
 /// Pantalla dedicada para comunicados, noticias y avisos institucionales.
 class NoticiasScreen extends StatelessWidget {

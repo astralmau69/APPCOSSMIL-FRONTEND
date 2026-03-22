@@ -72,6 +72,64 @@ class UserModel {
     );
   }
 
+  factory UserModel.fromJson(Map<String, dynamic> json) {
+    return UserModel(
+      id: (json['idper'] ?? json['id'] ?? '').toString(),
+      fullName: json['nombre_completo'] as String? ??
+          json['fullName'] as String? ??
+          '',
+      rank: json['grado'] as String? ?? json['rank'] as String? ?? '',
+      matricula:
+          json['matricula'] as String? ?? json['matricula'] as String? ?? '',
+      bloodType: json['tipo_sangre'] as String? ??
+          json['bloodType'] as String? ??
+          '',
+      age: json['edad'] as int? ?? json['age'] as int? ?? 0,
+      role: json['rol'] as String? ?? json['role'] as String? ?? '',
+      isEnabled: json['habilitado'] as bool? ??
+          json['isEnabled'] as bool? ??
+          true,
+      hasMedicalAppointment: json['tiene_cita'] as bool? ??
+          json['hasMedicalAppointment'] as bool? ??
+          false,
+      email: json['correo'] as String? ?? json['email'] as String? ?? '',
+      phone: json['celular'] as String? ?? json['phone'] as String? ?? '',
+      ci: json['ci'] as String? ?? '',
+      photoBase64: json['foto2'] as String? ??
+          json['photoBase64'] as String? ??
+          '',
+      birthDate:
+          json['fecnac'] as String? ?? json['birthDate'] as String? ?? '',
+      beneficiaries: (json['beneficiarios'] as List<dynamic>?)
+              ?.map(
+                  (e) => BeneficiaryModel.fromJson(e as Map<String, dynamic>))
+              .toList() ??
+          (json['beneficiaries'] as List<dynamic>?)
+              ?.map(
+                  (e) => BeneficiaryModel.fromJson(e as Map<String, dynamic>))
+              .toList() ??
+          [],
+    );
+  }
+
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'fullName': fullName,
+        'rank': rank,
+        'matricula': matricula,
+        'bloodType': bloodType,
+        'age': age,
+        'role': role,
+        'isEnabled': isEnabled,
+        'hasMedicalAppointment': hasMedicalAppointment,
+        'email': email,
+        'phone': phone,
+        'ci': ci,
+        'photoBase64': photoBase64,
+        'birthDate': birthDate,
+        'beneficiaries': beneficiaries.map((b) => b.toJson()).toList(),
+      };
+
   /// Nombre con rango para mostrar en UI.
   String get displayName =>
       rank.isEmpty ? fullName : '$rank $fullName';

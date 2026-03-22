@@ -11,6 +11,26 @@ class BeneficiaryModel {
     this.age,
   });
 
+  factory BeneficiaryModel.fromJson(Map<String, dynamic> json) {
+    return BeneficiaryModel(
+      id: (json['idben'] ?? json['id'] ?? '').toString(),
+      fullName: json['nombre_completo'] as String? ??
+          json['fullName'] as String? ??
+          '',
+      relationship: json['parentesco'] as String? ??
+          json['relationship'] as String? ??
+          '',
+      age: json['edad'] as int? ?? json['age'] as int?,
+    );
+  }
+
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'fullName': fullName,
+        'relationship': relationship,
+        'age': age,
+      };
+
   /// First letter of name for avatar display.
   String get initial => fullName.isNotEmpty ? fullName[0] : '?';
 

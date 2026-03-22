@@ -1,14 +1,15 @@
 import 'dart:convert';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import '../../../core/constants/app_colors.dart';
-import '../../../core/theme/app_theme.dart';
+import '../../../core/theme/app_constants.dart';
+import '../../../core/extensions/responsive_extensions.dart';
+import '../../../core/animations/optimized_animations.dart';
 import '../../../core/mock/mock_user_data.dart';
 import '../../../core/mock/mock_news_data.dart';
 import '../../../core/models/user_model.dart';
 import '../../../core/widgets/news_card.dart';
-import '../../../core/animations/animated_press_button.dart';
-import '../../../core/animations/fade_slide_in.dart';
-import '../../../core/animations/app_page_route.dart';
+import '../../../core/widgets/section_header.dart';
 import '../../../shell/tab_shell.dart';
 import 'contactos_screen.dart';
 import 'noticias_screen.dart';
@@ -22,116 +23,95 @@ class HomeScreen extends StatefulWidget {
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen>
-    with SingleTickerProviderStateMixin {
-  late final AnimationController _animCtrl;
-  late final Animation<double> _fadeIn;
-
-  @override
-  void initState() {
-    super.initState();
-    _animCtrl = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 600),
-    )..forward();
-    _fadeIn = CurvedAnimation(parent: _animCtrl, curve: Curves.easeOut);
-  }
-
-  @override
-  void dispose() {
-    _animCtrl.dispose();
-    super.dispose();
-  }
+class _HomeScreenState extends State<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
     final user = MockUserData.user;
-    final screenWidth = MediaQuery.of(context).size.width;
-    final hPadding = AppTheme.horizontalPadding(screenWidth);
+    final responsive = ResponsiveData.of(context);
+    final horizontalPadding = responsive.isSmallPhone ? 12.0 : (responsive.isPhone ? 14.0 : 20.0);
 
-    return Scaffold(
+    return CupertinoPageScaffold(
       backgroundColor: AppColors.background,
-      body: SafeArea(
-        child: FadeTransition(
-          opacity: _fadeIn,
-          child: Align(
-            alignment: Alignment.topCenter,
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 650),
-              child: ListView(
-                padding: EdgeInsets.symmetric(horizontal: hPadding),
-                children: [
-                  const SizedBox(height: 16),
-                  FadeSlideIn(
-                    duration: const Duration(milliseconds: 400),
-                    child: _buildGreeting(user),
+      child: CustomScrollView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        slivers: [
+          CupertinoSliverNavigationBar(
+            largeTitle: const Text('Inicio'),
+            backgroundColor: AppColors.background.withValues(alpha: 0.95),
+            border: null,
+          ),
+          SliverPadding(
+            padding: EdgeInsets.symmetric(horizontal: horizontalPadding),
+            sliver: SliverToBoxAdapter(
+              child: Center(
+                child: ConstrainedBox(
+                  constraints: BoxConstraints(
+                    maxWidth: responsive.isTablet ? 700 : double.infinity,
                   ),
-                  const SizedBox(height: 20),
-                  FadeSlideIn(
-                    delay: const Duration(milliseconds: 100),
-                    child: _buildProfileCard(user),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      FadeSlideIn(
+                        duration: AppDurations.normal,
+                        delay: const Duration(milliseconds: 0),
+                        offsetY: 10,
+                        child: _buildProfileCard(user, responsive),
+                      ),
+                      const SizedBox(height: 24),
+                      FadeSlideIn(
+                        duration: AppDurations.normal,
+                        delay: const Duration(milliseconds: 50),
+                        offsetY: 10,
+                        child: _buildQuickActions(responsive),
+                      ),
+                      const SizedBox(height: 24),
+                      FadeSlideIn(
+                        duration: AppDurations.normal,
+                        delay: const Duration(milliseconds: 100),
+                        offsetY: 10,
+                        child: const SectionHeader(text: 'COSSMIL TE INFORMA', padding: EdgeInsets.only(left: 4)),
+                      ),
+                      const SizedBox(height: 8),
+                      FadeSlideIn(
+                        duration: AppDurations.normal,
+                        delay: const Duration(milliseconds: 150),
+                        offsetY: 10,
+                        child: _buildNewsSection(),
+                      ),
+                      const SizedBox(height: 120),
+                    ],
                   ),
-                  const SizedBox(height: 24),
-                  FadeSlideIn(
-                    delay: const Duration(milliseconds: 200),
-                    child: _buildQuickActions(),
-                  ),
-                  const SizedBox(height: 28),
-                  FadeSlideIn(
-                    delay: const Duration(milliseconds: 300),
-                    child: _buildSectionTitle('COSSMIL TE INFORMA'),
-                  ),
-                  const SizedBox(height: 12),
-                  _buildNewsSection(),
-                  const SizedBox(height: 32),
-                ],
+                ),
               ),
             ),
           ),
-        ),
+        ],
       ),
-    );
-  }
-
-  // ── Saludo ────────────────────────────────────────────────────────────────
-
-  Widget _buildGreeting(UserModel user) {
-    return const Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          'Bienvenido',
-          style: TextStyle(
-            fontSize: 32,
-            fontWeight: FontWeight.w900,
-            color: AppColors.textPrimary,
-            letterSpacing: -1.0,
-          ),
-        ),
-      ],
     );
   }
 
   // ── Tarjeta de perfil (simplificada) ───────────────────────────────────────
 
-  Widget _buildProfileCard(UserModel user) {
+  Widget _buildProfileCard(UserModel user, ResponsiveData responsive) {
     return Container(
-      padding: const EdgeInsets.all(20),
+      padding: EdgeInsets.all(responsive.isSmallPhone ? 16 : 20),
       decoration: BoxDecoration(
-        gradient: const LinearGradient(
+        color: AppColors.primary,
+        gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
           colors: [
-            Color(0xFF0E5B85),
-            Color(0xFF082F49),
+            AppColors.primary,
+            AppColors.primaryDark,
           ],
         ),
-        borderRadius: BorderRadius.circular(AppTheme.radiusXl),
+        borderRadius: BorderRadius.circular(AppSpacing.radiusXl),
         boxShadow: [
           BoxShadow(
-            color: AppColors.primaryDark.withValues(alpha: 0.35),
-            blurRadius: 20,
-            offset: const Offset(0, 8),
+            color: Colors.black.withValues(alpha: 0.1), // Sombra más limpia, menos blur (era 20)
+            blurRadius: 8,
+            offset: const Offset(0, 4),
           ),
         ],
       ),
@@ -168,20 +148,16 @@ class _HomeScreenState extends State<HomeScreen>
                   children: [
                     Text(
                       user.fullName,
-                      style: const TextStyle(
+                      style: AppTypography.headlineMedium.copyWith(
                         color: AppColors.white,
-                        fontSize: 28,
-                        fontWeight: FontWeight.w900,
-                        letterSpacing: -0.5,
                       ),
                     ),
+                    const SizedBox(height: 2),
                     Text(
                       '${user.rank} • Mat: ${user.matricula}',
-                      style: TextStyle(
-                        color: AppColors.white.withValues(alpha: 0.9),
-                        fontSize: 20,
-                        fontWeight: FontWeight.w700,
-                        fontFamily: '.SF Pro Text',
+                      style: AppTypography.bodyMedium.copyWith(
+                        color: AppColors.white.withValues(alpha: 0.85),
+                        fontWeight: FontWeight.w600,
                       ),
                     ),
                   ],
@@ -261,19 +237,16 @@ class _HomeScreenState extends State<HomeScreen>
             children: [
               Text(
                 'ESTADO',
-                style: TextStyle(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w700,
-                  color: AppColors.white.withValues(alpha: 0.6),
-                  letterSpacing: 0.8,
+                style: AppTypography.caption.copyWith(
+                  color: AppColors.white.withValues(alpha: 0.55),
+                  fontWeight: FontWeight.w600,
                 ),
               ),
               Text(
                 enabled ? 'Habilitado' : 'Inactivo',
-                style: const TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.w900,
+                style: AppTypography.titleSmall.copyWith(
                   color: AppColors.white,
+                  fontSize: 15,
                 ),
               ),
             ],
@@ -295,9 +268,8 @@ class _HomeScreenState extends State<HomeScreen>
           Expanded(
             child: Text(
               value,
-              style: TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.w700,
+              style: AppTypography.bodyMedium.copyWith(
+                fontWeight: FontWeight.w600,
                 color: AppColors.white.withValues(alpha: 0.95),
               ),
               overflow: TextOverflow.ellipsis,
@@ -319,105 +291,91 @@ class _HomeScreenState extends State<HomeScreen>
 
   // ── Acciones rápidas ──────────────────────────────────────────────────────
 
-  Widget _buildQuickActions() {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final items = [
-          _QuickAction(
-            icon: Icons.edit_calendar,
-            label: 'Nueva\nReserva',
-            color: AppColors.primary,
-            onTap: () => widget.tabShell.startBooking(
-                'Para mí', MockUserData.user.beneficiaries[0]),
-          ),
-          _QuickAction(
-            icon: Icons.schedule,
-            label: 'Mis\nReservas',
-            color: AppColors.accent,
-            onTap: () => widget.tabShell.goToTab(1),
-          ),
-          _QuickAction(
-            icon: Icons.people,
-            label: 'Mi\nFamilia',
-            color: AppColors.success,
-            onTap: () => widget.tabShell.goToTab(3),
-          ),
-          _QuickAction(
-            icon: Icons.contact_phone,
-            label: 'Contactos',
-            color: AppColors.info,
-            onTap: () => Navigator.push(
-              context,
-              AppPageRoute(builder: (_) => const ContactosScreen()),
-            ),
-          ),
-        ];
+  Widget _buildQuickActions(ResponsiveData responsive) {
+    final items = [
+      _QuickAction(
+        icon: Icons.edit_calendar,
+        label: 'Nueva\nReserva',
+        color: AppColors.primary,
+        onTap: () => widget.tabShell.startBooking(
+            'Para mí', MockUserData.user.beneficiaries[0]),
+      ),
+      _QuickAction(
+        icon: Icons.schedule,
+        label: 'Mis\nReservas',
+        color: AppColors.accent,
+        onTap: () => widget.tabShell.goToTab(1),
+      ),
+      _QuickAction(
+        icon: Icons.people,
+        label: 'Mi\nFamilia',
+        color: AppColors.success,
+        onTap: () => widget.tabShell.goToTab(3),
+      ),
+      _QuickAction(
+        icon: Icons.contact_phone,
+        label: 'Contactos',
+        color: AppColors.info,
+        onTap: () => Navigator.push(
+          context,
+          CupertinoPageRoute(builder: (_) => const ContactosScreen()),
+        ),
+      ),
+    ];
 
-        return Row(
-          children: [
-            for (int i = 0; i < items.length; i++) ...[
-              Expanded(child: _buildActionCard(items[i])),
-              if (i < items.length - 1) const SizedBox(width: 8),
-            ],
-          ],
-        );
-      },
+    return Row(
+      children: [
+        for (int i = 0; i < items.length; i++) ...[
+          Expanded(child: _buildActionCard(items[i])),
+          if (i < items.length - 1) const SizedBox(width: 8),
+        ],
+      ],
     );
   }
 
   Widget _buildActionCard(_QuickAction action) {
-    return AnimatedPressButton(
+    return OptimizedPressButton(
       onTap: action.onTap,
+      scaleDown: 0.95,
       child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 16),
+        padding: const EdgeInsets.symmetric(vertical: 14),
         decoration: BoxDecoration(
           color: AppColors.white,
-          borderRadius: BorderRadius.circular(AppTheme.radiusLg),
-          boxShadow: AppColors.softShadow,
+          borderRadius: BorderRadius.circular(AppSpacing.radiusLg),
+          border: Border.all(color: AppColors.border, width: 0.5),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.02),
+              blurRadius: 4,
+              offset: const Offset(0, 2),
+            ),
+          ],
         ),
         child: Column(
           children: [
             Container(
-              width: 44,
-              height: 44,
+              width: 40,
+              height: 40,
               decoration: BoxDecoration(
                 color: action.color.withValues(alpha: 0.10),
-                borderRadius: BorderRadius.circular(AppTheme.radiusMd),
+                borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
               ),
-              child: Icon(action.icon, size: 30, color: action.color),
+              child: Icon(action.icon, size: 22, color: action.color),
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 6),
             FittedBox(
               fit: BoxFit.scaleDown,
               child: Text(
                 action.label,
                 textAlign: TextAlign.center,
-                style: const TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w800,
+                style: AppTypography.labelMedium.copyWith(
                   color: AppColors.textPrimary,
+                  fontSize: 13,
                   height: 1.2,
                 ),
               ),
             ),
           ],
-        ),
-      ),
-    );
-  }
-
-  // ── Section title ─────────────────────────────────────────────────────────
-
-  Widget _buildSectionTitle(String title) {
-    return Padding(
-      padding: const EdgeInsets.only(left: 4),
-      child: Text(
-        title,
-        style: const TextStyle(
-          fontSize: 18,
-          fontWeight: FontWeight.w900,
-          color: AppColors.textSecondary,
-          letterSpacing: 1.8,
         ),
       ),
     );
@@ -439,30 +397,28 @@ class _HomeScreenState extends State<HomeScreen>
         GestureDetector(
           onTap: () => Navigator.push(
             context,
-            AppPageRoute(builder: (_) => const NoticiasScreen()),
+            CupertinoPageRoute(builder: (_) => const NoticiasScreen()),
           ),
           child: Container(
             padding: const EdgeInsets.symmetric(vertical: 12),
             decoration: BoxDecoration(
               color: AppColors.primary.withValues(alpha: 0.06),
-              borderRadius: BorderRadius.circular(AppTheme.radiusMd),
+              borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
               border: Border.all(
                 color: AppColors.primary.withValues(alpha: 0.12),
               ),
             ),
-            child: const Row(
+            child: Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 Text(
                   'Ver todos los comunicados',
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w700,
+                  style: AppTypography.titleMedium.copyWith(
                     color: AppColors.primary,
                   ),
                 ),
-                SizedBox(width: 6),
-                Icon(Icons.arrow_forward,
+                const SizedBox(width: 6),
+                const Icon(Icons.arrow_forward,
                     size: 14, color: AppColors.primary),
               ],
             ),

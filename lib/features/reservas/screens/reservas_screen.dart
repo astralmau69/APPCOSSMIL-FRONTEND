@@ -1,9 +1,9 @@
 import 'package:flutter/cupertino.dart';
 import '../../../core/constants/app_colors.dart';
-import '../../../core/theme/app_theme.dart';
+import '../../../core/theme/app_constants.dart';
+import '../../../core/animations/optimized_animations.dart';
 import '../../../core/mock/mock_appointments_data.dart';
 import '../../../core/widgets/appointment_card.dart';
-import '../../../core/animations/fade_slide_in.dart';
 
 class ReservasScreen extends StatelessWidget {
   const ReservasScreen({super.key});
@@ -45,31 +45,46 @@ class ReservasScreen extends StatelessWidget {
                         duration: const Duration(milliseconds: 350),
                         child: _buildSummaryBar(completed, missed),
                       ),
-                      const SizedBox(height: 20),
                       FadeSlideIn(
+                        duration: AppDurations.slow,
                         delay: const Duration(milliseconds: 100),
+                        offsetY: 10,
                         child: _sectionHeader('HISTORIAL DE ATENCIONES', history.length),
                       ),
                     ]),
                   ),
                 ),
 
-                // ── Lazy Appointment cards ─────────────────────────
+                // ── Reservas List ───────────────────────────
                 SliverPadding(
-                  padding: const EdgeInsets.fromLTRB(20, 0, 20, 32),
-                  sliver: SliverList(
-                    delegate: SliverChildBuilderDelegate(
-                      (context, index) {
-                        final i = index ~/ 2;
-                        if (index.isOdd) return const SizedBox(height: 12);
-                        
-                        return FadeSlideIn(
-                          delay: Duration(milliseconds: 150 + ((i > 10 ? 10 : i) * 60)),
-                          child: AppointmentCard(appointment: history[i]),
+                  padding: const EdgeInsets.only(bottom: 120, left: 12, right: 12),
+                  sliver: SliverList.builder(
+                    itemCount: history.length,
+                    itemBuilder: (context, index) {
+                      // Animate only first visible items to avoid jank on long lists
+                      final shouldAnimate = index < 5;
+                      
+                      if (shouldAnimate) {
+                        return Column(
+                          children: [
+                            FadeSlideIn(
+                              delay: Duration(milliseconds: 300 + (index * 100)),
+                              duration: AppDurations.normal,
+                              offsetY: 10,
+                              child: AppointmentCard(appointment: history[index]),
+                            ),
+                            if (index < history.length - 1) const SizedBox(height: 10),
+                          ],
                         );
-                      },
-                      childCount: history.isEmpty ? 0 : history.length * 2 - 1,
-                    ),
+                      } else {
+                        return Column(
+                          children: [
+                            AppointmentCard(appointment: history[index]),
+                            if (index < history.length - 1) const SizedBox(height: 10),
+                          ],
+                        );
+                      }
+                    },
                   ),
                 ),
               ],
@@ -80,16 +95,16 @@ class ReservasScreen extends StatelessWidget {
   /// Summary bar: Completados / Faltas.
   Widget _buildSummaryBar(int completed, int missed) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       decoration: BoxDecoration(
         color: AppColors.white,
-        borderRadius: BorderRadius.circular(AppTheme.radiusLg),
-        boxShadow: AppColors.softShadow,
+        borderRadius: BorderRadius.circular(AppSpacing.radiusLg),
+        boxShadow: AppShadows.soft,
       ),
       child: Row(
         children: [
           _summaryChip('$completed', 'Completados', AppColors.accent),
-          Container(width: 0.5, height: 32, color: AppColors.border),
+          Container(width: 0.5, height: 28, color: AppColors.border),
           _summaryChip(
             '$missed',
             missed == 1 ? 'Falta' : 'Faltas',
@@ -106,19 +121,16 @@ class ReservasScreen extends StatelessWidget {
         children: [
           Text(
             count,
-            style: TextStyle(
-              fontSize: 32,
-              fontWeight: FontWeight.w900,
+            style: AppTypography.displayMedium.copyWith(
               color: color,
-              letterSpacing: -1,
+              fontSize: 22,
+              letterSpacing: -0.5,
             ),
           ),
-          const SizedBox(height: 2),
+          const SizedBox(height: 1),
           Text(
             label,
-            style: const TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w700,
+            style: AppTypography.labelSmall.copyWith(
               color: AppColors.textSecondary,
             ),
           ),
@@ -144,10 +156,10 @@ class ReservasScreen extends StatelessWidget {
           Text(
             text,
             style: const TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.w800,
+              fontSize: 13,
+              fontWeight: FontWeight.w700,
               color: AppColors.textSecondary,
-              letterSpacing: 1.5,
+              letterSpacing: 1.0,
             ),
           ),
           const SizedBox(width: 8),
@@ -160,8 +172,8 @@ class ReservasScreen extends StatelessWidget {
             child: Text(
               '$count',
               style: const TextStyle(
-                fontSize: 15,
-                fontWeight: FontWeight.w800,
+                fontSize: 13,
+                fontWeight: FontWeight.w700,
                 color: AppColors.primary,
               ),
             ),
@@ -195,24 +207,23 @@ class ReservasScreen extends StatelessWidget {
                 children: [
                   Icon(
                     CupertinoIcons.calendar,
-                    size: 100,
+                    size: 64,
                     color: AppColors.textTertiary.withValues(alpha: 0.3),
                   ),
                   const SizedBox(height: 24),
                   const Text(
                     'No tiene atenciones registradas',
                     style: TextStyle(
-                      fontSize: 24,
-                      fontWeight: FontWeight.w800,
+                      fontSize: 18,
+                      fontWeight: FontWeight.w700,
                       color: AppColors.textSecondary,
-                      letterSpacing: -0.5,
                     ),
                   ),
                   const SizedBox(height: 12),
                   const Text(
                     'El historial de atenciones aparecerá aquí',
                     style: TextStyle(
-                      fontSize: 17,
+                      fontSize: 14,
                       fontWeight: FontWeight.w500,
                       color: AppColors.textTertiary,
                     ),

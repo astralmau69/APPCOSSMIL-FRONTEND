@@ -25,4 +25,12 @@ class HospitalModel {
 
   /// e.g. "Hospital Militar Central — La Paz"
   String get displayName => '$name — $city';
+
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'name': name,
+        'shortName': shortName,
+        'city': city,
+        'address': address,
+      };
 }

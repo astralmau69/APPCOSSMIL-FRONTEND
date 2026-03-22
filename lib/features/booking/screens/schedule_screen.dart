@@ -1,11 +1,13 @@
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
-import '../../../core/constants/app_colors.dart';
+import '../../../core/theme/app_constants.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/mock/mock_schedule_data.dart';
 import '../../../core/models/time_slot_model.dart';
 import '../../../core/widgets/breadcrumb_chips.dart';
+import '../../../core/constants/app_colors.dart';
+import '../../../core/animations/optimized_animations.dart';
 import '../../../core/animations/app_page_route.dart';
-import '../../../core/animations/fade_slide_in.dart';
 import '../../../shell/tab_shell.dart';
 import 'summary_screen.dart';
 
@@ -35,44 +37,41 @@ class _ScheduleScreenState extends State<ScheduleScreen>
       bs.specialty?.name ?? '',
     ];
 
-    return Scaffold(
+    return CupertinoPageScaffold(
       backgroundColor: AppColors.background,
-      appBar: AppBar(
-        title: const Text(
-          'HORAS DISPONIBLES',
-          style: TextStyle(fontWeight: FontWeight.w900, fontSize: 20),
+      navigationBar: CupertinoNavigationBar(
+        middle: const Text(
+          'Horas Disponibles',
+          style: TextStyle(fontWeight: FontWeight.w700, fontSize: 17),
         ),
-        backgroundColor: AppColors.white,
-        centerTitle: true,
-        elevation: 0,
-        bottom: PreferredSize(
-          preferredSize: const Size.fromHeight(0.5),
-          child: Container(color: AppColors.border, height: 0.5),
+        backgroundColor: AppColors.white.withValues(alpha: 0.92),
+        border: Border(
+          bottom: BorderSide(
+            color: AppColors.border.withValues(alpha: 0.3),
+            width: 0.5,
+          ),
         ),
       ),
-      body: SafeArea(
+      child: SafeArea(
         child: ListView(
           padding: const EdgeInsets.symmetric(vertical: 16),
           children: [
-            FadeSlideIn(
-              offsetY: 10,
-              child: BreadcrumbChips(labels: breadcrumbs),
-            ),
+            BreadcrumbChips(labels: breadcrumbs),
             const SizedBox(height: 16),
             FadeSlideIn(
-              delay: const Duration(milliseconds: 100),
-              offsetY: 15,
+              delay: const Duration(milliseconds: 50),
+              offsetY: 10,
               child: _buildDateAndInfoHeader(),
             ),
             const SizedBox(height: 18),
             FadeSlideIn(
-              delay: const Duration(milliseconds: 200),
-              offsetY: 20,
+              delay: const Duration(milliseconds: 100),
+              offsetY: 15,
               child: _buildDoctorCard(),
             ),
             const SizedBox(height: 24),
             FadeSlideIn(
-              delay: const Duration(milliseconds: 300),
+              delay: const Duration(milliseconds: 150),
               offsetY: 10,
               child: Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 24),
@@ -87,13 +86,9 @@ class _ScheduleScreenState extends State<ScheduleScreen>
                       ),
                     ),
                     const SizedBox(width: 10),
-                    const Text(
+                    Text(
                       'Agenda médica',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w700,
-                        color: AppColors.textPrimary,
-                      ),
+                      style: AppTypography.titleMedium,
                     ),
                   ],
                 ),
@@ -106,54 +101,43 @@ class _ScheduleScreenState extends State<ScheduleScreen>
               padding: const EdgeInsets.symmetric(horizontal: 40),
               child: FadeSlideIn(
                 delay: const Duration(milliseconds: 600),
-                child: AnimatedOpacity(
-                  opacity: _selectedTime != null ? 1.0 : 0.5,
-                  duration: const Duration(milliseconds: 250),
-                  child: ElevatedButton(
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.primary,
-                      disabledBackgroundColor: AppColors.primary.withValues(alpha: 0.3),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(AppTheme.radiusLg),
+                child: SizedBox(
+                width: double.infinity,
+                child: CupertinoButton.filled(
+                  borderRadius: BorderRadius.circular(AppTheme.radiusLg),
+                  onPressed: _selectedTime == null
+                      ? null
+                      : () {
+                          widget.tabShell.bookingState.doctor = _doctor;
+                          widget.tabShell.bookingState.selectedTime =
+                              _selectedTime;
+                          Navigator.push(
+                            context,
+                            AppPageRoute(
+                              builder: (_) => SummaryScreen(
+                                  tabShell: widget.tabShell),
+                            ),
+                          );
+                        },
+                  child: const Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text(
+                        'Continuar',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w700,
+                        ),
                       ),
-                      padding: const EdgeInsets.symmetric(vertical: 16),
-                      elevation: 0,
-                    ),
-                    onPressed: _selectedTime == null
-                        ? null
-                        : () {
-                            widget.tabShell.bookingState.doctor = _doctor;
-                            widget.tabShell.bookingState.selectedTime =
-                                _selectedTime;
-                            Navigator.push(
-                              context,
-                              AppPageRoute(
-                                builder: (_) => SummaryScreen(
-                                    tabShell: widget.tabShell),
-                              ),
-                            );
-                          },
-                    child: const Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Text(
-                          'Continuar',
-                          style: TextStyle(
-                            fontSize: 21,
-                            fontWeight: FontWeight.w900,
-                            color: Colors.white,
-                          ),
-                        ),
-                        SizedBox(width: 8),
-                        Icon(
-                          Icons.arrow_forward,
-                          size: 18,
-                          color: Colors.white,
-                        ),
-                      ],
-                    ),
+                      SizedBox(width: 8),
+                      Icon(
+                        CupertinoIcons.arrow_right,
+                        size: 16,
+                      ),
+                    ],
                   ),
                 ),
+              ),
               ),
             ),
             const SizedBox(height: 32),
@@ -193,24 +177,21 @@ class _ScheduleScreenState extends State<ScheduleScreen>
                 ),
               ),
               const SizedBox(width: 12),
-              const Expanded(
+              Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
                       'Martes, 18 de Marzo',
-                      style: TextStyle(
-                        fontSize: 22,
-                        fontWeight: FontWeight.w900,
-                        color: AppColors.textPrimary,
-                        letterSpacing: -0.5,
+                      style: AppTypography.headlineSmall.copyWith(
+                        fontSize: 17,
                       ),
                     ),
                     SizedBox(height: 2),
                     Text(
                       'Fecha disponible para reservas',
                       style: TextStyle(
-                        fontSize: 16,
+                        fontSize: 13,
                         color: AppColors.textSecondary,
                         fontWeight: FontWeight.w500,
                       ),
@@ -236,7 +217,7 @@ class _ScheduleScreenState extends State<ScheduleScreen>
                 child: Text(
                   'Las reservas solo están habilitadas para el día de mañana.',
                   style: TextStyle(
-                    fontSize: 16,
+                    fontSize: 13,
                     color: AppColors.textSecondary,
                     height: 1.3,
                     fontWeight: FontWeight.w500,
@@ -292,11 +273,8 @@ class _ScheduleScreenState extends State<ScheduleScreen>
               children: [
                 Text(
                   _doctor.fullName,
-                  style: const TextStyle(
-                    fontSize: 22,
-                    fontWeight: FontWeight.w900,
-                    color: AppColors.textPrimary,
-                    letterSpacing: -0.5,
+                  style: AppTypography.headlineSmall.copyWith(
+                    fontSize: 17,
                   ),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
@@ -312,7 +290,7 @@ class _ScheduleScreenState extends State<ScheduleScreen>
                       style: const TextStyle(
                         fontSize: 17,
                         color: AppColors.textSecondary,
-                        fontWeight: FontWeight.w600,
+                        fontWeight: FontWeight.w500,
                       ),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
@@ -399,8 +377,8 @@ class _ScheduleScreenState extends State<ScheduleScreen>
           child: Text(
             slot.time,
             style: TextStyle(
-              fontSize: 18,
-              fontWeight: isSelected ? FontWeight.w900 : FontWeight.w800,
+              fontSize: 14,
+              fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
               color: textColor,
               decoration: isDisabled ? TextDecoration.lineThrough : null,
               decorationColor: textColor,

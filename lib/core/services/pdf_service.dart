@@ -32,7 +32,7 @@ class PdfService {
     final format = PdfPageFormat.roll80;
     
     // Load local logo image
-    final ByteData bytes = await rootBundle.load('assets/images/cossmil_logo.png');
+    final ByteData bytes = await rootBundle.load('assets/images/logo_cossmil.png');
     final Uint8List imageBytes = bytes.buffer.asUint8List();
     final logoImage = pw.MemoryImage(imageBytes);
 

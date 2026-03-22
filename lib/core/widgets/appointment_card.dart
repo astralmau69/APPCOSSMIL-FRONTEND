@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 import '../constants/app_colors.dart';
-import '../theme/app_theme.dart';
+import '../theme/app_constants.dart';
+import '../extensions/responsive_extensions.dart';
+import '../animations/optimized_animations.dart';
 import '../mock/mock_appointments_data.dart';
-import '../animations/animated_press_button.dart';
 import '../animations/animated_status_badge.dart';
 
 /// Card reutilizable para mostrar una reserva/cita médica.
@@ -21,159 +22,149 @@ class AppointmentCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final config = _statusConfig(appointment.status);
+    final responsive = ResponsiveData.of(context);
 
-    return AnimatedPressButton(
-      onTap: onTap,
-      child: RepaintBoundary(
-        child: Container(
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: AppColors.white,
-            borderRadius: BorderRadius.circular(AppTheme.radiusLg),
-            boxShadow: AppColors.softShadow,
-            border: config.isHighlighted
-              ? Border.all(color: config.color.withValues(alpha: 0.2), width: 1.5)
-              : null,
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // ── Row 1: Avatar + Name + Status ─────────────────────────
-            Row(
-              children: [
-                // Avatar
-                _buildAvatar(),
-                const SizedBox(width: 12),
-                // Name + relationship
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        appointment.patientName,
-                        style: const TextStyle(
-                          fontSize: 22,
-                          fontWeight: FontWeight.w800,
-                          color: AppColors.textPrimary,
-                          letterSpacing: -0.5,
-                        ),
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      const SizedBox(height: 4),
-                      _relationshipBadge(),
-                    ],
-                  ),
-                ),
-                const SizedBox(width: 8),
-                // Status badge
-                AnimatedStatusBadge.fromStatus(appointment.status),
-              ],
+    return Padding(
+      padding: EdgeInsets.symmetric(horizontal: responsive.isSmallPhone ? 8 : 12),
+      child: OptimizedPressButton(
+        onTap: onTap,
+        scaleDown: 0.98,
+        child: RepaintBoundary(
+          child: Container(
+            padding: EdgeInsets.all(responsive.isSmallPhone ? 12 : 14),
+            decoration: BoxDecoration(
+              color: AppColors.white,
+              borderRadius: BorderRadius.circular(AppSpacing.radiusLg),
+              border: Border.all(
+                color: config.isHighlighted
+                    ? config.color.withValues(alpha: 0.3)
+                    : AppColors.border,
+                width: 0.5,
+              ),
+              boxShadow: AppShadows.soft,
             ),
-            const SizedBox(height: 14),
-            Container(height: 0.5, color: AppColors.divider),
-            const SizedBox(height: 12),
-            // ── Row 2: Specialty + Doctor ──────────────────────────────
-            Row(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Container(
-                  width: 34,
-                  height: 34,
-                  decoration: BoxDecoration(
-                    color: config.color.withValues(alpha: 0.08),
-                    borderRadius: BorderRadius.circular(AppTheme.radiusSm),
-                  ),
-                  child: Icon(
-                    config.icon,
-                    size: 16,
-                    color: config.color,
-                  ),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        appointment.specialty,
-                        style: const TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.w700,
-                          color: AppColors.textPrimary,
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      Text(
-                        appointment.doctorName,
-                        style: const TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w500,
-                          color: AppColors.textSecondary,
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            // ── Row 3: Details chips ──────────────────────────────────
-            Wrap(
-              spacing: 8,
-              runSpacing: 6,
-              children: [
-                _detailChip(Icons.calendar_today, appointment.date),
-                _detailChip(Icons.schedule, appointment.time),
-                _detailChip(Icons.apartment, appointment.hospital),
-                if (appointment.consultorio != null)
-                  _detailChip(Icons.meeting_room_outlined, appointment.consultorio!),
-              ],
-            ),
-            // ── Código de reserva ─────────────────────────────────────
-            if (appointment.codigoReserva != null) ...[
-              const SizedBox(height: 10),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
-                decoration: BoxDecoration(
-                  color: AppColors.background,
-                  borderRadius: BorderRadius.circular(6),
-                  border: Border.all(color: AppColors.border),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
+                // Row 1: Avatar + Name + Status
+                Row(
                   children: [
-                    const Icon(Icons.confirmation_number_outlined,
-                        size: 16, color: AppColors.textTertiary),
-                    const SizedBox(width: 5),
-                    Text(
-                      appointment.codigoReserva!,
-                      style: const TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w700,
-                        color: AppColors.textSecondary,
-                        letterSpacing: 0.3,
+                    _buildAvatar(responsive),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            appointment.patientName,
+                            style: AppTypography.titleLarge.copyWith(
+                              fontSize: responsive.isSmallPhone ? 16 : 18,
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                            maxLines: 1,
+                          ),
+                          const SizedBox(height: 2),
+                          _relationshipBadge(),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    AnimatedStatusBadge.fromStatus(appointment.status),
+                  ],
+                ),
+                const SizedBox(height: 10),
+                Container(height: 0.5, color: AppColors.divider),
+                const SizedBox(height: 10),
+                // Row 2: Specialty + Doctor
+                Row(
+                  children: [
+                    Container(
+                      width: 30,
+                      height: 30,
+                      decoration: BoxDecoration(
+                        color: config.color.withValues(alpha: 0.08),
+                        borderRadius: BorderRadius.circular(AppSpacing.radiusSm),
+                      ),
+                      child: Icon(
+                        config.icon,
+                        size: 14,
+                        color: config.color,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            appointment.specialty,
+                            style: AppTypography.titleSmall,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          Text(
+                            appointment.doctorName,
+                            style: AppTypography.bodySmall,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ],
                       ),
                     ),
                   ],
                 ),
-              ),
-            ],
-          ],
+                const SizedBox(height: 10),
+                // Row 3: Details chips
+                Wrap(
+                  spacing: 6,
+                  runSpacing: 4,
+                  children: [
+                    _detailChip(Icons.calendar_today, appointment.date),
+                    _detailChip(Icons.schedule, appointment.time),
+                    _detailChip(Icons.apartment, appointment.hospital),
+                    if (appointment.consultorio != null)
+                      _detailChip(Icons.meeting_room_outlined, appointment.consultorio!),
+                  ],
+                ),
+                if (appointment.codigoReserva != null) ...[
+                  const SizedBox(height: 8),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: AppColors.background,
+                      borderRadius: BorderRadius.circular(AppSpacing.radiusSm),
+                      border: Border.all(color: AppColors.border, width: 0.5),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(Icons.confirmation_number_outlined,
+                            size: 12, color: AppColors.textTertiary),
+                        const SizedBox(width: 4),
+                        Text(
+                          appointment.codigoReserva!,
+                          style: AppTypography.labelSmall,
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
         ),
-      ),
       ),
     );
   }
 
-  Widget _buildAvatar() {
+  Widget _buildAvatar(ResponsiveData responsive) {
     final isTitular = appointment.isTitular;
     final color = isTitular ? AppColors.primary : AppColors.accent;
+    final size = responsive.isSmallPhone ? 44.0 : 50.0;
 
     return Container(
-      width: 64,
-      height: 64,
+      width: size,
+      height: size,
       decoration: BoxDecoration(
         shape: BoxShape.circle,
         gradient: LinearGradient(
@@ -183,10 +174,10 @@ class AppointmentCard extends StatelessWidget {
       alignment: Alignment.center,
       child: Text(
         appointment.avatarLetter,
-        style: const TextStyle(
+        style: TextStyle(
           color: AppColors.white,
           fontWeight: FontWeight.w900,
-          fontSize: 24,
+          fontSize: responsive.isSmallPhone ? 18 : 20,
         ),
       ),
     );
@@ -218,16 +209,12 @@ class AppointmentCard extends StatelessWidget {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Icon(icon, size: 18, color: AppColors.textTertiary),
-        const SizedBox(width: 6),
+        Icon(icon, size: 14, color: AppColors.textTertiary),
+        const SizedBox(width: 4),
         Flexible(
           child: Text(
             text,
-            style: const TextStyle(
-              fontSize: 17,
-              color: AppColors.textSecondary,
-              fontWeight: FontWeight.w600,
-            ),
+            style: AppTypography.bodySmall,
             overflow: TextOverflow.ellipsis,
           ),
         ),

@@ -76,10 +76,10 @@ class _ModalContent extends StatelessWidget {
                 Text(
                   '¿Para quién es la reserva?',
                   style: TextStyle(
-                    fontSize: 24,
-                    fontWeight: FontWeight.w900,
+                    fontSize: 18,
+                    fontWeight: FontWeight.w800,
                     color: AppColors.textPrimary,
-                    letterSpacing: -0.5,
+                    letterSpacing: -0.3,
                   ),
                 ),
               ],
@@ -91,8 +91,8 @@ class _ModalContent extends StatelessWidget {
             child: Text(
               'Selecciona el miembro de tu grupo familiar',
               style: TextStyle(
-                fontSize: 17,
-                fontWeight: FontWeight.w600,
+                fontSize: 14,
+                fontWeight: FontWeight.w500,
                 color: AppColors.textSecondary,
               ),
             ),
@@ -102,7 +102,6 @@ class _ModalContent extends StatelessWidget {
           // List
           Flexible(
             child: ListView.builder(
-              shrinkWrap: true,
               padding: const EdgeInsets.symmetric(vertical: 8),
               itemCount: beneficiaries.length,
               itemBuilder: (context, index) {
@@ -140,7 +139,8 @@ class _BeneficiaryTile extends StatelessWidget {
     final avatarColor = isTitular ? AppColors.primary : AppColors.accent;
     final label = isTitular ? 'Yo (Titular)' : beneficiary.relationship;
 
-    return InkWell(
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
       onTap: onTap,
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
@@ -151,8 +151,8 @@ class _BeneficiaryTile extends StatelessWidget {
           children: [
             // Avatar
             Container(
-              width: 70,
-              height: 70,
+              width: 56,
+              height: 56,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
                 gradient: LinearGradient(
@@ -173,8 +173,8 @@ class _BeneficiaryTile extends StatelessWidget {
                           beneficiary.initial,
                           style: const TextStyle(
                             color: AppColors.white,
-                            fontWeight: FontWeight.w900,
-                            fontSize: 28,
+                            fontWeight: FontWeight.w800,
+                            fontSize: 20,
                           ),
                         ),
                       ),
@@ -189,8 +189,8 @@ class _BeneficiaryTile extends StatelessWidget {
                   Text(
                     beneficiary.fullName,
                     style: const TextStyle(
-                      fontSize: 22,
-                      fontWeight: FontWeight.w800,
+                      fontSize: 16,
+                      fontWeight: FontWeight.w700,
                       color: AppColors.textPrimary,
                     ),
                   ),

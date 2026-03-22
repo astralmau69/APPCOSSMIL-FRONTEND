@@ -5,8 +5,7 @@ import '../../../core/theme/app_theme.dart';
 import '../../../core/mock/mock_user_data.dart';
 import '../../../core/storage/token_storage.dart';
 import '../../../core/widgets/profile_qr_modal.dart';
-import '../../../core/animations/animated_press_button.dart';
-import '../../../core/animations/fade_slide_in.dart';
+import '../../../core/animations/optimized_animations.dart';
 
 class PerfilScreen extends StatefulWidget {
   const PerfilScreen({super.key});
@@ -67,16 +66,20 @@ class _PerfilScreenState extends State<PerfilScreen> {
           SliverToBoxAdapter(
             child: FadeSlideIn(
               offsetY: 20,
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
-                child: Column(
-                  children: [
-                    const SizedBox(height: 10),
-                    // Avatar
-                    Center(
-                      child: Container(
-                        width: 160,
-                        height: 160,
+              delay: const Duration(milliseconds: 100),
+              child: Center(
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 600),
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
+                    child: Column(
+                      children: [
+                        const SizedBox(height: 10),
+                        // Avatar
+                        Center(
+                          child: Container(
+                            width: 110,
+                            height: 110,
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
                           color: AppColors.white,
@@ -86,9 +89,9 @@ class _PerfilScreenState extends State<PerfilScreen> {
                           ),
                           boxShadow: [
                             BoxShadow(
-                              color: AppColors.primary.withValues(alpha: 0.15),
-                              blurRadius: 20,
-                              offset: const Offset(0, 10),
+                              color: AppColors.primary.withValues(alpha: 0.1),
+                              blurRadius: 10, // Sombra más refinada
+                              offset: const Offset(0, 4),
                             ),
                           ],
                         ),
@@ -128,10 +131,10 @@ class _PerfilScreenState extends State<PerfilScreen> {
                         user.displayName,
                         textAlign: TextAlign.center,
                         style: const TextStyle(
-                          fontSize: 38,
-                          fontWeight: FontWeight.w900,
+                          fontSize: 24,
+                          fontWeight: FontWeight.w800,
                           color: AppColors.textPrimary,
-                          letterSpacing: -1.2,
+                          letterSpacing: -0.5,
                         ),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
@@ -149,8 +152,8 @@ class _PerfilScreenState extends State<PerfilScreen> {
                         child: Text(
                           'Mat. ${user.matricula}',
                           style: const TextStyle(
-                            fontSize: 22,
-                            fontWeight: FontWeight.w800,
+                            fontSize: 15,
+                            fontWeight: FontWeight.w700,
                             color: AppColors.primary,
                           ),
                         ),
@@ -159,17 +162,21 @@ class _PerfilScreenState extends State<PerfilScreen> {
                   ],
                 ),
               ),
+                ),
+              ),
             ),
           ),
 
-          // ── Dashboard Metrics ──────────────────────────────
           SliverPadding(
-            padding: const EdgeInsets.all(20),
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
             sliver: SliverToBoxAdapter(
-              child: Column(
-                children: [
-                  Row(
+              child: Center(
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 600),
+                  child: Column(
                     children: [
+                      Row(
+                        children: [
                       Expanded(
                           child: _infoCard(
                               'ESTADO',
@@ -226,126 +233,64 @@ class _PerfilScreenState extends State<PerfilScreen> {
                         ),
                       ],
                     ),
-                ],
+                  ],
+                ),
               ),
             ),
           ),
+        ),
 
-          // ── Contact Section ─────────────────────────
-          SliverPadding(
-            padding: const EdgeInsets.symmetric(horizontal: 20),
-            sliver: SliverToBoxAdapter(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _sectionHeader('DATOS DE CONTACTO'),
-                  const SizedBox(height: 12),
-                  _editableField(
-                    icon: CupertinoIcons.mail,
-                    label: 'Correo electrónico',
-                    value: _email,
-                    isEditing: _isEditingEmail,
-                    controller: _emailCtrl,
-                    keyboardType: TextInputType.emailAddress,
-                    onEdit: () => setState(() => _isEditingEmail = true),
-                    onSave: () {
-                      setState(() {
-                        _email = _emailCtrl.text.trim();
-                        _isEditingEmail = false;
-                      });
-                    },
-                    onCancel: () {
-                      setState(() {
-                        _emailCtrl.text = _email;
-                        _isEditingEmail = false;
-                      });
-                    },
+        SliverToBoxAdapter(
+            child: Center(
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 600),
+                child: Padding(
+                  padding: const EdgeInsets.only(bottom: 120, top: 20),
+                  child: Column(
+                    children: [
+                      CupertinoListSection.insetGrouped(
+                    backgroundColor: const Color(0x00000000),
+                    header: const Text('DATOS DE CONTACTO', style: TextStyle(fontWeight: FontWeight.w700, letterSpacing: 1.2)),
+                    children: [
+                      _buildEditableTile(
+                        icon: CupertinoIcons.mail,
+                        label: 'Correo electrónico',
+                        value: _email,
+                        isEditing: _isEditingEmail,
+                        controller: _emailCtrl,
+                        keyboardType: TextInputType.emailAddress,
+                        onEdit: () => setState(() => _isEditingEmail = true),
+                        onSave: () => setState(() { _email = _emailCtrl.text.trim(); _isEditingEmail = false; }),
+                        onCancel: () => setState(() { _emailCtrl.text = _email; _isEditingEmail = false; }),
+                      ),
+                      _buildEditableTile(
+                        icon: CupertinoIcons.phone,
+                        label: 'Teléfono / Celular',
+                        value: _phone,
+                        isEditing: _isEditingPhone,
+                        controller: _phoneCtrl,
+                        keyboardType: TextInputType.phone,
+                        onEdit: () => setState(() => _isEditingPhone = true),
+                        onSave: () => setState(() { _phone = _phoneCtrl.text.trim(); _isEditingPhone = false; }),
+                        onCancel: () => setState(() { _phoneCtrl.text = _phone; _isEditingPhone = false; }),
+                      ),
+                    ],
                   ),
-                  const SizedBox(height: 10),
-                  _editableField(
-                    icon: CupertinoIcons.phone,
-                    label: 'Teléfono / Celular',
-                    value: _phone,
-                    isEditing: _isEditingPhone,
-                    controller: _phoneCtrl,
-                    keyboardType: TextInputType.phone,
-                    onEdit: () => setState(() => _isEditingPhone = true),
-                    onSave: () {
-                      setState(() {
-                        _phone = _phoneCtrl.text.trim();
-                        _isEditingPhone = false;
-                      });
-                    },
-                    onCancel: () {
-                      setState(() {
-                        _phoneCtrl.text = _phone;
-                        _isEditingPhone = false;
-                      });
-                    },
-                  ),
-                ],
-              ),
-            ),
-          ),
-
-          // ── Security Section ────────────────────────
-          SliverPadding(
-            padding: const EdgeInsets.fromLTRB(20, 28, 20, 0),
-            sliver: SliverToBoxAdapter(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _sectionHeader('SEGURIDAD Y ACCESO'),
-                  const SizedBox(height: 12),
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 16, vertical: 14),
-                    decoration: BoxDecoration(
-                      color: AppColors.white,
-                      borderRadius: BorderRadius.circular(AppTheme.radiusXl),
-                      boxShadow: AppColors.softShadow,
-                    ),
-                    child: Row(
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.all(8),
-                          decoration: BoxDecoration(
-                            color: AppColors.success.withValues(alpha: 0.1),
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: const Icon(
-                            CupertinoIcons.lock_shield_fill,
-                            color: AppColors.success,
-                            size: 22,
-                          ),
+                  CupertinoListSection.insetGrouped(
+                    backgroundColor: const Color(0x00000000),
+                    header: const Text('SEGURIDAD Y ACCESO', style: TextStyle(fontWeight: FontWeight.w700, letterSpacing: 1.2)),
+                    children: [
+                      CupertinoListTile(
+                        leading: Container(
+                          padding: const EdgeInsets.all(4),
+                          decoration: BoxDecoration(color: AppColors.success, borderRadius: BorderRadius.circular(6)),
+                          child: const Icon(CupertinoIcons.lock_shield_fill, color: AppColors.white, size: 20),
                         ),
-                        const SizedBox(width: 14),
-                        const Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                'Autenticación Biométrica',
-                                style: TextStyle(
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w600,
-                                  color: AppColors.textPrimary,
-                                ),
-                              ),
-                              SizedBox(height: 2),
-                              Text(
-                                'Huella digital / Face ID + PIN',
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  color: AppColors.textSecondary,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        CupertinoSwitch(
+                        title: const Text('Autenticación Biométrica', style: TextStyle(fontWeight: FontWeight.w600)),
+                        subtitle: const Text('Huella digital / Face ID + PIN'),
+                        trailing: CupertinoSwitch(
                           value: _isBiometricEnabled,
-                          activeTrackColor: AppColors.primary,
+                          activeTrackColor: AppColors.success,
                           onChanged: (val) {
                             if (val) {
                               _showPinSetupModal();
@@ -354,148 +299,99 @@ class _PerfilScreenState extends State<PerfilScreen> {
                             }
                           },
                         ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-
-          // ── Identification Section ───────────────────
-          SliverPadding(
-            padding: const EdgeInsets.fromLTRB(20, 28, 20, 0),
-            sliver: SliverToBoxAdapter(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _sectionHeader('IDENTIFICACIÓN'),
-                  const SizedBox(height: 12),
-                  AnimatedPressButton(
-                    onTap: () => ProfileQrModal.show(
-                      context: context,
-                      user: user,
-                    ),
-                    child: Container(
-                      padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        color: AppColors.white,
-                        borderRadius: BorderRadius.circular(AppTheme.radiusXl),
-                        boxShadow: AppColors.softShadow,
-                      ),
-                      child: Row(
-                        children: [
-                          Container(
-                            width: 44,
-                            height: 44,
-                            decoration: BoxDecoration(
-                              color: AppColors.primary.withValues(alpha: 0.08),
-                              borderRadius:
-                                  BorderRadius.circular(AppTheme.radiusMd),
-                            ),
-                            child: const Icon(CupertinoIcons.qrcode,
-                                size: 30, color: AppColors.primary),
-                          ),
-                          const SizedBox(width: 14),
-                          const Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  'Mi Código QR',
-                                  style: TextStyle(
-                                    fontSize: 20,
-                                    fontWeight: FontWeight.w900,
-                                    color: AppColors.textPrimary,
-                                  ),
-                                ),
-                                SizedBox(height: 4),
-                                Text(
-                                  'Identificación rápida en ventanilla',
-                                  style: TextStyle(
-                                    fontSize: 17,
-                                    color: AppColors.textSecondary,
-                                    fontWeight: FontWeight.w500,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                          const Icon(CupertinoIcons.chevron_right,
-                              size: 16, color: AppColors.textTertiary),
-                        ],
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-
-          // ── Logout Button ───────────────────────────
-          SliverPadding(
-            padding: const EdgeInsets.fromLTRB(20, 48, 20, 60),
-            sliver: SliverToBoxAdapter(
-              child: AnimatedPressButton(
-                onTap: () async {
-                  await TokenStorage.deleteToken();
-                  if (!context.mounted) return;
-                  Navigator.of(context, rootNavigator: true)
-                      .pushReplacementNamed('/login');
-                },
-                child: Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.symmetric(vertical: 18),
-                  decoration: BoxDecoration(
-                    color: AppColors.errorLight.withValues(alpha: 0.5),
-                    borderRadius: BorderRadius.circular(AppTheme.radiusXl),
-                    border: Border.all(
-                      color: AppColors.error.withValues(alpha: 0.15),
-                    ),
-                  ),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(CupertinoIcons.square_arrow_left,
-                          size: 20, color: AppColors.error),
-                      const SizedBox(width: 10),
-                      Text(
-                        'Cerrar Sesión',
-                        style: TextStyle(
-                          fontWeight: FontWeight.w900,
-                          fontSize: 18,
-                          color: AppColors.error,
-                          letterSpacing: 0.5,
-                        ),
                       ),
                     ],
                   ),
-                ),
+                  CupertinoListSection.insetGrouped(
+                    backgroundColor: const Color(0x00000000),
+                    header: const Text('IDENTIFICACIÓN', style: TextStyle(fontWeight: FontWeight.w700, letterSpacing: 1.2)),
+                    children: [
+                      CupertinoListTile.notched(
+                        leading: Container(
+                          padding: const EdgeInsets.all(4),
+                          decoration: BoxDecoration(color: AppColors.primary, borderRadius: BorderRadius.circular(6)),
+                          child: const Icon(CupertinoIcons.qrcode, color: AppColors.white, size: 20),
+                        ),
+                        title: const Text('Mi Código QR', style: TextStyle(fontWeight: FontWeight.w600)),
+                        subtitle: const Text('Identificación rápida en ventanilla'),
+                        trailing: const CupertinoListTileChevron(),
+                        onTap: () => ProfileQrModal.show(context: context, user: user),
+                      ),
+                    ],
+                  ),
+                  CupertinoListSection.insetGrouped(
+                    backgroundColor: const Color(0x00000000),
+                    margin: const EdgeInsets.only(top: 20, left: 20, right: 20),
+                    children: [
+                      CupertinoListTile(
+                        leading: const Icon(CupertinoIcons.square_arrow_left, color: CupertinoColors.destructiveRed),
+                        title: const Text('Cerrar Sesión', style: TextStyle(color: CupertinoColors.destructiveRed, fontWeight: FontWeight.w600)),
+                        onTap: () async {
+                          await TokenStorage.deleteToken();
+                          if (!context.mounted) return;
+                          Navigator.of(context, rootNavigator: true).pushReplacementNamed('/login');
+                        },
+                      ),
+                    ],
+                  ),
+                ],
               ),
             ),
           ),
-        ],
-      ),
-    );
-  }
-
-  Widget _sectionHeader(String text) {
-    return Padding(
-      padding: const EdgeInsets.only(left: 4),
-      child: Text(
-        text,
-        style: const TextStyle(
-          fontSize: 20,
-          fontWeight: FontWeight.w900,
-          color: AppColors.textSecondary,
-          letterSpacing: 2.0,
         ),
       ),
+    ],
+      ),
     );
   }
 
-  Widget _infoCard(
-      String label, String value, IconData icon, Color color) {
+  Widget _buildEditableTile({
+    required IconData icon,
+    required String label,
+    required String value,
+    required bool isEditing,
+    required TextEditingController controller,
+    required TextInputType keyboardType,
+    required VoidCallback onEdit,
+    required VoidCallback onSave,
+    required VoidCallback onCancel,
+  }) {
+    return CupertinoListTile(
+      leading: Icon(icon, color: AppColors.primary, size: 24),
+      title: Text(label, style: const TextStyle(fontSize: 14, color: AppColors.textSecondary)),
+      subtitle: isEditing
+          ? CupertinoTextField(
+              controller: controller,
+              keyboardType: keyboardType,
+              autofocus: true,
+              padding: const EdgeInsets.symmetric(vertical: 6),
+              decoration: BoxDecoration(
+                border: Border(bottom: BorderSide(color: AppColors.primary.withValues(alpha: 0.5), width: 1)),
+              ),
+              style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w600, color: AppColors.textPrimary),
+              onSubmitted: (_) => onSave(),
+            )
+          : Text(
+              value.isNotEmpty ? value : 'Sin registrar',
+              style: TextStyle(
+                fontSize: 17,
+                fontWeight: FontWeight.w600,
+                color: value.isNotEmpty ? AppColors.textPrimary : AppColors.textTertiary,
+              ),
+            ),
+      trailing: isEditing
+          ? Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                CupertinoButton(padding: EdgeInsets.zero, onPressed: onCancel, child: const Icon(CupertinoIcons.xmark_circle_fill, color: CupertinoColors.destructiveRed, size: 22)),
+                CupertinoButton(padding: EdgeInsets.zero, onPressed: onSave, child: const Icon(CupertinoIcons.checkmark_alt_circle_fill, color: CupertinoColors.activeGreen, size: 22)),
+              ],
+            )
+          : CupertinoButton(padding: EdgeInsets.zero, onPressed: onEdit, child: const Icon(CupertinoIcons.pencil, color: AppColors.primary, size: 20)),
+    );
+  }
+
+  Widget _infoCard(String label, String value, IconData icon, Color color) {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
@@ -511,146 +407,22 @@ class _PerfilScreenState extends State<PerfilScreen> {
           Text(
             label,
             style: const TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.w900,
-              letterSpacing: 1.5,
+              fontSize: 12,
+              fontWeight: FontWeight.w700,
+              letterSpacing: 1.0,
               color: AppColors.textSecondary,
             ),
           ),
-          const SizedBox(height: 6),
+          const SizedBox(height: 4),
           Text(
             value,
             style: const TextStyle(
-              fontSize: 26,
-              fontWeight: FontWeight.w900,
+              fontSize: 18,
+              fontWeight: FontWeight.w800,
               color: AppColors.textPrimary,
               height: 1.1,
             ),
           ),
-        ],
-      ),
-    );
-  }
-
-  /// Inline editable field for email/phone.
-  Widget _editableField({
-    required IconData icon,
-    required String label,
-    required String value,
-    required bool isEditing,
-    required TextEditingController controller,
-    required TextInputType keyboardType,
-    required VoidCallback onEdit,
-    required VoidCallback onSave,
-    required VoidCallback onCancel,
-  }) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: AppColors.white,
-        borderRadius: BorderRadius.circular(AppTheme.radiusXl),
-        boxShadow: AppColors.softShadow,
-        border: isEditing
-            ? Border.all(
-                color: AppColors.primary.withValues(alpha: 0.3),
-                width: 1.5)
-            : null,
-      ),
-      child: Row(
-        children: [
-          Icon(icon, size: 30, color: AppColors.primary),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  label,
-                  style: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w800,
-                    color: AppColors.textSecondary,
-                    letterSpacing: 1.0,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                if (isEditing)
-                  CupertinoTextField(
-                    controller: controller,
-                    keyboardType: keyboardType,
-                    autofocus: true,
-                    padding: EdgeInsets.zero,
-                    decoration: const BoxDecoration(),
-                    style: const TextStyle(
-                      fontSize: 17,
-                      fontWeight: FontWeight.w700,
-                      color: AppColors.textPrimary,
-                    ),
-                    onSubmitted: (_) => onSave(),
-                  )
-                else
-                  Text(
-                    value.isNotEmpty ? value : 'Sin registrar',
-                    style: TextStyle(
-                      fontSize: 22,
-                      fontWeight: FontWeight.w800,
-                      color: value.isNotEmpty
-                          ? AppColors.textPrimary
-                          : AppColors.textTertiary,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-              ],
-            ),
-          ),
-          if (isEditing)
-            Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                GestureDetector(
-                  onTap: onCancel,
-                  child: Container(
-                    width: 30,
-                    height: 30,
-                    decoration: BoxDecoration(
-                      color: AppColors.errorLight,
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: const Icon(CupertinoIcons.xmark,
-                        size: 14, color: AppColors.error),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                GestureDetector(
-                  onTap: onSave,
-                  child: Container(
-                    width: 30,
-                    height: 30,
-                    decoration: BoxDecoration(
-                      color: AppColors.accentLight,
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: const Icon(CupertinoIcons.checkmark,
-                        size: 14, color: AppColors.accent),
-                  ),
-                ),
-              ],
-            )
-          else
-            GestureDetector(
-              onTap: onEdit,
-              child: Container(
-                width: 30,
-                height: 30,
-                decoration: BoxDecoration(
-                  color: AppColors.primary.withValues(alpha: 0.08),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: const Icon(CupertinoIcons.pencil,
-                    size: 14, color: AppColors.primary),
-              ),
-            ),
         ],
       ),
     );

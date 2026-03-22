@@ -23,11 +23,13 @@ class AppTheme {
         color: AppColors.textPrimary,
         fontSize: 16,
         fontFamily: '.SF Pro Text',
+        decoration: TextDecoration.none,
       ),
       bodyMedium: TextStyle(
         color: AppColors.textPrimary,
         fontSize: 16,
         fontFamily: '.SF Pro Text',
+        decoration: TextDecoration.none,
       ),
     ),
     pageTransitionsTheme: const PageTransitionsTheme(

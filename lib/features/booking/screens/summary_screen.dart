@@ -1,11 +1,14 @@
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/theme/app_constants.dart';
 import '../../../core/mock/mock_user_data.dart';
 import '../../../core/services/pdf_service.dart';
-import '../../../core/widgets/breadcrumb_chips.dart';
-import '../../../core/animations/fade_slide_in.dart';
+
+import '../../../core/animations/optimized_animations.dart';
 import '../../../shell/tab_shell.dart';
+import '../../../core/widgets/cossmil_ios_alert.dart';
 
 class SummaryScreen extends StatefulWidget {
   final TabShellState tabShell;
@@ -33,38 +36,25 @@ class _SummaryScreenState extends State<SummaryScreen> {
   Widget build(BuildContext context) {
     final bs = widget.tabShell.bookingState;
     final user = MockUserData.user;
-    final breadcrumbs = [
-      bs.beneficiaryLabel ?? 'Para mí',
-      bs.regional?.name ?? '',
-      bs.hospital?.name ?? '',
-      bs.specialty?.name ?? '',
-    ];
-
-    return Scaffold(
+    return CupertinoPageScaffold(
       backgroundColor: AppColors.background,
-      appBar: AppBar(
-        title: const Text(
+      navigationBar: CupertinoNavigationBar(
+        middle: const Text(
           'Resumen',
-          style: TextStyle(fontWeight: FontWeight.w900, fontSize: 22),
+          style: TextStyle(fontWeight: FontWeight.w700, fontSize: 17),
         ),
-        backgroundColor: AppColors.white,
-        centerTitle: true,
-        elevation: 0,
-        bottom: PreferredSize(
-          preferredSize: const Size.fromHeight(0.5),
-          child: Container(color: AppColors.border, height: 0.5),
+        backgroundColor: AppColors.white.withValues(alpha: 0.92),
+        border: Border(
+          bottom: BorderSide(
+            color: AppColors.border.withValues(alpha: 0.3),
+            width: 0.5,
+          ),
         ),
       ),
-      body: SafeArea(
+      child: SafeArea(
         child: ListView(
           padding: const EdgeInsets.symmetric(vertical: 16),
           children: [
-            FadeSlideIn(
-              offsetY: 10,
-              child: BreadcrumbChips(labels: breadcrumbs),
-            ),
-            const SizedBox(height: 24),
-
             // Header
             FadeSlideIn(
               delay: const Duration(milliseconds: 100),
@@ -155,16 +145,10 @@ class _SummaryScreenState extends State<SummaryScreen> {
                 child: Row(
                   children: [
                     Expanded(
-                      child: ElevatedButton(
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: AppColors.errorLight,
-                          foregroundColor: AppColors.error,
-                          elevation: 0,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(AppTheme.radiusLg),
-                          ),
-                          padding: const EdgeInsets.symmetric(vertical: 15),
-                        ),
+                      child: CupertinoButton(
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        color: AppColors.errorLight,
+                        borderRadius: BorderRadius.circular(AppTheme.radiusLg),
                         onPressed: () {
                           Navigator.popUntil(
                               context, (route) => route.isFirst);
@@ -172,8 +156,9 @@ class _SummaryScreenState extends State<SummaryScreen> {
                         child: const Text(
                           'Cancelar',
                           style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.w800,
+                            fontSize: 15,
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.error,
                           ),
                         ),
                       ),
@@ -181,40 +166,29 @@ class _SummaryScreenState extends State<SummaryScreen> {
                     const SizedBox(width: 14),
                     Expanded(
                       flex: 2,
-                      child: ElevatedButton(
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: AppColors.primary,
-                          foregroundColor: Colors.white,
-                          elevation: 0,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(AppTheme.radiusLg),
-                          ),
-                          padding: const EdgeInsets.symmetric(vertical: 15),
-                        ),
+                      child: CupertinoButton.filled(
+                        borderRadius: BorderRadius.circular(AppTheme.radiusLg),
                         onPressed:
                             _isConfirming ? null : () => _confirmBooking(),
                         child: _isConfirming
-                            ? const SizedBox(
-                                width: 20,
-                                height: 20,
-                                child: CircularProgressIndicator(
-                                    color: Colors.white, strokeWidth: 2),
+                            ? const CupertinoActivityIndicator(
+                                color: CupertinoColors.white,
+                                radius: 10,
                               )
                             : const Row(
                                 mainAxisAlignment: MainAxisAlignment.center,
                                 children: [
                                   Icon(
-                                    Icons.verified_user,
-                                    size: 18,
-                                    color: Colors.white,
+                                    CupertinoIcons.checkmark_seal_fill,
+                                    size: 16,
+                                    color: CupertinoColors.white,
                                   ),
                                   SizedBox(width: 8),
                                   Text(
                                     'Confirmar Reserva',
                                     style: TextStyle(
-                                      fontSize: 20,
-                                      fontWeight: FontWeight.w900,
-                                      color: Colors.white,
+                                      fontSize: 15,
+                                      fontWeight: FontWeight.w700,
                                     ),
                                   ),
                                 ],
@@ -242,7 +216,7 @@ class _SummaryScreenState extends State<SummaryScreen> {
           overflow: TextOverflow.ellipsis,
           text: TextSpan(
             style: const TextStyle(
-              fontSize: 24,
+              fontSize: 16,
               color: AppColors.textPrimary,
             ),
             children: [
@@ -250,23 +224,22 @@ class _SummaryScreenState extends State<SummaryScreen> {
                 alignment: PlaceholderAlignment.middle,
                 child: Padding(
                   padding: const EdgeInsets.only(right: 8),
-                  child: Icon(icon, size: 20, color: AppColors.primary.withValues(alpha: 0.7)),
+                  child: Icon(icon, size: 18, color: AppColors.primary.withValues(alpha: 0.7)),
                 ),
               ),
               TextSpan(
                 text: '$label: ',
                 style: const TextStyle(
-                  fontWeight: FontWeight.w600,
+                  fontWeight: FontWeight.w500,
                   color: AppColors.textSecondary,
-                  fontSize: 18,
+                  fontSize: 14,
                 ),
               ),
               TextSpan(
                 text: value,
                 style: const TextStyle(
-                  fontWeight: FontWeight.w900,
-                  fontSize: 24,
-                  letterSpacing: -0.5,
+                  fontWeight: FontWeight.w700,
+                  fontSize: 16,
                 ),
               ),
             ],
@@ -290,161 +263,51 @@ class _SummaryScreenState extends State<SummaryScreen> {
     await Future.delayed(const Duration(milliseconds: 600));
 
     if (!mounted) return;
+    setState(() => _isConfirming = false);
 
     final bs = widget.tabShell.bookingState;
     final user = MockUserData.user;
 
-    await showDialog(
+    await CossmilIosAlert.show(
       context: context,
-      barrierDismissible: false,
-      builder: (ctx) => Dialog(
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(AppTheme.radiusXl),
-        ),
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                width: 64,
-                height: 64,
-                decoration: BoxDecoration(
-                  color: AppColors.success.withValues(alpha: 0.1),
-                  shape: BoxShape.circle,
-                ),
-                child: const Icon(Icons.check_circle, color: AppColors.success, size: 36),
-              ),
-              const SizedBox(height: 16),
-              const Text(
-                '¡Reserva Exitosa!',
-                style: TextStyle(
-                  fontSize: 28,
-                  fontWeight: FontWeight.w900,
-                  color: AppColors.textPrimary,
-                  letterSpacing: -0.5,
-                ),
-              ),
-              const SizedBox(height: 8),
-              const Text(
-                'Tu cita médica ha sido confirmada.\nSe ha generado tu ticket virtual de reserva.',
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontSize: 18,
-                  color: AppColors.textSecondary,
-                  fontWeight: FontWeight.w500,
-                  height: 1.3,
-                ),
-              ),
-              const SizedBox(height: 24),
-              
-              // Mock del PDF Preview
-              Container(
-                width: 140,
-                height: 180,
-                decoration: BoxDecoration(
-                  color: AppColors.white,
-                  borderRadius: BorderRadius.circular(8),
-                  boxShadow: AppColors.cardShadow,
-                  border: Border.all(color: AppColors.border),
-                ),
-                child: Column(
-                  children: [
-                    Container(height: 20, color: const Color(0xFF6B6830)),
-                    const SizedBox(height: 10),
-                    Container(width: 80, height: 4, color: AppColors.border),
-                    const SizedBox(height: 10),
-                    Container(width: 100, height: 60, color: AppColors.background),
-                    const Spacer(),
-                    Container(width: 60, height: 20, color: AppColors.border),
-                    const SizedBox(height: 10),
-                  ],
-                ),
-              ),
-              
-              const SizedBox(height: 28),
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton.icon(
-                  icon: const Icon(Icons.receipt_long, size: 18),
-                  label: const Text(
-                    'Descargar comprobante PDF',
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
-                  ),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.primary,
-                    foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(AppTheme.radiusLg),
-                    ),
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                    elevation: 0,
-                  ),
-                  onPressed: () async {
-                    Navigator.pop(ctx);
-                    await PdfService.generateAndShowBookingPdf(
-                      user: user,
-                      paciente: user.displayName,
-                      especialidad: bs.specialty?.name ?? '',
-                      establecimiento: bs.hospital?.name ?? '',
-                      ciudad: bs.hospital?.city ?? '',
-                      medico: bs.doctor?.fullName ?? '',
-                      fecha: 'Martes, 18 de Marzo',
-                      hora: bs.selectedTime ?? '',
-                    );
-                    if (mounted) widget.tabShell.finishBooking();
-                  },
-                ),
-              ),
-              const SizedBox(height: 12),
-              SizedBox(
-                width: double.infinity,
-                child: TextButton(
-                  onPressed: () {
-                    Navigator.pop(ctx);
-                    widget.tabShell.finishBooking();
-                  },
-                  child: const Text(
-                    'Volver al Inicio',
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w700,
-                      color: AppColors.textSecondary,
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
+      title: '¡Reserva Exitosa!',
+      message: 'Tu cita médica ha sido confirmada y se ha generado tu ticket virtual de reserva en formato PDF.',
+      confirmText: 'Descargar Ticket',
+      onConfirm: () async {
+        await PdfService.generateAndShowBookingPdf(
+          user: user,
+          paciente: user.displayName,
+          especialidad: bs.specialty?.name ?? '',
+          establecimiento: bs.hospital?.name ?? '',
+          ciudad: bs.hospital?.city ?? '',
+          medico: bs.doctor?.fullName ?? '',
+          fecha: 'Martes, 18 de Marzo',
+          hora: bs.selectedTime ?? '',
+        );
+        if (mounted) widget.tabShell.finishBooking();
+      },
+      cancelText: 'Volver al Inicio',
+      onCancel: () {
+        widget.tabShell.finishBooking();
+      },
     );
-
-    if (mounted) {
-      setState(() => _isConfirming = false);
-    }
   }
 
   Widget _buildHeader() {
-    return const Column(
+    return Column(
       children: [
         Text(
           'Resumen de su Cita',
-          style: TextStyle(
-            fontSize: 28,
-            fontWeight: FontWeight.w900,
-            color: AppColors.textPrimary,
-            letterSpacing: -0.5,
+          style: AppTypography.displayMedium.copyWith(
+            fontSize: 22,
           ),
         ),
-        SizedBox(height: 6),
+        const SizedBox(height: 6),
         Text(
           'VERIFIQUE LOS DETALLES',
-          style: TextStyle(
-            fontSize: 15,
-            fontWeight: FontWeight.w800,
-            color: AppColors.textSecondary,
-            letterSpacing: 2.0,
+          style: AppTypography.labelMedium.copyWith(
+            letterSpacing: 1.0,
+            fontSize: 13,
           ),
         ),
       ],

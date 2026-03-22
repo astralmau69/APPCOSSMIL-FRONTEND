@@ -2,7 +2,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/services.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/theme/app_theme.dart';
-import '../../../core/animations/fade_slide_in.dart';
+import '../../../core/animations/optimized_animations.dart';
 
 // ── Data Model ──────────────────────────────────────────────────────────────
 

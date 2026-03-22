@@ -27,10 +27,6 @@ class _SplashScreenState extends State<SplashScreen>
   late final AnimationController _footerCtrl;
   late final Animation<double> _footerFade;
 
-  // Fade out general
-  late final AnimationController _fadeOutCtrl;
-  late final Animation<double> _fadeOut;
-
   // Audio
   AudioPlayer? _audioPlayer;
   bool _navigated = false;
@@ -68,15 +64,6 @@ class _SplashScreenState extends State<SplashScreen>
     );
     _footerFade = CurvedAnimation(parent: _footerCtrl, curve: Curves.easeIn);
 
-    // Fade out para transición elegante
-    _fadeOutCtrl = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 400),
-    );
-    _fadeOut = Tween<double>(begin: 1.0, end: 0.0).animate(
-      CurvedAnimation(parent: _fadeOutCtrl, curve: Curves.easeIn),
-    );
-
     _runSequence();
   }
 
@@ -108,12 +95,17 @@ class _SplashScreenState extends State<SplashScreen>
       await Future.delayed(const Duration(milliseconds: 1500));
     } else {
       // Esperar a que el audio termine (o un mínimo razonable)
-      await Future.delayed(const Duration(milliseconds: 4000));
+      await Future.delayed(const Duration(milliseconds: 3000));
     }
 
-    // Fade out y navegar
+    if (!mounted) return;
+    // Salida suave (Fade/Scale out)
+    _logoCtrl.reverse();
+    _footerCtrl.reverse();
+    await Future.delayed(const Duration(milliseconds: 600));
+
+    // Navegar
     if (!mounted || _navigated) return;
-    await _fadeOutCtrl.forward();
     _navigate();
   }
 
@@ -135,7 +127,6 @@ class _SplashScreenState extends State<SplashScreen>
     _logoCtrl.dispose();
     _glowCtrl.dispose();
     _footerCtrl.dispose();
-    _fadeOutCtrl.dispose();
     super.dispose();
   }
 
@@ -147,12 +138,10 @@ class _SplashScreenState extends State<SplashScreen>
 
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: SystemUiOverlayStyle.dark,
-      child: FadeTransition(
-        opacity: _fadeOut,
-        child: Container(
-          width: size.width,
-          height: size.height,
-          decoration: const BoxDecoration(
+      child: Container(
+        width: size.width,
+        height: size.height,
+        decoration: const BoxDecoration(
             gradient: LinearGradient(
               begin: Alignment.topCenter,
               end: Alignment.bottomCenter,
@@ -176,7 +165,6 @@ class _SplashScreenState extends State<SplashScreen>
             ),
           ),
         ),
-      ),
     );
   }
 
@@ -188,23 +176,26 @@ class _SplashScreenState extends State<SplashScreen>
         child: Stack(
           alignment: Alignment.center,
           children: [
-            // Composited glow pulse (saves GPU from recalculating 40px blur per frame)
-            FadeTransition(
-              opacity: _glowOpacity,
-              child: Container(
-                width: logoSize + 40,
-                height: logoSize + 40,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  boxShadow: [
-                    BoxShadow(
-                      color: AppColors.primary,
-                      blurRadius: 32,
-                      spreadRadius: 8,
-                    ),
-                  ],
-                ),
-              ),
+            // Composited glow pulse — uses color alpha instead of FadeTransition
+            // to avoid Impeller SetInheritedOpacity errors with BoxShadow.
+            AnimatedBuilder(
+              animation: _glowOpacity,
+              builder: (context, child) {
+                return Container(
+                  width: logoSize + 40,
+                  height: logoSize + 40,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    boxShadow: [
+                      BoxShadow(
+                        color: AppColors.primary.withValues(alpha: _glowOpacity.value),
+                        blurRadius: 32,
+                        spreadRadius: 8,
+                      ),
+                    ],
+                  ),
+                );
+              },
             ),
             // Static Logo Body
             Container(

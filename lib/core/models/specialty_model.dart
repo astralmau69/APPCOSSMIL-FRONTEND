@@ -25,4 +25,13 @@ class SpecialtyModel {
       referredBy: json['referido_por'] as String?,
     );
   }
+
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'name': name,
+        'description': description,
+        'isInterconsulta': isInterconsulta,
+        'isAuthorized': isAuthorized,
+        'referredBy': referredBy,
+      };
 }

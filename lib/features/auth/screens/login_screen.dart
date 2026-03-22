@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
 import '../../../core/constants/app_colors.dart';
+import '../../../core/theme/app_constants.dart';
+import '../../../core/extensions/responsive_extensions.dart';
+import '../../../core/animations/optimized_animations.dart';
 import '../../../core/services/auth_service.dart';
 import '../../../core/storage/token_storage.dart';
-import '../../../core/animations/fade_slide_in.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -71,76 +73,87 @@ class _LoginScreenState extends State<LoginScreen>
 
   @override
   Widget build(BuildContext context) {
+    final responsive = ResponsiveData.of(context);
+    final padding = responsive.isSmallPhone ? 16.0 : (responsive.isPhone ? 20.0 : 32.0);
+    final logoSize = responsive.isSmallPhone ? 80.0
+        : responsive.isMediumPhone ? 100.0
+        : responsive.isLargePhone ? 110.0
+        : 120.0;
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF2F2F7), // iOS System Grey 6
+      backgroundColor: AppColors.background,
       body: SafeArea(
-        child: LayoutBuilder(
-          builder: (context, constraints) {
-            final double availableHeight = constraints.maxHeight;
-            final double logoSize = availableHeight < 600 ? 90 : 120;
-            
-            return SingleChildScrollView(
-              padding: const EdgeInsets.symmetric(horizontal: 20),
-              physics: const BouncingScrollPhysics(),
-              child: ConstrainedBox(
-                constraints: BoxConstraints(
-                  minHeight: availableHeight,
-                ),
-                child: Center(
-                  child: ConstrainedBox(
-                    constraints: const BoxConstraints(maxWidth: 450),
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        const SizedBox(height: 20),
-                        // SECCIÓN DE MARCA
-                        FadeSlideIn(
-                          offsetY: 30,
-                          child: Column(
-                            children: [
-                              _buildLogo(logoSize),
-                              const SizedBox(height: 24),
-                              _buildHeader(),
-                            ],
-                          ),
-                        ),
-                        
-                        const SizedBox(height: 40),
-                        
-                        // SECCIÓN DE FORMULARIO (iOS Inset Grouped style)
-                        FadeSlideIn(
-                          delay: const Duration(milliseconds: 200),
-                          offsetY: 30,
-                          child: Column(
-                            children: [
-                              _buildForm(),
-                              const SizedBox(height: 32),
-                              if (_errorMessage != null) ...[
-                                _buildErrorBanner(),
-                                const SizedBox(height: 20),
-                              ],
-                              _buildLoginButton(),
-                            ],
-                          ),
-                        ),
-                        
-                        const SizedBox(height: 32),
-                        
-                        // ACCIONES ADICIONALES
-                        FadeSlideIn(
-                          delay: const Duration(milliseconds: 400),
-                          child: _buildForgotPassword(),
-                        ),
-                        
-                        const SizedBox(height: 40),
-                      ],
+        child: SingleChildScrollView(
+          physics: const BouncingScrollPhysics(),
+          padding: EdgeInsets.symmetric(horizontal: padding),
+          child: ConstrainedBox(
+            constraints: BoxConstraints(
+              minHeight: responsive.screenHeight - MediaQuery.of(context).padding.vertical,
+            ),
+            child: Center(
+              child: ResponsiveContainer(
+                maxWidth: responsive.isTablet ? 500 : double.infinity,
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const SizedBox(height: 20),
+                    // Logo
+                    FadeSlideIn(
+                      duration: AppDurations.slow,
+                      child: _buildLogo(logoSize),
                     ),
-                  ),
+                    
+                    const SizedBox(height: 24),
+                    
+                    // Header
+                    FadeSlideIn(
+                      duration: AppDurations.slow,
+                      delay: const Duration(milliseconds: 100),
+                      child: _buildHeader(responsive),
+                    ),
+                    
+                    const SizedBox(height: 40),
+                    
+                    // Form
+                    FadeSlideIn(
+                      duration: AppDurations.normal,
+                      delay: const Duration(milliseconds: 200),
+                      child: _buildForm(responsive),
+                    ),
+                    
+                    const SizedBox(height: 20),
+                    
+                    // Error message
+                    if (_errorMessage != null) ...[
+                      FadeSlideIn(
+                        duration: AppDurations.fast,
+                        child: _buildErrorBanner(),
+                      ),
+                      const SizedBox(height: 16),
+                    ],
+                    
+                    // Login button
+                    FadeSlideIn(
+                      duration: AppDurations.normal,
+                      delay: const Duration(milliseconds: 250),
+                      child: _buildLoginButton(),
+                    ),
+                    
+                    const SizedBox(height: 28),
+                    
+                    // Forgot password
+                    FadeSlideIn(
+                      duration: AppDurations.normal,
+                      delay: const Duration(milliseconds: 300),
+                      child: _buildForgotPassword(),
+                    ),
+                    
+                    const SizedBox(height: 40),
+                  ],
                 ),
               ),
-            );
-          },
+            ),
+          ),
         ),
       ),
     );
@@ -153,13 +166,7 @@ class _LoginScreenState extends State<LoginScreen>
       decoration: BoxDecoration(
         shape: BoxShape.circle,
         color: AppColors.white,
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
-            blurRadius: 20,
-            offset: const Offset(0, 10),
-          ),
-        ],
+        boxShadow: AppShadows.soft,
       ),
       child: ClipOval(
         child: Padding(
@@ -169,7 +176,7 @@ class _LoginScreenState extends State<LoginScreen>
             fit: BoxFit.contain,
             errorBuilder: (_, __, ___) => Icon(
               CupertinoIcons.shield_fill,
-              size: size * 0.4,
+              size: size * 0.5,
               color: AppColors.primary,
             ),
           ),
@@ -178,37 +185,33 @@ class _LoginScreenState extends State<LoginScreen>
     );
   }
 
-  static Widget _buildHeader() {
+  Widget _buildHeader(ResponsiveData responsive) {
+    final isSmall = responsive.isSmallPhone;
+    
     return Column(
       children: [
-        const Text(
+        Text(
           'Iniciar Sesión',
-          style: TextStyle(
-            fontSize: 34,
-            fontWeight: FontWeight.w800,
-            color: AppColors.textPrimary,
-            letterSpacing: -1.2,
-          ),
+          style: isSmall ? AppTypography.displayMedium : AppTypography.displayLarge,
         ),
-        const SizedBox(height: 6),
+        const SizedBox(height: 8),
         Text(
           'INGRESA TUS CREDENCIALES',
-          style: TextStyle(
-            fontSize: 13,
-            fontWeight: FontWeight.w600,
-            color: AppColors.textSecondary.withValues(alpha: 0.7),
-            letterSpacing: 1.5,
+          style: AppTypography.labelSmall.copyWith(
+            color: AppColors.textSecondary,
+            letterSpacing: 1.2,
           ),
         ),
       ],
     );
   }
 
-  Widget _buildForm() {
+  Widget _buildForm(ResponsiveData responsive) {
     return Container(
       decoration: BoxDecoration(
         color: AppColors.white,
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(AppSpacing.radiusLg),
+        boxShadow: AppShadows.soft,
       ),
       child: Column(
         children: [
@@ -229,9 +232,9 @@ class _LoginScreenState extends State<LoginScreen>
             },
           ),
           Divider(
-            height: 0.5,
-            thickness: 0.5,
-            indent: 54,
+            height: 1,
+            thickness: 1,
+            indent: responsive.isPhone ? 54 : 60,
             color: AppColors.border.withValues(alpha: 0.5),
           ),
           _buildInputField(
@@ -273,45 +276,34 @@ class _LoginScreenState extends State<LoginScreen>
       padding: const EdgeInsets.symmetric(horizontal: 16),
       child: Row(
         children: [
-          Icon(icon, size: 24, color: AppColors.primary),
-          const SizedBox(width: 16),
+          Icon(icon, size: 22, color: AppColors.primary),
+          const SizedBox(width: 14),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisSize: MainAxisSize.min,
               children: [
-                const SizedBox(height: 8),
+                const SizedBox(height: 6),
                 Text(
                   label,
-                  style: const TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w600,
-                    color: AppColors.textSecondary,
-                    letterSpacing: -0.1,
-                  ),
+                  style: AppTypography.labelSmall,
                 ),
-                TextField(
+                const SizedBox(height: 4),
+                CupertinoTextField(
                   controller: controller,
                   obscureText: obscureText,
                   enabled: !_isLoading,
                   textCapitalization: textCapitalization,
                   onChanged: onChanged,
                   textAlign: TextAlign.left,
-                  decoration: InputDecoration(
-                    hintText: placeholder,
-                    border: InputBorder.none,
-                    isDense: true,
-                    contentPadding: const EdgeInsets.only(top: 4, bottom: 8),
-                    hintStyle: TextStyle(
-                      color: AppColors.textTertiary.withValues(alpha: 0.5),
-                      fontSize: 17,
-                    ),
+                  placeholder: placeholder,
+                  placeholderStyle: TextStyle(
+                    color: AppColors.textTertiary.withValues(alpha: 0.4),
+                    fontSize: 16,
                   ),
-                  style: const TextStyle(
-                    fontSize: 17,
-                    color: AppColors.textPrimary,
-                    fontWeight: FontWeight.w500,
-                  ),
+                  decoration: null,
+                  padding: const EdgeInsets.only(top: 2, bottom: 6),
+                  style: AppTypography.bodyLarge,
                   textInputAction:
                       isLast ? TextInputAction.done : TextInputAction.next,
                   onSubmitted: isLast ? (_) => _onLoginPressed() : null,
@@ -324,35 +316,35 @@ class _LoginScreenState extends State<LoginScreen>
             trailing,
             const SizedBox(width: 8),
           ] else
-            const SizedBox(width: 16),
+            const SizedBox(width: 12),
         ],
       ),
     );
   }
 
   Widget _buildErrorBanner() {
-    return FadeSlideIn(
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-        decoration: BoxDecoration(
-          color: const Color(0xFFFFE5E5),
-          borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: AppColors.error.withValues(alpha: 0.2)),
-        ),
-        child: Row(
-          children: [
-            const Icon(CupertinoIcons.exclamationmark_circle_fill,
-                color: AppColors.error, size: 20),
-            const SizedBox(width: 10),
-            Expanded(
-              child: Text(
-                _errorMessage!,
-                style: const TextStyle(
-                    color: AppColors.error, fontSize: 14, fontWeight: FontWeight.w600),
-              ),
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: BoxDecoration(
+        color: AppColors.errorLight,
+        borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
+        border: Border.all(color: AppColors.error.withValues(alpha: 0.2)),
+      ),
+      child: Row(
+        children: [
+          const Icon(
+            CupertinoIcons.exclamationmark_circle_fill,
+            color: AppColors.error,
+            size: 18,
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              _errorMessage!,
+              style: AppTypography.bodySmall.copyWith(color: AppColors.error),
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
@@ -360,52 +352,47 @@ class _LoginScreenState extends State<LoginScreen>
   Widget _buildLoginButton() {
     return SizedBox(
       width: double.infinity,
-      child: CupertinoButton(
-        padding: EdgeInsets.zero,
-        onPressed: _isLoading ? null : _onLoginPressed,
+      height: 52,
+      child: OptimizedPressButton(
+        onTap: _isLoading ? null : _onLoginPressed,
+        scaleDown: 0.95,
         child: Container(
-          width: double.infinity,
-          height: 56,
           decoration: BoxDecoration(
-            color: AppColors.primary,
-            borderRadius: BorderRadius.circular(14),
-            boxShadow: [
-              BoxShadow(
-                color: AppColors.primary.withValues(alpha: 0.2),
-                blurRadius: 15,
-                offset: const Offset(0, 5),
-              ),
-            ],
+            color: _isLoading ? AppColors.textSecondary : AppColors.primary,
+            borderRadius: BorderRadius.circular(AppSpacing.radiusLg),
+            boxShadow: AppShadows.medium,
           ),
-          alignment: Alignment.center,
-          child: _isLoading
-              ? const CupertinoActivityIndicator(color: AppColors.white)
-              : const Text(
-                  'Ingresar',
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w700,
-                    color: AppColors.white,
-                    letterSpacing: -0.2,
+          child: Center(
+            child: _isLoading
+                ? const SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      valueColor: AlwaysStoppedAnimation<Color>(AppColors.white),
+                    ),
+                  )
+                : Text(
+                    'INICIAR SESIÓN',
+                    style: AppTypography.labelLarge.copyWith(
+                      color: AppColors.white,
+                      letterSpacing: 0.8,
+                    ),
                   ),
-                ),
+          ),
         ),
       ),
     );
   }
 
   Widget _buildForgotPassword() {
-    return CupertinoButton(
-      padding: EdgeInsets.zero,
-      onPressed: () {
-        // TODO: navegar a recuperar contraseña
-      },
-      child: const Text(
-        '¿Olvidaste tu contraseña?',
-        style: TextStyle(
-          fontSize: 15,
-          color: AppColors.primary,
-          fontWeight: FontWeight.w600,
+    return Center(
+      child: CupertinoButton(
+        padding: EdgeInsets.zero,
+        onPressed: () {},
+        child: Text(
+          '¿Olvidó su contraseña?',
+          style: AppTypography.bodySmall.copyWith(color: AppColors.primary),
         ),
       ),
     );

@@ -40,4 +40,10 @@ class RegionalModel {
       hospitals: [],
     );
   }
+
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'name': name,
+        'hospitals': hospitals.map((h) => h.toJson()).toList(),
+      };
 }

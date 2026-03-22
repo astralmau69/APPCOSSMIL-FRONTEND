@@ -1,10 +1,9 @@
 import 'dart:convert';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import '../../../core/animations/optimized_animations.dart';
 import '../../../core/constants/app_colors.dart';
-import '../../../core/theme/app_theme.dart';
 import '../../../core/mock/mock_user_data.dart';
-import '../../../core/animations/fade_slide_in.dart';
 
 class FamiliaScreen extends StatelessWidget {
   const FamiliaScreen({super.key});
@@ -30,137 +29,83 @@ class FamiliaScreen extends StatelessWidget {
               ),
             ),
           ),
-          SliverPadding(
-            padding: const EdgeInsets.all(20),
-            sliver: SliverList(
-              delegate: SliverChildBuilderDelegate(
-                (context, index) {
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.only(bottom: 120),
+              child: CupertinoListSection.insetGrouped(
+                backgroundColor: Colors.transparent,
+                margin: const EdgeInsets.all(20),
+                children: List.generate(beneficiaries.length, (index) {
                   final b = beneficiaries[index];
                   final isTitular = b.relationship == 'Titular';
 
                   return FadeSlideIn(
                     delay: Duration(milliseconds: 100 + (index * 80)),
                     offsetY: 15,
-                    child: Container(
-                      margin: const EdgeInsets.only(bottom: 16),
-                      padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        color: AppColors.white,
-                        borderRadius:
-                            BorderRadius.circular(AppTheme.radiusXl),
-                        boxShadow: AppColors.softShadow,
-                        border: Border.all(
-                          color: isTitular
-                              ? AppColors.primary.withValues(alpha: 0.3)
-                              : Colors.transparent,
-                          width: isTitular ? 1.5 : 0,
+                    child: CupertinoListTile(
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                      leadingSize: 56,
+                      leading: Container(
+                        width: 56,
+                        height: 56,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          gradient: LinearGradient(
+                            colors: [
+                              isTitular ? AppColors.primary : AppColors.accent,
+                              (isTitular ? AppColors.primary : AppColors.accent).withValues(alpha: 0.7),
+                            ],
+                          ),
                         ),
-                      ),
-                      child: Row(
-                        children: [
-                          Container(
-                            width: 64,
-                            height: 64,
-                            decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              gradient: LinearGradient(
-                                colors: [
-                                  isTitular
-                                      ? AppColors.primary
-                                      : AppColors.accent,
-                                  (isTitular
-                                          ? AppColors.primary
-                                          : AppColors.accent)
-                                      .withValues(alpha: 0.7),
-                                ],
-                              ),
-                            ),
-                            child: ClipOval(
+                        child: ClipOval(
                           child: (isTitular && MockUserData.user.photoBase64.isNotEmpty)
                               ? Image.memory(
                                   base64Decode(MockUserData.user.photoBase64),
                                   fit: BoxFit.cover,
-                                  width: 64,
-                                  height: 64,
+                                  width: 56,
+                                  height: 56,
                                 )
                               : Center(
                                   child: Text(
                                     b.fullName[0],
                                     style: const TextStyle(
                                       color: AppColors.white,
-                                      fontWeight: FontWeight.w900,
-                                      fontSize: 24,
-                                    ),
-                                  ),
-                                ),
-                            ),
-                          ),
-                          const SizedBox(width: 14),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment:
-                                  CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  b.fullName,
-                                  style: const TextStyle(
-                                    fontSize: 22,
-                                    fontWeight: FontWeight.w900,
-                                    color: AppColors.textPrimary,
-                                    letterSpacing: -0.5,
-                                  ),
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                                const SizedBox(height: 6),
-                                Container(
-                                  padding: const EdgeInsets.symmetric(
-                                      horizontal: 8, vertical: 4),
-                                  decoration: BoxDecoration(
-                                    color: isTitular
-                                        ? AppColors.primary
-                                            .withValues(alpha: 0.1)
-                                        : AppColors.accent
-                                            .withValues(alpha: 0.1),
-                                    borderRadius:
-                                        BorderRadius.circular(8),
-                                  ),
-                                  child: Text(
-                                    isTitular
-                                        ? 'Titular'
-                                        : 'Beneficiario: ${b.relationship}',
-                                    style: TextStyle(
-                                      fontSize: 15,
                                       fontWeight: FontWeight.w800,
-                                      color: isTitular
-                                          ? AppColors.primary
-                                          : AppColors.accentDark,
+                                      fontSize: 18,
                                     ),
                                   ),
                                 ),
-                              ],
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          Container(
-                            width: 40,
-                            height: 40,
-                            decoration: BoxDecoration(
-                              color: AppColors.background,
-                              borderRadius: BorderRadius.circular(10),
-                            ),
-                            child: const Icon(
-                              CupertinoIcons.chart_bar,
-                              size: 24,
-                              color: AppColors.textSecondary,
-                            ),
-                          ),
-                        ],
+                        ),
                       ),
+                      title: Text(
+                        b.fullName,
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.textPrimary,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      subtitle: Text(
+                        isTitular ? 'Titular' : 'Beneficiario: ${b.relationship}',
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w500,
+                          color: isTitular ? AppColors.primary : AppColors.textSecondary,
+                        ),
+                      ),
+                      trailing: const Icon(
+                        CupertinoIcons.chevron_right,
+                        color: AppColors.textTertiary,
+                        size: 20,
+                      ),
+                      onTap: () {
+                        // TODO: Ver detalle familiar
+                      },
                     ),
                   );
-                },
-                childCount: beneficiaries.length,
+                }),
               ),
             ),
           ),

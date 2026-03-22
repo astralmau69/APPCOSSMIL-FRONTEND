@@ -1,12 +1,15 @@
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import '../../../core/constants/app_colors.dart';
+import '../../../core/theme/app_constants.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/mock/mock_user_data.dart';
 import '../../../core/models/specialty_model.dart';
 import '../../../core/services/programacion_service.dart';
 import '../../../core/widgets/breadcrumb_chips.dart';
+import '../../../core/widgets/section_header.dart';
+import '../../../core/animations/optimized_animations.dart';
 import '../../../core/animations/app_page_route.dart';
-import '../../../core/animations/fade_slide_in.dart';
 import '../../../shell/tab_shell.dart';
 import 'schedule_screen.dart';
 
@@ -86,100 +89,79 @@ class _SpecialtyScreenState extends State<SpecialtyScreen> {
       bs.hospital?.name ?? '',
     ];
 
-    return Scaffold(
+    return CupertinoPageScaffold(
       backgroundColor: AppColors.background,
-      appBar: AppBar(
-        title: const Text(
-          'ESPECIALIDAD',
-          style: TextStyle(fontWeight: FontWeight.w900, fontSize: 22),
+      navigationBar: CupertinoNavigationBar(
+        middle: const Text(
+          'Especialidad',
+          style: TextStyle(fontWeight: FontWeight.w700, fontSize: 17),
         ),
-        backgroundColor: AppColors.white,
-        centerTitle: true,
-        elevation: 0,
-        bottom: PreferredSize(
-          preferredSize: const Size.fromHeight(0.5),
-          child: Container(color: AppColors.border, height: 0.5),
+        backgroundColor: AppColors.white.withValues(alpha: 0.92),
+        border: Border(
+          bottom: BorderSide(
+            color: AppColors.border.withValues(alpha: 0.3),
+            width: 0.5,
+          ),
         ),
       ),
-      body: SafeArea(
-        child: _isLoading
-            ? const Center(child: CircularProgressIndicator())
-            : _errorMessage != null
-                ? Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Text('Error: $_errorMessage',
-                            textAlign: TextAlign.center),
-                        const SizedBox(height: 16),
-                        ElevatedButton(
-                            onPressed: _fetchData, child: const Text('Reintentar')),
-                      ],
+      child: SafeArea(
+        child: AnimatedSwitcher(
+          duration: const Duration(milliseconds: 300),
+          child: _isLoading
+              ? const Center(key: ValueKey('loading'), child: CupertinoActivityIndicator(radius: 14))
+              : _errorMessage != null
+                  ? Center(
+                      key: const ValueKey('error'),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Text('Error: $_errorMessage',
+                              textAlign: TextAlign.center),
+                          const SizedBox(height: 16),
+                          CupertinoButton(
+                              onPressed: _fetchData, child: const Text('Reintentar')),
+                        ],
+                      ),
+                    )
+                  : RefreshIndicator(
+                      key: const ValueKey('data'),
+                      onRefresh: _fetchData,
+                      child: ListView(
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        children: [
+                          BreadcrumbChips(labels: breadcrumbs),
+                          const SizedBox(height: 20),
+                          const SectionHeader(text: 'CONSULTA DIRECTA'),
+                          const SizedBox(height: 8),
+                          if (_directas.isEmpty)
+                            const Padding(
+                              padding: EdgeInsets.symmetric(vertical: 20, horizontal: 40),
+                              child: Text('No hay especialidades directas disponibles.', textAlign: TextAlign.center, style: TextStyle(fontSize: 13, color: AppColors.textSecondary)),
+                            )
+                          else
+                            _buildSpecialtyList(
+                              context,
+                              _directas,
+                              startDelay: 50,
+                            ),
+                          const SizedBox(height: 24),
+                          const SectionHeader(text: 'INTERCONSULTA (HABILITADAS)'),
+                          const SizedBox(height: 8),
+                          if (_interconsultas.isEmpty)
+                            const Padding(
+                              padding: EdgeInsets.symmetric(vertical: 20, horizontal: 40),
+                              child: Text('No tiene órdenes de interconsulta habilitadas.', textAlign: TextAlign.center, style: TextStyle(fontSize: 13, color: AppColors.textSecondary)),
+                            )
+                          else
+                            _buildSpecialtyList(
+                              context,
+                              _interconsultas,
+                              showBadge: true,
+                              startDelay: 100,
+                            ),
+                        ],
+                      ),
                     ),
-                  )
-                : RefreshIndicator(
-                    onRefresh: _fetchData,
-                    child: ListView(
-                      padding: const EdgeInsets.symmetric(vertical: 16),
-                      children: [
-                        FadeSlideIn(
-                          offsetY: 10,
-                          child: BreadcrumbChips(labels: breadcrumbs),
-                        ),
-                        const SizedBox(height: 20),
-                        FadeSlideIn(
-                          delay: const Duration(milliseconds: 100),
-                          offsetY: 10,
-                          child: _sectionHeader('CONSULTA DIRECTA'),
-                        ),
-                        const SizedBox(height: 8),
-                        if (_directas.isEmpty)
-                          const Padding(
-                            padding: EdgeInsets.symmetric(vertical: 20, horizontal: 40),
-                            child: Text('No hay especialidades directas disponibles.', textAlign: TextAlign.center, style: TextStyle(fontSize: 13, color: AppColors.textSecondary)),
-                          )
-                        else
-                          _buildSpecialtyList(
-                            context,
-                            _directas,
-                            startDelay: 200,
-                          ),
-                        const SizedBox(height: 24),
-                        FadeSlideIn(
-                          delay: const Duration(milliseconds: 400),
-                          offsetY: 10,
-                          child: _sectionHeader('INTERCONSULTA (HABILITADAS)'),
-                        ),
-                        const SizedBox(height: 8),
-                        if (_interconsultas.isEmpty)
-                          const Padding(
-                            padding: EdgeInsets.symmetric(vertical: 20, horizontal: 40),
-                            child: Text('No tiene órdenes de interconsulta habilitadas.', textAlign: TextAlign.center, style: TextStyle(fontSize: 13, color: AppColors.textSecondary)),
-                          )
-                        else
-                          _buildSpecialtyList(
-                            context,
-                            _interconsultas,
-                            showBadge: true,
-                            startDelay: 500,
-                          ),
-                      ],
-                    ),
-                  ),
-      ),
-    );
-  }
-
-  Widget _sectionHeader(String text) {
-    return Padding(
-      padding: const EdgeInsets.only(left: 24),
-      child: Text(
-        text,
-        style: const TextStyle(
-          fontSize: 22,
-          fontWeight: FontWeight.w900,
-          color: AppColors.textSecondary,
-          letterSpacing: 2.0,
         ),
       ),
     );
@@ -207,11 +189,14 @@ class _SpecialtyScreenState extends State<SpecialtyScreen> {
       child: Column(
         children: [
           for (int i = 0; i < specialties.length; i++) ...[
-            FadeSlideIn(
-              delay: Duration(milliseconds: startDelay + (i * 80)),
-              offsetY: 15,
-              child: _specialtyTile(context, specialties[i], showBadge),
-            ),
+            if (i < 5)
+              FadeSlideIn(
+                delay: Duration(milliseconds: startDelay + (i * 40)),
+                offsetY: 10,
+                child: _specialtyTile(context, specialties[i], showBadge),
+              )
+            else
+              _specialtyTile(context, specialties[i], showBadge),
             if (i < specialties.length - 1)
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -228,8 +213,8 @@ class _SpecialtyScreenState extends State<SpecialtyScreen> {
     SpecialtyModel specialty,
     bool showBadge,
   ) {
-    return InkWell(
-      borderRadius: BorderRadius.circular(AppTheme.radiusLg),
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
       onTap: () {
         widget.tabShell.bookingState.specialty = specialty;
         Navigator.push(
@@ -265,12 +250,7 @@ class _SpecialtyScreenState extends State<SpecialtyScreen> {
                 children: [
                   Text(
                     specialty.name,
-                    style: const TextStyle(
-                      fontSize: 26,
-                      fontWeight: FontWeight.w900,
-                      color: AppColors.textPrimary,
-                      letterSpacing: -0.5,
-                    ),
+                    style: AppTypography.titleMedium,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
@@ -278,10 +258,8 @@ class _SpecialtyScreenState extends State<SpecialtyScreen> {
                     const SizedBox(height: 2),
                     Text(
                       specialty.description,
-                      style: const TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.w700,
-                        color: AppColors.textSecondary,
+                      style: AppTypography.bodySmall.copyWith(
+                        fontSize: 13,
                       ),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
@@ -291,10 +269,10 @@ class _SpecialtyScreenState extends State<SpecialtyScreen> {
                     const Text(
                       'Especialidad Médica',
                       style: TextStyle(
-                        fontSize: 18,
+                        fontSize: 13,
                         color: AppColors.textSecondary,
                         fontStyle: FontStyle.italic,
-                        fontWeight: FontWeight.w600,
+                        fontWeight: FontWeight.w500,
                       ),
                     ),
                   ],

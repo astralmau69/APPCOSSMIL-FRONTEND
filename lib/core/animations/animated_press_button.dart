@@ -20,8 +20,8 @@ class AnimatedPressButton extends StatefulWidget {
     super.key,
     required this.child,
     this.onTap,
-    this.scaleDown = 0.96,
-    this.duration = const Duration(milliseconds: 120),
+    this.scaleDown = 0.94,
+    this.duration = const Duration(milliseconds: 150),
   });
 
   @override
@@ -39,11 +39,12 @@ class _AnimatedPressButtonState extends State<AnimatedPressButton>
     _ctrl = AnimationController(
       vsync: this,
       duration: widget.duration,
+      reverseDuration: const Duration(milliseconds: 200),
     );
     _scaleAnim = Tween<double>(
       begin: 1.0,
       end: widget.scaleDown,
-    ).animate(CurvedAnimation(parent: _ctrl, curve: Curves.easeInOut));
+    ).animate(CurvedAnimation(parent: _ctrl, curve: Curves.easeOutCubic));
   }
 
   @override
@@ -71,6 +72,8 @@ class _AnimatedPressButtonState extends State<AnimatedPressButton>
       onTapUp: _onTapUp,
       onTapCancel: _onTapCancel,
       onTap: widget.onTap,
+      behavior: HitTestBehavior.opaque,
+      // Pure ScaleTransition — avoids Impeller SetInheritedOpacity errors
       child: ScaleTransition(
         scale: _scaleAnim,
         child: widget.child,

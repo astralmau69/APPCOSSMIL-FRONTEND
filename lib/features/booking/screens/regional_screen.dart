@@ -1,7 +1,9 @@
 import 'dart:convert';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/theme/app_constants.dart';
 import '../../../core/mock/mock_user_data.dart';
 import '../../../core/models/regional_model.dart';
 import '../../../core/models/hospital_model.dart';
@@ -9,8 +11,8 @@ import '../../../core/models/beneficiary_model.dart';
 import '../../../core/services/programacion_service.dart';
 import '../../../core/widgets/beneficiary_selector_modal.dart';
 import '../../../core/animations/animated_press_button.dart';
+import '../../../core/animations/optimized_animations.dart';
 import '../../../core/animations/app_page_route.dart';
-import '../../../core/animations/fade_slide_in.dart';
 import '../../../shell/tab_shell.dart';
 import 'specialty_screen.dart';
 
@@ -74,24 +76,24 @@ class _RegionalScreenState extends State<RegionalScreen> {
     final bs = widget.tabShell.bookingState;
     final currentBeneficiary = bs.beneficiary;
 
-    return Scaffold(
+    return CupertinoPageScaffold(
       backgroundColor: AppColors.background,
-      appBar: AppBar(
-        title: const Text(
-          'ESTABLECIMIENTO',
-          style: TextStyle(fontWeight: FontWeight.w900, fontSize: 22),
+      navigationBar: CupertinoNavigationBar(
+        middle: const Text(
+          'Establecimiento',
+          style: TextStyle(fontWeight: FontWeight.w700, fontSize: 17),
         ),
-        backgroundColor: AppColors.white,
-        centerTitle: true,
-        elevation: 0,
-        bottom: PreferredSize(
-          preferredSize: const Size.fromHeight(0.5),
-          child: Container(color: AppColors.border, height: 0.5),
+        backgroundColor: AppColors.white.withValues(alpha: 0.92),
+        border: Border(
+          bottom: BorderSide(
+            color: AppColors.border.withValues(alpha: 0.3),
+            width: 0.5,
+          ),
         ),
       ),
-      body: SafeArea(
+      child: SafeArea(
         child: _isLoading
-            ? const Center(child: CircularProgressIndicator())
+            ? const Center(child: CupertinoActivityIndicator(radius: 14))
             : _errorMessage != null
                 ? Center(
                     child: Column(
@@ -100,7 +102,7 @@ class _RegionalScreenState extends State<RegionalScreen> {
                         Text('Error: $_errorMessage',
                             textAlign: TextAlign.center),
                         const SizedBox(height: 16),
-                        ElevatedButton(
+                        CupertinoButton(
                             onPressed: _fetchData, child: const Text('Reintentar')),
                       ],
                     ),
@@ -116,22 +118,18 @@ class _RegionalScreenState extends State<RegionalScreen> {
                           child: _buildActiveProfileCard(currentBeneficiary),
                         ),
                         const SizedBox(height: 20),
-                        const Padding(
-                          padding: EdgeInsets.symmetric(horizontal: 24),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 24),
                           child: Text(
                             '¿Qué establecimiento desea consultar?',
-                            style: TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.w700,
-                              color: AppColors.textPrimary,
-                            ),
+                            style: AppTypography.headlineSmall,
                           ),
                         ),
                         const SizedBox(height: 10),
                         for (int i = 0; i < _regionals.length; i++)
                           FadeSlideIn(
-                            delay: Duration(milliseconds: 100 * (i + 1)),
-                            offsetY: 20,
+                            delay: Duration(milliseconds: 60 * (i + 1).clamp(0, 5)),
+                            offsetY: 15,
                             child: _buildRegionalItem(_regionals[i], i),
                           ),
                         if (_regionals.isEmpty)
@@ -171,17 +169,10 @@ class _RegionalScreenState extends State<RegionalScreen> {
         children: [
           // Avatar
           Container(
-            width: 120,
-            height: 120,
+            width: 80,
+            height: 80,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              boxShadow: [
-                BoxShadow(
-                  color: avatarColor.withValues(alpha: 0.3),
-                  blurRadius: 8,
-                  spreadRadius: 2,
-                ),
-              ],
               gradient: LinearGradient(
                 colors: [
                   avatarColor,
@@ -189,23 +180,23 @@ class _RegionalScreenState extends State<RegionalScreen> {
                 ],
               ),
             ),
-            child: ClipOval(
-              child: (isTitular && MockUserData.user.photoBase64.isNotEmpty)
-                  ? Image.memory(
-                      base64Decode(MockUserData.user.photoBase64),
-                      fit: BoxFit.cover,
-                    )
-                  : Center(
-                      child: Text(
-                        beneficiary.initial,
-                        style: const TextStyle(
-                          color: AppColors.white,
-                          fontWeight: FontWeight.w900,
-                          fontSize: 42,
-                        ),
-                      ),
-                    ),
-            ),
+      child: ClipOval(
+        child: (isTitular && MockUserData.user.photoBase64.isNotEmpty)
+            ? Image.memory(
+                base64Decode(MockUserData.user.photoBase64),
+                fit: BoxFit.cover,
+              )
+            : Center(
+                child: Text(
+                  beneficiary.initial,
+                  style: const TextStyle(
+                    color: AppColors.white,
+                    fontWeight: FontWeight.w800,
+                    fontSize: 28,
+                  ),
+                ),
+              ),
+      ),
           ),
           const SizedBox(width: 14),
           // Name + label
@@ -216,21 +207,15 @@ class _RegionalScreenState extends State<RegionalScreen> {
                 const Text(
                   'Reserva para:',
                   style: TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.w800,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
                     color: AppColors.textSecondary,
-                    letterSpacing: -0.5,
                   ),
                 ),
                 const SizedBox(height: 4),
                 Text(
                   beneficiary.fullName,
-                  style: const TextStyle(
-                    fontSize: 30,
-                    fontWeight: FontWeight.w900,
-                    color: AppColors.textPrimary,
-                    letterSpacing: -1.0,
-                  ),
+                  style: AppTypography.headlineMedium,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                 ),
@@ -247,8 +232,8 @@ class _RegionalScreenState extends State<RegionalScreen> {
                   child: Text(
                     label,
                     style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w800,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w700,
                       color: isTitular
                           ? AppColors.primary
                           : AppColors.accentDark,
@@ -280,8 +265,8 @@ class _RegionalScreenState extends State<RegionalScreen> {
                   Text(
                     'Cambiar',
                     style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w800,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w700,
                       color: AppColors.primary,
                     ),
                   ),
@@ -323,13 +308,13 @@ class _RegionalScreenState extends State<RegionalScreen> {
       ),
       child: Column(
         children: [
-          InkWell(
+          GestureDetector(
+            behavior: HitTestBehavior.opaque,
             onTap: () {
               setState(() {
                 _expandedIndex = isExpanded ? -1 : index;
               });
             },
-            borderRadius: BorderRadius.circular(AppTheme.radiusLg),
             child: Padding(
               padding: const EdgeInsets.symmetric(
                   horizontal: 16, vertical: 14),
@@ -344,12 +329,7 @@ class _RegionalScreenState extends State<RegionalScreen> {
                   Expanded(
                     child: Text(
                       regional.name,
-                      style: const TextStyle(
-                        fontSize: 26,
-                        fontWeight: FontWeight.w800,
-                        color: AppColors.textPrimary,
-                        letterSpacing: -0.5,
-                      ),
+                      style: AppTypography.titleMedium,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
@@ -365,14 +345,9 @@ class _RegionalScreenState extends State<RegionalScreen> {
               ),
             ),
           ),
-          AnimatedCrossFade(
-            firstChild: const SizedBox.shrink(),
-            secondChild: _buildHospitalCards(regional),
-            crossFadeState: isExpanded
-                ? CrossFadeState.showSecond
-                : CrossFadeState.showFirst,
-            duration: const Duration(milliseconds: 250),
-          ),
+          // Simple conditional instead of AnimatedCrossFade — avoids rendering
+          // both children simultaneously (double layout cost).
+          if (isExpanded) _buildHospitalCards(regional),
         ],
       ),
     );
@@ -436,11 +411,8 @@ class _RegionalScreenState extends State<RegionalScreen> {
                 children: [
                   Text(
                     hospital.name,
-                    style: const TextStyle(
-                      fontSize: 24,
-                      fontWeight: FontWeight.w900,
-                      color: AppColors.textPrimary,
-                      letterSpacing: -0.5,
+                    style: AppTypography.titleMedium.copyWith(
+                      fontWeight: FontWeight.w800,
                     ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
@@ -448,10 +420,8 @@ class _RegionalScreenState extends State<RegionalScreen> {
                   const SizedBox(height: 6),
                   Text(
                     hospital.address,
-                    style: const TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w600,
-                      color: AppColors.textSecondary,
+                    style: AppTypography.bodySmall.copyWith(
+                      fontSize: 13,
                     ),
                   ),
                 ],

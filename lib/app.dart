@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'core/constants/app_colors.dart';
 import 'core/theme/app_theme.dart';
 import 'features/splash/screens/splash_screen.dart';
 import 'features/auth/screens/login_screen.dart';
@@ -60,10 +61,14 @@ class _CossmilAppState extends State<CossmilApp> with WidgetsBindingObserver {
   Widget build(BuildContext context) {
     return MaterialApp(
       builder: (context, child) {
-        final mediaQuery = MediaQuery.of(context);
-        return MediaQuery(
-          data: mediaQuery.copyWith(
-            textScaler: const TextScaler.linear(0.88),
+        // Ensures ALL Text widgets have decoration:none by default,
+        // preventing the yellow double-underline that appears when Text
+        // is used inside CupertinoPageScaffold (no Material ancestor).
+        return DefaultTextStyle(
+          style: const TextStyle(
+            decoration: TextDecoration.none,
+            color: AppColors.textPrimary,
+            fontFamily: '.SF Pro Text',
           ),
           child: child!,
         );

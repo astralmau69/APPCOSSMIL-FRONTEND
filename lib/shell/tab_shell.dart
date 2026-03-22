@@ -1,4 +1,3 @@
-import 'dart:ui';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import '../core/constants/app_colors.dart';
@@ -54,25 +53,23 @@ class TabShellState extends State<TabShell>
     GlobalKey<NavigatorState>(),
   ];
 
-  late final AnimationController _pulseCtrl;
+  late final CupertinoTabController _tabController;
 
   @override
   void initState() {
     super.initState();
-    _pulseCtrl = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 2000),
-    )..repeat(reverse: true);
+    _tabController = CupertinoTabController();
   }
 
   @override
   void dispose() {
-    _pulseCtrl.dispose();
+    _tabController.dispose();
     super.dispose();
   }
 
   void goToTab(int index) {
     setState(() => _currentIndex = index);
+    _tabController.index = index;
   }
 
   /// Llamado desde HomeScreen al seleccionar un beneficiario.
@@ -80,15 +77,15 @@ class TabShellState extends State<TabShell>
     bookingState.reset();
     bookingState.beneficiaryLabel = label;
     bookingState.beneficiary = beneficiary;
-    setState(() => _currentIndex = 2);
+    goToTab(2);
     _tabNavKeys[2].currentState?.popUntil((route) => route.isFirst);
   }
 
   /// Vuelve al tab Inicio después de confirmar reserva.
   void finishBooking() {
     bookingState.reset();
-    setState(() => _currentIndex = 0);
-    _tabNavKeys[2].currentState?.popUntil((route) => route.isFirst);
+    goToTab(0);
+    _tabNavKeys[0].currentState?.popUntil((route) => route.isFirst);
   }
 
   Widget _screenForIndex(int index) {
@@ -104,212 +101,83 @@ class TabShellState extends State<TabShell>
 
   @override
   Widget build(BuildContext context) {
-    final bottomPadding = MediaQuery.of(context).padding.bottom;
-
-    return Scaffold(
-      extendBody: true,
-      body: IndexedStack(
-        index: _currentIndex,
-        children: List.generate(
-          5,
-          (i) => CupertinoTabView(
-            navigatorKey: _tabNavKeys[i],
-            builder: (_) => _screenForIndex(i),
+    return CupertinoTabScaffold(
+      controller: _tabController,
+      backgroundColor: AppColors.background,
+      tabBar: CupertinoTabBar(
+        backgroundColor: AppColors.white.withValues(alpha: 0.92),
+        activeColor: AppColors.primary,
+        inactiveColor: AppColors.textTertiary,
+        border: Border(
+          top: BorderSide(
+            color: AppColors.border.withValues(alpha: 0.3),
+            width: 0.5,
           ),
         ),
-      ),
-      bottomNavigationBar: _buildBar(bottomPadding),
-    );
-  }
-
-  // ── Premium Bottom Bar ──────────────────────────────────────────────────
-
-  static const _barH = 82.0;
-  static const _protrusion = 28.0;
-
-  Widget _buildBar(double bottomPad) {
-    return SizedBox(
-      height: _barH + bottomPad + _protrusion,
-      child: Stack(
-        clipBehavior: Clip.none,
-        children: [
-          // Glass background
-          Positioned(
-            left: 0,
-            right: 0,
-            bottom: 0,
-            height: _barH + bottomPad,
-            child: ClipRect(
-              child: BackdropFilter(
-                filter: ImageFilter.blur(sigmaX: 25, sigmaY: 25),
-                child: Container(
-                  decoration: BoxDecoration(
-                    color: AppColors.white.withValues(alpha: 0.88),
-                    border: Border(
-                      top: BorderSide(
-                        color: AppColors.border.withValues(alpha: 0.35),
-                        width: 0.5,
-                      ),
-                    ),
-                    boxShadow: [
-                      BoxShadow(
-                        color:
-                            const Color(0xFF0F172A).withValues(alpha: 0.05),
-                        blurRadius: 12,
-                        offset: const Offset(0, -3),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
+        onTap: (index) {
+          if (index == _currentIndex) {
+            _tabNavKeys[index].currentState?.popUntil((route) => route.isFirst);
+          }
+          setState(() => _currentIndex = index);
+        },
+        items: [
+          const BottomNavigationBarItem(
+            icon: Icon(CupertinoIcons.house, size: 28),
+            activeIcon: Icon(CupertinoIcons.house_fill, size: 28),
+            label: 'Inicio',
           ),
-
-          // Regular tab items
-          Positioned(
-            left: 0,
-            right: 0,
-            bottom: bottomPad,
-            height: _barH,
-            child: Row(
-              children: [
-                _tab(0, CupertinoIcons.house, CupertinoIcons.house_fill,
-                    'Inicio'),
-                _tab(1, CupertinoIcons.time, CupertinoIcons.time_solid,
-                    'Reservas'),
-                const Expanded(child: SizedBox()),
-                _tab(3, CupertinoIcons.person_2,
-                    CupertinoIcons.person_2_fill, 'Familia'),
-                _tab(4, CupertinoIcons.person_crop_circle,
-                    CupertinoIcons.person_crop_circle_fill, 'Perfil'),
-              ],
-            ),
+          const BottomNavigationBarItem(
+            icon: Icon(CupertinoIcons.time, size: 28),
+            activeIcon: Icon(CupertinoIcons.time_solid, size: 28),
+            label: 'Reservas',
           ),
-
-          // Central floating button
-          Positioned(
-            top: 0,
-            left: 0,
-            right: 0,
-            child: Center(child: _centralButton()),
+          BottomNavigationBarItem(
+            icon: _ReservingTabIcon(isActive: _currentIndex == 2),
+            label: 'Reservar',
+          ),
+          const BottomNavigationBarItem(
+            icon: Icon(CupertinoIcons.person_2, size: 28),
+            activeIcon: Icon(CupertinoIcons.person_2_fill, size: 28),
+            label: 'Familia',
+          ),
+          const BottomNavigationBarItem(
+            icon: Icon(CupertinoIcons.person_crop_circle, size: 28),
+            activeIcon: Icon(CupertinoIcons.person_crop_circle_fill, size: 28),
+            label: 'Perfil',
           ),
         ],
       ),
+      tabBuilder: (context, index) {
+        return CupertinoTabView(
+          navigatorKey: _tabNavKeys[index],
+          builder: (context) => _screenForIndex(index),
+        );
+      },
     );
   }
+}
 
-  // ── Regular Tab Item ────────────────────────────────────────────────────
+/// Tab icon for reservations (Reservar) - extracted to avoid rebuild on every TabShell setState
+class _ReservingTabIcon extends StatelessWidget {
+  final bool isActive;
 
-  Widget _tab(int idx, IconData icon, IconData activeIcon, String label) {
-    final active = _currentIndex == idx;
-    return Expanded(
-      child: GestureDetector(
-        behavior: HitTestBehavior.opaque,
-        onTap: () => setState(() => _currentIndex = idx),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            TweenAnimationBuilder<double>(
-              tween: Tween(begin: 0, end: active ? 1.0 : 0.0),
-              duration: const Duration(milliseconds: 280),
-              curve: Curves.easeOutCubic,
-              builder: (_, v, __) => Transform.scale(
-                scale: 1.0 + 0.15 * v,
-                child: Icon(
-                  active ? activeIcon : icon,
-                  size: 32,
-                  color: Color.lerp(
-                      AppColors.textTertiary, AppColors.primary, v),
-                ),
-              ),
-            ),
-            const SizedBox(height: 3),
-            Text(
-              label,
-              style: TextStyle(
-                fontSize: 14,
-                fontWeight: active ? FontWeight.w700 : FontWeight.w500,
-                color: active ? AppColors.primary : AppColors.textTertiary,
-              ),
-            ),
-            const SizedBox(height: 3),
-            AnimatedContainer(
-              duration: const Duration(milliseconds: 280),
-              curve: Curves.easeOutCubic,
-              width: active ? 5 : 0,
-              height: 5,
-              decoration: const BoxDecoration(
-                color: AppColors.primary,
-                shape: BoxShape.circle,
-              ),
-            ),
-          ],
-        ),
+  const _ReservingTabIcon({required this.isActive});
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 200),
+      padding: const EdgeInsets.all(6),
+      decoration: BoxDecoration(
+        color: isActive ? AppColors.primary : Colors.transparent,
+        shape: BoxShape.circle,
       ),
-    );
-  }
-
-  // ── Central Floating Reservar Button ────────────────────────────────────
-
-  Widget _centralButton() {
-    final active = _currentIndex == 2;
-    return GestureDetector(
-      onTap: () => setState(() => _currentIndex = 2),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          AnimatedBuilder(
-            animation: _pulseCtrl,
-            builder: (_, child) {
-              final glow = active
-                  ? Tween<double>(begin: 0.25, end: 0.50).evaluate(
-                      CurvedAnimation(
-                          parent: _pulseCtrl, curve: Curves.easeInOut))
-                  : 0.25;
-              return AnimatedScale(
-                scale: active ? 1.08 : 1.0,
-                duration: const Duration(milliseconds: 300),
-                curve: Curves.easeOutBack,
-                child: Container(
-                  width: 78,
-                  height: 78,
-                  decoration: BoxDecoration(
-                    gradient: const LinearGradient(
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                      colors: const [Color(0xFF1D8FCC), Color(0xFF0C4A6E)],
-                    ),
-                    shape: BoxShape.circle,
-                    boxShadow: [
-                      BoxShadow(
-                        color: AppColors.primary.withValues(alpha: glow),
-                        blurRadius: active ? 20 : 12,
-                        offset: const Offset(0, 4),
-                        spreadRadius: active ? 2 : 0,
-                      ),
-                    ],
-                  ),
-                  child: child,
-                ),
-              );
-            },
-            child: const Icon(
-              CupertinoIcons.calendar_badge_plus,
-              color: AppColors.white,
-              size: 38,
-            ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            'Reservar',
-            style: TextStyle(
-              fontSize: 14,
-              fontWeight: active ? FontWeight.w800 : FontWeight.w600,
-              color: active ? AppColors.primary : AppColors.textTertiary,
-            ),
-          ),
-        ],
+      child: Icon(
+        CupertinoIcons.calendar_badge_plus,
+        size: 24,
+        color: isActive ? AppColors.white : AppColors.primary,
       ),
     );
   }
 }
+
