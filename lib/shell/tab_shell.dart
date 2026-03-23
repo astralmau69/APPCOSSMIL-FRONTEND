@@ -1,5 +1,6 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import '../core/constants/app_colors.dart';
 import '../core/models/beneficiary_model.dart';
 import '../core/models/regional_model.dart';
@@ -102,27 +103,71 @@ class TabShellState extends State<TabShell>
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-      extendBody: true,
-      body: IndexedStack(
-        index: _currentIndex,
-        children: List.generate(5, (index) {
-          return CupertinoTabView(
-            navigatorKey: _tabNavKeys[index],
-            builder: (context) => _screenForIndex(index),
-          );
-        }),
-      ),
-      bottomNavigationBar: FloatingNavBar(
-        currentIndex: _currentIndex,
-        onTap: (index) {
-          if (index == _currentIndex) {
-            _tabNavKeys[index].currentState?.popUntil((route) => route.isFirst);
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, result) async {
+        if (didPop) return;
+        
+        final navState = _tabNavKeys[_currentIndex].currentState;
+        final canPopInternal = await navState?.maybePop() ?? false;
+        
+        if (!canPopInternal) {
+          if (_currentIndex != 0) {
+            // Si no estamos en inicio, volver a inicio
+            goToTab(0);
           } else {
-            goToTab(index);
+            // Si ya estamos en inicio y no hay nada que popear, salir de la app
+            // Por seguridad, usamos SystemNavigator.pop() o permitimos la propagación
+            // En Flutter moderno con PopScope(canPop: false), debemos manejarlo.
+            // Si realmente queremos salir:
+            final bool? shouldExit = await showCupertinoDialog<bool>(
+              context: context,
+              builder: (context) => CupertinoAlertDialog(
+                title: const Text('Salir'),
+                content: const Text('¿Desea cerrar la aplicación?'),
+                actions: [
+                  CupertinoDialogAction(
+                    child: const Text('No'),
+                    onPressed: () => Navigator.pop(context, false),
+                  ),
+                  CupertinoDialogAction(
+                    isDestructiveAction: true,
+                    child: const Text('Sí'),
+                    onPressed: () => Navigator.pop(context, true),
+                  ),
+                ],
+              ),
+            );
+            
+            if (shouldExit == true) {
+              // Permitimos el pop real o cerramos
+              SystemChannels.platform.invokeMethod('SystemNavigator.pop');
+            }
           }
-        },
+        }
+      },
+      child: Scaffold(
+        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+        extendBody: true,
+        body: IndexedStack(
+          index: _currentIndex,
+          children: List.generate(5, (index) {
+            return CupertinoTabView(
+              navigatorKey: _tabNavKeys[index],
+              builder: (context) => _screenForIndex(index),
+            );
+          }),
+        ),
+        bottomNavigationBar: FloatingNavBar(
+          currentIndex: _currentIndex,
+          onTap: (index) {
+            if (index == _currentIndex) {
+              _tabNavKeys[index].currentState?.popUntil((route) => route.isFirst);
+            } else {
+              goToTab(index);
+            }
+          },
+        ),
       ),
     );
   }

@@ -13,50 +13,8 @@ class CossmilApp extends StatefulWidget {
   State<CossmilApp> createState() => _CossmilAppState();
 }
 
-class _CossmilAppState extends State<CossmilApp> with WidgetsBindingObserver {
+class _CossmilAppState extends State<CossmilApp> {
   final _navigatorKey = GlobalKey<NavigatorState>();
-  bool _wasInBackground = false;
-  bool _splashShowing = false;
-
-  @override
-  void initState() {
-    super.initState();
-    WidgetsBinding.instance.addObserver(this);
-  }
-
-  @override
-  void dispose() {
-    WidgetsBinding.instance.removeObserver(this);
-    super.dispose();
-  }
-
-  @override
-  void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state == AppLifecycleState.paused) {
-      _wasInBackground = true;
-    }
-
-    if (state == AppLifecycleState.resumed && _wasInBackground) {
-      _wasInBackground = false;
-      _showSplashOverlay();
-    }
-  }
-
-  void _showSplashOverlay() {
-    if (_splashShowing) return;
-    _splashShowing = true;
-
-    _navigatorKey.currentState?.push(
-      PageRouteBuilder(
-        opaque: true,
-        pageBuilder: (_, __, ___) => const SplashScreen(isOverlay: true),
-        transitionDuration: Duration.zero,
-        reverseTransitionDuration: Duration.zero,
-      ),
-    ).then((_) {
-      _splashShowing = false;
-    });
-  }
 
   @override
   Widget build(BuildContext context) {

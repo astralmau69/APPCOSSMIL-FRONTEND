@@ -109,7 +109,7 @@ class AppointmentCard extends StatelessWidget {
                           Text(
                             appointment.doctorName,
                             style: AppTypography.bodySmall.copyWith(
-                              color: isDark ? AppColors.textSecondary : AppColors.textPrimary,
+                              color: isDark ? AppColors.razer : AppColors.textPrimary,
                             ),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
@@ -125,7 +125,7 @@ class AppointmentCard extends StatelessWidget {
                   spacing: 6,
                   runSpacing: 4,
                   children: [
-                    _detailChip(Icons.calendar_today, appointment.date),
+                    _detailChip(Icons.calendar_today, appointment.date, isHighlight: isDark),
                     _detailChip(Icons.schedule, appointment.time),
                     _detailChip(Icons.apartment, appointment.hospital),
                     if (appointment.consultorio != null)
@@ -211,16 +211,18 @@ class AppointmentCard extends StatelessWidget {
     );
   }
 
-  Widget _detailChip(IconData icon, String text) {
+  Widget _detailChip(IconData icon, String text, {bool isHighlight = false}) {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Icon(icon, size: 14, color: AppColors.textTertiary),
+        Icon(icon, size: 14, color: isHighlight ? AppColors.razer : AppColors.textTertiary),
         const SizedBox(width: 4),
         Flexible(
           child: Text(
             text,
-            style: AppTypography.bodySmall,
+            style: AppTypography.bodySmall.copyWith(
+              color: isHighlight ? AppColors.razer : null,
+            ),
             overflow: TextOverflow.ellipsis,
           ),
         ),

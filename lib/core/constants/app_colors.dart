@@ -19,6 +19,7 @@ class AppColors {
   // ── Gold (detalles institucionales) ───────────────────────────────────────
   static const Color gold = Color(0xFFD4A843);
   static const Color goldLight = Color(0xFFFEF9C3);
+  static const Color razer = Color(0xFF44D62C);
 
   // ── Backgrounds ───────────────────────────────────────────────────────────
   static const Color background = Color(0xFFF2F2F7);

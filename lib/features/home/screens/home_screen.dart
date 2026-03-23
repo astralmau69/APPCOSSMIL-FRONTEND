@@ -316,7 +316,7 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
       _QuickAction(
         icon: Icons.contact_phone,
-        label: 'Contactos',
+        label: 'Contactos\n',
         color: AppColors.info,
         onTap: () => Navigator.push(
           context,
@@ -325,13 +325,16 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
     ];
 
-    return Row(
-      children: [
-        for (int i = 0; i < items.length; i++) ...[
-          Expanded(child: _buildActionCard(items[i])),
-          if (i < items.length - 1) const SizedBox(width: 8),
+    return IntrinsicHeight(
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          for (int i = 0; i < items.length; i++) ...[
+            Expanded(child: _buildActionCard(items[i])),
+            if (i < items.length - 1) const SizedBox(width: 8),
+          ],
         ],
-      ],
+      ),
     );
   }
 
@@ -389,7 +392,8 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget _buildNewsSection() {
     final news = MockNewsData.news;
     final previewCount = news.length > 2 ? 2 : news.length;
-
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    
     return Column(
       children: [
         for (int i = 0; i < previewCount; i++) ...[
@@ -405,10 +409,10 @@ class _HomeScreenState extends State<HomeScreen> {
           child: Container(
             padding: const EdgeInsets.symmetric(vertical: 12),
             decoration: BoxDecoration(
-              color: AppColors.primary.withValues(alpha: 0.06),
+              color: isDark ? AppColors.primary.withValues(alpha: 0.2) : AppColors.primary.withValues(alpha: 0.06),
               borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
               border: Border.all(
-                color: AppColors.primary.withValues(alpha: 0.12),
+                color: isDark ? AppColors.white.withValues(alpha: 0.1) : AppColors.primary.withValues(alpha: 0.12),
               ),
             ),
             child: Row(
@@ -417,12 +421,12 @@ class _HomeScreenState extends State<HomeScreen> {
                 Text(
                   'Ver todos los comunicados',
                   style: AppTypography.titleMedium.copyWith(
-                    color: AppColors.primary,
+                    color: isDark ? AppColors.white : AppColors.primary,
                   ),
                 ),
                 const SizedBox(width: 6),
-                const Icon(Icons.arrow_forward,
-                    size: 14, color: AppColors.primary),
+                Icon(Icons.arrow_forward,
+                    size: 14, color: isDark ? AppColors.white : AppColors.primary),
               ],
             ),
           ),

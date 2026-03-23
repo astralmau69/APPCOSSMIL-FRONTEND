@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:audioplayers/audioplayers.dart';
 import '../../../core/constants/app_colors.dart';
+import '../../../core/storage/token_storage.dart';
 
 class SplashScreen extends StatefulWidget {
   /// true = viene de segundo plano (no reproduce audio, duración breve).
@@ -34,7 +35,11 @@ class _SplashScreenState extends State<SplashScreen>
   @override
   void initState() {
     super.initState();
-    SystemChrome.setSystemUIOverlayStyle(SystemUiOverlayStyle.dark);
+    // Delay slightly to let context build constraints to check theme
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final isDark = Theme.of(context).brightness == Brightness.dark;
+      SystemChrome.setSystemUIOverlayStyle(isDark ? SystemUiOverlayStyle.light : SystemUiOverlayStyle.dark);
+    });
 
     // Logo — entrada suave
     _logoCtrl = AnimationController(
@@ -109,13 +114,14 @@ class _SplashScreenState extends State<SplashScreen>
     _navigate();
   }
 
-  void _navigate() {
+  Future<void> _navigate() async {
     if (_navigated || !mounted) return;
     _navigated = true;
 
     if (widget.isOverlay) {
       Navigator.pop(context);
     } else {
+      // Directo a login en cada apertura fresca de la app (Kill & Start)
       Navigator.pushReplacementNamed(context, '/login');
     }
   }
@@ -136,30 +142,38 @@ class _SplashScreenState extends State<SplashScreen>
     final logoSize = size.width * 0.45;
     final maxLogo = logoSize.clamp(150.0, 220.0);
 
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return AnnotatedRegion<SystemUiOverlayStyle>(
-      value: SystemUiOverlayStyle.dark,
+      value: isDark ? SystemUiOverlayStyle.light : SystemUiOverlayStyle.dark,
       child: Container(
         width: size.width,
         height: size.height,
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
             gradient: LinearGradient(
               begin: Alignment.topCenter,
               end: Alignment.bottomCenter,
-              colors: [
-                Color(0xFFFFFFFF),
-                Color(0xFFF0F7FF),
-                Color(0xFFE8F4FD),
-              ],
-              stops: [0.0, 0.6, 1.0],
+              colors: isDark 
+                  ? [
+                      const Color(0xFF0F172A),
+                      const Color(0xFF1E293B),
+                      const Color(0xFF0C4A6E),
+                    ]
+                  : [
+                      const Color(0xFFFFFFFF),
+                      const Color(0xFFF0F7FF),
+                      const Color(0xFFE8F4FD),
+                    ],
+              stops: const [0.0, 0.6, 1.0],
             ),
           ),
           child: SafeArea(
             child: Column(
               children: [
                 const Spacer(flex: 3),
-                _buildLogo(maxLogo),
+                _buildLogo(context, maxLogo),
                 const Spacer(flex: 4),
-                _buildFooter(),
+                _buildFooter(context),
                 SizedBox(height: size.height * 0.05),
               ],
             ),
@@ -168,7 +182,8 @@ class _SplashScreenState extends State<SplashScreen>
     );
   }
 
-  Widget _buildLogo(double logoSize) {
+  Widget _buildLogo(BuildContext context, double logoSize) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return FadeTransition(
       opacity: _logoFade,
       child: ScaleTransition(
@@ -218,16 +233,16 @@ class _SplashScreenState extends State<SplashScreen>
                   errorBuilder: (_, __, ___) => Container(
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
-                      color: AppColors.primaryLight,
+                      color: isDark ? const Color(0xFF0F172A) : AppColors.primaryLight,
                       border: Border.all(
-                        color: AppColors.primary.withValues(alpha: 0.2),
+                        color: isDark ? AppColors.white.withValues(alpha: 0.2) : AppColors.primary.withValues(alpha: 0.2),
                         width: 2,
                       ),
                     ),
                     child: Icon(
                       Icons.shield,
                       size: logoSize * 0.4,
-                      color: AppColors.primary,
+                      color: isDark ? AppColors.white : AppColors.primary,
                     ),
                   ),
                 ),
@@ -239,7 +254,8 @@ class _SplashScreenState extends State<SplashScreen>
     );
   }
 
-  Widget _buildFooter() {
+  Widget _buildFooter(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return FadeTransition(
       opacity: _footerFade,
       child: Text(
@@ -247,7 +263,7 @@ class _SplashScreenState extends State<SplashScreen>
         style: TextStyle(
           fontSize: 13,
           fontWeight: FontWeight.w500,
-          color: AppColors.textTertiary.withValues(alpha: 0.7),
+          color: isDark ? AppColors.white.withValues(alpha: 0.5) : AppColors.textTertiary.withValues(alpha: 0.7),
           letterSpacing: 2.0,
         ),
       ),

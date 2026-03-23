@@ -14,6 +14,9 @@ import '../../../core/animations/animated_press_button.dart';
 import '../../../core/animations/optimized_animations.dart';
 import '../../../core/animations/app_page_route.dart';
 import '../../../shell/tab_shell.dart';
+import '../../../shell/tab_shell.dart';
+import '../../../core/services/location_service.dart';
+import '../../../core/helpers/distance_helper.dart';
 import 'specialty_screen.dart';
 
 class RegionalScreen extends StatefulWidget {
@@ -31,6 +34,7 @@ class _RegionalScreenState extends State<RegionalScreen> {
   bool _isLoading = true;
   String? _errorMessage;
   int _expandedIndex = -1;
+  bool _locationApplied = false;
 
   @override
   void initState() {
@@ -52,13 +56,53 @@ class _RegionalScreenState extends State<RegionalScreen> {
       _errorMessage = null;
     });
     try {
-      // Usamos idins = 1 por defecto (COSSMIL)
-      // Cambiado a getRegionalesPorDepartamento según corrección del usuario
       final data = await _service.getRegionalesPorDepartamento(1);
+      
+      bool locationUsed = false;
+      try {
+        final locationService = LocationService();
+        // Pedir permisos si es que no los tiene (útil si el usuario se saltó el login por token guardado)
+        final position = await locationService.getCurrentLocation(requestIfNotGranted: true);
+        
+        if (position != null) {
+          locationUsed = true;
+          for (var regional in data) {
+            double minDistance = double.infinity;
+            for (var hospital in regional.hospitals) {
+              if (hospital.latitude != null && hospital.longitude != null) {
+                final d = DistanceHelper.calculateDistanceInKm(
+                  position.latitude, position.longitude,
+                  hospital.latitude!, hospital.longitude!
+                );
+                if (d < minDistance) minDistance = d;
+              }
+            }
+            if (minDistance != double.infinity) {
+              regional.distanceFromUser = minDistance;
+            }
+          }
+          
+          // Ordenar departamentos por cercanía
+          data.sort((a, b) {
+            final dA = a.distanceFromUser ?? double.infinity;
+            final dB = b.distanceFromUser ?? double.infinity;
+            return dA.compareTo(dB);
+          });
+          
+          // Expandir por defecto el más cercano si tenemos datos
+          if (data.isNotEmpty && data.first.distanceFromUser != null) {
+            _expandedIndex = 0;
+          }
+        }
+      } catch (e) {
+        debugPrint('Error getting location: $e');
+      }
+
       if (mounted) {
         setState(() {
           _regionals = data;
           _isLoading = false;
+          _locationApplied = locationUsed;
         });
       }
     } catch (e) {
@@ -131,6 +175,25 @@ class _RegionalScreenState extends State<RegionalScreen> {
                           ),
                         ),
                         const SizedBox(height: 10),
+                        if (_locationApplied && _regionals.isNotEmpty && _regionals.first.distanceFromUser != null)
+                          Padding(
+                            padding: const EdgeInsets.only(left: 24, right: 24, top: 0, bottom: 12),
+                            child: Row(
+                              children: [
+                                Icon(Icons.location_on, size: 16, color: isDark ? AppColors.razer : AppColors.primary),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: Text(
+                                    'Te mostramos primero el departamento más cercano a tu ubicación.',
+                                    style: AppTypography.bodySmall.copyWith(
+                                      color: isDark ? AppColors.primaryLight : AppColors.primary,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
                         for (int i = 0; i < _regionals.length; i++)
                           FadeSlideIn(
                             delay: Duration(milliseconds: 60 * (i + 1).clamp(0, 5)),
@@ -242,7 +305,7 @@ class _RegionalScreenState extends State<RegionalScreen> {
                       fontSize: 13,
                       fontWeight: FontWeight.w700,
                       color: isTitular
-                          ? AppColors.primary
+                          ? (isDark ? AppColors.razer : AppColors.primary)
                           : AppColors.accentDark,
                     ),
                   ),
@@ -257,24 +320,24 @@ class _RegionalScreenState extends State<RegionalScreen> {
               padding: const EdgeInsets.symmetric(
                   horizontal: 14, vertical: 8),
               decoration: BoxDecoration(
-                color: AppColors.primary.withValues(alpha: 0.08),
+                color: (isDark ? AppColors.razer : AppColors.primary).withValues(alpha: 0.08),
                 borderRadius: BorderRadius.circular(AppTheme.radiusFull),
                 border: Border.all(
-                  color: AppColors.primary.withValues(alpha: 0.2),
+                  color: (isDark ? AppColors.razer : AppColors.primary).withValues(alpha: 0.2),
                 ),
               ),
-              child: const Row(
+              child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Icon(Icons.swap_horiz,
-                      size: 14, color: AppColors.primary),
-                  SizedBox(width: 4),
+                      size: 14, color: isDark ? AppColors.razer : AppColors.primary),
+                  const SizedBox(width: 4),
                   Text(
                     'Cambiar',
                     style: TextStyle(
                       fontSize: 13,
                       fontWeight: FontWeight.w700,
-                      color: AppColors.primary,
+                      color: isDark ? AppColors.razer : AppColors.primary,
                     ),
                   ),
                 ],
@@ -335,13 +398,38 @@ class _RegionalScreenState extends State<RegionalScreen> {
                   ),
                   const SizedBox(width: 10),
                   Expanded(
-                    child: Text(
-                      regional.name,
-                      style: AppTypography.titleMedium.copyWith(
-                         color: Theme.of(context).textTheme.bodyLarge?.color ?? AppColors.textPrimary,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Flexible(
+                          child: Text(
+                            regional.name,
+                            style: AppTypography.titleMedium.copyWith(
+                               color: Theme.of(context).textTheme.bodyLarge?.color ?? AppColors.textPrimary,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        if (index == 0 && _locationApplied && regional.distanceFromUser != null) ...[
+                          const SizedBox(width: 8),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+                            decoration: BoxDecoration(
+                              color: AppColors.primary.withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: Text(
+                              '📍 Más cercano',
+                              style: TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.bold,
+                                color: isDark ? AppColors.razer : AppColors.primary,
+                              ),
+                            ),
+                          ),
+                        ]
+                      ],
                     ),
                   ),
                   Icon(
@@ -407,10 +495,10 @@ class _RegionalScreenState extends State<RegionalScreen> {
                 color: AppColors.primary.withValues(alpha: 0.1),
                 shape: BoxShape.circle,
               ),
-              child: const Icon(
+              child: Icon(
                 Icons.apartment,
                 size: 32,
-                color: AppColors.primary,
+                color: isDark ? AppColors.white : AppColors.primary,
               ),
             ),
             const SizedBox(width: 16),
@@ -438,9 +526,9 @@ class _RegionalScreenState extends State<RegionalScreen> {
                 ],
               ),
             ),
-            const Icon(
+            Icon(
               Icons.chevron_right,
-              color: AppColors.primary,
+              color: isDark ? AppColors.white : AppColors.primary,
             ),
           ],
         ),

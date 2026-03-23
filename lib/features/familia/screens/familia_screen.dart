@@ -56,8 +56,8 @@ class FamiliaScreen extends StatelessWidget {
                           shape: BoxShape.circle,
                           gradient: LinearGradient(
                             colors: [
-                              isTitular ? AppColors.primary : AppColors.accent,
-                              (isTitular ? AppColors.primary : AppColors.accent).withValues(alpha: 0.7),
+                              isTitular ? (isDark ? AppColors.white : AppColors.primary) : AppColors.accent,
+                              (isTitular ? (isDark ? AppColors.white : AppColors.primary) : AppColors.accent).withValues(alpha: 0.7),
                             ],
                           ),
                         ),
@@ -96,7 +96,7 @@ class FamiliaScreen extends StatelessWidget {
                         style: TextStyle(
                           fontSize: 14,
                           fontWeight: FontWeight.w500,
-                          color: isTitular ? AppColors.primary : AppColors.textSecondary,
+                          color: isTitular ? (isDark ? AppColors.white : AppColors.primary) : AppColors.textSecondary,
                         ),
                       ),
                       trailing: const Icon(

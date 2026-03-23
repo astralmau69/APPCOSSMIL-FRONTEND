@@ -84,14 +84,16 @@ class _ScheduleScreenState extends State<ScheduleScreen>
                       width: 3,
                       height: 18,
                       decoration: BoxDecoration(
-                        color: AppColors.primary,
+                        color: isDark ? AppColors.razer : AppColors.primary,
                         borderRadius: BorderRadius.circular(2),
                       ),
                     ),
                     const SizedBox(width: 10),
                     Text(
                       'Agenda médica',
-                      style: AppTypography.titleMedium,
+                      style: AppTypography.titleMedium.copyWith(
+                        color: isDark ? AppColors.razer : null,
+                      ),
                     ),
                   ],
                 ),
@@ -189,6 +191,7 @@ class _ScheduleScreenState extends State<ScheduleScreen>
                       'Martes, 18 de Marzo',
                       style: AppTypography.headlineSmall.copyWith(
                         fontSize: 17,
+                        color: isDark ? AppColors.razer : null,
                       ),
                     ),
                     SizedBox(height: 2),
@@ -264,8 +267,8 @@ class _ScheduleScreenState extends State<ScheduleScreen>
             alignment: Alignment.center,
             child: Text(
               _doctor.fullName[0],
-              style: const TextStyle(
-                color: AppColors.primary,
+              style: TextStyle(
+                color: isDark ? AppColors.razer : AppColors.primary,
                 fontWeight: FontWeight.w700,
                 fontSize: 22,
               ),
@@ -280,6 +283,7 @@ class _ScheduleScreenState extends State<ScheduleScreen>
                   _doctor.fullName,
                   style: AppTypography.headlineSmall.copyWith(
                     fontSize: 17,
+                    color: Theme.of(context).brightness == Brightness.dark ? AppColors.razer : null,
                   ),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,

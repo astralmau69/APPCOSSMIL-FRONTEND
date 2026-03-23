@@ -63,7 +63,7 @@ class NoticiasScreen extends StatelessWidget {
                   if (featured.isNotEmpty) ...[
                     FadeSlideIn(
                       delay: const Duration(milliseconds: 80),
-                      child: _sectionHeader('DESTACADOS', featured.length),
+                      child: _sectionHeader(context, 'DESTACADOS', featured.length),
                     ),
                     const SizedBox(height: 10),
                     for (int i = 0; i < featured.length; i++) ...[
@@ -79,7 +79,7 @@ class NoticiasScreen extends StatelessWidget {
                   // ── All news chronological header ───────────────
                   FadeSlideIn(
                     delay: Duration(milliseconds: 200 + featured.length * 80),
-                    child: _sectionHeader('TODOS LOS COMUNICADOS', allNews.length),
+                    child: _sectionHeader(context, 'TODOS LOS COMUNICADOS', allNews.length),
                   ),
                   const SizedBox(height: 10),
                 ],
@@ -106,7 +106,8 @@ class NoticiasScreen extends StatelessWidget {
     );
   }
 
-  static Widget _sectionHeader(String text, int count) {
+  static Widget _sectionHeader(BuildContext context, String text, int count) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Padding(
       padding: const EdgeInsets.only(left: 4),
       child: Row(
@@ -115,7 +116,7 @@ class NoticiasScreen extends StatelessWidget {
             width: 3,
             height: 14,
             decoration: BoxDecoration(
-              color: AppColors.primary,
+              color: isDark ? AppColors.white : AppColors.primary,
               borderRadius: BorderRadius.circular(2),
             ),
           ),
@@ -133,15 +134,15 @@ class NoticiasScreen extends StatelessWidget {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
             decoration: BoxDecoration(
-              color: AppColors.primary.withValues(alpha: 0.12),
+              color: isDark ? AppColors.white.withValues(alpha: 0.2) : AppColors.primary.withValues(alpha: 0.12),
               borderRadius: BorderRadius.circular(10),
             ),
             child: Text(
               '$count',
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 11,
                 fontWeight: FontWeight.w700,
-                color: AppColors.primary,
+                color: isDark ? AppColors.white : AppColors.primary,
               ),
             ),
           ),

@@ -20,7 +20,7 @@ class BreadcrumbChips extends StatelessWidget {
         crossAxisAlignment: WrapCrossAlignment.center,
         children: [
           for (int i = 0; i < labels.length; i++) ...[
-            _chip(labels[i], i == labels.length - 1),
+            _chip(context, labels[i], i == labels.length - 1),
             if (i < labels.length - 1) _separator(),
           ],
         ],
@@ -28,18 +28,21 @@ class BreadcrumbChips extends StatelessWidget {
     );
   }
 
-  Widget _chip(String label, bool isLast) {
+  Widget _chip(BuildContext context, String label, bool isLast) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final primaryColor = isDark ? AppColors.razer : AppColors.primary;
+    
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
       decoration: BoxDecoration(
         color: isLast
-            ? AppColors.primary.withValues(alpha: 0.12)
-            : AppColors.primary.withValues(alpha: 0.05),
+            ? primaryColor.withValues(alpha: 0.12)
+            : primaryColor.withValues(alpha: 0.05),
         borderRadius: BorderRadius.circular(24),
         border: Border.all(
           color: isLast
-              ? AppColors.primary.withValues(alpha: 0.3)
-              : AppColors.primary.withValues(alpha: 0.1),
+              ? primaryColor.withValues(alpha: 0.3)
+              : primaryColor.withValues(alpha: 0.1),
         ),
       ),
       child: Text(
@@ -47,7 +50,7 @@ class BreadcrumbChips extends StatelessWidget {
         style: TextStyle(
           fontSize: 16,
           fontWeight: isLast ? FontWeight.w800 : FontWeight.w600,
-          color: AppColors.primary,
+          color: primaryColor,
           letterSpacing: 0.1,
         ),
       ),

@@ -94,10 +94,10 @@ class _SummaryScreenState extends State<SummaryScreen> {
                     ),
                     _divider(),
                     _row(Icons.person_add, 'Médico',
-                        bs.doctor?.fullName ?? ''),
+                        bs.doctor?.fullName ?? '', isHighlight: isDark),
                     _divider(),
                     _row(Icons.calendar_today, 'Fecha',
-                        'Martes, 18 de Marzo'),
+                        'Martes, 18 de Marzo', isHighlight: isDark),
                     _divider(),
                     _row(Icons.schedule, 'Hora',
                         bs.selectedTime ?? ''),
@@ -211,7 +211,7 @@ class _SummaryScreenState extends State<SummaryScreen> {
     );
   }
 
-  Widget _row(IconData icon, String label, String value) {
+  Widget _row(IconData icon, String label, String value, {bool isHighlight = false}) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 20),
@@ -230,7 +230,7 @@ class _SummaryScreenState extends State<SummaryScreen> {
                 alignment: PlaceholderAlignment.middle,
                 child: Padding(
                   padding: const EdgeInsets.only(right: 8),
-                  child: Icon(icon, size: 18, color: AppColors.primary.withValues(alpha: 0.7)),
+                  child: Icon(icon, size: 18, color: (isDark ? AppColors.white : AppColors.primary).withValues(alpha: 0.7)),
                 ),
               ),
               TextSpan(
@@ -243,9 +243,10 @@ class _SummaryScreenState extends State<SummaryScreen> {
               ),
               TextSpan(
                 text: value,
-                style: const TextStyle(
+                style: TextStyle(
                   fontWeight: FontWeight.w700,
                   fontSize: 16,
+                  color: isHighlight ? AppColors.razer : (Theme.of(context).textTheme.bodyLarge?.color),
                 ),
               ),
             ],
@@ -307,6 +308,7 @@ class _SummaryScreenState extends State<SummaryScreen> {
           'Resumen de su Cita',
           style: AppTypography.displayMedium.copyWith(
             fontSize: 22,
+            color: Theme.of(context).brightness == Brightness.dark ? AppColors.razer : null,
           ),
         ),
         const SizedBox(height: 6),

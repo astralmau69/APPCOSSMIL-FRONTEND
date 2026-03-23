@@ -52,7 +52,7 @@ class ReservasScreen extends StatelessWidget {
                         duration: AppDurations.slow,
                         delay: const Duration(milliseconds: 100),
                         offsetY: 10,
-                        child: _sectionHeader('HISTORIAL DE ATENCIONES', history.length),
+                        child: _sectionHeader(context, 'HISTORIAL DE ATENCIONES', history.length),
                       ),
                     ]),
                   ),
@@ -115,7 +115,7 @@ class ReservasScreen extends StatelessWidget {
           _summaryChip(
             '$missed',
             missed == 1 ? 'Falta' : 'Faltas',
-            const Color(0xFF9333EA),
+            isDark ? AppColors.white : const Color(0xFF9333EA),
           ),
         ],
       ),
@@ -146,7 +146,8 @@ class ReservasScreen extends StatelessWidget {
     );
   }
 
-  Widget _sectionHeader(String text, int count) {
+  Widget _sectionHeader(BuildContext context, String text, int count) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Padding(
       padding: const EdgeInsets.only(left: 4),
       child: Row(
@@ -155,7 +156,7 @@ class ReservasScreen extends StatelessWidget {
             width: 3,
             height: 16,
             decoration: BoxDecoration(
-              color: AppColors.primary,
+              color: isDark ? AppColors.white : AppColors.primary,
               borderRadius: BorderRadius.circular(2),
             ),
           ),
@@ -173,15 +174,15 @@ class ReservasScreen extends StatelessWidget {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
             decoration: BoxDecoration(
-              color: AppColors.primary.withValues(alpha: 0.12),
+              color: isDark ? AppColors.white.withValues(alpha: 0.2) : AppColors.primary.withValues(alpha: 0.12),
               borderRadius: BorderRadius.circular(10),
             ),
             child: Text(
               '$count',
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 13,
                 fontWeight: FontWeight.w700,
-                color: AppColors.primary,
+                color: isDark ? AppColors.white : AppColors.primary,
               ),
             ),
           ),

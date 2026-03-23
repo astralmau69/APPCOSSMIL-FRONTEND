@@ -2,7 +2,7 @@ import '../models/regional_model.dart';
 import '../models/hospital_model.dart';
 
 class MockRegionalData {
-  static const regionals = [
+  static final regionals = [
     RegionalModel(
       id: 'r1',
       name: 'La Paz',
@@ -13,6 +13,8 @@ class MockRegionalData {
           shortName: 'Hosp. Militar Central',
           city: 'La Paz',
           address: 'Av. Saavedra esq. Pza. Uyuni, Miraflores',
+          latitude: -16.496,
+          longitude: -68.121,
         ),
         HospitalModel(
           id: 'h2',
@@ -20,6 +22,8 @@ class MockRegionalData {
           shortName: 'Policlínico El Alto',
           city: 'El Alto',
           address: 'Av. Juan Pablo II, Zona Ferropetrol',
+          latitude: -16.522,
+          longitude: -68.189,
         ),
       ],
     ),
@@ -33,6 +37,8 @@ class MockRegionalData {
           shortName: 'COSSMIL CBBA',
           city: 'Cochabamba',
           address: 'Av. Ayacucho esq. Teniente Arévalo',
+          latitude: -17.389,
+          longitude: -66.156,
         ),
       ],
     ),
@@ -46,6 +52,8 @@ class MockRegionalData {
           shortName: 'COSSMIL SCZ',
           city: 'Santa Cruz',
           address: 'Barrio Equipetrol, Av. San Martín',
+          latitude: -17.783,
+          longitude: -63.182,
         ),
       ],
     ),
@@ -59,6 +67,8 @@ class MockRegionalData {
           shortName: 'COSSMIL TJA',
           city: 'Tarija',
           address: 'Calle Sucre esq. 15 de Abril',
+          latitude: -21.535,
+          longitude: -64.729,
         ),
       ],
     ),
@@ -72,6 +82,8 @@ class MockRegionalData {
           shortName: 'COSSMIL CHQ',
           city: 'Sucre',
           address: 'Calle Junín Nº 145, Zona Central',
+          latitude: -19.033,
+          longitude: -65.262,
         ),
       ],
     ),

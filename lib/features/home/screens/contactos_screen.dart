@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/animations/optimized_animations.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 // ── Data Model ──────────────────────────────────────────────────────────────
 
@@ -189,7 +190,7 @@ class ContactosScreen extends StatelessWidget {
                 // ── Líneas gratuitas ────────────────────────────
                 FadeSlideIn(
                   delay: const Duration(milliseconds: 160),
-                  child: _sectionHeader('LÍNEAS GRATUITAS'),
+                  child: _sectionHeader(context, 'LÍNEAS GRATUITAS'),
                 ),
                 const SizedBox(height: 10),
                 for (int i = 0; i < _lineasGratuitas.length; i++) ...[
@@ -209,16 +210,19 @@ class ContactosScreen extends StatelessWidget {
                 for (int ci = 0; ci < _contactCategories.length; ci++) ...[
                   FadeSlideIn(
                     delay: Duration(milliseconds: 360 + ci * 100),
-                    child: _sectionHeader(_contactCategories[ci].title.toUpperCase()),
+                    child: _sectionHeader(context, _contactCategories[ci].title.toUpperCase()),
                   ),
                   const SizedBox(height: 10),
-                  FadeSlideIn(
-                    delay: Duration(milliseconds: 400 + ci * 100),
-                    child: _GroupedContactList(
-                      items: _contactCategories[ci].items,
-                      onCopy: (phone) => _copyPhone(context, phone),
+                  for (int j = 0; j < _contactCategories[ci].items.length; j++) ...[
+                    FadeSlideIn(
+                      delay: Duration(milliseconds: 400 + ci * 100 + j * 50),
+                      child: _ContactCard(
+                        contact: _contactCategories[ci].items[j],
+                        onCopy: () => _copyPhone(context, _contactCategories[ci].items[j].phone),
+                      ),
                     ),
-                  ),
+                    const SizedBox(height: 10),
+                  ],
                   const SizedBox(height: 20),
                 ],
               ]),
@@ -229,7 +233,8 @@ class ContactosScreen extends StatelessWidget {
     );
   }
 
-  static Widget _sectionHeader(String text) {
+  Widget _sectionHeader(BuildContext context, String text) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Padding(
       padding: const EdgeInsets.only(left: 4),
       child: Row(
@@ -238,7 +243,7 @@ class ContactosScreen extends StatelessWidget {
             width: 3,
             height: 14,
             decoration: BoxDecoration(
-              color: AppColors.primary,
+              color: isDark ? AppColors.white : AppColors.primary,
               borderRadius: BorderRadius.circular(2),
             ),
           ),
@@ -274,6 +279,16 @@ class ContactosScreen extends StatelessWidget {
         ],
       ),
     );
+  }
+  static Future<void> _makePhoneCall(String phoneNumber) async {
+    final cleanFormat = phoneNumber.replaceAll(RegExp(r'[^\d+]'), '');
+    final Uri launchUri = Uri(
+      scheme: 'tel',
+      path: cleanFormat,
+    );
+    if (!await launchUrl(launchUri, mode: LaunchMode.externalApplication)) {
+      debugPrint('Could not launch $launchUri');
+    }
   }
 }
 
@@ -394,7 +409,7 @@ class _EmergencyCard extends StatelessWidget {
               color: AppColors.white.withValues(alpha: 0.20),
               borderRadius: BorderRadius.circular(12),
               onPressed: () {
-                // TODO: Integrar url_launcher para llamar
+                ContactosScreen._makePhoneCall(contact.phone);
               },
               child: const Row(
                 mainAxisAlignment: MainAxisAlignment.center,
@@ -431,7 +446,7 @@ class _ContactCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final accentColor =
-        contact.isFreeCall ? AppColors.accent : AppColors.primary;
+        contact.isFreeCall ? AppColors.accent : (isDark ? AppColors.white : AppColors.primary);
 
     return Container(
       padding: const EdgeInsets.all(16),
@@ -528,7 +543,7 @@ class _ContactCard extends StatelessWidget {
                 padding: EdgeInsets.zero,
                 minimumSize: const Size.square(36),
                 onPressed: () {
-                  // TODO: Integrar url_launcher
+                  ContactosScreen._makePhoneCall(contact.phone);
                 },
                 child: Container(
                   width: 52,
@@ -621,6 +636,9 @@ class _GroupedRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final dynamicPrimary = isDark ? AppColors.white : AppColors.primary;
+
     return CupertinoButton(
       padding: EdgeInsets.zero,
       minimumSize: Size.zero,
@@ -633,10 +651,10 @@ class _GroupedRow extends StatelessWidget {
               width: 44,
               height: 44,
               decoration: BoxDecoration(
-                color: AppColors.primary.withValues(alpha: 0.08),
+                color: dynamicPrimary.withValues(alpha: 0.12),
                 borderRadius: BorderRadius.circular(10),
               ),
-              child: Icon(item.icon, size: 22, color: AppColors.primary),
+              child: Icon(item.icon, size: 22, color: dynamicPrimary),
             ),
             const SizedBox(width: 12),
             Expanded(
@@ -656,10 +674,10 @@ class _GroupedRow extends StatelessWidget {
                   const SizedBox(height: 2),
                   Text(
                     item.phone,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 22,
                       fontWeight: FontWeight.w900,
-                      color: AppColors.primary,
+                      color: dynamicPrimary,
                       letterSpacing: 0.5,
                     ),
                   ),

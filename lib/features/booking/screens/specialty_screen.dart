@@ -245,7 +245,7 @@ class _SpecialtyScreenState extends State<SpecialtyScreen> {
               child: Icon(
                 _iconForSpecialty(specialty.name),
                 size: 30,
-                color: showBadge ? AppColors.accent : AppColors.primary,
+                color: showBadge ? AppColors.accent : (Theme.of(context).brightness == Brightness.dark ? AppColors.razer : AppColors.primary),
               ),
             ),
             const SizedBox(width: 12),

@@ -135,10 +135,10 @@ class _PerfilScreenState extends State<PerfilScreen> {
                       child: Text(
                         user.displayName,
                         textAlign: TextAlign.center,
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 24,
                           fontWeight: FontWeight.w800,
-                          color: AppColors.textPrimary,
+                          color: Theme.of(context).brightness == Brightness.dark ? AppColors.razer : AppColors.textPrimary,
                           letterSpacing: -0.5,
                         ),
                         maxLines: 1,
@@ -151,15 +151,15 @@ class _PerfilScreenState extends State<PerfilScreen> {
                         padding: const EdgeInsets.symmetric(
                             horizontal: 12, vertical: 4),
                         decoration: BoxDecoration(
-                          color: AppColors.primary.withValues(alpha: 0.08),
+                          color: Theme.of(context).brightness == Brightness.dark ? AppColors.white.withValues(alpha: 0.2) : AppColors.primary.withValues(alpha: 0.08),
                           borderRadius: BorderRadius.circular(12),
                         ),
                         child: Text(
                           'Mat. ${user.matricula}',
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 15,
                             fontWeight: FontWeight.w700,
-                            color: AppColors.primary,
+                            color: Theme.of(context).brightness == Brightness.dark ? AppColors.white : AppColors.primary,
                           ),
                         ),
                       ),
@@ -224,7 +224,7 @@ class _PerfilScreenState extends State<PerfilScreen> {
                               'DOCUMENTO CI',
                               user.ci.isNotEmpty ? user.ci : 'Sin registro',
                               CupertinoIcons.person_crop_rectangle,
-                              const Color(0xFF8B5CF6)),
+                              Theme.of(context).brightness == Brightness.dark ? AppColors.white : const Color(0xFF8B5CF6)),
                         ),
                         const SizedBox(width: 12),
                         Expanded(
@@ -258,6 +258,7 @@ class _PerfilScreenState extends State<PerfilScreen> {
                     header: const Text('DATOS DE CONTACTO', style: TextStyle(fontWeight: FontWeight.w700, letterSpacing: 1.2)),
                     children: [
                       _buildEditableTile(
+                        isDark: Theme.of(context).brightness == Brightness.dark,
                         icon: CupertinoIcons.mail,
                         label: 'Correo electrónico',
                         value: _email,
@@ -269,6 +270,7 @@ class _PerfilScreenState extends State<PerfilScreen> {
                         onCancel: () => setState(() { _emailCtrl.text = _email; _isEditingEmail = false; }),
                       ),
                       _buildEditableTile(
+                        isDark: Theme.of(context).brightness == Brightness.dark,
                         icon: CupertinoIcons.phone,
                         label: 'Teléfono / Celular',
                         value: _phone,
@@ -314,8 +316,8 @@ class _PerfilScreenState extends State<PerfilScreen> {
                       CupertinoListTile.notched(
                         leading: Container(
                           padding: const EdgeInsets.all(4),
-                          decoration: BoxDecoration(color: AppColors.primary, borderRadius: BorderRadius.circular(6)),
-                          child: const Icon(CupertinoIcons.qrcode, color: AppColors.white, size: 20),
+                          decoration: BoxDecoration(color: Theme.of(context).brightness == Brightness.dark ? AppColors.white.withValues(alpha: 0.2) : AppColors.primary, borderRadius: BorderRadius.circular(6)),
+                          child: Icon(CupertinoIcons.qrcode, color: Theme.of(context).brightness == Brightness.dark ? AppColors.white : AppColors.white, size: 20),
                         ),
                         title: const Text('Mi Código QR', style: TextStyle(fontWeight: FontWeight.w600)),
                         subtitle: const Text('Identificación rápida en ventanilla'),
@@ -331,17 +333,18 @@ class _PerfilScreenState extends State<PerfilScreen> {
                       ValueListenableBuilder<ThemeMode>(
                         valueListenable: ThemeManager.themeNotifier,
                         builder: (context, mode, child) {
-                          final isDark = mode == ThemeMode.dark;
+                          // Crucial fix: evaluate the actual system theme instead of just the mode
+                          final isDarkActive = Theme.of(context).brightness == Brightness.dark;
                           return CupertinoListTile(
                             leading: Container(
                               padding: const EdgeInsets.all(4),
-                              decoration: BoxDecoration(color: isDark ? AppColors.textPrimary : AppColors.primary, borderRadius: BorderRadius.circular(6)),
-                              child: Icon(isDark ? CupertinoIcons.moon_fill : CupertinoIcons.sun_max_fill, color: AppColors.white, size: 20),
+                              decoration: BoxDecoration(color: isDarkActive ? AppColors.white.withValues(alpha: 0.2) : AppColors.primary, borderRadius: BorderRadius.circular(6)),
+                              child: Icon(isDarkActive ? CupertinoIcons.moon_fill : CupertinoIcons.sun_max_fill, color: AppColors.white, size: 20),
                             ),
                             title: Text('Modo Oscuro', style: TextStyle(fontWeight: FontWeight.w600, color: Theme.of(context).textTheme.bodyLarge?.color)),
                             trailing: CupertinoSwitch(
-                              value: isDark,
-                              activeTrackColor: AppColors.primary,
+                              value: isDarkActive,
+                              activeTrackColor: isDarkActive ? AppColors.white.withValues(alpha: 0.5) : AppColors.primary,
                               onChanged: (val) {
                                 ThemeManager.setThemeMode(val ? ThemeMode.dark : ThemeMode.light);
                               },
@@ -378,6 +381,7 @@ class _PerfilScreenState extends State<PerfilScreen> {
   }
 
   Widget _buildEditableTile({
+    required bool isDark,
     required IconData icon,
     required String label,
     required String value,
@@ -389,8 +393,8 @@ class _PerfilScreenState extends State<PerfilScreen> {
     required VoidCallback onCancel,
   }) {
     return CupertinoListTile(
-      leading: Icon(icon, color: AppColors.primary, size: 24),
-      title: Text(label, style: const TextStyle(fontSize: 14, color: AppColors.textSecondary)),
+      leading: Icon(icon, color: isDark ? AppColors.white : AppColors.primary, size: 24),
+      title: Text(label, style: TextStyle(fontSize: 14, color: isDark ? AppColors.white.withValues(alpha: 0.7) : AppColors.textSecondary)),
       subtitle: isEditing
           ? CupertinoTextField(
               controller: controller,
@@ -398,9 +402,9 @@ class _PerfilScreenState extends State<PerfilScreen> {
               autofocus: true,
               padding: const EdgeInsets.symmetric(vertical: 6),
               decoration: BoxDecoration(
-                border: Border(bottom: BorderSide(color: AppColors.primary.withValues(alpha: 0.5), width: 1)),
+                border: Border(bottom: BorderSide(color: isDark ? AppColors.white.withValues(alpha: 0.5) : AppColors.primary.withValues(alpha: 0.5), width: 1)),
               ),
-              style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w600, color: AppColors.textPrimary),
+              style: TextStyle(fontSize: 17, fontWeight: FontWeight.w600, color: isDark ? AppColors.white : AppColors.textPrimary),
               onSubmitted: (_) => onSave(),
             )
           : Text(
@@ -408,7 +412,9 @@ class _PerfilScreenState extends State<PerfilScreen> {
               style: TextStyle(
                 fontSize: 17,
                 fontWeight: FontWeight.w600,
-                color: value.isNotEmpty ? AppColors.textPrimary : AppColors.textTertiary,
+                color: value.isNotEmpty 
+                    ? (isDark ? AppColors.white : AppColors.textPrimary) 
+                    : (isDark ? AppColors.white.withValues(alpha: 0.4) : AppColors.textTertiary),
               ),
             ),
       trailing: isEditing
@@ -419,7 +425,7 @@ class _PerfilScreenState extends State<PerfilScreen> {
                 CupertinoButton(padding: EdgeInsets.zero, onPressed: onSave, child: const Icon(CupertinoIcons.checkmark_alt_circle_fill, color: CupertinoColors.activeGreen, size: 22)),
               ],
             )
-          : CupertinoButton(padding: EdgeInsets.zero, onPressed: onEdit, child: const Icon(CupertinoIcons.pencil, color: AppColors.primary, size: 20)),
+          : CupertinoButton(padding: EdgeInsets.zero, onPressed: onEdit, child: Icon(CupertinoIcons.pencil, color: isDark ? AppColors.white : AppColors.primary, size: 20)),
     );
   }
 

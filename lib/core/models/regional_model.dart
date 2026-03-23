@@ -4,11 +4,13 @@ class RegionalModel {
   final String id;
   final String name;
   final List<HospitalModel> hospitals;
+  double? distanceFromUser;
 
-  const RegionalModel({
+  RegionalModel({
     required this.id,
     required this.name,
     required this.hospitals,
+    this.distanceFromUser,
   });
 
   factory RegionalModel.fromJson(Map<String, dynamic> json) {
