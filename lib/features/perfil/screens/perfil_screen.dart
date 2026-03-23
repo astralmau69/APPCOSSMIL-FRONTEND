@@ -1,11 +1,11 @@
 import 'dart:convert';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/material.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/mock/mock_user_data.dart';
 import '../../../core/storage/token_storage.dart';
+import '../../../core/services/security_service.dart';
 import '../../../core/widgets/profile_qr_modal.dart';
 import '../../../core/animations/optimized_animations.dart';
 import '../../../core/theme/theme_manager.dart';
@@ -23,7 +23,11 @@ class _PerfilScreenState extends State<PerfilScreen> {
   late String _phone;
   bool _isEditingEmail = false;
   bool _isEditingPhone = false;
+  
+  bool _hasPin = false;
   bool _isBiometricEnabled = false;
+  bool _canCheckBiometrics = false;
+
   late final TextEditingController _emailCtrl;
   late final TextEditingController _phoneCtrl;
 
@@ -35,6 +39,21 @@ class _PerfilScreenState extends State<PerfilScreen> {
     _phone = user.phone;
     _emailCtrl = TextEditingController(text: _email);
     _phoneCtrl = TextEditingController(text: _phone);
+    _loadSecurityStatus();
+  }
+
+  Future<void> _loadSecurityStatus() async {
+    final hasPin = await SecurityService.hasPin();
+    final isBioEnabled = await SecurityService.isBiometricsEnabled();
+    final canBio = await SecurityService.canCheckBiometrics();
+    
+    if (mounted) {
+      setState(() {
+        _hasPin = hasPin;
+        _isBiometricEnabled = isBioEnabled;
+        _canCheckBiometrics = canBio;
+      });
+    }
   }
 
   @override
@@ -42,6 +61,55 @@ class _PerfilScreenState extends State<PerfilScreen> {
     _emailCtrl.dispose();
     _phoneCtrl.dispose();
     super.dispose();
+  }
+
+  Future<void> _toggleSecurity(bool value) async {
+    if (value) {
+      // Activar: primero configurar PIN
+      final result = await Navigator.pushNamed(context, '/pin-setup');
+      if (result == true) {
+        await _loadSecurityStatus();
+      }
+    } else {
+      // Desactivar: borrar todo lo local
+      final confirmed = await showCupertinoDialog<bool>(
+        context: context,
+        builder: (context) => CupertinoAlertDialog(
+          title: const Text('Desactivar Seguridad'),
+          content: const Text('¿Está seguro que desea desactivar el acceso por PIN y biometría?'),
+          actions: [
+            CupertinoDialogAction(
+              child: const Text('Cancelar'),
+              onPressed: () => Navigator.pop(context, false),
+            ),
+            CupertinoDialogAction(
+              isDestructiveAction: true,
+              child: const Text('Desactivar'),
+              onPressed: () => Navigator.pop(context, true),
+            ),
+          ],
+        ),
+      );
+
+      if (confirmed == true) {
+        await SecurityService.clearSecurityData();
+        await _loadSecurityStatus();
+      }
+    }
+  }
+
+  Future<void> _toggleBiometrics(bool value) async {
+    if (value) {
+      final authenticated = await SecurityService.authenticateWithBiometrics(
+        reason: 'Confirma tu identidad para activar biometría',
+      );
+      if (authenticated) {
+        await SecurityService.setBiometricsEnabled(true);
+      }
+    } else {
+      await SecurityService.setBiometricsEnabled(false);
+    }
+    await _loadSecurityStatus();
   }
 
   @override
@@ -290,23 +358,38 @@ class _PerfilScreenState extends State<PerfilScreen> {
                       CupertinoListTile(
                         leading: Container(
                           padding: const EdgeInsets.all(4),
-                          decoration: BoxDecoration(color: AppColors.success, borderRadius: BorderRadius.circular(6)),
+                          decoration: BoxDecoration(
+                            color: _hasPin ? AppColors.success : AppColors.textTertiary, 
+                            borderRadius: BorderRadius.circular(6)
+                          ),
                           child: const Icon(CupertinoIcons.lock_shield_fill, color: AppColors.white, size: 20),
                         ),
-                        title: const Text('Autenticación Biométrica', style: TextStyle(fontWeight: FontWeight.w600)),
-                        subtitle: const Text('Huella digital / Face ID + PIN'),
+                        title: const Text('Protección con PIN', style: TextStyle(fontWeight: FontWeight.w600)),
+                        subtitle: Text(_hasPin ? 'PIN de 4 dígitos configurado' : 'Configura un PIN de acceso'),
                         trailing: CupertinoSwitch(
-                          value: _isBiometricEnabled,
+                          value: _hasPin,
                           activeTrackColor: AppColors.success,
-                          onChanged: (val) {
-                            if (val) {
-                              _showPinSetupModal();
-                            } else {
-                              setState(() => _isBiometricEnabled = false);
-                            }
-                          },
+                          onChanged: _toggleSecurity,
                         ),
                       ),
+                      if (_hasPin && _canCheckBiometrics)
+                        CupertinoListTile(
+                          leading: Container(
+                            padding: const EdgeInsets.all(4),
+                            decoration: BoxDecoration(
+                              color: _isBiometricEnabled ? AppColors.primary : AppColors.textTertiary, 
+                              borderRadius: BorderRadius.circular(6)
+                            ),
+                            child: const Icon(CupertinoIcons.device_phone_portrait, color: AppColors.white, size: 20),
+                          ),
+                          title: const Text('Desbloqueo Biométrico', style: TextStyle(fontWeight: FontWeight.w600)),
+                          subtitle: const Text('Usa tu huella o FaceID'),
+                          trailing: CupertinoSwitch(
+                            value: _isBiometricEnabled,
+                            activeTrackColor: AppColors.primary,
+                            onChanged: _toggleBiometrics,
+                          ),
+                        ),
                     ],
                   ),
                   CupertinoListSection.insetGrouped(
@@ -362,9 +445,31 @@ class _PerfilScreenState extends State<PerfilScreen> {
                         leading: const Icon(CupertinoIcons.square_arrow_left, color: CupertinoColors.destructiveRed),
                         title: const Text('Cerrar Sesión', style: TextStyle(color: CupertinoColors.destructiveRed, fontWeight: FontWeight.w600)),
                         onTap: () async {
-                          await TokenStorage.deleteToken();
-                          if (!context.mounted) return;
-                          Navigator.of(context, rootNavigator: true).pushReplacementNamed('/login');
+                          final confirmed = await showCupertinoDialog<bool>(
+                            context: context,
+                            builder: (context) => CupertinoAlertDialog(
+                              title: const Text('Cerrar Sesión'),
+                              content: const Text('¿Está seguro que desea cerrar sesión? Se borrará su configuración de PIN y huella.'),
+                              actions: [
+                                CupertinoDialogAction(
+                                  child: const Text('Cancelar'),
+                                  onPressed: () => Navigator.pop(context, false),
+                                ),
+                                CupertinoDialogAction(
+                                  isDestructiveAction: true,
+                                  child: const Text('Cerrar Sesión'),
+                                  onPressed: () => Navigator.pop(context, true),
+                                ),
+                              ],
+                            ),
+                          );
+
+                          if (confirmed == true) {
+                            await TokenStorage.deleteToken();
+                            await SecurityService.clearSecurityData();
+                            if (!context.mounted) return;
+                            Navigator.of(context, rootNavigator: true).pushReplacementNamed('/login');
+                          }
                         },
                       ),
                     ],
@@ -464,96 +569,6 @@ class _PerfilScreenState extends State<PerfilScreen> {
           ),
         ],
       ),
-    );
-  }
-
-  // ── Fake PIN Setup Modal ──────────────────────────────────────────────
-
-  void _showPinSetupModal() {
-    showCupertinoModalPopup(
-      context: context,
-      builder: (ctx) {
-        return Container(
-          decoration: const BoxDecoration(
-            color: AppColors.background,
-            borderRadius:
-                BorderRadius.vertical(top: Radius.circular(AppTheme.radiusXl)),
-          ),
-          padding: const EdgeInsets.fromLTRB(24, 24, 24, 48),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Icon(CupertinoIcons.lock_circle_fill,
-                  size: 48, color: AppColors.primary),
-              const SizedBox(height: 16),
-              const Text(
-                'Configurar PIN de Acceso',
-                style: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.w800,
-                  color: AppColors.textPrimary,
-                ),
-              ),
-              const SizedBox(height: 8),
-              const Text(
-                'Crea un PIN de 4 dígitos para usar junto con tu huella digital o Face ID.',
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontSize: 14,
-                  color: AppColors.textSecondary,
-                ),
-              ),
-              const SizedBox(height: 32),
-              // Fake PIN circles
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: List.generate(
-                    4,
-                    (index) => Container(
-                          margin:
-                              const EdgeInsets.symmetric(horizontal: 8),
-                          width: 16,
-                          height: 16,
-                          decoration: const BoxDecoration(
-                            shape: BoxShape.circle,
-                            color: AppColors.border,
-                          ),
-                        )),
-              ),
-              const SizedBox(height: 48),
-              SizedBox(
-                width: double.infinity,
-                child: CupertinoButton.filled(
-                  borderRadius:
-                      BorderRadius.circular(AppTheme.radiusXl),
-                  onPressed: () {
-                    Navigator.pop(ctx);
-                    setState(() => _isBiometricEnabled = true);
-                    // Show a native-style toast
-                    showCupertinoDialog(
-                      context: context,
-                      builder: (dialogCtx) => CupertinoAlertDialog(
-                        title: const Text('Listo'),
-                        content: const Text(
-                            'Seguridad Biométrica y PIN activados exitosamente'),
-                        actions: [
-                          CupertinoDialogAction(
-                            isDefaultAction: true,
-                            onPressed: () =>
-                                Navigator.pop(dialogCtx),
-                            child: const Text('OK'),
-                          ),
-                        ],
-                      ),
-                    );
-                  },
-                  child: const Text('Simular Configuración Guardada'),
-                ),
-              ),
-            ],
-          ),
-        );
-      },
     );
   }
 }

@@ -3,6 +3,8 @@ import 'core/constants/app_colors.dart';
 import 'core/theme/app_theme.dart';
 import 'features/splash/screens/splash_screen.dart';
 import 'features/auth/screens/login_screen.dart';
+import 'features/auth/screens/local_auth_screen.dart';
+import 'features/auth/screens/pin_setup_screen.dart';
 import 'shell/tab_shell.dart';
 import 'core/theme/theme_manager.dart';
 
@@ -43,6 +45,8 @@ class _CossmilAppState extends State<CossmilApp> {
           home: const SplashScreen(),
           routes: {
             '/login': (context) => const LoginScreen(),
+            '/local-auth': (context) => const LocalAuthScreen(),
+            '/pin-setup': (context) => const PinSetupScreen(),
             '/home': (context) => const TabShell(),
           },
         );

@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:audioplayers/audioplayers.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/storage/token_storage.dart';
+import '../../../core/services/security_service.dart';
 
 class SplashScreen extends StatefulWidget {
   /// true = viene de segundo plano (no reproduce audio, duración breve).
@@ -121,8 +122,20 @@ class _SplashScreenState extends State<SplashScreen>
     if (widget.isOverlay) {
       Navigator.pop(context);
     } else {
-      // Directo a login en cada apertura fresca de la app (Kill & Start)
-      Navigator.pushReplacementNamed(context, '/login');
+      final hasToken = await TokenStorage.hasToken();
+      final hasPin = await SecurityService.hasPin();
+
+      if (!mounted) return;
+
+      if (hasToken) {
+        if (hasPin) {
+          Navigator.pushReplacementNamed(context, '/local-auth');
+        } else {
+          Navigator.pushReplacementNamed(context, '/home');
+        }
+      } else {
+        Navigator.pushReplacementNamed(context, '/login');
+      }
     }
   }
 

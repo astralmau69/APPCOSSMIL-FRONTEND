@@ -31,8 +31,6 @@ class _HomeScreenState extends State<HomeScreen> {
     final responsive = ResponsiveData.of(context);
     final horizontalPadding = responsive.isSmallPhone ? 12.0 : (responsive.isPhone ? 14.0 : 20.0);
 
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-
     return CupertinoPageScaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       child: CustomScrollView(

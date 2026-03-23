@@ -1,7 +1,9 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import '../core/constants/app_colors.dart';
+import '../core/services/security_service.dart';
+import '../features/splash/screens/splash_screen.dart';
+import '../features/auth/screens/local_auth_screen.dart';
 import '../core/models/beneficiary_model.dart';
 import '../core/models/regional_model.dart';
 import '../core/models/hospital_model.dart';
@@ -43,7 +45,7 @@ class TabShell extends StatefulWidget {
 }
 
 class TabShellState extends State<TabShell>
-    with SingleTickerProviderStateMixin {
+    with SingleTickerProviderStateMixin, WidgetsBindingObserver {
   int _currentIndex = 0;
   final bookingState = BookingState();
 
@@ -61,12 +63,54 @@ class TabShellState extends State<TabShell>
   void initState() {
     super.initState();
     _tabController = CupertinoTabController();
+    WidgetsBinding.instance.addObserver(this);
   }
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _tabController.dispose();
     super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      _checkSecurityLock();
+    }
+  }
+
+  Future<void> _checkSecurityLock() async {
+    final hasPin = await SecurityService.hasPin();
+    if (hasPin) {
+      // Bloquear con un modal de splash que luego pida el PIN
+      if (!mounted) return;
+      
+      // Usamos una ruta transparente o un fullScreenDialog
+      // En este caso, mostraremos el SplashScreen con isOverlay: true
+      // el cual al terminar hará Navigator.pop() y luego mostramos el LocalAuthScreen.
+      
+      await Navigator.of(context, rootNavigator: true).push(
+        CupertinoPageRoute(
+          fullscreenDialog: true,
+          builder: (context) => const SplashScreen(isOverlay: true),
+        ),
+      );
+
+      if (!mounted) return;
+      
+      // Al volver del splash overlay, pedimos autenticación
+      // Si el usuario ya está en LocalAuthScreen no hace falta (aunque didChangeAppLifecycleState se dispara al volver)
+      // Pero LocalAuthScreen no se usa como overlay, sino como pantalla principal.
+      // Para re-bloqueo en caliente, mejor pushear el LocalAuthScreen.
+      
+      await Navigator.of(context, rootNavigator: true).push(
+        CupertinoPageRoute(
+          fullscreenDialog: true,
+          builder: (context) => const LocalAuthScreen(),
+        ),
+      );
+    }
   }
 
   void goToTab(int index) {
