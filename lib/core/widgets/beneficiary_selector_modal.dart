@@ -2,7 +2,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import '../constants/app_colors.dart';
 import '../models/beneficiary_model.dart';
-import '../mock/mock_user_data.dart';
+
 
 /// Modal reutilizable para seleccionar un miembro del grupo familiar.
 /// Diseñado para ser reutilizado en cualquier flujo (booking, perfil, etc.).
@@ -164,21 +164,13 @@ class _BeneficiaryTile extends StatelessWidget {
                 ),
               ),
               child: ClipOval(
-                child: (isTitular && MockUserData.user.photoBase64.isNotEmpty)
+                child: beneficiary.photoBase64.isNotEmpty
                     ? Image.memory(
-                        base64Decode(MockUserData.user.photoBase64),
+                        base64Decode(beneficiary.photoBase64),
                         fit: BoxFit.cover,
+                        errorBuilder: (_, __, ___) => _fallbackAvatar(beneficiary),
                       )
-                    : Center(
-                        child: Text(
-                          beneficiary.initial,
-                          style: const TextStyle(
-                            color: AppColors.white,
-                            fontWeight: FontWeight.w800,
-                            fontSize: 20,
-                          ),
-                        ),
-                      ),
+                    : _fallbackAvatar(beneficiary),
               ),
             ),
             const SizedBox(width: 14),
@@ -235,6 +227,19 @@ class _BeneficiaryTile extends StatelessWidget {
                 ),
               ),
           ],
+        ),
+      ),
+    );
+  }
+
+  Widget _fallbackAvatar(BeneficiaryModel beneficiary) {
+    return Center(
+      child: Text(
+        beneficiary.initial,
+        style: const TextStyle(
+          color: Colors.white,
+          fontWeight: FontWeight.w800,
+          fontSize: 20,
         ),
       ),
     );

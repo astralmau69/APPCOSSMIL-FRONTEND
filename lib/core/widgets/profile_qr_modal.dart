@@ -13,9 +13,9 @@ class ProfileQrModal {
     showDialog(
       context: context,
       builder: (ctx) {
-        final isDark = Theme.of(context).brightness == Brightness.dark;
+        final isDark = Theme.of(ctx).brightness == Brightness.dark;
         return Dialog(
-          backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+          backgroundColor: Theme.of(ctx).scaffoldBackgroundColor,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(AppTheme.radiusXl),
           ),
@@ -54,7 +54,7 @@ class ProfileQrModal {
                 style: TextStyle(
                   fontSize: 17,
                   fontWeight: FontWeight.w700,
-                  color: Theme.of(context).textTheme.bodyLarge?.color ?? AppColors.textPrimary,
+                  color: Theme.of(ctx).textTheme.bodyLarge?.color ?? AppColors.textPrimary,
                 ),
               ),
               const SizedBox(height: 4),

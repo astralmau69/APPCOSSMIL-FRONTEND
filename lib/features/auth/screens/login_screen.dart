@@ -4,8 +4,9 @@ import '../../../core/constants/app_colors.dart';
 import '../../../core/theme/app_constants.dart';
 import '../../../core/extensions/responsive_extensions.dart';
 import '../../../core/animations/optimized_animations.dart';
+import '../../../core/animations/animated_gradient_background.dart';
 import '../../../core/services/auth_service.dart';
-import '../../../core/storage/token_storage.dart';
+
 import '../../../core/services/location_service.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -55,13 +56,8 @@ class _LoginScreenState extends State<LoginScreen>
     if (!mounted) return;
 
     switch (result) {
-      case AuthSuccess(:final token):
-        await TokenStorage.saveToken(token.accessToken);
-        
-        if (!mounted) return;
-
-        // Mostrar un pequeño indicador en UI mientras pide la ubicación si lo deseamos, 
-        // pero requestPermission abrirá un popup del OS.
+      case AuthSuccess():
+        // Solicitar permisos de ubicación (abrirá popup del OS).
         await _locationService.requestPermission();
 
         if (!mounted) return;
@@ -86,8 +82,10 @@ class _LoginScreenState extends State<LoginScreen>
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
-      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-      body: SafeArea(
+      backgroundColor: Colors.transparent,
+      body: AnimatedGradientBackground(
+        isDark: isDark,
+        child: SafeArea(
         child: SingleChildScrollView(
           physics: const BouncingScrollPhysics(),
           padding: EdgeInsets.symmetric(horizontal: padding),
@@ -160,6 +158,7 @@ class _LoginScreenState extends State<LoginScreen>
             ),
           ),
         ),
+      ),
       ),
     );
   }
@@ -305,7 +304,7 @@ class _LoginScreenState extends State<LoginScreen>
                   decoration: null,
                   placeholder: placeholder,
                   placeholderStyle: TextStyle(
-                    color: isDark ? Colors.white30 : AppColors.textTertiary.withOpacity(0.5),
+                    color: isDark ? Colors.white30 : AppColors.textTertiary.withValues(alpha: 0.5),
                     fontSize: 16,
                   ),
                   style: AppTypography.bodyLarge.copyWith(
@@ -333,7 +332,7 @@ class _LoginScreenState extends State<LoginScreen>
       decoration: BoxDecoration(
         color: AppColors.errorLight,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.error.withOpacity(0.3)),
+        border: Border.all(color: AppColors.error.withValues(alpha: 0.3)),
       ),
       child: Row(
         children: [
@@ -370,7 +369,7 @@ class _LoginScreenState extends State<LoginScreen>
             borderRadius: BorderRadius.circular(16),
             boxShadow: _isLoading ? [] : [
               BoxShadow(
-                color: AppColors.primary.withOpacity(0.3),
+                color: AppColors.primary.withValues(alpha: 0.3),
                 blurRadius: 12,
                 offset: const Offset(0, 6),
               )

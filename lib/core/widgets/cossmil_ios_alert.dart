@@ -1,49 +1,99 @@
 import 'package:flutter/cupertino.dart';
+import '../constants/app_colors.dart';
 
-/// Centralized iOS-style alert dialog to replace generic Material AlertDialogs
-/// throughout the COSSMIL App.
+/// Tipo semántico de alerta para colorización automática.
+enum AlertType { success, error, warning, info }
+
+/// Alertas iOS-style centralizadas con soporte de tipos semánticos.
+///
+/// Uso básico:
+/// ```dart
+/// await CossmilIosAlert.show(context: context, title: '...', message: '...');
+/// ```
+///
+/// Con tipo semántico:
+/// ```dart
+/// await CossmilIosAlert.show(
+///   context: context, title: 'Error', message: '...',
+///   type: AlertType.error,
+/// );
+/// ```
 class CossmilIosAlert {
-  /// Displays a simple iOS-style alert dialog.
   static Future<void> show({
     required BuildContext context,
     required String title,
     required String message,
+    AlertType type = AlertType.info,
     String? confirmText,
     String? cancelText,
     VoidCallback? onConfirm,
     VoidCallback? onCancel,
     bool isDestructive = false,
   }) {
+    final icon = _iconForType(type);
+    final iconColor = _colorForType(type);
+
     return showCupertinoDialog(
       context: context,
-      builder: (context) => CupertinoAlertDialog(
-        title: Text(title, style: const TextStyle(fontWeight: FontWeight.w600)),
+      builder: (ctx) => CupertinoAlertDialog(
+        title: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 18, color: iconColor),
+            const SizedBox(width: 8),
+            Flexible(
+              child: Text(
+                title,
+                style: const TextStyle(fontWeight: FontWeight.w700),
+              ),
+            ),
+          ],
+        ),
         content: Padding(
           padding: const EdgeInsets.only(top: 8.0),
-          child: Text(message, style: const TextStyle(fontSize: 15)),
+          child: Text(message, style: const TextStyle(fontSize: 14, height: 1.4)),
         ),
         actions: [
           if (cancelText != null)
             CupertinoDialogAction(
               onPressed: () {
-                Navigator.of(context).pop();
+                Navigator.of(ctx).pop();
                 onCancel?.call();
               },
               child: Text(cancelText),
             ),
           CupertinoDialogAction(
-            isDestructiveAction: isDestructive,
+            isDestructiveAction: isDestructive || type == AlertType.error,
             onPressed: () {
-              Navigator.of(context).pop();
+              Navigator.of(ctx).pop();
               onConfirm?.call();
             },
             child: Text(
               confirmText ?? 'Aceptar',
-              style: isDestructive ? null : const TextStyle(fontWeight: FontWeight.w600),
+              style: (!isDestructive && type != AlertType.error)
+                  ? const TextStyle(fontWeight: FontWeight.w600)
+                  : null,
             ),
           ),
         ],
       ),
     );
   }
+
+  // ─── Helpers ───────────────────────────────────────────────────────────────
+
+  static IconData _iconForType(AlertType type) => switch (type) {
+        AlertType.success => CupertinoIcons.checkmark_circle_fill,
+        AlertType.error   => CupertinoIcons.xmark_circle_fill,
+        AlertType.warning => CupertinoIcons.exclamationmark_triangle_fill,
+        AlertType.info    => CupertinoIcons.info_circle_fill,
+      };
+
+  static Color _colorForType(AlertType type) => switch (type) {
+        AlertType.success => AppColors.success,
+        AlertType.error   => AppColors.error,
+        AlertType.warning => AppColors.warning,
+        AlertType.info    => AppColors.info,
+      };
 }

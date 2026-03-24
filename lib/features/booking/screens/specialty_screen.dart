@@ -10,6 +10,7 @@ import '../../../core/widgets/breadcrumb_chips.dart';
 import '../../../core/widgets/section_header.dart';
 import '../../../core/animations/optimized_animations.dart';
 import '../../../core/animations/app_page_route.dart';
+import '../../../core/widgets/app_state_widget.dart';
 import '../../../shell/tab_shell.dart';
 import 'schedule_screen.dart';
 
@@ -111,20 +112,18 @@ class _SpecialtyScreenState extends State<SpecialtyScreen> {
         child: AnimatedSwitcher(
           duration: const Duration(milliseconds: 300),
           child: _isLoading
-              ? const Center(key: ValueKey('loading'), child: CupertinoActivityIndicator(radius: 14))
+              ? const AppStateWidget.loading()
               : _errorMessage != null
-                  ? Center(
+                  ? AppStateWidget.error(
                       key: const ValueKey('error'),
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Text('Error: $_errorMessage',
-                              textAlign: TextAlign.center),
-                          const SizedBox(height: 16),
-                          CupertinoButton(
-                              onPressed: _fetchData, child: const Text('Reintentar')),
-                        ],
-                      ),
+                      title: 'Error al cargar especialidades',
+                      message: _isAuthError(_errorMessage!)
+                          ? 'Tu sesión ha expirado. Vuelve a iniciar sesión.'
+                          : 'No se pudieron cargar las especialidades disponibles.',
+                      onRetry: _isAuthError(_errorMessage!)
+                          ? () => Navigator.of(context, rootNavigator: true)
+                              .pushReplacementNamed('/login')
+                          : _fetchData,
                     )
                   : RefreshIndicator(
                       key: const ValueKey('data'),
@@ -168,6 +167,13 @@ class _SpecialtyScreenState extends State<SpecialtyScreen> {
         ),
       ),
     );
+  }
+
+  bool _isAuthError(String error) {
+    final lower = error.toLowerCase();
+    return lower.contains('401') ||
+        lower.contains('unauthorized') ||
+        lower.contains('unauthenticated');
   }
 
   Widget _buildSpecialtyList(

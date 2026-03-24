@@ -1,8 +1,8 @@
+import 'dart:async';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../core/services/security_service.dart';
-import '../features/splash/screens/splash_screen.dart';
 import '../features/auth/screens/local_auth_screen.dart';
 import '../core/models/beneficiary_model.dart';
 import '../core/models/regional_model.dart';
@@ -25,6 +25,9 @@ class BookingState {
   SpecialtyModel? specialty;
   DoctorModel? doctor;
   String? selectedTime;
+  /// Fecha y hora real de la cita — se establece en ScheduleScreen al
+  /// seleccionar el horario, para poder programar notificaciones locales.
+  DateTime? appointmentDateTime;
 
   void reset() {
     beneficiaryLabel = null;
@@ -34,6 +37,7 @@ class BookingState {
     specialty = null;
     doctor = null;
     selectedTime = null;
+    appointmentDateTime = null;
   }
 }
 
@@ -48,6 +52,13 @@ class TabShellState extends State<TabShell>
     with SingleTickerProviderStateMixin, WidgetsBindingObserver {
   int _currentIndex = 0;
   final bookingState = BookingState();
+
+  // Evita que el bloqueo se apile múltiples veces si el lifecycle
+  // se dispara repetidamente antes de que el usuario desbloquee.
+  bool _isLocked = false;
+
+  // Timer para verificar bloqueo por inactividad cada 30 segundos.
+  Timer? _inactivityTimer;
 
   final List<GlobalKey<NavigatorState>> _tabNavKeys = [
     GlobalKey<NavigatorState>(),
@@ -64,54 +75,92 @@ class TabShellState extends State<TabShell>
     super.initState();
     _tabController = CupertinoTabController();
     WidgetsBinding.instance.addObserver(this);
+
+    // Registrar actividad inicial
+    SecurityService.recordActivity();
+    _startInactivityTimer();
   }
 
   @override
   void dispose() {
+    _inactivityTimer?.cancel();
     WidgetsBinding.instance.removeObserver(this);
     _tabController.dispose();
     super.dispose();
   }
 
+  // ─── Inactividad ────────────────────────────────────────────────────────
+
+  void _startInactivityTimer() {
+    _inactivityTimer?.cancel();
+    _inactivityTimer = Timer.periodic(const Duration(seconds: 30), (_) async {
+      if (_isLocked) return;
+      final shouldLock = await SecurityService.shouldLockOnInactivity();
+      if (shouldLock && mounted) {
+        _triggerLock();
+      }
+    });
+  }
+
+  /// Llamado por el Listener en cada interacción del usuario.
+  void _onUserInteraction() {
+    SecurityService.recordActivity();
+  }
+
+  // ─── Lifecycle ──────────────────────────────────────────────────────────
+
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state == AppLifecycleState.resumed) {
+    if (state == AppLifecycleState.paused ||
+        state == AppLifecycleState.inactive) {
+      // Registrar el momento exacto en que la app va a background.
+      SecurityService.recordBackground();
+    } else if (state == AppLifecycleState.resumed) {
       _checkSecurityLock();
     }
   }
 
   Future<void> _checkSecurityLock() async {
-    final hasPin = await SecurityService.hasPin();
-    if (hasPin) {
-      // Bloquear con un modal de splash que luego pida el PIN
-      if (!mounted) return;
-      
-      // Usamos una ruta transparente o un fullScreenDialog
-      // En este caso, mostraremos el SplashScreen con isOverlay: true
-      // el cual al terminar hará Navigator.pop() y luego mostramos el LocalAuthScreen.
-      
-      await Navigator.of(context, rootNavigator: true).push(
-        CupertinoPageRoute(
-          fullscreenDialog: true,
-          builder: (context) => const SplashScreen(isOverlay: true),
-        ),
-      );
+    if (_isLocked) return;
 
-      if (!mounted) return;
-      
-      // Al volver del splash overlay, pedimos autenticación
-      // Si el usuario ya está en LocalAuthScreen no hace falta (aunque didChangeAppLifecycleState se dispara al volver)
-      // Pero LocalAuthScreen no se usa como overlay, sino como pantalla principal.
-      // Para re-bloqueo en caliente, mejor pushear el LocalAuthScreen.
-      
-      await Navigator.of(context, rootNavigator: true).push(
-        CupertinoPageRoute(
-          fullscreenDialog: true,
-          builder: (context) => const LocalAuthScreen(),
-        ),
-      );
+    final hasPin = await SecurityService.hasPin();
+    if (!hasPin) return;
+
+    // ── Ventana de gracia ─────────────────────────────────
+    // Si el usuario volvió antes de graceWindowDuration (15s), no bloquear.
+    final shouldLock = await SecurityService.shouldLockOnResume();
+    if (!shouldLock) {
+      // Actualizar actividad ya que el usuario volvió dentro de la gracia.
+      SecurityService.recordActivity();
+      return;
     }
+
+    if (!mounted) return;
+    _triggerLock();
   }
+
+  Future<void> _triggerLock() async {
+    if (_isLocked) return;
+    _isLocked = true;
+
+    // Mostrar directamente LocalAuthScreen como overlay (sin splash intermedio).
+    // isOverlay: true → al autenticarse hace pop() de vuelta al TabShell.
+    await Navigator.of(context, rootNavigator: true).push(
+      CupertinoPageRoute(
+        fullscreenDialog: true,
+        builder: (_) => const LocalAuthScreen(isOverlay: true),
+      ),
+    );
+
+    // El usuario desbloqueó exitosamente (o forzó logout desde el lock screen).
+    if (!mounted) return;
+    _isLocked = false;
+
+    // Reiniciar actividad y timer tras desbloqueo.
+    SecurityService.recordActivity();
+  }
+
+  // ─── Navegación ─────────────────────────────────────────────────────────
 
   void goToTab(int index) {
     setState(() => _currentIndex = index);
@@ -151,69 +200,67 @@ class TabShellState extends State<TabShell>
       canPop: false,
       onPopInvokedWithResult: (didPop, result) async {
         if (didPop) return;
-        
+
         final navState = _tabNavKeys[_currentIndex].currentState;
         final canPopInternal = await navState?.maybePop() ?? false;
-        
+
         if (!canPopInternal) {
           if (_currentIndex != 0) {
-            // Si no estamos en inicio, volver a inicio
             goToTab(0);
           } else {
-            // Si ya estamos en inicio y no hay nada que popear, salir de la app
-            // Por seguridad, usamos SystemNavigator.pop() o permitimos la propagación
-            // En Flutter moderno con PopScope(canPop: false), debemos manejarlo.
-            // Si realmente queremos salir:
-            final bool? shouldExit = await showCupertinoDialog<bool>(
-              context: context,
-              builder: (context) => CupertinoAlertDialog(
+            if (!mounted) return;
+            // ignore: use_build_context_synchronously
+            final bool? shouldExit = await showCupertinoDialog<bool>(context: context, builder: (ctx) => CupertinoAlertDialog(
                 title: const Text('Salir'),
                 content: const Text('¿Desea cerrar la aplicación?'),
                 actions: [
                   CupertinoDialogAction(
                     child: const Text('No'),
-                    onPressed: () => Navigator.pop(context, false),
+                    onPressed: () => Navigator.pop(ctx, false),
                   ),
                   CupertinoDialogAction(
                     isDestructiveAction: true,
                     child: const Text('Sí'),
-                    onPressed: () => Navigator.pop(context, true),
+                    onPressed: () => Navigator.pop(ctx, true),
                   ),
                 ],
               ),
             );
-            
+
             if (shouldExit == true) {
-              // Permitimos el pop real o cerramos
               SystemChannels.platform.invokeMethod('SystemNavigator.pop');
             }
           }
         }
       },
-      child: Scaffold(
-        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-        extendBody: true,
-        body: IndexedStack(
-          index: _currentIndex,
-          children: List.generate(5, (index) {
-            return CupertinoTabView(
-              navigatorKey: _tabNavKeys[index],
-              builder: (context) => _screenForIndex(index),
-            );
-          }),
-        ),
-        bottomNavigationBar: FloatingNavBar(
-          currentIndex: _currentIndex,
-          onTap: (index) {
-            if (index == _currentIndex) {
-              _tabNavKeys[index].currentState?.popUntil((route) => route.isFirst);
-            } else {
-              goToTab(index);
-            }
-          },
+      // Listener global que detecta toques y reinicia el timer de inactividad.
+      child: Listener(
+        behavior: HitTestBehavior.translucent,
+        onPointerDown: (_) => _onUserInteraction(),
+        child: Scaffold(
+          backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+          extendBody: true,
+          body: IndexedStack(
+            index: _currentIndex,
+            children: List.generate(5, (index) {
+              return CupertinoTabView(
+                navigatorKey: _tabNavKeys[index],
+                builder: (context) => _screenForIndex(index),
+              );
+            }),
+          ),
+          bottomNavigationBar: FloatingNavBar(
+            currentIndex: _currentIndex,
+            onTap: (index) {
+              if (index == _currentIndex) {
+                _tabNavKeys[index].currentState?.popUntil((route) => route.isFirst);
+              } else {
+                goToTab(index);
+              }
+            },
+          ),
         ),
       ),
     );
   }
 }
-

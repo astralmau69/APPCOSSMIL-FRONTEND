@@ -79,8 +79,7 @@ class UserModel {
           json['fullName'] as String? ??
           '',
       rank: json['grado'] as String? ?? json['rank'] as String? ?? '',
-      matricula:
-          json['matricula'] as String? ?? json['matricula'] as String? ?? '',
+      matricula: json['matricula'] as String? ?? '',
       bloodType: json['tipo_sangre'] as String? ??
           json['bloodType'] as String? ??
           '',

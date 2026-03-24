@@ -44,7 +44,8 @@ class AuthTokenModel {
   });
 
   factory AuthTokenModel.fromJson(Map<String, dynamic> json) {
-    final accessToken = json['access_token'] as String? ?? '';
+    final accessToken = (json['access_token'] as String? ?? '').trim();
+    final refreshToken = (json['refresh_token'] as String? ?? '').trim();
     
     // Decodificar payload secundario del token JWT por si el response raíz no incluye estos datos
     Map<String, dynamic> payload = {};
@@ -67,7 +68,7 @@ class AuthTokenModel {
 
     return AuthTokenModel(
       accessToken: accessToken,
-      refreshToken: json['refresh_token'] as String? ?? '',
+      refreshToken: refreshToken,
       tokenType: json['token_type'] as String? ?? '',
       expiresIn: json['expires_in'] as int? ?? 0,
       scope: json['scope'] as String? ?? '',

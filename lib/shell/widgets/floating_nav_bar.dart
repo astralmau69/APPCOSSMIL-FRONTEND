@@ -16,11 +16,10 @@ class FloatingNavBar extends StatelessWidget {
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    // Colores dinámicos adaptables al tema (Claro / Oscuro) con fuerte efecto cristal puro
-    final backgroundGradient = isDark 
+    final backgroundGradient = isDark
         ? LinearGradient(
             colors: [
-              const Color(0xFFE91E63).withValues(alpha: 0.15), // Toque rosado/magenta intenso a la izquierda
+              const Color(0xFFE91E63).withValues(alpha: 0.15),
               const Color(0xFF1C1C1E).withValues(alpha: 0.25),
               const Color(0xFF1C1C1E).withValues(alpha: 0.25),
             ],
@@ -30,26 +29,24 @@ class FloatingNavBar extends StatelessWidget {
           )
         : LinearGradient(
             colors: [
-              Colors.white.withValues(alpha: 0.70), // Más notorio y esmerilado en modo claro
+              Colors.white.withValues(alpha: 0.70),
               Colors.white.withValues(alpha: 0.60),
             ],
           );
 
-    final borderColor = isDark 
+    final borderColor = isDark
         ? Colors.white.withValues(alpha: 0.10)
         : Colors.white.withValues(alpha: 0.45);
 
-    // En el modo oscuro del estilo Tinder, todo el texto/iconos inactivos son blancos con opacidad.
-    final inactiveColor = isDark 
-        ? Colors.white.withValues(alpha: 0.6) 
+    final inactiveColor = isDark
+        ? Colors.white.withValues(alpha: 0.6)
         : Colors.black.withValues(alpha: 0.5);
 
-    // El color activo es blanco puro en Tinder (ya que destaca con el fondo pill)
     final activeColor = isDark ? Colors.white : Colors.black;
 
-    final shadowColor = isDark 
+    final shadowColor = isDark
         ? Colors.black.withValues(alpha: 0.4)
-        : Colors.black.withValues(alpha: 0.15); // Sombra ligeramente más pronunciada en claro
+        : Colors.black.withValues(alpha: 0.15);
 
     return SafeArea(
       child: Padding(
@@ -57,7 +54,7 @@ class FloatingNavBar extends StatelessWidget {
         child: Container(
           height: 68,
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(34), // Óvalo más pronunciado
+            borderRadius: BorderRadius.circular(34),
             boxShadow: [
               BoxShadow(
                 color: shadowColor,
@@ -69,14 +66,12 @@ class FloatingNavBar extends StatelessWidget {
           child: ClipRRect(
             borderRadius: BorderRadius.circular(34),
             child: BackdropFilter(
-              filter: ImageFilter.blur(sigmaX: 35.0, sigmaY: 35.0),
+              // Reduced from 35 → 12: same glass feel, ~8× cheaper on GPU.
+              filter: ImageFilter.blur(sigmaX: 12.0, sigmaY: 12.0),
               child: Container(
                 decoration: BoxDecoration(
                   gradient: backgroundGradient,
-                  border: Border.all(
-                    color: borderColor,
-                    width: 0.5,
-                  ),
+                  border: Border.all(color: borderColor, width: 0.5),
                   borderRadius: BorderRadius.circular(34),
                 ),
                 child: Row(
@@ -90,7 +85,7 @@ class FloatingNavBar extends StatelessWidget {
                       onTap: () => onTap(0),
                       activeColor: activeColor,
                       inactiveColor: inactiveColor,
-                      isFirstItem: true, // Da el degradado fuego
+                      isFirstItem: true,
                     ),
                     _NavBarItem(
                       icon: CupertinoIcons.time,
@@ -100,7 +95,7 @@ class FloatingNavBar extends StatelessWidget {
                       onTap: () => onTap(1),
                       activeColor: activeColor,
                       inactiveColor: inactiveColor,
-                      badgeCount: 0, 
+                      badgeCount: 0,
                     ),
                     _NavBarItem(
                       icon: CupertinoIcons.calendar_badge_plus,
@@ -140,6 +135,13 @@ class FloatingNavBar extends StatelessWidget {
   }
 }
 
+// Gradient used only for the Tinder-style first nav item.
+const _kTinderGradient = LinearGradient(
+  colors: [Color(0xFFFD297B), Color(0xFFFF655B)],
+  begin: Alignment.bottomLeft,
+  end: Alignment.topRight,
+);
+
 class _NavBarItem extends StatelessWidget {
   final IconData icon;
   final IconData activeIcon;
@@ -166,26 +168,33 @@ class _NavBarItem extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    
-    // Background pill param
-    final bgPillColor = isDark 
+    final bgPillColor = isDark
         ? Colors.white.withValues(alpha: 0.15)
         : Colors.black.withValues(alpha: 0.08);
 
-    // Gradient para el primer ítem, como en Tinder
-    final sweepGradient = const LinearGradient(
-      colors: [Color(0xFFFD297B), Color(0xFFFF655B)],
-      begin: Alignment.bottomLeft,
-      end: Alignment.topRight,
-    ).createShader(const Rect.fromLTWH(0, 0, 26, 26));
+    // Only apply ShaderMask when it actually changes the rendering.
+    // Avoids creating 4 unnecessary compositing layers on every tab switch.
+    final Widget iconWidget = (isActive && isFirstItem)
+        ? ShaderMask(
+            key: const ValueKey(true),
+            shaderCallback: (b) => _kTinderGradient.createShader(b),
+            blendMode: BlendMode.srcATop,
+            child: Icon(activeIcon, size: 26, color: activeColor),
+          )
+        : Icon(
+            isActive ? activeIcon : icon,
+            key: ValueKey(isActive),
+            size: 26,
+            color: isActive ? activeColor : inactiveColor,
+          );
 
     return GestureDetector(
       onTap: onTap,
       behavior: HitTestBehavior.opaque,
       child: AnimatedContainer(
-        duration: const Duration(milliseconds: 250),
+        duration: const Duration(milliseconds: 220),
         curve: Curves.easeOutCubic,
-        width: isActive ? 68 : 60,
+        width: isActive ? 68 : 58,
         margin: const EdgeInsets.symmetric(vertical: 4),
         decoration: BoxDecoration(
           color: isActive ? bgPillColor : Colors.transparent,
@@ -198,30 +207,10 @@ class _NavBarItem extends StatelessWidget {
               clipBehavior: Clip.none,
               children: [
                 AnimatedSwitcher(
-                  duration: const Duration(milliseconds: 250),
-                  transitionBuilder: (child, animation) {
-                    return ScaleTransition(
-                      scale: animation,
-                      child: child,
-                    );
-                  },
-                  child: ShaderMask(
-                    key: ValueKey(isActive),
-                    shaderCallback: (bounds) {
-                      if (isActive && isFirstItem) {
-                        return sweepGradient;
-                      }
-                      return const LinearGradient(
-                        colors: [Colors.white, Colors.white],
-                      ).createShader(bounds); // Dummy shader para iconos normales
-                    },
-                    blendMode: (isActive && isFirstItem) ? BlendMode.srcATop : BlendMode.dst,
-                    child: Icon(
-                      isActive ? activeIcon : icon,
-                      size: 26,
-                      color: isActive ? activeColor : inactiveColor,
-                    ),
-                  ),
+                  duration: const Duration(milliseconds: 200),
+                  transitionBuilder: (child, animation) =>
+                      ScaleTransition(scale: animation, child: child),
+                  child: iconWidget,
                 ),
                 if (badgeCount > 0)
                   Positioned(
@@ -230,7 +219,7 @@ class _NavBarItem extends StatelessWidget {
                     child: Container(
                       padding: const EdgeInsets.all(4),
                       decoration: const BoxDecoration(
-                        color: Color(0xFFFFD60A), // Color ámbarIOS
+                        color: Color(0xFFFFD60A),
                         shape: BoxShape.circle,
                       ),
                       child: Text(
@@ -247,17 +236,13 @@ class _NavBarItem extends StatelessWidget {
             ),
             const SizedBox(height: 4),
             AnimatedDefaultTextStyle(
-              duration: const Duration(milliseconds: 150),
+              duration: const Duration(milliseconds: 130),
               style: TextStyle(
                 fontSize: 10.5,
                 fontWeight: isActive ? FontWeight.w700 : FontWeight.w500,
                 color: isActive ? activeColor : inactiveColor,
               ),
-              child: Text(
-                label,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
+              child: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis),
             ),
           ],
         ),

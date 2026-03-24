@@ -2,21 +2,48 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/theme/app_theme.dart';
-import '../../../core/mock/mock_news_data.dart';
 import '../../../core/models/news_item_model.dart';
+import '../../../core/services/cossmil_news_service.dart';
 import '../../../core/widgets/news_card.dart';
 import '../../../core/animations/optimized_animations.dart';
 
 /// Pantalla dedicada para comunicados, noticias y avisos institucionales.
-class NoticiasScreen extends StatelessWidget {
+/// Carga datos desde [CossmilNewsService] con fallback a mock data.
+class NoticiasScreen extends StatefulWidget {
   const NoticiasScreen({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    final allNews = MockNewsData.news;
-    final featured = allNews.where((n) => n.isFeatured).toList();
-    final regular = allNews.where((n) => !n.isFeatured).toList();
+  State<NoticiasScreen> createState() => _NoticiasScreenState();
+}
 
+class _NoticiasScreenState extends State<NoticiasScreen> {
+  List<NewsItemModel> _news = [];
+  bool _isLoading = true;
+  String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    if (!mounted) return;
+    setState(() { _isLoading = true; _error = null; });
+    try {
+      final items = await CossmilNewsService.fetchComunicados();
+      if (!mounted) return;
+      setState(() { _news = items; _isLoading = false; });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() { _error = e.toString(); _isLoading = false; });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final featured = _news.where((n) => n.isFeatured).toList();
+    final regular = _news.where((n) => !n.isFeatured).toList();
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return CupertinoPageScaffold(
@@ -27,8 +54,11 @@ class NoticiasScreen extends StatelessWidget {
         ),
         slivers: [
           CupertinoSliverNavigationBar(
-            largeTitle: Text('COSSMIL te informa', style: TextStyle(color: Theme.of(context).textTheme.bodyLarge?.color)),
-            backgroundColor: isDark 
+            largeTitle: Text(
+              'COSSMIL te informa',
+              style: TextStyle(color: Theme.of(context).textTheme.bodyLarge?.color),
+            ),
+            backgroundColor: isDark
                 ? const Color(0xFF1C1C1E).withValues(alpha: 0.92)
                 : AppColors.white.withValues(alpha: 0.92),
             border: Border(
@@ -38,69 +68,112 @@ class NoticiasScreen extends StatelessWidget {
               ),
             ),
           ),
-          SliverPadding(
-            padding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
-            sliver: SliverToBoxAdapter(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  // Subtitle
-                  const FadeSlideIn(
-                    child: Padding(
-                      padding: EdgeInsets.only(bottom: 16),
-                      child: Text(
-                        'Comunicados, avisos y anuncios importantes para nuestros asegurados.',
+
+          // ── Body ──────────────────────────────────────────────────────────
+          CupertinoSliverRefreshControl(onRefresh: _load),
+
+          if (_isLoading)
+            const SliverFillRemaining(
+              hasScrollBody: false,
+              child: Center(child: CupertinoActivityIndicator(radius: 14)),
+            )
+          else if (_error != null)
+            SliverFillRemaining(
+              hasScrollBody: false,
+              child: Center(
+                child: Padding(
+                  padding: const EdgeInsets.all(32),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(CupertinoIcons.wifi_slash,
+                          size: 40, color: AppColors.textTertiary),
+                      const SizedBox(height: 16),
+                      Text(
+                        'No se pudo cargar los comunicados',
+                        textAlign: TextAlign.center,
                         style: TextStyle(
-                          fontSize: 15,
+                          fontWeight: FontWeight.w600,
+                          color: Theme.of(context).textTheme.bodyLarge?.color,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        'Desliza hacia abajo para reintentar.',
+                        style: const TextStyle(
+                          fontSize: 13,
                           color: AppColors.textSecondary,
-                          height: 1.4,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            )
+          else ...[
+            SliverPadding(
+              padding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
+              sliver: SliverToBoxAdapter(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    const FadeSlideIn(
+                      child: Padding(
+                        padding: EdgeInsets.only(bottom: 16),
+                        child: Text(
+                          'Comunicados, avisos y anuncios importantes para nuestros asegurados.',
+                          style: TextStyle(
+                            fontSize: 15,
+                            color: AppColors.textSecondary,
+                            height: 1.4,
+                          ),
                         ),
                       ),
                     ),
-                  ),
 
-                  // ── Featured / Destacados ───────────────────────
-                  if (featured.isNotEmpty) ...[
+                    if (featured.isNotEmpty) ...[
+                      FadeSlideIn(
+                        delay: const Duration(milliseconds: 80),
+                        child: _sectionHeader(context, 'DESTACADOS', featured.length),
+                      ),
+                      const SizedBox(height: 10),
+                      for (int i = 0; i < featured.length; i++) ...[
+                        FadeSlideIn(
+                          delay: Duration(milliseconds: 120 + i * 80),
+                          child: _FeaturedCard(item: featured[i]),
+                        ),
+                        const SizedBox(height: 12),
+                      ],
+                      const SizedBox(height: 16),
+                    ],
+
                     FadeSlideIn(
-                      delay: const Duration(milliseconds: 80),
-                      child: _sectionHeader(context, 'DESTACADOS', featured.length),
+                      delay: Duration(
+                          milliseconds: 200 + featured.length * 80),
+                      child: _sectionHeader(
+                          context, 'TODOS LOS COMUNICADOS', _news.length),
                     ),
                     const SizedBox(height: 10),
-                    for (int i = 0; i < featured.length; i++) ...[
-                      FadeSlideIn(
-                        delay: Duration(milliseconds: 120 + i * 80),
-                        child: _FeaturedCard(item: featured[i]),
-                      ),
-                      const SizedBox(height: 12),
-                    ],
-                    const SizedBox(height: 16),
                   ],
-
-                  // ── All news chronological header ───────────────
-                  FadeSlideIn(
-                    delay: Duration(milliseconds: 200 + featured.length * 80),
-                    child: _sectionHeader(context, 'TODOS LOS COMUNICADOS', allNews.length),
-                  ),
-                  const SizedBox(height: 10),
-                ],
+                ),
               ),
             ),
-          ),
-          SliverPadding(
-            padding: const EdgeInsets.fromLTRB(20, 0, 20, 40),
-            sliver: SliverList.builder(
-              itemCount: regular.length,
-              itemBuilder: (context, i) {
-                return Padding(
-                  padding: EdgeInsets.only(bottom: i < regular.length - 1 ? 10 : 24),
+            SliverPadding(
+              padding: const EdgeInsets.fromLTRB(20, 0, 20, 120),
+              sliver: SliverList.builder(
+                itemCount: regular.length,
+                itemBuilder: (context, i) => Padding(
+                  padding: EdgeInsets.only(
+                      bottom: i < regular.length - 1 ? 10 : 24),
                   child: FadeSlideIn(
-                    delay: Duration(milliseconds: 240 + featured.length * 80 + i * 60),
+                    delay: Duration(
+                        milliseconds: 240 + featured.length * 80 + i * 60),
                     child: NewsCard(item: regular[i]),
                   ),
-                );
-              },
+                ),
+              ),
             ),
-          ),
+          ],
         ],
       ),
     );
@@ -116,7 +189,7 @@ class NoticiasScreen extends StatelessWidget {
             width: 3,
             height: 14,
             decoration: BoxDecoration(
-              color: isDark ? AppColors.white : AppColors.primary,
+              color: isDark ? AppColors.razer : AppColors.primary,
               borderRadius: BorderRadius.circular(2),
             ),
           ),
@@ -132,9 +205,12 @@ class NoticiasScreen extends StatelessWidget {
           ),
           const SizedBox(width: 8),
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+            padding:
+                const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
             decoration: BoxDecoration(
-              color: isDark ? AppColors.white.withValues(alpha: 0.2) : AppColors.primary.withValues(alpha: 0.12),
+              color: isDark
+                  ? AppColors.white.withValues(alpha: 0.2)
+                  : AppColors.primary.withValues(alpha: 0.12),
               borderRadius: BorderRadius.circular(10),
             ),
             child: Text(
@@ -152,7 +228,7 @@ class NoticiasScreen extends StatelessWidget {
   }
 }
 
-/// Card destacada con gradiente lateral y badge visual.
+/// Card destacada con barra lateral de color semántico.
 class _FeaturedCard extends StatelessWidget {
   final NewsItemModel item;
   const _FeaturedCard({required this.item});
@@ -162,8 +238,8 @@ class _FeaturedCard extends StatelessWidget {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final accentColor = switch (item.importance) {
       NewsImportance.critical => AppColors.error,
-      NewsImportance.warning => AppColors.warning,
-      NewsImportance.normal => AppColors.info,
+      NewsImportance.warning  => AppColors.warning,
+      NewsImportance.normal   => AppColors.info,
     };
 
     return Container(
@@ -172,13 +248,14 @@ class _FeaturedCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(AppTheme.radiusLg),
         boxShadow: isDark ? [] : AppColors.softShadow,
         border: Border.all(
-          color: isDark ? Colors.white.withValues(alpha: 0.1) : accentColor.withValues(alpha: 0.20),
-          width: 1,
+          color: isDark
+              ? Colors.white.withValues(alpha: 0.1)
+              : accentColor.withValues(alpha: 0.20),
         ),
       ),
       child: Row(
         children: [
-          // Left accent bar
+          // Barra lateral de color semántico
           Container(
             width: 5,
             height: 120,
@@ -190,14 +267,13 @@ class _FeaturedCard extends StatelessWidget {
               ),
             ),
           ),
-          // Content
           Expanded(
             child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+              padding: const EdgeInsets.symmetric(
+                  horizontal: 14, vertical: 14),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Top row: badge + date
                   Row(
                     children: [
                       Container(
@@ -212,7 +288,8 @@ class _FeaturedCard extends StatelessWidget {
                           children: [
                             Icon(
                               item.importance == NewsImportance.critical
-                                  ? CupertinoIcons.exclamationmark_triangle_fill
+                                  ? CupertinoIcons
+                                      .exclamationmark_triangle_fill
                                   : CupertinoIcons.star_fill,
                               size: 10,
                               color: accentColor,
@@ -242,18 +319,17 @@ class _FeaturedCard extends StatelessWidget {
                     ],
                   ),
                   const SizedBox(height: 10),
-                  // Title
                   Text(
                     item.title,
                     style: TextStyle(
                       fontSize: 15,
                       fontWeight: FontWeight.w800,
-                      color: Theme.of(context).textTheme.bodyLarge?.color ?? AppColors.textPrimary,
+                      color: Theme.of(context).textTheme.bodyLarge?.color ??
+                          AppColors.textPrimary,
                       height: 1.3,
                     ),
                   ),
                   const SizedBox(height: 6),
-                  // Summary
                   Text(
                     item.summary,
                     maxLines: 2,

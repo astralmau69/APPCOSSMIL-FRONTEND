@@ -14,7 +14,7 @@ class TimeSlotModel {
       time: json['hora'] as String? ?? json['time'] as String? ?? '',
       isAvailable: json['disponible'] as bool? ??
           json['isAvailable'] as bool? ??
-          true,
+          false,
       statusLevel: json['nivel'] as String? ??
           json['statusLevel'] as String?,
     );

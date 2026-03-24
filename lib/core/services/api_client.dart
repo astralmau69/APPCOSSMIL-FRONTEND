@@ -17,6 +17,9 @@ class ApiClient {
 
   ApiClient({http.Client? httpClient}) : _http = httpClient ?? http.Client();
 
+  /// Cierra el cliente HTTP. Llamar cuando ya no se necesite.
+  void close() => _http.close();
+
   // ── GET con Bearer Token ──────────────────────────────────────────────
 
   /// Realiza un GET autenticado.
@@ -42,6 +45,10 @@ class ApiClient {
       }
 
       if (response.statusCode == 401) {
+        if (kDebugMode) {
+          debugPrint('   ↳ 401 UNAUTHORIZED: Token might be invalid or expired.');
+          debugPrint('   ↳ Response body: ${response.body}');
+        }
         return const ApiClientResponse.error(
           'Sesión expirada. Inicie sesión nuevamente.',
           statusCode: 401,
@@ -69,10 +76,11 @@ class ApiClient {
     final headers = <String, String>{
       'Content-Type': 'application/json',
       'Accept': 'application/json',
-      'User-Agent': 'insomnia/2023.5.8',
     };
     if (token != null && token.isNotEmpty) {
       headers['Authorization'] = 'Bearer $token';
+    } else if (kDebugMode) {
+      debugPrint('   ⚠ WARNING: Attempting protected request without token.');
     }
     return headers;
   }

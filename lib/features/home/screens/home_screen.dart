@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:typed_data';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import '../../../core/constants/app_colors.dart';
@@ -6,8 +7,9 @@ import '../../../core/theme/app_constants.dart';
 import '../../../core/extensions/responsive_extensions.dart';
 import '../../../core/animations/optimized_animations.dart';
 import '../../../core/mock/mock_user_data.dart';
-import '../../../core/mock/mock_news_data.dart';
+import '../../../core/models/news_item_model.dart';
 import '../../../core/models/user_model.dart';
+import '../../../core/services/cossmil_news_service.dart';
 import '../../../core/widgets/news_card.dart';
 import '../../../core/widgets/section_header.dart';
 import '../../../shell/tab_shell.dart';
@@ -24,6 +26,30 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
+  List<NewsItemModel> _news = [];
+  bool _isLoadingNews = true;
+  // Decoded once in initState — avoids re-decoding on every news setState.
+  Uint8List? _cachedUserPhoto;
+
+  @override
+  void initState() {
+    super.initState();
+    final photo = MockUserData.user.photoBase64;
+    if (photo.isNotEmpty) {
+      try { _cachedUserPhoto = base64Decode(photo); } catch (_) {}
+    }
+    _loadNews();
+  }
+
+  Future<void> _loadNews() async {
+    setState(() => _isLoadingNews = true);
+    final items = await CossmilNewsService.fetchComunicados();
+    if (!mounted) return;
+    setState(() {
+      _news = items;
+      _isLoadingNews = false;
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -124,21 +150,15 @@ class _HomeScreenState extends State<HomeScreen> {
                 radius: 50,
                 backgroundColor: AppColors.white.withValues(alpha: 0.2),
                 child: ClipOval(
-                  child: user.photoBase64.isNotEmpty
+                  child: _cachedUserPhoto != null
                       ? Image.memory(
-                          base64Decode(user.photoBase64),
+                          _cachedUserPhoto!,
                           width: 100,
                           height: 100,
                           fit: BoxFit.cover,
+                          errorBuilder: (_, __, ___) => _fallbackAvatar(user),
                         )
-                      : Text(
-                          user.fullName.isNotEmpty ? user.fullName[0] : 'U',
-                          style: const TextStyle(
-                            color: AppColors.white,
-                            fontWeight: FontWeight.w800,
-                            fontSize: 40,
-                          ),
-                        ),
+                      : _fallbackAvatar(user),
                 ),
               ),
               const SizedBox(width: 14),
@@ -215,6 +235,16 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
+  Widget _fallbackAvatar(UserModel user) {
+    return Text(
+      user.fullName.isNotEmpty ? user.fullName[0] : 'U',
+      style: const TextStyle(
+        color: AppColors.white,
+        fontWeight: FontWeight.w800,
+        fontSize: 40,
+      ),
+    );
+  }
 
   Widget _statusBadge(UserModel user) {
     final enabled = user.isEnabled;
@@ -388,15 +418,52 @@ class _HomeScreenState extends State<HomeScreen> {
   // ── COSSMIL Te Informa — News Section ─────────────────────────────────────
 
   Widget _buildNewsSection() {
-    final news = MockNewsData.news;
-    final previewCount = news.length > 2 ? 2 : news.length;
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    
+
     return Column(
       children: [
-        for (int i = 0; i < previewCount; i++) ...[
-          NewsCard(item: news[i]),
-          if (i < previewCount - 1) const SizedBox(height: 10),
+        if (_isLoadingNews) ...[
+          _NewsCardSkeleton(isDark: isDark),
+          const SizedBox(height: 10),
+          _NewsCardSkeleton(isDark: isDark),
+        ] else if (_news.isEmpty) ...[
+          Container(
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              color: isDark ? const Color(0xFF1C1C1E) : AppColors.white,
+              borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
+              border: Border.all(
+                color: isDark
+                    ? Colors.white.withValues(alpha: 0.08)
+                    : AppColors.border,
+                width: 0.5,
+              ),
+            ),
+            child: Row(
+              children: [
+                Icon(Icons.newspaper_outlined,
+                    size: 22,
+                    color: isDark
+                        ? AppColors.white.withValues(alpha: 0.3)
+                        : AppColors.textTertiary),
+                const SizedBox(width: 12),
+                const Text(
+                  'Sin comunicados recientes',
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: AppColors.textSecondary,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ] else ...[
+          for (int i = 0; i < (_news.length > 2 ? 2 : _news.length); i++) ...[
+            NewsCard(item: _news[i]),
+            if (i < (_news.length > 2 ? 2 : _news.length) - 1)
+              const SizedBox(height: 10),
+          ],
         ],
         const SizedBox(height: 12),
         GestureDetector(
@@ -407,10 +474,14 @@ class _HomeScreenState extends State<HomeScreen> {
           child: Container(
             padding: const EdgeInsets.symmetric(vertical: 12),
             decoration: BoxDecoration(
-              color: isDark ? AppColors.primary.withValues(alpha: 0.2) : AppColors.primary.withValues(alpha: 0.06),
+              color: isDark
+                  ? AppColors.primary.withValues(alpha: 0.2)
+                  : AppColors.primary.withValues(alpha: 0.06),
               borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
               border: Border.all(
-                color: isDark ? AppColors.white.withValues(alpha: 0.1) : AppColors.primary.withValues(alpha: 0.12),
+                color: isDark
+                    ? AppColors.white.withValues(alpha: 0.1)
+                    : AppColors.primary.withValues(alpha: 0.12),
               ),
             ),
             child: Row(
@@ -424,7 +495,8 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
                 const SizedBox(width: 6),
                 Icon(Icons.arrow_forward,
-                    size: 14, color: isDark ? AppColors.white : AppColors.primary),
+                    size: 14,
+                    color: isDark ? AppColors.white : AppColors.primary),
               ],
             ),
           ),
@@ -433,6 +505,117 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
+}
+
+// ── Skeleton placeholder para cards de noticias ───────────────────────────────
+class _NewsCardSkeleton extends StatefulWidget {
+  final bool isDark;
+  const _NewsCardSkeleton({required this.isDark});
+
+  @override
+  State<_NewsCardSkeleton> createState() => _NewsCardSkeletonState();
+}
+
+class _NewsCardSkeletonState extends State<_NewsCardSkeleton>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _ctrl;
+  late final Animation<double> _anim;
+
+  @override
+  void initState() {
+    super.initState();
+    _ctrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 900),
+    )..repeat(reverse: true);
+    _anim = CurvedAnimation(parent: _ctrl, curve: Curves.easeInOut);
+  }
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _anim,
+      builder: (context, _) {
+        final base = widget.isDark
+            ? Color.lerp(const Color(0xFF2C2C2E), const Color(0xFF3A3A3C),
+                _anim.value)!
+            : Color.lerp(const Color(0xFFE2E8F0), const Color(0xFFF1F5F9),
+                _anim.value)!;
+        return Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: widget.isDark ? const Color(0xFF1C1C1E) : AppColors.white,
+            borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
+            border: Border.all(
+              color: widget.isDark
+                  ? Colors.white.withValues(alpha: 0.08)
+                  : AppColors.border,
+              width: 0.5,
+            ),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Container(
+                    width: 70,
+                    height: 20,
+                    decoration: BoxDecoration(
+                      color: base,
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                  ),
+                  Container(
+                    width: 60,
+                    height: 14,
+                    decoration: BoxDecoration(
+                      color: base,
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 10),
+              Container(
+                height: 16,
+                width: double.infinity,
+                decoration: BoxDecoration(
+                  color: base,
+                  borderRadius: BorderRadius.circular(4),
+                ),
+              ),
+              const SizedBox(height: 6),
+              Container(
+                height: 13,
+                width: MediaQuery.of(context).size.width * 0.6,
+                decoration: BoxDecoration(
+                  color: base,
+                  borderRadius: BorderRadius.circular(4),
+                ),
+              ),
+              const SizedBox(height: 6),
+              Container(
+                height: 13,
+                width: double.infinity,
+                decoration: BoxDecoration(
+                  color: base,
+                  borderRadius: BorderRadius.circular(4),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
 }
 
 class _QuickAction {

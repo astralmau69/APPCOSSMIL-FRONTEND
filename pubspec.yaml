@@ -41,9 +41,12 @@ dependencies:
   open_file: ^3.5.10             # Abrir archivos generados
   intl: ^0.19.0                  # Formato de fechas
   local_auth: ^2.3.0
+  crypto: ^3.0.3
   animate_do: ^4.2.0
   geolocator: ^14.0.2
   url_launcher: ^6.3.2
+  flutter_local_notifications: ^18.0.0
+  timezone: ^0.10.0             # Requerido por flutter_local_notifications para zonedSchedule
 
 dev_dependencies:
   flutter_test:
@@ -55,6 +58,15 @@ dev_dependencies:
   # package. See that file for information about deactivating specific lint
   # rules and activating additional ones.
   flutter_lints: ^5.0.0
+  flutter_launcher_icons: ^0.13.1
+
+flutter_launcher_icons:
+  android: true
+  ios: true
+  image_path: "assets/images/cossmil_logo.png"
+  remove_alpha_ios: true
+  adaptive_icon_background: "#FFFFFF"
+  adaptive_icon_foreground: "assets/images/cossmil_logo.png"
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec
