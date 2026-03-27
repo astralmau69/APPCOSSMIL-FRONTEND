@@ -39,6 +39,27 @@ class ApiConstants {
   static String especialidadesInterconsulta(int idper) =>
       '/api/programacion/especialidades/interconsulta/$idper';
 
+  /// Verificar si hay horario de atención habilitado.
+  /// Retorna el código de horario asignado (int) en `data`.
+  static String verificarHorarioAtencion(int idins, int idsuc) =>
+      '/api/programacion/verificar-horario-atencion/$idins/$idsuc/ASE';
+
+  /// Horarios de atención habilitados para reserva.
+  static String horariosAtencion(int idins, int idsuc) =>
+      '/api/programacion/horarios-atencion/$idins/$idsuc';
+
+  /// Médico asignado con agenda y horas disponibles.
+  /// [fecha] formato yyyy-MM-dd (fecha de la cita, típicamente mañana).
+  static String medicoAsignado(int idins, int idsuc, int idesp, String fecha, int idhorario) =>
+      '/api/programacion/medico-asignado/$idins/$idsuc/$idesp/$fecha/ASE/$idhorario';
+
+  /// Crear cita médica (POST).
+  static String crearCita() => '/api/programacion/crea-cita';
+
+  /// Historial de reservas de un asegurado.
+  static String reservas(int idper) =>
+      '/api/programacion/reservas/$idper/ASE';
+
   /// Foto y datos básicos del asegurado por matrícula.
   static String aseguradoFoto(String matricula) =>
       '/api/safil/asegurado/foto/${matricula.trim()}';

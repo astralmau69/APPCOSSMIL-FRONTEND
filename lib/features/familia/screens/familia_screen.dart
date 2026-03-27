@@ -5,7 +5,7 @@ import 'package:flutter/material.dart';
 import '../../../core/animations/optimized_animations.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/models/beneficiary_model.dart';
-import '../../../core/mock/mock_user_data.dart';
+import '../../../core/session/user_session.dart';
 import '../../../core/theme/app_constants.dart';
 
 class FamiliaScreen extends StatefulWidget {
@@ -22,7 +22,7 @@ class _FamiliaScreenState extends State<FamiliaScreen> {
   @override
   void initState() {
     super.initState();
-    _decodedPhotos = MockUserData.user.beneficiaries.map((b) {
+    _decodedPhotos = UserSession.currentUser.beneficiaries.map((b) {
       if (b.photoBase64.isEmpty) return null;
       try {
         return base64Decode(b.photoBase64);
@@ -34,7 +34,7 @@ class _FamiliaScreenState extends State<FamiliaScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final beneficiaries = MockUserData.user.beneficiaries;
+    final beneficiaries = UserSession.currentUser.beneficiaries;
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final titleCount = beneficiaries.length;
 
@@ -49,15 +49,15 @@ class _FamiliaScreenState extends State<FamiliaScreen> {
             largeTitle: Text(
               'Mi Grupo Familiar',
               style: TextStyle(
-                color: Theme.of(context).textTheme.bodyLarge?.color,
+                color: AppColors.textPrimaryC(isDark),
               ),
             ),
             backgroundColor: isDark
-                ? const Color(0xFF1C1C1E).withValues(alpha: 0.92)
+                ? AppColors.darkSurface.withValues(alpha: 0.92)
                 : AppColors.white.withValues(alpha: 0.92),
             border: Border(
               bottom: BorderSide(
-                color: AppColors.border.withValues(alpha: 0.5),
+                color: AppColors.dividerC(isDark),
                 width: 0.5,
               ),
             ),
@@ -71,9 +71,7 @@ class _FamiliaScreenState extends State<FamiliaScreen> {
                     padding:
                         const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                     decoration: BoxDecoration(
-                      color: isDark
-                          ? AppColors.primary.withValues(alpha: 0.2)
-                          : AppColors.primaryLight,
+                      color: AppColors.accentBg(isDark),
                       borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
                     ),
                     child: Text(
@@ -81,7 +79,7 @@ class _FamiliaScreenState extends State<FamiliaScreen> {
                       style: TextStyle(
                         fontSize: 13,
                         fontWeight: FontWeight.w700,
-                        color: isDark ? AppColors.white : AppColors.primary,
+                        color: AppColors.accentForTheme(isDark),
                       ),
                     ),
                   ),
@@ -139,29 +137,21 @@ class _BeneficiaryCard extends StatelessWidget {
     final b = beneficiary;
     final isTitular = b.isTitular;
     final accentColor = isTitular
-        ? (isDark ? AppColors.razer : AppColors.primary)
+        ? AppColors.accentForTheme(isDark)
         : AppColors.accent;
 
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
-        color: isDark ? const Color(0xFF1C1C1E) : AppColors.white,
+        color: AppColors.cardBg(isDark),
         borderRadius: BorderRadius.circular(AppSpacing.radiusLg),
         border: Border.all(
           color: isTitular
               ? accentColor.withValues(alpha: isDark ? 0.35 : 0.2)
-              : (isDark ? Colors.white.withValues(alpha: 0.08) : AppColors.border),
+              : AppColors.cardBorder(isDark),
           width: isTitular ? 1.0 : 0.5,
         ),
-        boxShadow: isDark
-            ? []
-            : [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.03),
-                  blurRadius: 8,
-                  offset: const Offset(0, 2),
-                ),
-              ],
+        boxShadow: AppColors.cardShadowFor(isDark),
       ),
       child: Row(
         children: [
@@ -181,9 +171,7 @@ class _BeneficiaryCard extends StatelessWidget {
                         style: TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.w700,
-                          color:
-                              Theme.of(context).textTheme.bodyLarge?.color ??
-                                  AppColors.textPrimary,
+                          color: AppColors.textPrimaryC(isDark),
                         ),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
@@ -194,7 +182,7 @@ class _BeneficiaryCard extends StatelessWidget {
                         padding: const EdgeInsets.symmetric(
                             horizontal: 7, vertical: 2),
                         decoration: BoxDecoration(
-                          color: accentColor.withValues(alpha: 0.12),
+                          color: AppColors.accentForTheme(isDark).withValues(alpha: 0.12),
                           borderRadius: BorderRadius.circular(6),
                         ),
                         child: Text(
@@ -203,7 +191,7 @@ class _BeneficiaryCard extends StatelessWidget {
                             fontSize: 9,
                             fontWeight: FontWeight.w800,
                             letterSpacing: 0.6,
-                            color: accentColor,
+                            color: AppColors.accentForTheme(isDark),
                           ),
                         ),
                       ),
@@ -215,7 +203,7 @@ class _BeneficiaryCard extends StatelessWidget {
                   style: TextStyle(
                     fontSize: 13,
                     fontWeight: FontWeight.w500,
-                    color: AppColors.textSecondary,
+                    color: AppColors.textSecondaryC(isDark),
                   ),
                 ),
                 const SizedBox(height: 8),
@@ -244,7 +232,7 @@ class _BeneficiaryCard extends StatelessWidget {
           const SizedBox(width: 8),
           Icon(
             CupertinoIcons.chevron_right,
-            color: AppColors.textTertiary,
+            color: AppColors.textTertiaryC(isDark),
             size: 18,
           ),
         ],
@@ -254,8 +242,8 @@ class _BeneficiaryCard extends StatelessWidget {
 
   Widget _buildAvatar(Color accentColor) {
     return Container(
-      width: 56,
-      height: 56,
+      width: 60,
+      height: 60,
       decoration: BoxDecoration(
         shape: BoxShape.circle,
         gradient: LinearGradient(
@@ -269,8 +257,8 @@ class _BeneficiaryCard extends StatelessWidget {
             ? Image.memory(
                 decodedPhoto!,
                 fit: BoxFit.cover,
-                width: 56,
-                height: 56,
+                width: 60,
+                height: 60,
                 errorBuilder: (_, __, ___) => _initial(),
               )
             : _initial(),
@@ -285,7 +273,7 @@ class _BeneficiaryCard extends StatelessWidget {
         style: const TextStyle(
           color: AppColors.white,
           fontWeight: FontWeight.w800,
-          fontSize: 20,
+          fontSize: 22,
         ),
       ),
     );
@@ -299,9 +287,7 @@ class _BeneficiaryCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
       decoration: BoxDecoration(
-        color: isDark
-            ? Colors.white.withValues(alpha: 0.07)
-            : AppColors.background,
+        color: isDark ? AppColors.darkElevated : AppColors.background,
         borderRadius: BorderRadius.circular(6),
       ),
       child: Row(
@@ -309,18 +295,14 @@ class _BeneficiaryCard extends StatelessWidget {
         children: [
           Icon(icon,
               size: 11,
-              color: isDark
-                  ? AppColors.white.withValues(alpha: 0.5)
-                  : AppColors.textSecondary),
+              color: AppColors.textSecondaryC(isDark)),
           const SizedBox(width: 4),
           Text(
             label,
             style: TextStyle(
               fontSize: 11,
               fontWeight: FontWeight.w600,
-              color: isDark
-                  ? AppColors.white.withValues(alpha: 0.6)
-                  : AppColors.textSecondary,
+              color: AppColors.textSecondaryC(isDark),
             ),
           ),
         ],

@@ -17,11 +17,14 @@ class AuthTokenModel {
   final String ci;
   final String matricula;
   final int edad;
+  final String genero;
   final String rol;
   final String grado;
   final int idper;
   final String numeroCelular;
   final String correo;
+  final int? idseg;
+  final String? uc;
 
   const AuthTokenModel({
     required this.accessToken,
@@ -36,11 +39,14 @@ class AuthTokenModel {
     this.ci = '',
     this.matricula = '',
     this.edad = 0,
+    this.genero = '',
     this.rol = '',
     this.grado = '',
     this.idper = 0,
     this.numeroCelular = '',
     this.correo = '',
+    this.idseg,
+    this.uc,
   });
 
   factory AuthTokenModel.fromJson(Map<String, dynamic> json) {
@@ -79,11 +85,14 @@ class AuthTokenModel {
       ci: val('ci') as String? ?? '',
       matricula: val('matricula') as String? ?? '',
       edad: val('edad') as int? ?? 0,
+      genero: val('genero') as String? ?? val('sexo') as String? ?? val('gender') as String? ?? '',
       rol: val('rol') as String? ?? '',
       grado: val('grado') as String? ?? '',
       idper: (val('idper') ?? int.tryParse(val('idusr')?.toString() ?? '')) as int? ?? 0,
       numeroCelular: val('numeroCelular') as String? ?? '',
       correo: val('correo') as String? ?? '',
+      idseg: val('idseg') as int?,
+      uc: val('uc')?.toString(),
     );
   }
 
@@ -100,6 +109,7 @@ class AuthTokenModel {
         'ci': ci,
         'matricula': matricula,
         'edad': edad,
+        'genero': genero,
         'rol': rol,
         'grado': grado,
         'idper': idper,

@@ -27,7 +27,7 @@ class _CossmilAppState extends State<CossmilApp> {
         return MaterialApp(
           builder: (context, appChild) {
             // Ensures ALL Text widgets have decoration:none by default.
-            final defaultColor = currentThemeMode == ThemeMode.dark ? Colors.white : AppColors.textPrimary;
+            final defaultColor = currentThemeMode == ThemeMode.dark ? AppColors.darkTextPrimary : AppColors.textPrimary;
             return DefaultTextStyle(
               style: TextStyle(
                 decoration: TextDecoration.none,

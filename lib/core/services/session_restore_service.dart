@@ -1,7 +1,7 @@
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
-import '../mock/mock_user_data.dart';
+import '../session/user_session.dart';
 import '../models/user_model.dart';
 import '../models/beneficiary_model.dart';
 import 'security_service.dart';
@@ -15,7 +15,7 @@ import '../constants/api_constants.dart';
 /// Flujo:
 ///   1. Login exitoso → [saveUserSession] guarda UserModel como JSON.
 ///   2. App reabre con token válido → [restoreUserSession] restaura
-///      MockUserData.user y SecurityService.displayName/photo.
+///      UserSession.currentUser y SecurityService.displayName/photo.
 ///   3. Logout → [clearUserSession] borra todo.
 class SessionRestoreService {
   static const _storage = FlutterSecureStorage(
@@ -27,7 +27,7 @@ class SessionRestoreService {
   // ─── Guardar ──────────────────────────────────────────────────────────────
 
   /// Persiste la sesión completa del usuario.
-  /// Llamar desde [AuthService.login] después de construir MockUserData.user
+  /// Llamar desde [AuthService.login] después de construir UserSession.currentUser
   /// (incluyendo la foto si se obtuvo).
   static Future<void> saveUserSession(UserModel user) async {
     try {
@@ -43,7 +43,7 @@ class SessionRestoreService {
 
   // ─── Restaurar ────────────────────────────────────────────────────────────
 
-  /// Restaura MockUserData.user desde secure storage.
+  /// Restaura UserSession.currentUser desde secure storage.
   /// Retorna true si se restauró exitosamente.
   ///
   /// Si hay matrícula guardada pero la foto está vacía, intenta un
@@ -57,7 +57,7 @@ class SessionRestoreService {
       final user = UserModel.fromJson(jsonMap);
 
       // Restaurar el singleton en memoria
-      MockUserData.user = user;
+      UserSession.currentUser = user;
 
       // Sincronizar nombre con SecurityService
       if (user.fullName.isNotEmpty) {
@@ -96,26 +96,27 @@ class SessionRestoreService {
         final rawPhoto = data['foto2'] as String? ?? '';
         final cleanPhoto = AuthService.cleanBase64(rawPhoto);
         if (cleanPhoto.isNotEmpty) {
-          MockUserData.user = MockUserData.user.copyWith(photoBase64: cleanPhoto);
+          UserSession.currentUser = UserSession.currentUser.copyWith(photoBase64: cleanPhoto);
           
           // Actualizar también en la lista de beneficiarios si está el titular
-          final updatedBens = MockUserData.user.beneficiaries.map((b) {
+          final updatedBens = UserSession.currentUser.beneficiaries.map((b) {
             if (b.relationship == 'Titular') {
               return BeneficiaryModel(
                 id: b.id,
                 fullName: b.fullName,
                 relationship: b.relationship,
                 age: b.age,
+                gender: b.gender,
                 matricula: b.matricula,
                 photoBase64: cleanPhoto,
               );
             }
             return b;
           }).toList();
-          MockUserData.user = MockUserData.user.copyWith(beneficiaries: List<BeneficiaryModel>.from(updatedBens));
+          UserSession.currentUser = UserSession.currentUser.copyWith(beneficiaries: List<BeneficiaryModel>.from(updatedBens));
 
           // Persistir la foto actualizada
-          await saveUserSession(MockUserData.user);
+          await saveUserSession(UserSession.currentUser);
           if (kDebugMode) {
             debugPrint('📸 SessionRestore: foto titular actualizada en background');
           }
@@ -139,13 +140,14 @@ class SessionRestoreService {
         final rawPhoto = data['foto2'] as String? ?? '';
         final cleanPhoto = AuthService.cleanBase64(rawPhoto);
         if (cleanPhoto.isNotEmpty) {
-          final updatedBens = MockUserData.user.beneficiaries.map((b) {
+          final updatedBens = UserSession.currentUser.beneficiaries.map((b) {
             if (b.id == beneficiary.id) {
               return BeneficiaryModel(
                 id: b.id,
                 fullName: b.fullName,
                 relationship: b.relationship,
                 age: b.age,
+                gender: b.gender,
                 matricula: b.matricula,
                 photoBase64: cleanPhoto,
               );
@@ -153,8 +155,8 @@ class SessionRestoreService {
             return b;
           }).toList();
           
-          MockUserData.user = MockUserData.user.copyWith(beneficiaries: List<BeneficiaryModel>.from(updatedBens));
-          await saveUserSession(MockUserData.user);
+          UserSession.currentUser = UserSession.currentUser.copyWith(beneficiaries: List<BeneficiaryModel>.from(updatedBens));
+          await saveUserSession(UserSession.currentUser);
           if (kDebugMode) {
             debugPrint('📸 SessionRestore: foto de beneficiario ${beneficiary.fullName} actualizada');
           }

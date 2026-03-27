@@ -3,9 +3,10 @@ import 'package:flutter/material.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/theme/app_constants.dart';
 import '../../../core/theme/app_theme.dart';
-import '../../../core/mock/mock_user_data.dart';
+import '../../../core/session/user_session.dart';
 import '../../../core/models/specialty_model.dart';
 import '../../../core/services/programacion_service.dart';
+import '../../../core/helpers/specialty_filter.dart';
 import '../../../core/widgets/breadcrumb_chips.dart';
 import '../../../core/widgets/section_header.dart';
 import '../../../core/animations/optimized_animations.dart';
@@ -46,9 +47,8 @@ class _SpecialtyScreenState extends State<SpecialtyScreen> {
     try {
       final bs = widget.tabShell.bookingState;
       final idsuc = int.tryParse(bs.hospital?.id ?? '') ?? 0;
-      final idper = int.tryParse(MockUserData.user.id) ?? 0;
+      final idper = int.tryParse(UserSession.currentUser.id) ?? 0;
 
-      // Realizamos las peticiones. Si una falla, la otra puede seguir.
       final directasFuture = _service.getEspecialidadesDirectas(1, idsuc);
       final interFuture = _service.getEspecialidadesInterconsulta(idper);
 
@@ -66,10 +66,29 @@ class _SpecialtyScreenState extends State<SpecialtyScreen> {
         _interconsultas = [];
       }
 
+      // ── Filtrar por edad y género de la persona que reserva ─────────
+      final beneficiary = bs.beneficiary;
+      final int personAge = UserSession.ageFor(beneficiary);
+      final String personGender = UserSession.genderFor(beneficiary);
+
+      debugPrint('🔎 SpecialtyFilter: beneficiary=${beneficiary?.fullName ?? "titular"}, '
+          'age=$personAge, gender="$personGender", '
+          'directas=${_directas.length}, inter=${_interconsultas.length}');
+
+      _directas = SpecialtyFilter.apply(
+        specialties: _directas,
+        age: personAge,
+        gender: personGender,
+      );
+
+      _interconsultas = SpecialtyFilter.apply(
+        specialties: _interconsultas,
+        age: personAge,
+        gender: personGender,
+      );
+
       if (mounted) {
-        setState(() {
-          _isLoading = false;
-        });
+        setState(() => _isLoading = false);
       }
     } catch (e) {
       if (mounted) {
@@ -92,18 +111,21 @@ class _SpecialtyScreenState extends State<SpecialtyScreen> {
     ];
 
     return CupertinoPageScaffold(
-      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+      backgroundColor: AppColors.scaffoldBg(isDark),
       navigationBar: CupertinoNavigationBar(
         middle: Text(
           'Especialidad',
-          style: TextStyle(fontWeight: FontWeight.w700, fontSize: 17, color: Theme.of(context).textTheme.bodyLarge?.color),
+          style: TextStyle(
+            fontWeight: FontWeight.w700,
+            fontSize: 17,
+            color: AppColors.textPrimaryC(isDark),
+          ),
         ),
-        backgroundColor: isDark 
-            ? const Color(0xFF1C1C1E).withValues(alpha: 0.92)
-            : AppColors.white.withValues(alpha: 0.92),
+        backgroundColor:
+            (isDark ? AppColors.darkSurface : AppColors.white).withValues(alpha: 0.92),
         border: Border(
           bottom: BorderSide(
-            color: AppColors.border.withValues(alpha: 0.3),
+            color: AppColors.cardBorder(isDark).withValues(alpha: 0.3),
             width: 0.5,
           ),
         ),
@@ -116,57 +138,81 @@ class _SpecialtyScreenState extends State<SpecialtyScreen> {
               : _errorMessage != null
                   ? AppStateWidget.error(
                       key: const ValueKey('error'),
-                      title: 'Error al cargar especialidades',
+                      title: _isAuthError(_errorMessage!)
+                          ? 'Sesión expirada'
+                          : 'No se pudieron cargar las especialidades',
                       message: _isAuthError(_errorMessage!)
-                          ? 'Tu sesión ha expirado. Vuelve a iniciar sesión.'
-                          : 'No se pudieron cargar las especialidades disponibles.',
+                          ? 'Tu sesión ha expirado. Por favor, vuelve a iniciar sesión para continuar.'
+                          : 'Ocurrió un problema al consultar las especialidades disponibles. '
+                            'Verifica tu conexión a internet e intenta nuevamente.',
                       onRetry: _isAuthError(_errorMessage!)
                           ? () => Navigator.of(context, rootNavigator: true)
                               .pushReplacementNamed('/login')
                           : _fetchData,
+                      retryLabel: _isAuthError(_errorMessage!)
+                          ? 'Ir al login'
+                          : 'Reintentar',
+                      icon: _isAuthError(_errorMessage!)
+                          ? CupertinoIcons.lock_shield
+                          : CupertinoIcons.wifi_slash,
                     )
-                  : RefreshIndicator(
-                      key: const ValueKey('data'),
-                      onRefresh: _fetchData,
-                      child: ListView(
-                        padding: const EdgeInsets.symmetric(vertical: 16),
-                        children: [
-                          BreadcrumbChips(labels: breadcrumbs),
-                          const SizedBox(height: 20),
-                          const SectionHeader(text: 'CONSULTA DIRECTA'),
-                          const SizedBox(height: 8),
-                          if (_directas.isEmpty)
-                            const Padding(
-                              padding: EdgeInsets.symmetric(vertical: 20, horizontal: 40),
-                              child: Text('No hay especialidades directas disponibles.', textAlign: TextAlign.center, style: TextStyle(fontSize: 13, color: AppColors.textSecondary)),
-                            )
-                          else
-                            _buildSpecialtyList(
-                              context,
-                              _directas,
-                              startDelay: 50,
-                            ),
-                          const SizedBox(height: 24),
-                          const SectionHeader(text: 'INTERCONSULTA (HABILITADAS)'),
-                          const SizedBox(height: 8),
-                          if (_interconsultas.isEmpty)
-                            const Padding(
-                              padding: EdgeInsets.symmetric(vertical: 20, horizontal: 40),
-                              child: Text('No tiene órdenes de interconsulta habilitadas.', textAlign: TextAlign.center, style: TextStyle(fontSize: 13, color: AppColors.textSecondary)),
-                            )
-                          else
-                            _buildSpecialtyList(
-                              context,
-                              _interconsultas,
-                              showBadge: true,
-                              startDelay: 100,
-                            ),
-                        ],
-                      ),
-                    ),
+                  : (_directas.isEmpty && _interconsultas.isEmpty)
+                      ? AppStateWidget.empty(
+                          key: const ValueKey('empty'),
+                          title: 'Sin especialidades disponibles',
+                          message: _emptySpecialtiesMessage(),
+                          icon: CupertinoIcons.heart_slash,
+                        )
+                      : RefreshIndicator(
+                          key: const ValueKey('data'),
+                          onRefresh: _fetchData,
+                          child: ListView(
+                            padding: const EdgeInsets.symmetric(vertical: 20),
+                            children: [
+                              BreadcrumbChips(labels: breadcrumbs),
+                              const SizedBox(height: 24),
+                              if (_directas.isNotEmpty) ...[
+                                const SectionHeader(text: 'CONSULTA DIRECTA'),
+                                const SizedBox(height: 12),
+                                _buildSpecialtyList(
+                                  context,
+                                  _directas,
+                                  startDelay: 50,
+                                ),
+                                const SizedBox(height: 28),
+                              ],
+                              if (_interconsultas.isNotEmpty) ...[
+                                const SectionHeader(text: 'INTERCONSULTA (HABILITADAS)'),
+                                const SizedBox(height: 12),
+                                _buildSpecialtyList(
+                                  context,
+                                  _interconsultas,
+                                  showBadge: true,
+                                  startDelay: 100,
+                                ),
+                              ],
+                              if (_directas.isNotEmpty && _interconsultas.isEmpty)
+                                const SizedBox(height: 8),
+                            ],
+                          ),
+                        ),
         ),
       ),
     );
+  }
+
+  String _emptySpecialtiesMessage() {
+    final bs = widget.tabShell.bookingState;
+    final beneficiary = bs.beneficiary;
+    final name = (beneficiary != null && !beneficiary.isTitular)
+        ? beneficiary.fullName.split(' ').first
+        : null;
+    if (name != null) {
+      return 'No hay especialidades habilitadas para $name en este establecimiento. '
+          'Puedes probar con otro establecimiento o contactar a mesa de partes.';
+    }
+    return 'No hay especialidades habilitadas para tu perfil en este establecimiento. '
+        'Puedes probar con otro establecimiento o contactar a mesa de partes.';
   }
 
   bool _isAuthError(String error) {
@@ -186,16 +232,10 @@ class _SpecialtyScreenState extends State<SpecialtyScreen> {
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 20),
       decoration: BoxDecoration(
-        color: isDark ? const Color(0xFF1C1C1E) : AppColors.white,
+        color: AppColors.cardBg(isDark),
         borderRadius: BorderRadius.circular(AppTheme.radiusXl),
-        border: isDark ? Border.all(color: Colors.white.withValues(alpha: 0.1)) : null,
-        boxShadow: isDark ? [] : [
-          BoxShadow(
-            color: AppColors.primary.withValues(alpha: 0.04),
-            blurRadius: 15,
-            offset: const Offset(0, 5),
-          ),
-        ],
+        border: Border.all(color: AppColors.cardBorder(isDark)),
+        boxShadow: isDark ? [] : AppColors.softShadow,
       ),
       child: Column(
         children: [
@@ -211,7 +251,10 @@ class _SpecialtyScreenState extends State<SpecialtyScreen> {
             if (i < specialties.length - 1)
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: Container(height: 0.5, color: AppColors.border.withValues(alpha: 0.5)),
+                child: Container(
+                  height: 0.5,
+                  color: AppColors.dividerC(isDark),
+                ),
               ),
           ],
         ],
@@ -224,6 +267,7 @@ class _SpecialtyScreenState extends State<SpecialtyScreen> {
     SpecialtyModel specialty,
     bool showBadge,
   ) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
       onTap: () {
@@ -236,25 +280,37 @@ class _SpecialtyScreenState extends State<SpecialtyScreen> {
         );
       },
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 18),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
         child: Row(
           children: [
             Container(
-              width: 56,
-              height: 56,
+              width: 52,
+              height: 52,
               decoration: BoxDecoration(
-                color: showBadge
-                    ? AppColors.accent.withValues(alpha: 0.08)
-                    : AppColors.primary.withValues(alpha: 0.08),
-                borderRadius: BorderRadius.circular(12),
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: showBadge
+                      ? [
+                          AppColors.accent.withValues(alpha: 0.12),
+                          AppColors.accent.withValues(alpha: 0.06),
+                        ]
+                      : [
+                          AppColors.accentForTheme(isDark).withValues(alpha: 0.12),
+                          AppColors.accentForTheme(isDark).withValues(alpha: 0.06),
+                        ],
+                ),
+                borderRadius: BorderRadius.circular(14),
               ),
               child: Icon(
                 _iconForSpecialty(specialty.name),
-                size: 30,
-                color: showBadge ? AppColors.accent : (Theme.of(context).brightness == Brightness.dark ? AppColors.razer : AppColors.primary),
+                size: 26,
+                color: showBadge
+                    ? AppColors.accent
+                    : AppColors.accentForTheme(isDark),
               ),
             ),
-            const SizedBox(width: 12),
+            const SizedBox(width: 14),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -262,53 +318,47 @@ class _SpecialtyScreenState extends State<SpecialtyScreen> {
                   Text(
                     specialty.name,
                     style: AppTypography.titleMedium.copyWith(
-                      color: Theme.of(context).textTheme.bodyLarge?.color ?? AppColors.textPrimary,
+                      color: AppColors.textPrimaryC(isDark),
                     ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
-                  if (specialty.description.isNotEmpty) ...[
-                    const SizedBox(height: 2),
-                    Text(
-                      specialty.description,
-                      style: AppTypography.bodySmall.copyWith(
-                        fontSize: 13,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
+                  const SizedBox(height: 3),
+                  Text(
+                    specialty.description.isNotEmpty
+                        ? specialty.description
+                        : 'Especialidad Médica',
+                    style: AppTypography.bodySmall.copyWith(
+                      fontSize: 13,
+                      color: AppColors.textSecondaryC(isDark),
+                      fontStyle: specialty.description.isEmpty
+                          ? FontStyle.italic
+                          : FontStyle.normal,
                     ),
-                  ] else ...[
-                    const SizedBox(height: 2),
-                    const Text(
-                      'Especialidad Médica',
-                      style: TextStyle(
-                        fontSize: 13,
-                        color: AppColors.textSecondary,
-                        fontStyle: FontStyle.italic,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ],
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
                 ],
               ),
             ),
             if (showBadge && specialty.isAuthorized) ...[
               Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 decoration: BoxDecoration(
-                  color: AppColors.accentLight,
+                  color: isDark
+                      ? AppColors.accent.withValues(alpha: 0.15)
+                      : AppColors.accentLight,
                   borderRadius: BorderRadius.circular(8),
                   border: Border.all(
                     color: AppColors.accent.withValues(alpha: 0.3),
                   ),
                 ),
-                child: const Text(
+                child: Text(
                   'AUTORIZADO',
                   style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w900,
-                    color: AppColors.accentDark,
+                    fontSize: 10,
+                    fontWeight: FontWeight.w800,
+                    color: isDark ? AppColors.accentLight : AppColors.accentDark,
                     letterSpacing: 0.8,
                   ),
                 ),
@@ -316,9 +366,9 @@ class _SpecialtyScreenState extends State<SpecialtyScreen> {
               const SizedBox(width: 6),
             ],
             Icon(
-              Icons.chevron_right,
-              size: 16,
-              color: AppColors.textTertiary.withValues(alpha: 0.5),
+              CupertinoIcons.chevron_right,
+              size: 14,
+              color: AppColors.textTertiaryC(isDark),
             ),
           ],
         ),
@@ -327,23 +377,21 @@ class _SpecialtyScreenState extends State<SpecialtyScreen> {
   }
 
   IconData _iconForSpecialty(String name) {
-    switch (name) {
-      case 'Medicina General':
-        return Icons.health_and_safety_outlined;
-      case 'Medicina Familiar':
-        return Icons.family_restroom_outlined;
-      case 'Pediatría':
-        return Icons.child_care_outlined;
-      case 'Odontología':
-        return Icons.sentiment_satisfied_outlined;
-      case 'Ginecología':
-        return Icons.pregnant_woman_outlined;
-      case 'Cardiología':
-        return Icons.monitor_heart_outlined;
-      case 'Traumatología':
-        return Icons.healing_outlined;
-      default:
-        return Icons.medical_services_outlined;
-    }
+    final lower = name.toLowerCase();
+    if (lower.contains('general')) return Icons.health_and_safety_outlined;
+    if (lower.contains('familiar')) return Icons.family_restroom_outlined;
+    if (lower.contains('pediatr')) return Icons.child_care_outlined;
+    if (lower.contains('odonto')) return Icons.sentiment_satisfied_outlined;
+    if (lower.contains('ginecol')) return Icons.pregnant_woman_outlined;
+    if (lower.contains('cardio')) return Icons.monitor_heart_outlined;
+    if (lower.contains('trauma')) return Icons.healing_outlined;
+    if (lower.contains('oftalmo')) return Icons.visibility_outlined;
+    if (lower.contains('dermat')) return Icons.spa_outlined;
+    if (lower.contains('neurolog')) return Icons.psychology_outlined;
+    if (lower.contains('urolog')) return Icons.water_drop_outlined;
+    if (lower.contains('otorrino')) return Icons.hearing_outlined;
+    if (lower.contains('cirug')) return Icons.local_hospital_outlined;
+    if (lower.contains('intern')) return Icons.biotech_outlined;
+    return Icons.medical_services_outlined;
   }
 }

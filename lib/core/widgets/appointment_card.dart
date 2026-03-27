@@ -3,14 +3,14 @@ import '../constants/app_colors.dart';
 import '../theme/app_constants.dart';
 import '../extensions/responsive_extensions.dart';
 import '../animations/optimized_animations.dart';
-import '../mock/mock_appointments_data.dart';
+import '../models/reserva_model.dart';
 import '../animations/animated_status_badge.dart';
 
 /// Card reutilizable para mostrar una reserva/cita médica.
 /// Muestra avatar del paciente, relación, especialidad, médico,
 /// fecha/hora, hospital, consultorio y código de reserva.
 class AppointmentCard extends StatelessWidget {
-  final MockAppointmentItem appointment;
+  final ReservaModel appointment;
   final VoidCallback? onTap;
 
   const AppointmentCard({
@@ -34,12 +34,12 @@ class AppointmentCard extends StatelessWidget {
           child: Container(
             padding: EdgeInsets.all(responsive.isSmallPhone ? 12 : 14),
             decoration: BoxDecoration(
-              color: isDark ? const Color(0xFF1C1C1E) : AppColors.white,
+              color: AppColors.cardBg(isDark),
               borderRadius: BorderRadius.circular(AppSpacing.radiusLg),
               border: Border.all(
                 color: config.isHighlighted
                     ? config.color.withValues(alpha: 0.3)
-                    : (isDark ? Colors.white.withValues(alpha: 0.1) : AppColors.border),
+                    : AppColors.cardBorder(isDark),
                 width: 0.5,
               ),
               boxShadow: isDark ? [] : AppShadows.soft,
@@ -60,7 +60,7 @@ class AppointmentCard extends StatelessWidget {
                             appointment.patientName,
                             style: AppTypography.titleLarge.copyWith(
                               fontSize: responsive.isSmallPhone ? 16 : 18,
-                              color: Theme.of(context).textTheme.bodyLarge?.color ?? AppColors.textPrimary,
+                              color: AppColors.textPrimaryC(isDark),
                             ),
                             overflow: TextOverflow.ellipsis,
                             maxLines: 1,
@@ -101,7 +101,7 @@ class AppointmentCard extends StatelessWidget {
                           Text(
                             appointment.specialty,
                             style: AppTypography.titleSmall.copyWith(
-                              color: Theme.of(context).textTheme.bodyLarge?.color ?? AppColors.textPrimary,
+                              color: AppColors.textPrimaryC(isDark),
                             ),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
@@ -109,7 +109,7 @@ class AppointmentCard extends StatelessWidget {
                           Text(
                             appointment.doctorName,
                             style: AppTypography.bodySmall.copyWith(
-                              color: isDark ? AppColors.razer : AppColors.textPrimary,
+                              color: AppColors.accentForTheme(isDark),
                             ),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
@@ -125,11 +125,11 @@ class AppointmentCard extends StatelessWidget {
                   spacing: 6,
                   runSpacing: 4,
                   children: [
-                    _detailChip(Icons.calendar_today, appointment.date, isHighlight: isDark),
-                    _detailChip(Icons.schedule, appointment.time),
-                    _detailChip(Icons.apartment, appointment.hospital),
+                    _detailChip(Icons.calendar_today, appointment.date, isDark: isDark, isHighlight: isDark),
+                    _detailChip(Icons.schedule, appointment.time, isDark: isDark),
+                    _detailChip(Icons.apartment, appointment.hospital, isDark: isDark),
                     if (appointment.consultorio != null)
-                      _detailChip(Icons.meeting_room_outlined, appointment.consultorio!),
+                      _detailChip(Icons.meeting_room_outlined, appointment.consultorio!, isDark: isDark),
                   ],
                 ),
                 if (appointment.codigoReserva != null) ...[
@@ -137,15 +137,15 @@ class AppointmentCard extends StatelessWidget {
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
                     decoration: BoxDecoration(
-                      color: isDark ? Colors.white.withValues(alpha: 0.05) : AppColors.background,
+                      color: isDark ? AppColors.darkElevated : AppColors.background,
                       borderRadius: BorderRadius.circular(AppSpacing.radiusSm),
-                      border: Border.all(color: isDark ? Colors.transparent : AppColors.border, width: 0.5),
+                      border: Border.all(color: isDark ? AppColors.darkBorder : AppColors.border, width: 0.5),
                     ),
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        const Icon(Icons.confirmation_number_outlined,
-                            size: 12, color: AppColors.textTertiary),
+                        Icon(Icons.confirmation_number_outlined,
+                            size: 12, color: AppColors.textTertiaryC(isDark)),
                         const SizedBox(width: 4),
                         Text(
                           appointment.codigoReserva!,
@@ -211,11 +211,11 @@ class AppointmentCard extends StatelessWidget {
     );
   }
 
-  Widget _detailChip(IconData icon, String text, {bool isHighlight = false}) {
+  Widget _detailChip(IconData icon, String text, {required bool isDark, bool isHighlight = false}) {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Icon(icon, size: 14, color: isHighlight ? AppColors.razer : AppColors.textTertiary),
+        Icon(icon, size: 14, color: isHighlight ? AppColors.razer : AppColors.textTertiaryC(isDark)),
         const SizedBox(width: 4),
         Flexible(
           child: Text(
@@ -238,6 +238,12 @@ class AppointmentCard extends StatelessWidget {
       case 'Falta':
         return _StatusConfig(
             color: const Color(0xFF9333EA), icon: Icons.person_off, isHighlighted: true);
+      case 'Pendiente':
+        return const _StatusConfig(
+            color: Color(0xFF2563EB), icon: Icons.schedule, isHighlighted: true);
+      case 'Cancelado':
+        return _StatusConfig(
+            color: AppColors.textSecondary, icon: Icons.cancel_outlined, isHighlighted: false);
       default:
         return _StatusConfig(
             color: AppColors.textSecondary, icon: Icons.info, isHighlighted: false);

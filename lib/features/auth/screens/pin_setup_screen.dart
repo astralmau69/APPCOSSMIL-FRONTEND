@@ -207,7 +207,7 @@ class _PinSetupScreenState extends State<PinSetupScreen>
                   child: child,
                 ),
               ),
-              child: _buildPhaseHeader(),
+              child: _buildPhaseHeader(isDark),
             ),
 
             const SizedBox(height: 48),
@@ -268,7 +268,7 @@ class _PinSetupScreenState extends State<PinSetupScreen>
     }
   }
 
-  Widget _buildPhaseHeader() {
+  Widget _buildPhaseHeader(bool isDark) {
     switch (_phase) {
       case _PinPhase.verifyCurrentPin:
         return Column(
@@ -290,7 +290,7 @@ class _PinSetupScreenState extends State<PinSetupScreen>
             Text(
               'Ingresa tu PIN actual para continuar',
               style: AppTypography.bodyMedium.copyWith(
-                color: AppColors.textSecondary,
+                color: AppColors.textSecondaryC(isDark),
               ),
             ),
           ],
@@ -315,7 +315,7 @@ class _PinSetupScreenState extends State<PinSetupScreen>
             Text(
               'Ingresa 4 dígitos para proteger tu app',
               style: AppTypography.bodyMedium.copyWith(
-                color: AppColors.textSecondary,
+                color: AppColors.textSecondaryC(isDark),
               ),
             ),
           ],
@@ -340,7 +340,7 @@ class _PinSetupScreenState extends State<PinSetupScreen>
             Text(
               'Repite los 4 dígitos para confirmar',
               style: AppTypography.bodyMedium.copyWith(
-                color: AppColors.textSecondary,
+                color: AppColors.textSecondaryC(isDark),
               ),
             ),
           ],
@@ -399,7 +399,7 @@ class _PinSetupScreenState extends State<PinSetupScreen>
             children: [
               const SizedBox(width: 72),
               _buildKey(0, isDark),
-              _buildDeleteKey(),
+              _buildDeleteKey(isDark),
             ],
           ),
         ],
@@ -420,7 +420,7 @@ class _PinSetupScreenState extends State<PinSetupScreen>
         height: 72,
         decoration: BoxDecoration(
           shape: BoxShape.circle,
-          color: isDark ? const Color(0xFF1C1C1E) : Colors.grey.shade100,
+          color: isDark ? AppColors.darkSurface : Colors.grey.shade100,
         ),
         child: Center(
           child: Text(
@@ -435,16 +435,16 @@ class _PinSetupScreenState extends State<PinSetupScreen>
     );
   }
 
-  Widget _buildDeleteKey() {
+  Widget _buildDeleteKey(bool isDark) {
     return OptimizedPressButton(
       onTap: _saving ? null : _onDeletePressed,
-      child: const SizedBox(
+      child: SizedBox(
         width: 72,
         height: 72,
         child: Icon(
           CupertinoIcons.delete_left,
           size: 28,
-          color: AppColors.textSecondary,
+          color: AppColors.textSecondaryC(isDark),
         ),
       ),
     );

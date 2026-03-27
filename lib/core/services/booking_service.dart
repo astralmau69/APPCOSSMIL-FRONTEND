@@ -4,7 +4,7 @@ import '../models/regional_model.dart';
 import '../models/specialty_model.dart';
 import '../models/doctor_model.dart';
 import '../models/time_slot_model.dart';
-import '../mock/mock_user_data.dart';
+import '../session/user_session.dart';
 import '../mock/mock_regional_data.dart';
 import '../mock/mock_specialty_data.dart';
 import '../mock/mock_schedule_data.dart';
@@ -13,7 +13,7 @@ class BookingService {
   Future<UserModel> getUser() async {
     if (AppConfig.useMockData) {
       await Future.delayed(const Duration(milliseconds: 300));
-      return MockUserData.user;
+      return UserSession.currentUser;
     }
     // TODO: llamada HTTP real
     throw UnimplementedError('Backend no implementado');

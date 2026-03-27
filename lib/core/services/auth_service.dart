@@ -6,7 +6,7 @@ import '../constants/api_constants.dart';
 import '../models/auth_token_model.dart';
 import '../models/user_model.dart';
 import '../models/beneficiary_model.dart';
-import '../mock/mock_user_data.dart';
+import '../session/user_session.dart';
 import 'api_client.dart';
 import '../storage/token_storage.dart';
 import 'security_service.dart';
@@ -71,8 +71,15 @@ class AuthService {
         final json = jsonDecode(response.body) as Map<String, dynamic>;
         final tokenModel = AuthTokenModel.fromJson(json);
 
-        // Guardar token primero para que ApiClient pueda usarlo
+        if (kDebugMode) {
+          debugPrint('🔑 OAuth token parsed: edad=${tokenModel.edad}, genero="${tokenModel.genero}", idper=${tokenModel.idper}');
+        }
+
+        // Guardar tokens para que ApiClient pueda usarlos
         await TokenStorage.saveToken(tokenModel.accessToken);
+        if (tokenModel.refreshToken.isNotEmpty) {
+          await TokenStorage.saveRefreshToken(tokenModel.refreshToken);
+        }
 
         // Extraer beneficiarios reales del JSON si existen
         final rawBeneficiarios = (json['beneficiarios'] as List<dynamic>?)
@@ -88,33 +95,45 @@ class AuthService {
           }
         }
 
-        // Mapear datos básicos a MockUserData.user
-        MockUserData.user = UserModel(
+        // Mapear datos básicos a UserSession.currentUser
+        final titular = BeneficiaryModel(
           id: tokenModel.idper.toString(),
           fullName: '${tokenModel.nom} ${tokenModel.pat} ${tokenModel.mat}'.trim(),
-          rank: tokenModel.grado.isNotEmpty ? tokenModel.grado : MockUserData.user.rank,
-          matricula: tokenModel.matricula.trim(),
-          bloodType: MockUserData.user.bloodType,
+          relationship: 'Titular',
           age: tokenModel.edad,
+          gender: tokenModel.genero,
+          matricula: tokenModel.matricula.trim(),
+        );
+
+        final loggedUser = UserModel(
+          id: tokenModel.idper.toString(),
+          fullName: titular.fullName,
+          rank: tokenModel.grado.isNotEmpty ? tokenModel.grado : 'Asegurado',
+          matricula: titular.matricula,
+          bloodType: '',
+          age: tokenModel.edad,
+          gender: tokenModel.genero,
           role: tokenModel.rol == 'ROLE_ASETIT' ? 'Titular' : tokenModel.rol,
           isEnabled: true,
-          hasMedicalAppointment: MockUserData.user.hasMedicalAppointment,
-          email: tokenModel.correo.isNotEmpty ? tokenModel.correo : MockUserData.user.email,
-          phone: tokenModel.numeroCelular.isNotEmpty ? tokenModel.numeroCelular : MockUserData.user.phone,
+          hasMedicalAppointment: false,
+          email: tokenModel.correo.trim(),
+          phone: tokenModel.numeroCelular.trim(),
           ci: tokenModel.ci,
-          beneficiaries: rawBeneficiarios ?? MockUserData.user.beneficiaries.map((b) {
-            if (b.relationship == 'Titular') {
-              return BeneficiaryModel(
-                id: tokenModel.idper.toString(),
-                fullName: '${tokenModel.nom} ${tokenModel.pat} ${tokenModel.mat}'.trim(),
-                relationship: 'Titular',
-                age: tokenModel.edad,
-                matricula: tokenModel.matricula.trim(),
-              );
-            }
-            return b;
-          }).toList(),
+          idseg: tokenModel.idseg,
+          uc: tokenModel.uc,
+          beneficiaries: rawBeneficiarios ?? [titular],
         );
+
+        // Si se obtuvieron beneficiarios pero no incluyen al titular, agregarlo al inicio
+        if (rawBeneficiarios != null && !rawBeneficiarios.any((b) => b.isTitular)) {
+          loggedUser.beneficiaries.insert(0, titular);
+        }
+
+        // Actualizar sesión global
+        UserSession.currentUser = loggedUser;
+
+        debugPrint('✅ UserSession poblada: ${UserSession.currentUser.fullName}');
+        debugPrint('👨‍👩‍👧‍👦 Beneficiarios en sesión: ${UserSession.currentUser.beneficiaries.length}');
 
         // Guardar nombre de usuario para la pantalla de desbloqueo local
         await SecurityService.saveDisplayName(
@@ -127,30 +146,31 @@ class AuthService {
           String? titularPhoto;
           if (extraData != null) {
             titularPhoto = cleanBase64(extraData['foto2'] as String? ?? '');
-            MockUserData.user = MockUserData.user.copyWith(
+            UserSession.currentUser = UserSession.currentUser.copyWith(
               photoBase64: titularPhoto,
               birthDate: extraData['fecnac'] as String? ?? '',
             );
 
             // Actualizar la foto en la lista de beneficiarios para el titular
-            final updatedBeneficiaries = MockUserData.user.beneficiaries.map((b) {
+            final updatedBeneficiaries = UserSession.currentUser.beneficiaries.map((b) {
               if (b.relationship == 'Titular') {
                 return BeneficiaryModel(
                   id: b.id,
                   fullName: b.fullName,
                   relationship: b.relationship,
                   age: b.age,
+                  gender: b.gender.isNotEmpty ? b.gender : tokenModel.genero,
                   matricula: b.matricula,
                   photoBase64: titularPhoto ?? '',
                 );
               }
               return b;
             }).toList();
-            MockUserData.user = MockUserData.user.copyWith(beneficiaries: updatedBeneficiaries);
+            UserSession.currentUser = UserSession.currentUser.copyWith(beneficiaries: updatedBeneficiaries);
           }
 
           // Fetch paralelo de fotos de beneficiarios (máximo 4 para no saturar)
-          final otherBeneficiaries = MockUserData.user.beneficiaries
+          final otherBeneficiaries = UserSession.currentUser.beneficiaries
               .where((b) => b.relationship != 'Titular' && b.matricula.isNotEmpty)
               .take(4)
               .toList();
@@ -165,7 +185,7 @@ class AuthService {
             );
             final results = await Future.wait(photoFutures);
 
-            final finalBeneficiaries = MockUserData.user.beneficiaries.map((b) {
+            final finalBeneficiaries = UserSession.currentUser.beneficiaries.map((b) {
               final idx = otherBeneficiaries.indexWhere((ob) => ob.id == b.id);
               if (idx != -1 && results[idx] != null) {
                 final photo = cleanBase64(results[idx]!['foto2'] as String? ?? '');
@@ -177,6 +197,7 @@ class AuthService {
                   fullName: b.fullName,
                   relationship: b.relationship,
                   age: b.age,
+                  gender: b.gender,
                   matricula: b.matricula,
                   photoBase64: photo,
                 );
@@ -184,14 +205,14 @@ class AuthService {
               return b;
             }).toList();
 
-            MockUserData.user = MockUserData.user.copyWith(beneficiaries: finalBeneficiaries);
+            UserSession.currentUser = UserSession.currentUser.copyWith(beneficiaries: finalBeneficiaries);
           }
         } catch (e) {
           debugPrint('❌ Error cargando fotos de familia: $e');
         }
 
         // Persistir sesión completa (nombre, fotos, matrícula, etc.)
-        await SessionRestoreService.saveUserSession(MockUserData.user);
+        await SessionRestoreService.saveUserSession(UserSession.currentUser);
 
         return AuthSuccess(tokenModel);
       }

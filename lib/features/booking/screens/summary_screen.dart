@@ -1,10 +1,12 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/theme/app_constants.dart';
-import '../../../core/mock/mock_user_data.dart';
+import '../../../core/session/user_session.dart';
 import '../../../core/services/pdf_service.dart';
+import '../../../core/services/programacion_service.dart';
 
 import '../../../core/animations/optimized_animations.dart';
 import '../../../shell/tab_shell.dart';
@@ -22,187 +24,191 @@ class SummaryScreen extends StatefulWidget {
 class _SummaryScreenState extends State<SummaryScreen> {
   bool _isConfirming = false;
 
-  @override
-  void initState() {
-    super.initState();
-  }
-
-  @override
-  void dispose() {
-    super.dispose();
+  /// Fecha de la reserva (desde el estado o mañana como fallback).
+  String get _fechaReserva {
+    final bs = widget.tabShell.bookingState;
+    if (bs.doctor?.fecha != null && bs.doctor!.fecha.isNotEmpty) {
+      try {
+        final dt = DateFormat('yyyy-MM-dd').parse(bs.doctor!.fecha);
+        final formatter = DateFormat("EEEE, d 'de' MMMM", 'es');
+        final formatted = formatter.format(dt);
+        return formatted[0].toUpperCase() + formatted.substring(1);
+      } catch (_) {}
+    }
+    final target = DateTime.now().add(const Duration(days: 1));
+    final formatter = DateFormat("EEEE, d 'de' MMMM", 'es');
+    final formatted = formatter.format(target);
+    return formatted[0].toUpperCase() + formatted.substring(1);
   }
 
   @override
   Widget build(BuildContext context) {
     final bs = widget.tabShell.bookingState;
-    final user = MockUserData.user;
+    final user = UserSession.currentUser;
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return CupertinoPageScaffold(
-      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+      backgroundColor: AppColors.scaffoldBg(isDark),
       navigationBar: CupertinoNavigationBar(
         middle: Text(
-          'Resumen',
-          style: TextStyle(fontWeight: FontWeight.w700, fontSize: 17, color: Theme.of(context).textTheme.bodyLarge?.color),
+          'Confirmar Reserva',
+          style: TextStyle(fontWeight: FontWeight.w800, fontSize: 18, color: AppColors.textPrimaryC(isDark)),
         ),
-        backgroundColor: isDark 
-            ? const Color(0xFF1C1C1E).withValues(alpha: 0.92)
-            : AppColors.white.withValues(alpha: 0.92),
-        border: Border(
-          bottom: BorderSide(
-            color: AppColors.border.withValues(alpha: 0.3),
-            width: 0.5,
-          ),
-        ),
+        backgroundColor: AppColors.scaffoldBg(isDark).withValues(alpha: 0.94),
+        border: null,
       ),
       child: SafeArea(
         child: ListView(
-          padding: const EdgeInsets.symmetric(vertical: 16),
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
           children: [
-            // Header
             FadeSlideIn(
-              delay: const Duration(milliseconds: 100),
-              offsetY: 15,
+              delay: const Duration(milliseconds: 50),
               child: _buildHeader(),
             ),
-            const SizedBox(height: 20),
+            const SizedBox(height: 24),
 
-            // Card resumen
+            // 1. HOSPITAL
             FadeSlideIn(
-              delay: const Duration(milliseconds: 200),
-              offsetY: 20,
-              child: Container(
-                margin: const EdgeInsets.symmetric(horizontal: 20),
-                decoration: BoxDecoration(
-                  color: isDark ? const Color(0xFF1C1C1E) : AppColors.white,
-                  borderRadius: BorderRadius.circular(AppTheme.radiusLg),
-                  boxShadow: isDark ? [] : AppColors.cardShadow,
-                  border: isDark ? Border.all(color: Colors.white.withValues(alpha: 0.1)) : null,
-                ),
-                child: Column(
-                  children: [
-                    _row(Icons.person, 'Paciente',
-                        user.displayName),
-                    _divider(),
-                    _row(Icons.favorite, 'Especialidad',
-                        bs.specialty?.name ?? ''),
-                    _divider(),
-                    _row(
-                      Icons.apartment,
-                      'Establecimiento',
-                      bs.hospital?.displayName ?? '',
-                    ),
-                    _divider(),
-                    _row(Icons.person_add, 'Médico',
-                        bs.doctor?.fullName ?? '', isHighlight: isDark),
-                    _divider(),
-                    _row(Icons.calendar_today, 'Fecha',
-                        'Martes, 18 de Marzo', isHighlight: isDark),
-                    _divider(),
-                    _row(Icons.schedule, 'Hora',
-                        bs.selectedTime ?? ''),
-                  ],
-                ),
+              delay: const Duration(milliseconds: 100),
+              child: _buildSectionCard(
+                title: 'ESTABLECIMIENTO',
+                icon: Icons.business,
+                isDark: isDark,
+                children: [
+                   _rowValue(bs.hospital?.name ?? '', isBold: true),
+                   const SizedBox(height: 4),
+                   _rowValue('${bs.hospital?.shortName ?? ""} • ${bs.hospital?.city ?? ""}', isSecondary: true),
+                   if (bs.hospital?.address.isNotEmpty == true) ...[
+                      const SizedBox(height: 4),
+                      _rowValue(bs.hospital!.address, isSecondary: true, fontSize: 13),
+                   ],
+                ],
               ),
             ),
             const SizedBox(height: 16),
 
-            // Info nota
+            // 2. CONSULTORIO
+            FadeSlideIn(
+              delay: const Duration(milliseconds: 150),
+              child: _buildSectionCard(
+                title: 'UBICACIÓN EN CENTRO',
+                icon: Icons.meeting_room,
+                isDark: isDark,
+                children: [
+                   _rowValue(bs.doctor?.office ?? 'Consultorio no especificado', isBold: true),
+                ],
+              ),
+            ),
+            const SizedBox(height: 16),
+
+            // 3. FECHA Y HORA
+            FadeSlideIn(
+              delay: const Duration(milliseconds: 200),
+              child: _buildSectionCard(
+                title: 'FECHA Y HORA',
+                icon: Icons.event_available,
+                isDark: isDark,
+                children: [
+                   Row(
+                     children: [
+                       Expanded(child: _rowValue(_fechaReserva, isBold: true, fontSize: 17)),
+                       Container(
+                         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                         decoration: BoxDecoration(
+                           color: AppColors.accent.withValues(alpha: 0.15),
+                           borderRadius: BorderRadius.circular(10),
+                         ),
+                         child: Text(
+                           bs.selectedTime ?? '--:--',
+                           style: TextStyle(
+                             color: AppColors.accentForTheme(isDark),
+                             fontWeight: FontWeight.w900,
+                             fontSize: 18,
+                           ),
+                         ),
+                       ),
+                     ],
+                   ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 16),
+
+            // 4. ESPECIALIDAD
+            FadeSlideIn(
+              delay: const Duration(milliseconds: 250),
+              child: _buildSectionCard(
+                title: 'ESPECIALIDAD',
+                icon: Icons.medical_services_outlined,
+                isDark: isDark,
+                children: [
+                   _rowValue(bs.specialty?.name ?? '', isBold: true, color: AppColors.primary),
+                ],
+              ),
+            ),
+            const SizedBox(height: 16),
+
+            // 5 & 6. MÉDICO Y DATOS DEL MÉDICO
             FadeSlideIn(
               delay: const Duration(milliseconds: 300),
-              child: Container(
-                margin: const EdgeInsets.symmetric(horizontal: 20),
-                padding: const EdgeInsets.all(14),
-                decoration: BoxDecoration(
-                  color: isDark ? AppColors.info.withValues(alpha: 0.12) : AppColors.infoLight,
-                  borderRadius: BorderRadius.circular(AppTheme.radiusMd),
-                  border: Border.all(color: AppColors.info.withValues(alpha: 0.2)),
-                ),
-                child: const Row(
-                  children: [
-                    Icon(
-                      Icons.info,
-                      size: 18,
-                      color: AppColors.info,
-                    ),
-                    SizedBox(width: 10),
-                    Expanded(
-                      child: Text(
-                        'Al confirmar se generará un comprobante PDF descargable.',
-                        style: TextStyle(
-                          fontSize: 13,
-                          color: AppColors.info,
-                          height: 1.3,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
+              child: _buildSectionCard(
+                title: 'MÉDICO ASIGNADO',
+                icon: Icons.person_search,
+                isDark: isDark,
+                children: [
+                   Row(
+                     children: [
+                       // Foto del médico (placeholder premium)
+                       Container(
+                         width: 65,
+                         height: 65,
+                         decoration: BoxDecoration(
+                           color: AppColors.primary.withValues(alpha: 0.1),
+                           borderRadius: BorderRadius.circular(15),
+                           border: Border.all(color: AppColors.primary.withValues(alpha: 0.2)),
+                         ),
+                         child: Icon(Icons.person, size: 40, color: AppColors.primary.withValues(alpha: 0.6)),
+                       ),
+                       const SizedBox(width: 16),
+                       Expanded(
+                         child: Column(
+                           crossAxisAlignment: CrossAxisAlignment.start,
+                           children: [
+                             _rowValue(bs.doctor?.fullName ?? 'Sin médico asignado', isBold: true, fontSize: 16),
+                             const SizedBox(height: 4),
+                             _rowValue('ID Médico: ${bs.doctor?.id ?? "N/A"}', isSecondary: true),
+                             _rowValue('Agenda: ${bs.idagenda?.substring(0, 8) ?? "N/A"}...', isSecondary: true, fontSize: 11),
+                           ],
+                         ),
+                       ),
+                     ],
+                   ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 16),
+
+            // 7. DATOS DEL PACIENTE
+            FadeSlideIn(
+              delay: const Duration(milliseconds: 350),
+              child: _buildSectionCard(
+                title: 'DATOS DEL PACIENTE',
+                icon: Icons.person_outline,
+                isDark: isDark,
+                children: [
+                   _rowValue(bs.beneficiary?.fullName ?? user.fullName, isBold: true),
+                   const SizedBox(height: 4),
+                   _rowValue('Matrícula: ${bs.beneficiary?.matricula ?? user.matricula}', isSecondary: true),
+                   _rowValue('Parentesco: ${bs.beneficiary?.relationship ?? "Titular"}', isSecondary: true),
+                ],
               ),
             ),
             const SizedBox(height: 32),
 
             // Botones
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20),
-              child: FadeSlideIn(
-                delay: const Duration(milliseconds: 400),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: CupertinoButton(
-                        padding: const EdgeInsets.symmetric(vertical: 14),
-                        color: AppColors.errorLight,
-                        borderRadius: BorderRadius.circular(AppTheme.radiusLg),
-                        onPressed: () {
-                          Navigator.popUntil(
-                              context, (route) => route.isFirst);
-                        },
-                        child: const Text(
-                          'Cancelar',
-                          style: TextStyle(
-                            fontSize: 15,
-                            fontWeight: FontWeight.w700,
-                            color: AppColors.error,
-                          ),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 14),
-                    Expanded(
-                      flex: 2,
-                      child: CupertinoButton.filled(
-                        borderRadius: BorderRadius.circular(AppTheme.radiusLg),
-                        onPressed:
-                            _isConfirming ? null : () => _confirmBooking(),
-                        child: _isConfirming
-                            ? const CupertinoActivityIndicator(
-                                color: CupertinoColors.white,
-                                radius: 10,
-                              )
-                            : const Row(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Icon(
-                                    CupertinoIcons.checkmark_seal_fill,
-                                    size: 16,
-                                    color: CupertinoColors.white,
-                                  ),
-                                  SizedBox(width: 8),
-                                  Text(
-                                    'Confirmar Reserva',
-                                    style: TextStyle(
-                                      fontSize: 15,
-                                      fontWeight: FontWeight.w700,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
+            FadeSlideIn(
+              delay: const Duration(milliseconds: 400),
+              child: _buildActionButtons(isDark),
             ),
             const SizedBox(height: 40),
           ],
@@ -211,104 +217,182 @@ class _SummaryScreenState extends State<SummaryScreen> {
     );
   }
 
-  Widget _row(IconData icon, String label, String value, {bool isHighlight = false}) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 20),
-      child: Center(
-        child: RichText(
-          textAlign: TextAlign.center,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          text: TextSpan(
-            style: TextStyle(
-              fontSize: 16,
-              color: Theme.of(context).textTheme.bodyLarge?.color ?? AppColors.textPrimary,
-            ),
+  Widget _buildSectionCard({
+    required String title,
+    required IconData icon,
+    required List<Widget> children,
+    required bool isDark,
+  }) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppColors.cardBg(isDark),
+        borderRadius: BorderRadius.circular(AppTheme.radiusLg),
+        boxShadow: AppColors.cardShadowFor(isDark),
+        border: Border.all(color: AppColors.cardBorder(isDark), width: 0.5),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
             children: [
-              WidgetSpan(
-                alignment: PlaceholderAlignment.middle,
-                child: Padding(
-                  padding: const EdgeInsets.only(right: 8),
-                  child: Icon(icon, size: 18, color: (isDark ? AppColors.white : AppColors.primary).withValues(alpha: 0.7)),
-                ),
-              ),
-              TextSpan(
-                text: '$label: ',
-                style: const TextStyle(
-                  fontWeight: FontWeight.w500,
-                  color: AppColors.textSecondary,
-                  fontSize: 14,
-                ),
-              ),
-              TextSpan(
-                text: value,
+              Icon(icon, size: 16, color: AppColors.textTertiaryC(isDark)),
+              const SizedBox(width: 8),
+              Text(
+                title,
                 style: TextStyle(
-                  fontWeight: FontWeight.w700,
-                  fontSize: 16,
-                  color: isHighlight ? AppColors.razer : (Theme.of(context).textTheme.bodyLarge?.color),
+                  fontSize: 11,
+                  fontWeight: FontWeight.w800,
+                  color: AppColors.textTertiaryC(isDark),
+                  letterSpacing: 1.2,
                 ),
               ),
             ],
           ),
-        ),
+          const SizedBox(height: 12),
+          ...children,
+        ],
       ),
     );
   }
 
-  Widget _divider() {
+  Widget _rowValue(String text, {bool isBold = false, bool isSecondary = false, double fontSize = 15, Color? color}) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 16),
-      height: 0.5,
-      color: isDark ? Colors.white.withValues(alpha: 0.1) : AppColors.border,
+    return Text(
+      text,
+      style: TextStyle(
+        fontSize: fontSize,
+        fontWeight: isBold ? FontWeight.w700 : FontWeight.w500,
+        color: color ?? (isSecondary ? AppColors.textSecondaryC(isDark) : AppColors.textPrimaryC(isDark)),
+        height: 1.2,
+      ),
+      maxLines: 2,
+      overflow: TextOverflow.ellipsis,
+    );
+  }
+
+  Widget _buildActionButtons(bool isDark) {
+    return Row(
+      children: [
+        Expanded(
+          child: CupertinoButton(
+            padding: const EdgeInsets.symmetric(vertical: 16),
+            onPressed: () => Navigator.pop(context),
+            child: Text(
+              'Modificar',
+              style: TextStyle(
+                color: AppColors.textSecondaryC(isDark),
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(width: 16),
+        Expanded(
+          flex: 2,
+          child: CupertinoButton.filled(
+            borderRadius: BorderRadius.circular(16),
+            onPressed: _isConfirming ? null : () => _confirmBooking(),
+            child: _isConfirming
+                ? const CupertinoActivityIndicator(color: Colors.white)
+                : const Text(
+                    'Confirmar Reserva',
+                    style: TextStyle(fontWeight: FontWeight.w800, letterSpacing: 0.5),
+                  ),
+          ),
+        ),
+      ],
     );
   }
 
   Future<void> _confirmBooking() async {
     setState(() => _isConfirming = true);
 
-    await Future.delayed(const Duration(milliseconds: 600));
-
-    if (!mounted) return;
-    setState(() => _isConfirming = false);
-
     final bs = widget.tabShell.bookingState;
-    final user = MockUserData.user;
+    final user = UserSession.currentUser;
 
-    await CossmilIosAlert.show(
-      context: context,
-      title: '¡Reserva Exitosa!',
-      message: 'Tu cita médica ha sido confirmada y se ha generado tu ticket virtual de reserva en formato PDF.',
-      confirmText: 'Descargar Ticket',
-      onConfirm: () async {
-        await PdfService.generateAndShowBookingPdf(
-          user: user,
-          paciente: user.displayName,
-          especialidad: bs.specialty?.name ?? '',
-          establecimiento: bs.hospital?.name ?? '',
-          ciudad: bs.hospital?.city ?? '',
-          medico: bs.doctor?.fullName ?? '',
-          fecha: 'Martes, 18 de Marzo',
-          hora: bs.selectedTime ?? '',
-        );
-        if (mounted) widget.tabShell.finishBooking();
-      },
-      cancelText: 'Volver al Inicio',
-      onCancel: () {
-        widget.tabShell.finishBooking();
-      },
-    );
+    try {
+      final service = ProgramacionService();
+      
+      // Construir el payload exacto solicitado por el usuario
+      final payload = {
+        "idins": 1,
+        "idsuc": int.tryParse(bs.hospital?.id ?? '') ?? 0,
+        "sucursal": bs.hospital?.name ?? '',
+        "idesp": int.tryParse(bs.specialty?.id ?? '') ?? 0,
+        "especialidad": bs.specialty?.name ?? '',
+        "idmed": bs.doctor?.id ?? '',
+        "medico": bs.doctor?.fullName ?? '',
+        "idper": int.tryParse(user.id) ?? 0,
+        "matricula": bs.beneficiary?.matricula ?? user.matricula,
+        "fecha": bs.doctor?.fecha ?? '',
+        "dia": bs.doctor?.dia ?? '',
+        "numero": bs.slotNumber ?? 0,
+        "hora": bs.selectedTime ?? '',
+        "idagenda": bs.idagenda ?? '',
+        "idhora": bs.idhora ?? '',
+        "idcontrol": bs.idcontrol ?? '',
+        "fichaExtra": 0,
+        "idseg": user.idseg ?? 101, // Fallback ASE
+        "uc": user.uc ?? "1195",    // Fallback ejemplo
+        "obs": "",
+        "modalidad": "ASE"
+      };
+
+      debugPrint('🚀 Enviando crea-cita con payload: $payload');
+      final result = await service.crearCita(payload: payload);
+      debugPrint('✅ Resultado crea-cita: $result');
+
+      if (!mounted) return;
+      setState(() => _isConfirming = false);
+
+      await CossmilIosAlert.show(
+        context: context,
+        title: '¡Cita Creada!',
+        message: 'Su Cita Médica se ha creado exitosamente. Puede visualizar los detalles y descargar su ticket a continuación.',
+        confirmText: 'Ver Cita Médica',
+        onConfirm: () async {
+          await PdfService.generateAndShowBookingPdf(
+            user: user,
+            paciente: bs.beneficiary?.fullName ?? user.fullName,
+            especialidad: bs.specialty?.name ?? '',
+            establecimiento: bs.hospital?.name ?? '',
+            consultorio: bs.doctor?.office ?? 'No especificado',
+            ciudad: bs.hospital?.city ?? '',
+            medico: bs.doctor?.fullName ?? '',
+            fecha: _fechaReserva,
+            hora: bs.selectedTime ?? '',
+          );
+          if (mounted) widget.tabShell.finishBooking();
+        },
+        cancelText: 'Volver al Inicio',
+        onCancel: () {
+          widget.tabShell.finishBooking();
+        },
+      );
+    } catch (e) {
+      debugPrint('❌ Error en _confirmBooking: $e');
+      if (!mounted) return;
+      setState(() => _isConfirming = false);
+
+      await CossmilIosAlert.show(
+        context: context,
+        title: 'Error al confirmar',
+        message: 'No se pudo registrar la reserva: $e. Verifica tu conexión e intenta nuevamente.',
+        confirmText: 'Aceptar',
+      );
+    }
   }
 
   Widget _buildHeader() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Column(
       children: [
         Text(
           'Resumen de su Cita',
           style: AppTypography.displayMedium.copyWith(
             fontSize: 22,
-            color: Theme.of(context).brightness == Brightness.dark ? AppColors.razer : null,
+            color: AppColors.accentForTheme(isDark),
           ),
         ),
         const SizedBox(height: 6),
@@ -317,6 +401,7 @@ class _SummaryScreenState extends State<SummaryScreen> {
           style: AppTypography.labelMedium.copyWith(
             letterSpacing: 1.0,
             fontSize: 13,
+            color: AppColors.textSecondaryC(isDark),
           ),
         ),
       ],

@@ -10,8 +10,8 @@ class PdfService {
   static Future<void> generateAndShowBookingPdf({
     required UserModel user,
     required String paciente,
-    required String especialidad,
-    required String establecimiento,
+    required String especialidad,    required String establecimiento,
+    required String consultorio,
     required String ciudad,
     required String medico,
     required String fecha,
@@ -108,42 +108,54 @@ class PdfService {
               ),
               pw.SizedBox(height: 12),
 
-              // Detalles Paciente
-              _ticketRow('PACIENTE', paciente),
-              _ticketRow('MATRÍCULA', user.matricula),
-              if (user.rank.isNotEmpty) _ticketRow('GRADO', user.rank),
-              pw.Divider(color: borderColor, thickness: 0.5),
-              pw.SizedBox(height: 4),
-
-              // Detalles Cita
-              _ticketRow('ESPECIALIDAD', especialidad),
-              _ticketRow('MÉDICO', medico),
-              _ticketRow('LUGAR', '$establecimiento\n$ciudad'),
-              pw.Divider(color: borderColor, thickness: 0.5),
-              pw.SizedBox(height: 4),
+              // 1. HOSPITAL
+              _ticketRow('ESTABLECIMIENTO', establecimiento),
               
-              // Fecha y Hora
+              // 2. CONSULTORIO
+              _ticketRow('CONSULTORIO / UBICACIÓN', consultorio),
+              
+              // 3. FECHA Y HORA (Destacado)
+              pw.SizedBox(height: 4),
               pw.Container(
                 width: double.infinity,
-                padding: const pw.EdgeInsets.symmetric(vertical: 6),
+                padding: const pw.EdgeInsets.symmetric(vertical: 6, horizontal: 8),
                 decoration: pw.BoxDecoration(
-                  border: pw.Border.all(color: oliveColor, width: 1),
+                  color: PdfColor.fromHex('#F3F4F6'),
+                  border: pw.Border.all(color: oliveColor, width: 0.5),
                   borderRadius: pw.BorderRadius.circular(4),
                 ),
-                child: pw.Column(
+                child: pw.Row(
+                  mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
                   children: [
                     pw.Text(
                       fecha.toUpperCase(),
-                      style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold),
+                      style: pw.TextStyle(fontSize: 8, fontWeight: pw.FontWeight.bold),
                     ),
                     pw.Text(
                       hora,
-                      style: pw.TextStyle(fontSize: 14, fontWeight: pw.FontWeight.bold, color: oliveColor),
+                      style: pw.TextStyle(fontSize: 12, fontWeight: pw.FontWeight.bold, color: oliveColor),
                     ),
                   ],
                 ),
               ),
-              pw.SizedBox(height: 12),
+              pw.SizedBox(height: 8),
+
+              // 4. ESPECIALIDAD
+              _ticketRow('ESPECIALIDAD', especialidad),
+
+              // 5. MÉDICO
+              _ticketRow('MÉDICO ASIGNADO', medico),
+              
+              pw.Divider(color: borderColor, thickness: 0.5),
+              pw.SizedBox(height: 4),
+
+              // 7. DATOS DEL PACIENTE
+              _ticketRow('PACIENTE', paciente),
+              _ticketRow('MATRÍCULA', user.matricula),
+              if (user.rank.isNotEmpty) _ticketRow('GRADO', user.rank),
+              
+              pw.Divider(color: borderColor, thickness: 0.5),
+              pw.SizedBox(height: 4),
               
               // QR CODE simulado
               pw.Container(

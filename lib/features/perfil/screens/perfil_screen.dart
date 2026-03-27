@@ -4,7 +4,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/theme/app_theme.dart';
-import '../../../core/mock/mock_user_data.dart';
+import '../../../core/session/user_session.dart';
 import '../../../core/models/user_model.dart';
 import '../../../core/storage/token_storage.dart';
 import '../../../core/services/security_service.dart';
@@ -41,7 +41,7 @@ class _PerfilScreenState extends State<PerfilScreen> {
   @override
   void initState() {
     super.initState();
-    final user = MockUserData.user;
+    final user = UserSession.currentUser;
     _email = user.email;
     _phone = user.phone;
     _emailCtrl = TextEditingController(text: _email);
@@ -110,7 +110,8 @@ class _PerfilScreenState extends State<PerfilScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final user = MockUserData.user;
+    final user = UserSession.currentUser;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return CupertinoPageScaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
@@ -120,13 +121,13 @@ class _PerfilScreenState extends State<PerfilScreen> {
         ),
         slivers: [
           CupertinoSliverNavigationBar(
-            largeTitle: Text('Mi Perfil', style: TextStyle(color: Theme.of(context).textTheme.bodyLarge?.color)),
-            backgroundColor: Theme.of(context).brightness == Brightness.dark 
-                ? const Color(0xFF1C1C1E).withValues(alpha: 0.92)
+            largeTitle: Text('Mi Perfil', style: TextStyle(color: AppColors.textPrimaryC(isDark))),
+            backgroundColor: isDark
+                ? AppColors.darkSurface.withValues(alpha: 0.92)
                 : AppColors.white.withValues(alpha: 0.92),
             border: Border(
               bottom: BorderSide(
-                color: AppColors.border.withValues(alpha: 0.5),
+                color: AppColors.cardBorder(isDark).withValues(alpha: 0.5),
                 width: 0.5,
               ),
             ),
@@ -151,16 +152,22 @@ class _PerfilScreenState extends State<PerfilScreen> {
                             height: 110,
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
-                          color: AppColors.white,
+                          color: AppColors.cardBg(isDark),
                           border: Border.all(
-                            color: AppColors.primary.withValues(alpha: 0.2),
+                            color: AppColors.accentForTheme(isDark).withValues(alpha: 0.25),
                             width: 3,
                           ),
                           boxShadow: [
                             BoxShadow(
-                              color: AppColors.primary.withValues(alpha: 0.1),
-                              blurRadius: 10, // Sombra más refinada
-                              offset: const Offset(0, 4),
+                              color: AppColors.accentForTheme(isDark).withValues(alpha: 0.12),
+                              blurRadius: 16,
+                              spreadRadius: 2,
+                              offset: const Offset(0, 6),
+                            ),
+                            if (isDark) BoxShadow(
+                              color: Colors.black.withValues(alpha: 0.3),
+                              blurRadius: 20,
+                              offset: const Offset(0, 8),
                             ),
                           ],
                         ),
@@ -183,7 +190,7 @@ class _PerfilScreenState extends State<PerfilScreen> {
                         style: TextStyle(
                           fontSize: 24,
                           fontWeight: FontWeight.w800,
-                          color: Theme.of(context).brightness == Brightness.dark ? AppColors.razer : AppColors.textPrimary,
+                          color: AppColors.accentForTheme(isDark),
                           letterSpacing: -0.5,
                         ),
                         maxLines: 1,
@@ -196,7 +203,7 @@ class _PerfilScreenState extends State<PerfilScreen> {
                         padding: const EdgeInsets.symmetric(
                             horizontal: 12, vertical: 4),
                         decoration: BoxDecoration(
-                          color: Theme.of(context).brightness == Brightness.dark ? AppColors.white.withValues(alpha: 0.2) : AppColors.primary.withValues(alpha: 0.08),
+                          color: AppColors.accentBg(isDark),
                           borderRadius: BorderRadius.circular(12),
                         ),
                         child: Text(
@@ -204,7 +211,7 @@ class _PerfilScreenState extends State<PerfilScreen> {
                           style: TextStyle(
                             fontSize: 15,
                             fontWeight: FontWeight.w700,
-                            color: Theme.of(context).brightness == Brightness.dark ? AppColors.white : AppColors.primary,
+                            color: AppColors.accentForTheme(isDark),
                           ),
                         ),
                       ),
@@ -229,6 +236,7 @@ class _PerfilScreenState extends State<PerfilScreen> {
                         children: [
                       Expanded(
                           child: _infoCard(
+                              isDark,
                               'ESTADO',
                               user.isEnabled ? 'Habilitado' : 'Inactivo',
                               CupertinoIcons.checkmark_shield_fill,
@@ -236,6 +244,7 @@ class _PerfilScreenState extends State<PerfilScreen> {
                       const SizedBox(width: 12),
                       Expanded(
                           child: _infoCard(
+                              isDark,
                               'FICHA MED.',
                               user.hasMedicalAppointment
                                   ? 'Activa'
@@ -249,6 +258,7 @@ class _PerfilScreenState extends State<PerfilScreen> {
                     children: [
                       Expanded(
                           child: _infoCard(
+                              isDark,
                               'SANGRE',
                               user.bloodType,
                               CupertinoIcons.drop_fill,
@@ -256,6 +266,7 @@ class _PerfilScreenState extends State<PerfilScreen> {
                       const SizedBox(width: 12),
                       Expanded(
                           child: _infoCard(
+                              isDark,
                               'EDAD',
                               '${user.age} años',
                               CupertinoIcons.gift_fill,
@@ -267,14 +278,16 @@ class _PerfilScreenState extends State<PerfilScreen> {
                     children: [
                         Expanded(
                           child: _infoCard(
+                              isDark,
                               'DOCUMENTO CI',
                               user.ci.isNotEmpty ? user.ci : 'Sin registro',
                               CupertinoIcons.person_crop_rectangle,
-                              Theme.of(context).brightness == Brightness.dark ? AppColors.white : const Color(0xFF8B5CF6)),
+                              isDark ? AppColors.darkTextPrimary : const Color(0xFF8B5CF6)),
                         ),
                         const SizedBox(width: 12),
                         Expanded(
                           child: _infoCard(
+                              isDark,
                               'FECHA NAC.',
                               user.birthDate.isNotEmpty
                                   ? user.birthDate.split(' ')[0]
@@ -301,10 +314,10 @@ class _PerfilScreenState extends State<PerfilScreen> {
                     children: [
                       CupertinoListSection.insetGrouped(
                     backgroundColor: const Color(0x00000000),
-                    header: const Text('DATOS DE CONTACTO', style: TextStyle(fontWeight: FontWeight.w700, letterSpacing: 1.2)),
+                    header: Text('DATOS DE CONTACTO', style: TextStyle(fontWeight: FontWeight.w700, letterSpacing: 1.2, color: AppColors.textSecondaryC(isDark))),
                     children: [
                       _buildEditableTile(
-                        isDark: Theme.of(context).brightness == Brightness.dark,
+                        isDark: isDark,
                         icon: CupertinoIcons.mail,
                         label: 'Correo electrónico',
                         value: _email,
@@ -316,7 +329,7 @@ class _PerfilScreenState extends State<PerfilScreen> {
                         onCancel: () => setState(() { _emailCtrl.text = _email; _isEditingEmail = false; }),
                       ),
                       _buildEditableTile(
-                        isDark: Theme.of(context).brightness == Brightness.dark,
+                        isDark: isDark,
                         icon: CupertinoIcons.phone,
                         label: 'Teléfono / Celular',
                         value: _phone,
@@ -331,7 +344,7 @@ class _PerfilScreenState extends State<PerfilScreen> {
                   ),
                   CupertinoListSection.insetGrouped(
                     backgroundColor: const Color(0x00000000),
-                    header: const Text('SEGURIDAD Y ACCESO', style: TextStyle(fontWeight: FontWeight.w700, letterSpacing: 1.2)),
+                    header: Text('SEGURIDAD Y ACCESO', style: TextStyle(fontWeight: FontWeight.w700, letterSpacing: 1.2, color: AppColors.textSecondaryC(isDark))),
                     children: [
                       CupertinoListTile.notched(
                         leading: Container(
@@ -356,12 +369,14 @@ class _PerfilScreenState extends State<PerfilScreen> {
                                 Row(
                                   children: [
                                     _miniChip(
+                                      isDark: isDark,
                                       label: 'PIN',
                                       active: _hasPin,
                                     ),
                                     const SizedBox(width: 6),
                                     if (_bioStatus != DeviceBiometricStatus.unavailable)
                                       _miniChip(
+                                        isDark: isDark,
                                         label: _bioLabel,
                                         active: _isBiometricEnabled && _hasPin,
                                       ),
@@ -381,13 +396,13 @@ class _PerfilScreenState extends State<PerfilScreen> {
                   ),
                   CupertinoListSection.insetGrouped(
                     backgroundColor: const Color(0x00000000),
-                    header: const Text('IDENTIFICACIÓN', style: TextStyle(fontWeight: FontWeight.w700, letterSpacing: 1.2)),
+                    header: Text('IDENTIFICACIÓN', style: TextStyle(fontWeight: FontWeight.w700, letterSpacing: 1.2, color: AppColors.textSecondaryC(isDark))),
                     children: [
                       CupertinoListTile.notched(
                         leading: Container(
                           padding: const EdgeInsets.all(4),
-                          decoration: BoxDecoration(color: Theme.of(context).brightness == Brightness.dark ? AppColors.white.withValues(alpha: 0.2) : AppColors.primary, borderRadius: BorderRadius.circular(6)),
-                          child: Icon(CupertinoIcons.qrcode, color: Theme.of(context).brightness == Brightness.dark ? AppColors.white : AppColors.white, size: 20),
+                          decoration: BoxDecoration(color: AppColors.accentForTheme(isDark), borderRadius: BorderRadius.circular(6)),
+                          child: const Icon(CupertinoIcons.qrcode, color: AppColors.white, size: 20),
                         ),
                         title: const Text('Mi Código QR', style: TextStyle(fontWeight: FontWeight.w600)),
                         subtitle: const Text('Identificación rápida en ventanilla'),
@@ -398,7 +413,7 @@ class _PerfilScreenState extends State<PerfilScreen> {
                   ),
                   CupertinoListSection.insetGrouped(
                     backgroundColor: const Color(0x00000000),
-                    header: Text('APARIENCIA', style: TextStyle(fontWeight: FontWeight.w700, letterSpacing: 1.2, color: Theme.of(context).textTheme.bodyLarge?.color)),
+                    header: Text('APARIENCIA', style: TextStyle(fontWeight: FontWeight.w700, letterSpacing: 1.2, color: AppColors.textSecondaryC(isDark))),
                     children: [
                       ValueListenableBuilder<ThemeMode>(
                         valueListenable: ThemeManager.themeNotifier,
@@ -408,13 +423,13 @@ class _PerfilScreenState extends State<PerfilScreen> {
                           return CupertinoListTile(
                             leading: Container(
                               padding: const EdgeInsets.all(4),
-                              decoration: BoxDecoration(color: isDarkActive ? AppColors.white.withValues(alpha: 0.2) : AppColors.primary, borderRadius: BorderRadius.circular(6)),
+                              decoration: BoxDecoration(color: AppColors.accentForTheme(isDarkActive), borderRadius: BorderRadius.circular(6)),
                               child: Icon(isDarkActive ? CupertinoIcons.moon_fill : CupertinoIcons.sun_max_fill, color: AppColors.white, size: 20),
                             ),
-                            title: Text('Modo Oscuro', style: TextStyle(fontWeight: FontWeight.w600, color: Theme.of(context).textTheme.bodyLarge?.color)),
+                            title: Text('Modo Oscuro', style: TextStyle(fontWeight: FontWeight.w600, color: AppColors.textPrimaryC(isDarkActive))),
                             trailing: CupertinoSwitch(
                               value: isDarkActive,
-                              activeTrackColor: isDarkActive ? AppColors.white.withValues(alpha: 0.5) : AppColors.primary,
+                              activeTrackColor: isDarkActive ? AppColors.razer.withValues(alpha: 0.7) : AppColors.primary,
                               onChanged: (val) {
                                 ThemeManager.setThemeMode(val ? ThemeMode.dark : ThemeMode.light);
                               },
@@ -486,8 +501,8 @@ class _PerfilScreenState extends State<PerfilScreen> {
     required VoidCallback onCancel,
   }) {
     return CupertinoListTile(
-      leading: Icon(icon, color: isDark ? AppColors.white : AppColors.primary, size: 24),
-      title: Text(label, style: TextStyle(fontSize: 14, color: isDark ? AppColors.white.withValues(alpha: 0.7) : AppColors.textSecondary)),
+      leading: Icon(icon, color: AppColors.accentForTheme(isDark), size: 24),
+      title: Text(label, style: TextStyle(fontSize: 14, color: AppColors.textSecondaryC(isDark))),
       subtitle: isEditing
           ? CupertinoTextField(
               controller: controller,
@@ -495,9 +510,10 @@ class _PerfilScreenState extends State<PerfilScreen> {
               autofocus: true,
               padding: const EdgeInsets.symmetric(vertical: 6),
               decoration: BoxDecoration(
-                border: Border(bottom: BorderSide(color: isDark ? AppColors.white.withValues(alpha: 0.5) : AppColors.primary.withValues(alpha: 0.5), width: 1)),
+                border: Border(bottom: BorderSide(color: AppColors.accentForTheme(isDark).withValues(alpha: 0.5), width: 1)),
+                borderRadius: BorderRadius.zero,
               ),
-              style: TextStyle(fontSize: 17, fontWeight: FontWeight.w600, color: isDark ? AppColors.white : AppColors.textPrimary),
+              style: TextStyle(fontSize: 17, fontWeight: FontWeight.w600, color: AppColors.textPrimaryC(isDark)),
               onSubmitted: (_) => onSave(),
             )
           : Text(
@@ -505,9 +521,9 @@ class _PerfilScreenState extends State<PerfilScreen> {
               style: TextStyle(
                 fontSize: 17,
                 fontWeight: FontWeight.w600,
-                color: value.isNotEmpty 
-                    ? (isDark ? AppColors.white : AppColors.textPrimary) 
-                    : (isDark ? AppColors.white.withValues(alpha: 0.4) : AppColors.textTertiary),
+                color: value.isNotEmpty
+                    ? AppColors.textPrimaryC(isDark)
+                    : AppColors.textTertiaryC(isDark),
               ),
             ),
       trailing: isEditing
@@ -518,41 +534,66 @@ class _PerfilScreenState extends State<PerfilScreen> {
                 CupertinoButton(padding: EdgeInsets.zero, onPressed: onSave, child: const Icon(CupertinoIcons.checkmark_alt_circle_fill, color: CupertinoColors.activeGreen, size: 22)),
               ],
             )
-          : CupertinoButton(padding: EdgeInsets.zero, onPressed: onEdit, child: Icon(CupertinoIcons.pencil, color: isDark ? AppColors.white : AppColors.primary, size: 20)),
+          : CupertinoButton(padding: EdgeInsets.zero, onPressed: onEdit, child: Icon(CupertinoIcons.pencil, color: AppColors.accentForTheme(isDark), size: 20)),
     );
   }
 
-  Widget _infoCard(String label, String value, IconData icon, Color color) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
+  Widget _infoCard(bool isDark, String label, String value, IconData icon, Color color) {
     return Container(
-      padding: const EdgeInsets.all(20),
+      clipBehavior: Clip.antiAlias,
       decoration: BoxDecoration(
-        color: isDark ? const Color(0xFF1C1C1E) : AppColors.white,
+        gradient: isDark
+            ? LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [AppColors.darkCard, AppColors.darkCard.withValues(alpha: 0.8)],
+              )
+            : null,
+        color: isDark ? null : AppColors.white,
         borderRadius: BorderRadius.circular(AppTheme.radiusXl),
-        boxShadow: isDark ? [] : AppColors.softShadow,
+        border: Border.all(
+          color: AppColors.cardBorder(isDark).withValues(alpha: 0.5),
+          width: 0.5,
+        ),
+        boxShadow: isDark ? AppColors.cardShadowFor(isDark) : AppColors.softShadow,
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      child: Row(
         children: [
-          Icon(icon, size: 32, color: color),
-          const SizedBox(height: 14),
-          Text(
-            label,
-            style: const TextStyle(
-              fontSize: 12,
-              fontWeight: FontWeight.w700,
-              letterSpacing: 1.0,
-              color: AppColors.textSecondary,
-            ),
+          // Left accent bar
+          Container(
+            width: 3,
+            height: 100,
+            color: color,
           ),
-          const SizedBox(height: 4),
-          Text(
-            value,
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.w800,
-              color: Theme.of(context).textTheme.bodyLarge?.color ?? AppColors.textPrimary,
-              height: 1.1,
+          Expanded(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(17, 20, 20, 20),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Icon(icon, size: 32, color: color),
+                  const SizedBox(height: 14),
+                  Text(
+                    label,
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: 1.0,
+                      color: AppColors.textSecondaryC(isDark),
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    value,
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w800,
+                      color: AppColors.textPrimaryC(isDark),
+                      height: 1.1,
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
         ],
@@ -560,13 +601,13 @@ class _PerfilScreenState extends State<PerfilScreen> {
     );
   }
 
-  Widget _miniChip({required String label, required bool active}) {
+  Widget _miniChip({required bool isDark, required String label, required bool active}) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
       decoration: BoxDecoration(
         color: active
             ? AppColors.success.withValues(alpha: 0.12)
-            : AppColors.textTertiary.withValues(alpha: 0.12),
+            : AppColors.textTertiaryC(isDark).withValues(alpha: 0.12),
         borderRadius: BorderRadius.circular(6),
       ),
       child: Text(
@@ -574,10 +615,9 @@ class _PerfilScreenState extends State<PerfilScreen> {
         style: TextStyle(
           fontSize: 11,
           fontWeight: FontWeight.w700,
-          color: active ? AppColors.success : AppColors.textTertiary,
+          color: active ? AppColors.success : AppColors.textTertiaryC(isDark),
         ),
       ),
     );
   }
 }
-

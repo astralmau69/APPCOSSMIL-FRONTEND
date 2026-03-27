@@ -7,6 +7,7 @@ class UserModel {
   final String matricula;
   final String bloodType;
   final int age;
+  final String gender;
   final String role;
   final bool isEnabled;
   final bool hasMedicalAppointment;
@@ -15,6 +16,8 @@ class UserModel {
   final String ci;
   final String photoBase64;
   final String birthDate;
+  final int? idseg;
+  final String? uc;
   final List<BeneficiaryModel> beneficiaries;
 
   const UserModel({
@@ -24,6 +27,7 @@ class UserModel {
     required this.matricula,
     required this.bloodType,
     required this.age,
+    this.gender = '',
     required this.role,
     this.isEnabled = true,
     this.hasMedicalAppointment = false,
@@ -32,6 +36,8 @@ class UserModel {
     this.ci = '',
     this.photoBase64 = '',
     this.birthDate = '',
+    this.idseg,
+    this.uc,
     required this.beneficiaries,
   });
 
@@ -42,6 +48,7 @@ class UserModel {
     String? matricula,
     String? bloodType,
     int? age,
+    String? gender,
     String? role,
     bool? isEnabled,
     bool? hasMedicalAppointment,
@@ -50,6 +57,8 @@ class UserModel {
     String? ci,
     String? photoBase64,
     String? birthDate,
+    int? idseg,
+    String? uc,
     List<BeneficiaryModel>? beneficiaries,
   }) {
     return UserModel(
@@ -59,6 +68,7 @@ class UserModel {
       matricula: matricula ?? this.matricula,
       bloodType: bloodType ?? this.bloodType,
       age: age ?? this.age,
+      gender: gender ?? this.gender,
       role: role ?? this.role,
       isEnabled: isEnabled ?? this.isEnabled,
       hasMedicalAppointment:
@@ -68,6 +78,8 @@ class UserModel {
       ci: ci ?? this.ci,
       photoBase64: photoBase64 ?? this.photoBase64,
       birthDate: birthDate ?? this.birthDate,
+      idseg: idseg ?? this.idseg,
+      uc: uc ?? this.uc,
       beneficiaries: beneficiaries ?? this.beneficiaries,
     );
   }
@@ -84,6 +96,7 @@ class UserModel {
           json['bloodType'] as String? ??
           '',
       age: json['edad'] as int? ?? json['age'] as int? ?? 0,
+      gender: json['genero'] as String? ?? json['gender'] as String? ?? '',
       role: json['rol'] as String? ?? json['role'] as String? ?? '',
       isEnabled: json['habilitado'] as bool? ??
           json['isEnabled'] as bool? ??
@@ -118,6 +131,7 @@ class UserModel {
         'matricula': matricula,
         'bloodType': bloodType,
         'age': age,
+        'gender': gender,
         'role': role,
         'isEnabled': isEnabled,
         'hasMedicalAppointment': hasMedicalAppointment,

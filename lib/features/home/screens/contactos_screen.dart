@@ -147,13 +147,13 @@ class ContactosScreen extends StatelessWidget {
         ),
         slivers: [
           CupertinoSliverNavigationBar(
-            largeTitle: Text('Contactos', style: TextStyle(color: Theme.of(context).textTheme.bodyLarge?.color)),
-            backgroundColor: isDark 
-                ? const Color(0xFF1C1C1E).withValues(alpha: 0.92)
+            largeTitle: Text('Contactos', style: TextStyle(color: AppColors.textPrimaryC(isDark))),
+            backgroundColor: isDark
+                ? AppColors.darkSurface.withValues(alpha: 0.92)
                 : AppColors.white.withValues(alpha: 0.92),
             border: Border(
               bottom: BorderSide(
-                color: AppColors.border.withValues(alpha: 0.5),
+                color: AppColors.cardBorder(isDark).withValues(alpha: 0.5),
                 width: 0.5,
               ),
             ),
@@ -163,14 +163,14 @@ class ContactosScreen extends StatelessWidget {
             sliver: SliverList(
               delegate: SliverChildListDelegate([
                 // Subtitle
-                const FadeSlideIn(
+                FadeSlideIn(
                   child: Padding(
-                    padding: EdgeInsets.only(bottom: 20),
+                    padding: const EdgeInsets.only(bottom: 20),
                     child: Text(
                       'Líneas de atención, emergencias y contactos institucionales de COSSMIL.',
                       style: TextStyle(
                         fontSize: 18,
-                        color: AppColors.textSecondary,
+                        color: AppColors.textSecondaryC(isDark),
                         height: 1.4,
                         fontWeight: FontWeight.w500,
                       ),
@@ -250,10 +250,10 @@ class ContactosScreen extends StatelessWidget {
           const SizedBox(width: 8),
           Text(
             text,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.w800,
-              color: AppColors.textSecondary,
+              color: AppColors.textSecondaryC(isDark),
               letterSpacing: 1.5,
             ),
           ),
@@ -451,9 +451,9 @@ class _ContactCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: isDark ? const Color(0xFF1C1C1E) : AppColors.white,
+        color: AppColors.cardBg(isDark),
         borderRadius: BorderRadius.circular(AppTheme.radiusXl),
-        boxShadow: isDark ? [] : AppColors.softShadow,
+        boxShadow: AppColors.cardShadowFor(isDark),
         border: Border.all(
           color: accentColor.withValues(alpha: 0.12),
         ),
@@ -503,7 +503,7 @@ class _ContactCard extends StatelessWidget {
                   style: TextStyle(
                     fontSize: 20,
                     fontWeight: FontWeight.w800,
-                    color: Theme.of(context).textTheme.bodyLarge?.color ?? AppColors.textPrimary,
+                    color: AppColors.textPrimaryC(isDark),
                     letterSpacing: -0.5,
                   ),
                   maxLines: 1,
@@ -523,10 +523,10 @@ class _ContactCard extends StatelessWidget {
                   const SizedBox(height: 4),
                   Text(
                     contact.subtitle!,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.w600,
-                      color: AppColors.textSecondary,
+                      color: AppColors.textSecondaryC(isDark),
                       height: 1.3,
                     ),
                   ),
@@ -569,8 +569,8 @@ class _ContactCard extends StatelessWidget {
                     color: AppColors.background,
                     borderRadius: BorderRadius.circular(12),
                   ),
-                  child: const Icon(CupertinoIcons.doc_on_clipboard,
-                      size: 24, color: AppColors.textSecondary),
+                  child: Icon(CupertinoIcons.doc_on_clipboard,
+                      size: 24, color: AppColors.textSecondaryC(isDark)),
                 ),
               ),
             ],

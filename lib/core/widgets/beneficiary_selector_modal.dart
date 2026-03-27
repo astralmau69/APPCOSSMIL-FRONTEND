@@ -49,7 +49,7 @@ class _ModalContent extends StatelessWidget {
         maxHeight: MediaQuery.of(context).size.height * 0.65,
       ),
       decoration: BoxDecoration(
-        color: Theme.of(context).brightness == Brightness.dark ? const Color(0xFF1C1C1E) : AppColors.white,
+        color: AppColors.cardBg(Theme.of(context).brightness == Brightness.dark),
         borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
       ),
       child: Column(
@@ -78,7 +78,7 @@ class _ModalContent extends StatelessWidget {
                   style: TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.w800,
-                    color: Theme.of(context).textTheme.bodyLarge?.color ?? AppColors.textPrimary,
+                    color: AppColors.textPrimaryC(Theme.of(context).brightness == Brightness.dark),
                     letterSpacing: -0.3,
                   ),
                 ),
@@ -86,14 +86,14 @@ class _ModalContent extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 6),
-          const Padding(
-            padding: EdgeInsets.symmetric(horizontal: 24),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 24),
             child: Text(
               'Selecciona el miembro de tu grupo familiar',
               style: TextStyle(
                 fontSize: 14,
                 fontWeight: FontWeight.w500,
-                color: AppColors.textSecondary,
+                color: AppColors.textSecondaryC(Theme.of(context).brightness == Brightness.dark),
               ),
             ),
           ),
@@ -184,7 +184,7 @@ class _BeneficiaryTile extends StatelessWidget {
                     style: TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.w700,
-                      color: Theme.of(context).textTheme.bodyLarge?.color ?? AppColors.textPrimary,
+                      color: AppColors.textPrimaryC(isDark),
                     ),
                   ),
                   const SizedBox(height: 4),

@@ -2,6 +2,8 @@ import 'dart:ui';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 
+import '../../core/constants/app_colors.dart';
+
 class FloatingNavBar extends StatelessWidget {
   final int currentIndex;
   final ValueChanged<int> onTap;
@@ -20,8 +22,8 @@ class FloatingNavBar extends StatelessWidget {
         ? LinearGradient(
             colors: [
               const Color(0xFFE91E63).withValues(alpha: 0.15),
-              const Color(0xFF1C1C1E).withValues(alpha: 0.25),
-              const Color(0xFF1C1C1E).withValues(alpha: 0.25),
+              AppColors.darkSurface.withValues(alpha: 0.25),
+              AppColors.darkSurface.withValues(alpha: 0.25),
             ],
             stops: const [0.0, 0.4, 1.0],
             begin: Alignment.centerLeft,
@@ -35,12 +37,11 @@ class FloatingNavBar extends StatelessWidget {
           );
 
     final borderColor = isDark
-        ? Colors.white.withValues(alpha: 0.10)
-        : Colors.white.withValues(alpha: 0.45);
+        ? AppColors.darkBorder.withValues(alpha: 0.6)
+        : Colors.white.withValues(alpha: 0.5);
 
-    final inactiveColor = isDark
-        ? Colors.white.withValues(alpha: 0.6)
-        : Colors.black.withValues(alpha: 0.5);
+    final inactiveColor =
+        isDark ? AppColors.darkTextSecondary : Colors.black.withValues(alpha: 0.5);
 
     final activeColor = isDark ? Colors.white : Colors.black;
 
@@ -52,9 +53,9 @@ class FloatingNavBar extends StatelessWidget {
       child: Padding(
         padding: const EdgeInsets.only(left: 16, right: 16, bottom: 24),
         child: Container(
-          height: 68,
+          height: 70,
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(34),
+            borderRadius: BorderRadius.circular(35),
             boxShadow: [
               BoxShadow(
                 color: shadowColor,
@@ -64,7 +65,7 @@ class FloatingNavBar extends StatelessWidget {
             ],
           ),
           child: ClipRRect(
-            borderRadius: BorderRadius.circular(34),
+            borderRadius: BorderRadius.circular(35),
             child: BackdropFilter(
               // Reduced from 35 → 12: same glass feel, ~8× cheaper on GPU.
               filter: ImageFilter.blur(sigmaX: 12.0, sigmaY: 12.0),
@@ -72,7 +73,7 @@ class FloatingNavBar extends StatelessWidget {
                 decoration: BoxDecoration(
                   gradient: backgroundGradient,
                   border: Border.all(color: borderColor, width: 0.5),
-                  borderRadius: BorderRadius.circular(34),
+                  borderRadius: BorderRadius.circular(35),
                 ),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceEvenly,
@@ -168,9 +169,8 @@ class _NavBarItem extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final bgPillColor = isDark
-        ? Colors.white.withValues(alpha: 0.15)
-        : Colors.black.withValues(alpha: 0.08);
+    final bgPillColor =
+        isDark ? AppColors.darkElevated : Colors.black.withValues(alpha: 0.08);
 
     // Only apply ShaderMask when it actually changes the rendering.
     // Avoids creating 4 unnecessary compositing layers on every tab switch.
@@ -218,8 +218,8 @@ class _NavBarItem extends StatelessWidget {
                     top: -4,
                     child: Container(
                       padding: const EdgeInsets.all(4),
-                      decoration: const BoxDecoration(
-                        color: Color(0xFFFFD60A),
+                      decoration: BoxDecoration(
+                        color: AppColors.warning,
                         shape: BoxShape.circle,
                       ),
                       child: Text(

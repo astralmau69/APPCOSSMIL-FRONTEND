@@ -212,7 +212,7 @@ class _SecuritySetupScreenState extends State<SecuritySetupScreen> {
               _statusSubtitle,
               textAlign: TextAlign.center,
               style: AppTypography.bodyMedium.copyWith(
-                color: AppColors.textSecondary,
+                color: AppColors.textSecondaryC(isDark),
                 height: 1.5,
               ),
             ),
@@ -236,7 +236,7 @@ class _SecuritySetupScreenState extends State<SecuritySetupScreen> {
       child: Icon(
         _hasPin ? CupertinoIcons.shield_fill : CupertinoIcons.shield,
         size: 44,
-        color: _hasPin ? AppColors.success : AppColors.textTertiary,
+        color: _hasPin ? AppColors.success : AppColors.textTertiaryC(isDark),
       ),
     );
   }
@@ -296,7 +296,7 @@ class _SecuritySetupScreenState extends State<SecuritySetupScreen> {
     required bool active,
     required bool isDark,
   }) {
-    final color = active ? AppColors.success : AppColors.textTertiary;
+    final color = active ? AppColors.success : AppColors.textTertiaryC(isDark);
     return Expanded(
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 10),
@@ -308,9 +308,7 @@ class _SecuritySetupScreenState extends State<SecuritySetupScreen> {
           border: Border.all(
             color: active
                 ? AppColors.success.withValues(alpha: 0.2)
-                : (isDark
-                    ? Colors.white.withValues(alpha: 0.08)
-                    : AppColors.border),
+                : AppColors.cardBorder(isDark),
           ),
         ),
         child: Column(
@@ -320,7 +318,7 @@ class _SecuritySetupScreenState extends State<SecuritySetupScreen> {
             Text(
               label,
               style: AppTypography.labelSmall.copyWith(
-                color: AppColors.textSecondary,
+                color: AppColors.textSecondaryC(isDark),
                 fontWeight: FontWeight.w600,
               ),
             ),
@@ -346,7 +344,7 @@ class _SecuritySetupScreenState extends State<SecuritySetupScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _sectionLabel('MÉTODO DE ACCESO'),
+        _sectionLabel('MÉTODO DE ACCESO', isDark: isDark),
         const SizedBox(height: 12),
 
         // ── PIN card ──────────────────────────────────────────
@@ -373,13 +371,13 @@ class _SecuritySetupScreenState extends State<SecuritySetupScreen> {
     return _securityCard(
       isDark: isDark,
       icon: CupertinoIcons.lock_shield_fill,
-      iconColor: _hasPin ? AppColors.success : AppColors.textSecondary,
+      iconColor: _hasPin ? AppColors.success : AppColors.textSecondaryC(isDark),
       iconBg: _hasPin
           ? AppColors.success.withValues(alpha: 0.12)
           : (isDark ? Colors.white10 : Colors.grey.shade100),
       title: 'PIN de 4 dígitos',
       subtitle: _hasPin ? 'Activo · protección habilitada' : 'No configurado',
-      subtitleColor: _hasPin ? AppColors.success : AppColors.textTertiary,
+      subtitleColor: _hasPin ? AppColors.success : AppColors.textTertiaryC(isDark),
       trailing: _PillButton(
         label: _hasPin ? 'Cambiar' : 'Configurar',
         filled: !_hasPin,
@@ -396,17 +394,17 @@ class _SecuritySetupScreenState extends State<SecuritySetupScreen> {
     return _securityCard(
       isDark: isDark,
       icon: isFace ? Icons.face_retouching_natural : Icons.fingerprint,
-      iconColor: active ? AppColors.primary : AppColors.textSecondary,
+      iconColor: active ? AppColors.accentForTheme(isDark) : AppColors.textSecondaryC(isDark),
       iconBg: active
-          ? AppColors.primary.withValues(alpha: 0.12)
+          ? AppColors.accentForTheme(isDark).withValues(alpha: 0.12)
           : (isDark ? Colors.white10 : Colors.grey.shade100),
       title: _bioLabel,
       subtitle: !_hasPin
           ? 'Configura el PIN primero'
           : (active ? 'Activada · desbloqueo rápido' : 'Disponible en este dispositivo'),
       subtitleColor: !_hasPin
-          ? AppColors.textTertiary
-          : (active ? AppColors.primary : AppColors.textSecondary),
+          ? AppColors.textTertiaryC(isDark)
+          : (active ? AppColors.accentForTheme(isDark) : AppColors.textSecondaryC(isDark)),
       trailing: _togglingBio
           ? const Padding(
               padding: EdgeInsets.only(right: 4),
@@ -415,7 +413,7 @@ class _SecuritySetupScreenState extends State<SecuritySetupScreen> {
           : CupertinoSwitch(
               value: _isBiometricEnabled,
               onChanged: _hasPin ? _toggleBiometrics : null,
-              activeTrackColor: AppColors.primary,
+              activeTrackColor: AppColors.accentForTheme(isDark),
             ),
     );
   }
@@ -463,14 +461,14 @@ class _SecuritySetupScreenState extends State<SecuritySetupScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _sectionLabel('ZONA DE RIESGO'),
+        _sectionLabel('ZONA DE RIESGO', isDark: isDark),
         const SizedBox(height: 4),
         Padding(
           padding: const EdgeInsets.only(left: 4, bottom: 12),
           child: Text(
             'Requiere verificación de identidad',
             style: AppTypography.bodySmall.copyWith(
-              color: AppColors.textTertiary,
+              color: AppColors.textTertiaryC(isDark),
             ),
           ),
         ),
@@ -533,14 +531,14 @@ class _SecuritySetupScreenState extends State<SecuritySetupScreen> {
 
   // ─── Helpers de UI ─────────────────────────────────────────────────────────
 
-  Widget _sectionLabel(String text) {
+  Widget _sectionLabel(String text, {required bool isDark}) {
     return Padding(
       padding: const EdgeInsets.only(left: 4),
       child: Text(
         text,
         style: AppTypography.labelMedium.copyWith(
           letterSpacing: 1.2,
-          color: AppColors.textSecondary,
+          color: AppColors.textSecondaryC(isDark),
         ),
       ),
     );
@@ -559,7 +557,7 @@ class _SecuritySetupScreenState extends State<SecuritySetupScreen> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
       decoration: BoxDecoration(
-        color: isDark ? const Color(0xFF1C1C1E) : AppColors.white,
+        color: AppColors.cardBg(isDark),
         borderRadius: BorderRadius.circular(16),
         boxShadow: isDark ? [] : AppColors.softShadow,
       ),
@@ -583,7 +581,7 @@ class _SecuritySetupScreenState extends State<SecuritySetupScreen> {
                   title,
                   style: AppTypography.titleSmall.copyWith(
                     fontWeight: FontWeight.w600,
-                    color: isDark ? AppColors.white : AppColors.textPrimary,
+                    color: AppColors.textPrimaryC(isDark),
                   ),
                 ),
                 const SizedBox(height: 2),
@@ -628,10 +626,10 @@ class _PillButton extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         decoration: BoxDecoration(
           color: filled
-              ? AppColors.primary
+              ? AppColors.accentForTheme(isDark)
               : (isDark
-                  ? Colors.white.withValues(alpha: 0.08)
-                  : AppColors.primary.withValues(alpha: 0.08)),
+                  ? AppColors.cardBorder(isDark)
+                  : AppColors.accentForTheme(isDark).withValues(alpha: 0.08)),
           borderRadius: BorderRadius.circular(20),
         ),
         child: Text(
@@ -641,7 +639,7 @@ class _PillButton extends StatelessWidget {
             fontWeight: FontWeight.w600,
             color: filled
                 ? AppColors.white
-                : (isDark ? AppColors.white : AppColors.primary),
+                : (isDark ? AppColors.white : AppColors.accentForTheme(isDark)),
           ),
         ),
       ),

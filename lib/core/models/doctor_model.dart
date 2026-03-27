@@ -2,11 +2,15 @@ class DoctorModel {
   final String id;
   final String fullName;
   final String office;
+  final String fecha;
+  final String dia;
 
   const DoctorModel({
     required this.id,
     required this.fullName,
     required this.office,
+    this.fecha = '',
+    this.dia = '',
   });
 
   factory DoctorModel.fromJson(Map<String, dynamic> json) {
@@ -18,6 +22,8 @@ class DoctorModel {
       office: json['consultorio'] as String? ??
           json['office'] as String? ??
           '',
+      fecha: json['fecha'] as String? ?? '',
+      dia: json['dia'] as String? ?? '',
     );
   }
 

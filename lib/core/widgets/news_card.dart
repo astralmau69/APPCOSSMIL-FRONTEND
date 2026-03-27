@@ -1,11 +1,9 @@
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import '../constants/app_colors.dart';
 import '../theme/app_theme.dart';
 import '../models/news_item_model.dart';
 
-/// Card reutilizable para comunicados institucionales.
-/// Muestra fecha, categoría, título y resumen con jerarquía visual.
-/// Incluye feedback táctil animado (scale down on press).
 class NewsCard extends StatefulWidget {
   final NewsItemModel item;
   final VoidCallback? onTap;
@@ -28,7 +26,7 @@ class _NewsCardState extends State<NewsCard>
       vsync: this,
       duration: const Duration(milliseconds: 100),
     );
-    _scaleAnim = Tween<double>(begin: 1.0, end: 0.97).animate(
+    _scaleAnim = Tween<double>(begin: 1.0, end: 0.98).animate(
       CurvedAnimation(parent: _pressCtrl, curve: Curves.easeInOut),
     );
   }
@@ -51,87 +49,139 @@ class _NewsCardState extends State<NewsCard>
       onTap: widget.onTap,
       child: ScaleTransition(
         scale: _scaleAnim,
-        child: RepaintBoundary(
-          child: Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: isDark ? const Color(0xFF1C1C1E) : AppColors.white,
-              borderRadius: BorderRadius.circular(AppTheme.radiusLg),
-              border: Border.all(
-                color: widget.item.importance == NewsImportance.critical
-                    ? AppColors.error.withValues(alpha: 0.25)
-                    : (isDark ? Colors.white.withValues(alpha: 0.1) : AppColors.border),
-                width: 0.5,
-              ),
-              boxShadow: isDark ? [] : [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.02),
-                  blurRadius: 4,
-                  offset: const Offset(0, 2),
-                ),
-              ],
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Top row: category badge + date
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                    decoration: BoxDecoration(
-                      color: accentColor.withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(6),
-                    ),
-                    child: Text(
-                      widget.item.category.toUpperCase(),
-                      style: TextStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w700,
-                        color: accentColor,
-                        letterSpacing: 0.6,
-                      ),
-                    ),
-                  ),
-                  Text(
-                    widget.item.date,
-                    style: const TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w500,
-                      color: AppColors.textTertiary,
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 10),
-              // Title
-              Text(
-                widget.item.title,
-                style: TextStyle(
-                  fontSize: 15,
-                  fontWeight: FontWeight.w700,
-                  color: Theme.of(context).textTheme.bodyLarge?.color ?? AppColors.textPrimary,
-                  height: 1.2,
-                ),
-              ),
-              const SizedBox(height: 6),
-              // Summary
-              Text(
-                widget.item.summary,
-                maxLines: 3,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
-                  fontSize: 14,
-                  color: AppColors.textSecondary,
-                  height: 1.4,
-                  fontWeight: FontWeight.w400,
-                ),
+        child: Container(
+          decoration: BoxDecoration(
+            color: AppColors.cardBg(isDark),
+            borderRadius: BorderRadius.circular(AppTheme.radiusLg),
+            border: Border.all(
+              color: AppColors.cardBorder(isDark),
+              width: 0.8,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.05),
+                blurRadius: 10,
+                offset: const Offset(0, 4),
               ),
             ],
           ),
-        ),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(AppTheme.radiusLg),
+            child: Stack(
+              children: [
+                // Soft background gradient
+                Positioned.fill(
+                  child: Container(
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                        colors: [
+                          accentColor.withValues(alpha: 0.03),
+                          AppColors.cardBg(isDark),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+                Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          // Category Tag
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 8, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: accentColor.withValues(alpha: 0.12),
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: Text(
+                              widget.item.category.toUpperCase(),
+                              style: TextStyle(
+                                fontSize: 10,
+                                fontWeight: FontWeight.w800,
+                                color: accentColor,
+                                letterSpacing: 0.8,
+                              ),
+                            ),
+                          ),
+                          const Spacer(),
+                          // Date
+                          Icon(CupertinoIcons.calendar, 
+                            size: 12, color: AppColors.textTertiaryC(isDark)),
+                          const SizedBox(width: 4),
+                          Text(
+                            widget.item.date,
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w600,
+                              color: AppColors.textTertiaryC(isDark),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+                      // Title
+                      Text(
+                        widget.item.title,
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w800,
+                          color: AppColors.textPrimaryC(isDark),
+                          height: 1.2,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      // Summary
+                      Text(
+                        widget.item.summary,
+                        maxLines: 3,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontSize: 13,
+                          color: AppColors.textSecondaryC(isDark),
+                          height: 1.5,
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      // Footer action
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.end,
+                        children: [
+                          Text(
+                            'Leer más',
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w700,
+                              color: AppColors.accentForTheme(isDark),
+                            ),
+                          ),
+                          const SizedBox(width: 4),
+                          Icon(
+                            CupertinoIcons.chevron_right,
+                            size: 10,
+                            color: AppColors.accentForTheme(isDark),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+                // Importance indicator bar on top
+                Positioned(
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  height: 3,
+                  child: Container(color: accentColor),
+                ),
+              ],
+            ),
+          ),
         ),
       ),
     );

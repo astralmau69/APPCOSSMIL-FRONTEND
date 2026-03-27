@@ -8,7 +8,7 @@ import '../../../core/theme/app_constants.dart';
 import '../../../core/services/security_service.dart';
 import '../../../core/services/session_restore_service.dart';
 import '../../../core/storage/token_storage.dart';
-import '../../../core/mock/mock_user_data.dart';
+import '../../../core/session/user_session.dart';
 import '../../../core/animations/optimized_animations.dart';
 import '../../../core/animations/animated_gradient_background.dart';
 
@@ -32,9 +32,9 @@ class _LocalAuthScreenState extends State<LocalAuthScreen>
   bool _isBiometricEnabled = false;
   bool _isVerifying = false;
 
-  // Nombre del usuario sin depender de MockUserData
+  // Nombre del usuario real desde SecurityService
   String _displayName = '';
-  // Foto base64 del usuario real
+  // Foto real recuperada en la sesión
   String _photoBase64 = '';
 
   // Cooldown
@@ -85,8 +85,8 @@ class _LocalAuthScreenState extends State<LocalAuthScreen>
       _displayName = name ?? '';
       _isBiometricEnabled = bioEnabled;
       _cooldownRemaining = cooldown;
-      // Foto desde MockUserData (ya restaurado por SessionRestoreService)
-      _photoBase64 = MockUserData.user.photoBase64;
+      // Foto real (ya restaurada por SessionRestoreService)
+      _photoBase64 = UserSession.currentUser.photoBase64;
     });
 
     if (cooldown != null) {
@@ -249,7 +249,7 @@ class _LocalAuthScreenState extends State<LocalAuthScreen>
                         ? 'Bienvenido de vuelta'
                         : 'Desbloquea tu app',
                     style: AppTypography.bodyMedium.copyWith(
-                      color: AppColors.textSecondary,
+                      color: AppColors.textSecondaryC(isDark),
                     ),
                   ),
                   if (_displayName.isNotEmpty) ...[
@@ -258,7 +258,7 @@ class _LocalAuthScreenState extends State<LocalAuthScreen>
                       _displayName,
                       style: AppTypography.titleLarge.copyWith(
                         fontWeight: FontWeight.w700,
-                        color: isDark ? AppColors.razer : null,
+                        color: isDark ? AppColors.accentForTheme(isDark) : null,
                       ),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
@@ -272,7 +272,7 @@ class _LocalAuthScreenState extends State<LocalAuthScreen>
                     style: AppTypography.bodyMedium.copyWith(
                       color: _isBlocked
                           ? AppColors.warning
-                          : AppColors.textSecondary,
+                          : AppColors.textSecondaryC(isDark),
                       fontWeight: _isBlocked ? FontWeight.w600 : null,
                     ),
                   ),
@@ -405,7 +405,7 @@ class _LocalAuthScreenState extends State<LocalAuthScreen>
       height: 80,
       decoration: BoxDecoration(
         shape: BoxShape.circle,
-        color: isDark ? const Color(0xFF2C2C2E) : AppColors.white,
+        color: isDark ? AppColors.darkElevated : AppColors.white,
         border: Border.all(
           color: AppColors.primary.withValues(alpha: 0.15),
           width: 2.5,
@@ -417,9 +417,10 @@ class _LocalAuthScreenState extends State<LocalAuthScreen>
   }
 
   Widget _buildInitialsOrLogo(bool isDark) {
-    if (_displayName.isNotEmpty) {
+    final trimmed = _displayName.trim();
+    if (trimmed.isNotEmpty) {
       // Iniciales del usuario
-      final parts = _displayName.trim().split(RegExp(r'\s+'));
+      final parts = trimmed.split(RegExp(r'\s+'));
       final initials = parts.length >= 2
           ? '${parts[0][0]}${parts[1][0]}'.toUpperCase()
           : parts[0][0].toUpperCase();
@@ -504,7 +505,7 @@ class _LocalAuthScreenState extends State<LocalAuthScreen>
             children: [
               _buildBiometricKey(),
               _buildNumberKey(0, isDark),
-              _buildDeleteKey(),
+              _buildDeleteKey(isDark),
             ],
           ),
         ],
@@ -529,9 +530,9 @@ class _LocalAuthScreenState extends State<LocalAuthScreen>
         decoration: BoxDecoration(
           shape: BoxShape.circle,
           color: blocked
-              ? (isDark ? const Color(0xFF1C1C1E) : Colors.grey.shade100)
+              ? (isDark ? AppColors.darkSurface : Colors.grey.shade100)
                   .withValues(alpha: 0.5)
-              : (isDark ? const Color(0xFF1C1C1E) : Colors.grey.shade100),
+              : (isDark ? AppColors.darkSurface : Colors.grey.shade100),
         ),
         child: Center(
           child: Text(
@@ -540,8 +541,8 @@ class _LocalAuthScreenState extends State<LocalAuthScreen>
               fontSize: 28,
               fontWeight: FontWeight.w400,
               color: blocked
-                  ? AppColors.textTertiary
-                  : (isDark ? AppColors.white : AppColors.textPrimary),
+                  ? AppColors.textTertiaryC(isDark)
+                  : AppColors.textPrimaryC(isDark),
             ),
           ),
         ),
@@ -568,7 +569,7 @@ class _LocalAuthScreenState extends State<LocalAuthScreen>
     );
   }
 
-  Widget _buildDeleteKey() {
+  Widget _buildDeleteKey(bool isDark) {
     return OptimizedPressButton(
       onTap: _isBlocked ? null : _onDeletePressed,
       child: SizedBox(
@@ -578,7 +579,7 @@ class _LocalAuthScreenState extends State<LocalAuthScreen>
           CupertinoIcons.delete_left,
           size: 28,
           color:
-              _isBlocked ? AppColors.textTertiary : AppColors.textSecondary,
+              _isBlocked ? AppColors.textTertiaryC(isDark) : AppColors.textSecondaryC(isDark),
         ),
       ),
     );

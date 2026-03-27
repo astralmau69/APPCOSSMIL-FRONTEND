@@ -3,126 +3,209 @@ import 'package:flutter/material.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/theme/app_constants.dart';
 import '../../../core/animations/optimized_animations.dart';
-import '../../../core/mock/mock_appointments_data.dart';
+import '../../../core/models/reserva_model.dart';
+import '../../../core/services/programacion_service.dart';
+import '../../../core/session/user_session.dart';
 import '../../../core/widgets/appointment_card.dart';
+import '../../../core/widgets/app_state_widget.dart';
 
-class ReservasScreen extends StatelessWidget {
+class ReservasScreen extends StatefulWidget {
   const ReservasScreen({super.key});
 
   @override
+  State<ReservasScreen> createState() => _ReservasScreenState();
+}
+
+class _ReservasScreenState extends State<ReservasScreen> {
+  final _service = ProgramacionService();
+
+  List<ReservaModel> _history = [];
+  bool _isLoading = true;
+  String? _errorMessage;
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchReservas();
+  }
+
+  Future<void> _fetchReservas() async {
+    if (!mounted) return;
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
+
+    try {
+      final idper = int.tryParse(UserSession.currentUser.id) ?? 0;
+      final reservas = await _service.getReservas(idper);
+
+      if (!mounted) return;
+      setState(() {
+        _history = reservas;
+        _isLoading = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _errorMessage = 'No se pudo cargar el historial de reservas.';
+        _isLoading = false;
+      });
+    }
+  }
+
+  int get _completedCount =>
+      _history.where((a) => a.status == 'Completado').length;
+
+  int get _missedCount =>
+      _history.where((a) => a.status == 'Falta').length;
+
+  @override
   Widget build(BuildContext context) {
-    final history = MockAppointmentsData.history;
-    final completed = MockAppointmentsData.completedCount;
-    final missed = MockAppointmentsData.missedCount;
     final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    if (_isLoading) {
+      return CupertinoPageScaffold(
+        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+        child: const AppStateWidget.loading(),
+      );
+    }
+
+    if (_errorMessage != null) {
+      return CupertinoPageScaffold(
+        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+        child: AppStateWidget.error(
+          title: 'Error',
+          message: _errorMessage!,
+          onRetry: _fetchReservas,
+        ),
+      );
+    }
+
+    if (_history.isEmpty) {
+      return _emptyState(context, isDark);
+    }
 
     return CupertinoPageScaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-      child: history.isEmpty
-          ? _emptyState(context, isDark)
-          : CustomScrollView(
-              physics: const BouncingScrollPhysics(
-                parent: AlwaysScrollableScrollPhysics(),
-              ),
-              slivers: [
-                // ── iOS Large Title Nav Bar ─────────────────────────
-                CupertinoSliverNavigationBar(
-                  largeTitle: Text('Mis Reservas', style: TextStyle(color: Theme.of(context).textTheme.bodyLarge?.color)),
-                  backgroundColor: isDark 
-                      ? const Color(0xFF1C1C1E).withValues(alpha: 0.92)
-                      : AppColors.white.withValues(alpha: 0.92),
-                  border: Border(
-                    bottom: BorderSide(
-                      color: AppColors.border.withValues(alpha: 0.5),
-                      width: 0.5,
-                    ),
-                  ),
-                ),
-
-                // ── Headers ────────────────────────────────────────
-                SliverPadding(
-                  padding: const EdgeInsets.fromLTRB(20, 16, 20, 12),
-                  sliver: SliverList(
-                    delegate: SliverChildListDelegate([
-                      FadeSlideIn(
-                        duration: const Duration(milliseconds: 350),
-                        child: _buildSummaryBar(context, completed, missed, isDark),
-                      ),
-                      FadeSlideIn(
-                        duration: AppDurations.slow,
-                        delay: const Duration(milliseconds: 100),
-                        offsetY: 10,
-                        child: _sectionHeader(context, 'HISTORIAL DE ATENCIONES', history.length),
-                      ),
-                    ]),
-                  ),
-                ),
-
-                // ── Reservas List ───────────────────────────
-                SliverPadding(
-                  padding: const EdgeInsets.only(bottom: 120, left: 12, right: 12),
-                  sliver: SliverList.builder(
-                    itemCount: history.length,
-                    itemBuilder: (context, index) {
-                      // Animate only first visible items to avoid jank on long lists
-                      final shouldAnimate = index < 5;
-                      
-                      if (shouldAnimate) {
-                        return Column(
-                          children: [
-                            FadeSlideIn(
-                              delay: Duration(milliseconds: 300 + (index * 100)),
-                              duration: AppDurations.normal,
-                              offsetY: 10,
-                              child: AppointmentCard(appointment: history[index]),
-                            ),
-                            if (index < history.length - 1) const SizedBox(height: 10),
-                          ],
-                        );
-                      } else {
-                        return Column(
-                          children: [
-                            AppointmentCard(appointment: history[index]),
-                            if (index < history.length - 1) const SizedBox(height: 10),
-                          ],
-                        );
-                      }
-                    },
-                  ),
-                ),
-              ],
-            ),
-    );
-  }
-
-  /// Summary bar: Completados / Faltas.
-  Widget _buildSummaryBar(BuildContext context, int completed, int missed, bool isDark) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-      decoration: BoxDecoration(
-        color: isDark ? const Color(0xFF1C1C1E) : AppColors.white,
-        borderRadius: BorderRadius.circular(AppSpacing.radiusLg),
-        boxShadow: isDark ? [] : AppShadows.soft,
-        border: Border.all(
-          color: isDark ? Colors.white.withValues(alpha: 0.1) : Colors.transparent, 
-          width: 0.5
+      child: CustomScrollView(
+        physics: const BouncingScrollPhysics(
+          parent: AlwaysScrollableScrollPhysics(),
         ),
-      ),
-      child: Row(
-        children: [
-          _summaryChip('$completed', 'Completados', AppColors.accent),
-          Container(width: 0.5, height: 28, color: AppColors.border),
-          _summaryChip(
-            '$missed',
-            missed == 1 ? 'Falta' : 'Faltas',
-            isDark ? AppColors.white : const Color(0xFF9333EA),
+        slivers: [
+          // ── iOS Large Title Nav Bar ─────────────────────────
+          CupertinoSliverNavigationBar(
+            largeTitle: Text('Mis Reservas',
+                style: TextStyle(color: AppColors.textPrimaryC(isDark))),
+            backgroundColor: isDark
+                ? AppColors.darkSurface.withValues(alpha: 0.92)
+                : AppColors.white.withValues(alpha: 0.92),
+            border: Border(
+              bottom: BorderSide(
+                color: AppColors.cardBorder(isDark).withValues(alpha: 0.5),
+                width: 0.5,
+              ),
+            ),
+          ),
+
+          // ── Headers ────────────────────────────────────────
+          SliverPadding(
+            padding: const EdgeInsets.fromLTRB(20, 16, 20, 12),
+            sliver: SliverList(
+              delegate: SliverChildListDelegate([
+                FadeSlideIn(
+                  duration: const Duration(milliseconds: 350),
+                  child: _buildSummaryBar(
+                      context, _completedCount, _missedCount, isDark),
+                ),
+                FadeSlideIn(
+                  duration: AppDurations.slow,
+                  delay: const Duration(milliseconds: 100),
+                  offsetY: 10,
+                  child: _sectionHeader(
+                      context, 'HISTORIAL DE ATENCIONES', _history.length),
+                ),
+              ]),
+            ),
+          ),
+
+          // ── Reservas List ───────────────────────────
+          SliverPadding(
+            padding:
+                const EdgeInsets.only(bottom: 120, left: 12, right: 12),
+            sliver: SliverList.builder(
+              itemCount: _history.length,
+              itemBuilder: (context, index) {
+                final shouldAnimate = index < 5;
+
+                if (shouldAnimate) {
+                  return Column(
+                    children: [
+                      FadeSlideIn(
+                        delay:
+                            Duration(milliseconds: 300 + (index * 100)),
+                        duration: AppDurations.normal,
+                        offsetY: 10,
+                        child: AppointmentCard(
+                            appointment: _history[index]),
+                      ),
+                      if (index < _history.length - 1)
+                        const SizedBox(height: 10),
+                    ],
+                  );
+                } else {
+                  return Column(
+                    children: [
+                      AppointmentCard(appointment: _history[index]),
+                      if (index < _history.length - 1)
+                        const SizedBox(height: 10),
+                    ],
+                  );
+                }
+              },
+            ),
           ),
         ],
       ),
     );
   }
 
-  Widget _summaryChip(String count, String label, Color color) {
+  /// Summary bar: Completados / Faltas.
+  Widget _buildSummaryBar(
+      BuildContext context, int completed, int missed, bool isDark) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      decoration: BoxDecoration(
+        color: AppColors.cardBg(isDark),
+        borderRadius: BorderRadius.circular(AppSpacing.radiusLg),
+        boxShadow: AppColors.cardShadowFor(isDark),
+        border: Border.all(
+            color:
+                isDark ? AppColors.cardBorder(isDark) : Colors.transparent,
+            width: 0.5),
+      ),
+      child: Row(
+        children: [
+          _summaryChip(
+              '$completed', 'Completados', AppColors.accent,
+              isDark: isDark),
+          Container(
+              width: 0.5,
+              height: 28,
+              color: AppColors.dividerC(isDark)),
+          _summaryChip(
+            '$missed',
+            missed == 1 ? 'Falta' : 'Faltas',
+            isDark ? AppColors.white : const Color(0xFF9333EA),
+            isDark: isDark,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _summaryChip(String count, String label, Color color,
+      {required bool isDark}) {
     return Expanded(
       child: Column(
         children: [
@@ -138,7 +221,7 @@ class ReservasScreen extends StatelessWidget {
           Text(
             label,
             style: AppTypography.labelSmall.copyWith(
-              color: AppColors.textSecondary,
+              color: AppColors.textSecondaryC(isDark),
             ),
           ),
         ],
@@ -163,18 +246,21 @@ class ReservasScreen extends StatelessWidget {
           const SizedBox(width: 8),
           Text(
             text,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 13,
               fontWeight: FontWeight.w700,
-              color: AppColors.textSecondary,
+              color: AppColors.textSecondaryC(isDark),
               letterSpacing: 1.0,
             ),
           ),
           const SizedBox(width: 8),
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+            padding:
+                const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
             decoration: BoxDecoration(
-              color: isDark ? AppColors.white.withValues(alpha: 0.2) : AppColors.primary.withValues(alpha: 0.12),
+              color: isDark
+                  ? AppColors.white.withValues(alpha: 0.2)
+                  : AppColors.primary.withValues(alpha: 0.12),
               borderRadius: BorderRadius.circular(10),
             ),
             child: Text(
@@ -192,58 +278,64 @@ class ReservasScreen extends StatelessWidget {
   }
 
   Widget _emptyState(BuildContext context, bool isDark) {
-    return CustomScrollView(
-      physics: const BouncingScrollPhysics(
-        parent: AlwaysScrollableScrollPhysics(),
-      ),
-      slivers: [
-        CupertinoSliverNavigationBar(
-          largeTitle: Text('Mis Reservas', style: TextStyle(color: Theme.of(context).textTheme.bodyLarge?.color)),
-          backgroundColor: isDark 
-              ? const Color(0xFF1C1C1E).withValues(alpha: 0.92)
-              : AppColors.white.withValues(alpha: 0.92),
-          border: Border(
-            bottom: BorderSide(
-              color: AppColors.border.withValues(alpha: 0.5),
-              width: 0.5,
-            ),
-          ),
+    return CupertinoPageScaffold(
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+      child: CustomScrollView(
+        physics: const BouncingScrollPhysics(
+          parent: AlwaysScrollableScrollPhysics(),
         ),
-        SliverFillRemaining(
-          child: Center(
-            child: FadeSlideIn(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(
-                    CupertinoIcons.calendar,
-                    size: 64,
-                    color: AppColors.textTertiary.withValues(alpha: 0.3),
-                  ),
-                  const SizedBox(height: 24),
-                  const Text(
-                    'No tiene atenciones registradas',
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w700,
-                      color: AppColors.textSecondary,
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  const Text(
-                    'El historial de atenciones aparecerá aquí',
-                    style: TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w500,
-                      color: AppColors.textTertiary,
-                    ),
-                  ),
-                ],
+        slivers: [
+          CupertinoSliverNavigationBar(
+            largeTitle: Text('Mis Reservas',
+                style: TextStyle(color: AppColors.textPrimaryC(isDark))),
+            backgroundColor: isDark
+                ? AppColors.darkSurface.withValues(alpha: 0.92)
+                : AppColors.white.withValues(alpha: 0.92),
+            border: Border(
+              bottom: BorderSide(
+                color:
+                    AppColors.cardBorder(isDark).withValues(alpha: 0.5),
+                width: 0.5,
               ),
             ),
           ),
-        ),
-      ],
+          SliverFillRemaining(
+            child: Center(
+              child: FadeSlideIn(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(
+                      CupertinoIcons.calendar,
+                      size: 64,
+                      color: AppColors.textTertiaryC(isDark)
+                          .withValues(alpha: 0.3),
+                    ),
+                    const SizedBox(height: 24),
+                    Text(
+                      'No tiene atenciones registradas',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.textSecondaryC(isDark),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    Text(
+                      'El historial de atenciones aparecerá aquí',
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w500,
+                        color: AppColors.textTertiaryC(isDark),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

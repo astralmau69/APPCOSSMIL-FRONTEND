@@ -56,14 +56,14 @@ class _NoticiasScreenState extends State<NoticiasScreen> {
           CupertinoSliverNavigationBar(
             largeTitle: Text(
               'COSSMIL te informa',
-              style: TextStyle(color: Theme.of(context).textTheme.bodyLarge?.color),
+              style: TextStyle(color: AppColors.textPrimaryC(isDark)),
             ),
             backgroundColor: isDark
-                ? const Color(0xFF1C1C1E).withValues(alpha: 0.92)
+                ? AppColors.darkSurface.withValues(alpha: 0.92)
                 : AppColors.white.withValues(alpha: 0.92),
             border: Border(
               bottom: BorderSide(
-                color: AppColors.border.withValues(alpha: 0.5),
+                color: AppColors.cardBorder(isDark).withValues(alpha: 0.5),
                 width: 0.5,
               ),
             ),
@@ -87,22 +87,23 @@ class _NoticiasScreenState extends State<NoticiasScreen> {
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       Icon(CupertinoIcons.wifi_slash,
-                          size: 40, color: AppColors.textTertiary),
+                          size: 40, color: AppColors.textTertiaryC(isDark)),
                       const SizedBox(height: 16),
                       Text(
                         'No se pudo cargar los comunicados',
                         textAlign: TextAlign.center,
                         style: TextStyle(
-                          fontWeight: FontWeight.w600,
-                          color: Theme.of(context).textTheme.bodyLarge?.color,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.textPrimaryC(isDark),
                         ),
                       ),
                       const SizedBox(height: 8),
                       Text(
-                        'Desliza hacia abajo para reintentar.',
-                        style: const TextStyle(
+                        'Verifica tu conexión y desliza hacia abajo para reintentar.',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
                           fontSize: 13,
-                          color: AppColors.textSecondary,
+                          color: AppColors.textSecondaryC(isDark),
                         ),
                       ),
                     ],
@@ -110,50 +111,64 @@ class _NoticiasScreenState extends State<NoticiasScreen> {
                 ),
               ),
             )
+          else if (_news.isEmpty)
+            SliverFillRemaining(
+              hasScrollBody: false,
+              child: Padding(
+                padding: const EdgeInsets.all(40),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(
+                      CupertinoIcons.news,
+                      size: 60,
+                      color: AppColors.textTertiaryC(isDark).withValues(alpha: 0.5),
+                    ),
+                    const SizedBox(height: 20),
+                    Text(
+                      'Sin comunicados recientes',
+                      style: TextStyle(
+                        fontSize: 17,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.textPrimaryC(isDark),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      'Te notificaremos cuando haya nuevos avisos importantes de COSSMIL.',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: AppColors.textSecondaryC(isDark),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            )
           else ...[
             SliverPadding(
-              padding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
+              padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
               sliver: SliverToBoxAdapter(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    const FadeSlideIn(
-                      child: Padding(
-                        padding: EdgeInsets.only(bottom: 16),
-                        child: Text(
-                          'Comunicados, avisos y anuncios importantes para nuestros asegurados.',
-                          style: TextStyle(
-                            fontSize: 15,
-                            color: AppColors.textSecondary,
-                            height: 1.4,
-                          ),
-                        ),
-                      ),
-                    ),
-
                     if (featured.isNotEmpty) ...[
-                      FadeSlideIn(
-                        delay: const Duration(milliseconds: 80),
-                        child: _sectionHeader(context, 'DESTACADOS', featured.length),
-                      ),
-                      const SizedBox(height: 10),
+                      _sectionHeader(context, 'DESTACADOS', featured.length),
+                      const SizedBox(height: 12),
                       for (int i = 0; i < featured.length; i++) ...[
                         FadeSlideIn(
-                          delay: Duration(milliseconds: 120 + i * 80),
-                          child: _FeaturedCard(item: featured[i]),
+                          delay: Duration(milliseconds: 100 + i * 100),
+                          child: NewsCard(item: featured[i]),
                         ),
-                        const SizedBox(height: 12),
+                        const SizedBox(height: 16),
                       ],
                       const SizedBox(height: 16),
                     ],
 
-                    FadeSlideIn(
-                      delay: Duration(
-                          milliseconds: 200 + featured.length * 80),
-                      child: _sectionHeader(
-                          context, 'TODOS LOS COMUNICADOS', _news.length),
-                    ),
-                    const SizedBox(height: 10),
+                    _sectionHeader(
+                        context, 'ÚLTIMOS COMUNICADOS', regular.length),
+                    const SizedBox(height: 12),
                   ],
                 ),
               ),
@@ -163,11 +178,10 @@ class _NoticiasScreenState extends State<NoticiasScreen> {
               sliver: SliverList.builder(
                 itemCount: regular.length,
                 itemBuilder: (context, i) => Padding(
-                  padding: EdgeInsets.only(
-                      bottom: i < regular.length - 1 ? 10 : 24),
+                  padding: const EdgeInsets.only(bottom: 16),
                   child: FadeSlideIn(
                     delay: Duration(
-                        milliseconds: 240 + featured.length * 80 + i * 60),
+                        milliseconds: 200 + featured.length * 100 + i * 80),
                     child: NewsCard(item: regular[i]),
                   ),
                 ),
@@ -189,17 +203,17 @@ class _NoticiasScreenState extends State<NoticiasScreen> {
             width: 3,
             height: 14,
             decoration: BoxDecoration(
-              color: isDark ? AppColors.razer : AppColors.primary,
+              color: AppColors.accentForTheme(isDark),
               borderRadius: BorderRadius.circular(2),
             ),
           ),
           const SizedBox(width: 8),
           Text(
             text,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 12,
               fontWeight: FontWeight.w700,
-              color: AppColors.textSecondary,
+              color: AppColors.textSecondaryC(isDark),
               letterSpacing: 1.0,
             ),
           ),
@@ -244,12 +258,12 @@ class _FeaturedCard extends StatelessWidget {
 
     return Container(
       decoration: BoxDecoration(
-        color: isDark ? const Color(0xFF1C1C1E) : AppColors.white,
+        color: AppColors.cardBg(isDark),
         borderRadius: BorderRadius.circular(AppTheme.radiusLg),
-        boxShadow: isDark ? [] : AppColors.softShadow,
+        boxShadow: AppColors.cardShadowFor(isDark),
         border: Border.all(
           color: isDark
-              ? Colors.white.withValues(alpha: 0.1)
+              ? AppColors.cardBorder(isDark)
               : accentColor.withValues(alpha: 0.20),
         ),
       ),
@@ -310,10 +324,10 @@ class _FeaturedCard extends StatelessWidget {
                       const Spacer(),
                       Text(
                         item.date,
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 11,
                           fontWeight: FontWeight.w500,
-                          color: AppColors.textTertiary,
+                          color: AppColors.textTertiaryC(isDark),
                         ),
                       ),
                     ],
@@ -324,8 +338,7 @@ class _FeaturedCard extends StatelessWidget {
                     style: TextStyle(
                       fontSize: 15,
                       fontWeight: FontWeight.w800,
-                      color: Theme.of(context).textTheme.bodyLarge?.color ??
-                          AppColors.textPrimary,
+                      color: AppColors.textPrimaryC(isDark),
                       height: 1.3,
                     ),
                   ),
@@ -334,9 +347,9 @@ class _FeaturedCard extends StatelessWidget {
                     item.summary,
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 13,
-                      color: AppColors.textSecondary,
+                      color: AppColors.textSecondaryC(isDark),
                       height: 1.4,
                     ),
                   ),

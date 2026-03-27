@@ -147,7 +147,7 @@ class _PinVerifyScreenState extends State<PinVerifyScreen>
                       widget.subtitle,
                       textAlign: TextAlign.center,
                       style: AppTypography.bodyMedium.copyWith(
-                        color: AppColors.textSecondary,
+                        color: AppColors.textSecondaryC(isDark),
                         height: 1.5,
                       ),
                     ),
@@ -257,7 +257,7 @@ class _PinVerifyScreenState extends State<PinVerifyScreen>
             children: [
               const SizedBox(width: 72, height: 72),
               _buildNumberKey(0, isDark),
-              _buildDeleteKey(),
+              _buildDeleteKey(isDark),
             ],
           ),
         ],
@@ -278,7 +278,7 @@ class _PinVerifyScreenState extends State<PinVerifyScreen>
         height: 72,
         decoration: BoxDecoration(
           shape: BoxShape.circle,
-          color: isDark ? const Color(0xFF1C1C1E) : Colors.grey.shade100,
+          color: isDark ? AppColors.darkSurface : Colors.grey.shade100,
         ),
         child: Center(
           child: Text(
@@ -294,16 +294,16 @@ class _PinVerifyScreenState extends State<PinVerifyScreen>
     );
   }
 
-  Widget _buildDeleteKey() {
+  Widget _buildDeleteKey(bool isDark) {
     return OptimizedPressButton(
       onTap: _onDeletePressed,
-      child: const SizedBox(
+      child: SizedBox(
         width: 72,
         height: 72,
         child: Icon(
           CupertinoIcons.delete_left,
           size: 28,
-          color: AppColors.textSecondary,
+          color: AppColors.textSecondaryC(isDark),
         ),
       ),
     );

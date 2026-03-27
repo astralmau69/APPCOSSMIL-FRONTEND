@@ -21,7 +21,7 @@ class BreadcrumbChips extends StatelessWidget {
         children: [
           for (int i = 0; i < labels.length; i++) ...[
             _chip(context, labels[i], i == labels.length - 1),
-            if (i < labels.length - 1) _separator(),
+            if (i < labels.length - 1) _separator(context),
           ],
         ],
       ),
@@ -30,7 +30,7 @@ class BreadcrumbChips extends StatelessWidget {
 
   Widget _chip(BuildContext context, String label, bool isLast) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final primaryColor = isDark ? AppColors.razer : AppColors.primary;
+    final primaryColor = AppColors.accentForTheme(isDark);
     
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
@@ -57,13 +57,13 @@ class BreadcrumbChips extends StatelessWidget {
     );
   }
 
-  Widget _separator() {
+  Widget _separator(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 4),
       child: Icon(
         Icons.chevron_right,
         size: 16,
-        color: AppColors.textTertiary.withValues(alpha: 0.5),
+        color: AppColors.textTertiaryC(Theme.of(context).brightness == Brightness.dark).withValues(alpha: 0.5),
       ),
     );
   }

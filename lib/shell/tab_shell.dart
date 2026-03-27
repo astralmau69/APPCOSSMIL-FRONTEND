@@ -25,9 +25,17 @@ class BookingState {
   SpecialtyModel? specialty;
   DoctorModel? doctor;
   String? selectedTime;
+  /// Código de horario asignado por verificar-horario-atencion.
+  int? idhorario;
+  /// ID de la hora seleccionada en la agenda del médico.
+  String? idhora;
+  /// ID de la agenda del médico asignado.
+  String? idagenda;
   /// Fecha y hora real de la cita — se establece en ScheduleScreen al
   /// seleccionar el horario, para poder programar notificaciones locales.
   DateTime? appointmentDateTime;
+  String? idcontrol;
+  int? slotNumber;
 
   void reset() {
     beneficiaryLabel = null;
@@ -37,7 +45,12 @@ class BookingState {
     specialty = null;
     doctor = null;
     selectedTime = null;
+    idhorario = null;
+    idhora = null;
+    idagenda = null;
     appointmentDateTime = null;
+    idcontrol = null;
+    slotNumber = null;
   }
 }
 

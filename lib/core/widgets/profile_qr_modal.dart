@@ -54,16 +54,16 @@ class ProfileQrModal {
                 style: TextStyle(
                   fontSize: 17,
                   fontWeight: FontWeight.w700,
-                  color: Theme.of(ctx).textTheme.bodyLarge?.color ?? AppColors.textPrimary,
+                  color: AppColors.textPrimaryC(isDark),
                 ),
               ),
               const SizedBox(height: 4),
               Text(
                 'Mat. ${user.matricula}',
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 13,
                   fontWeight: FontWeight.w500,
-                  color: AppColors.textSecondary,
+                  color: AppColors.textSecondaryC(isDark),
                 ),
               ),
               const SizedBox(height: 24),
@@ -73,13 +73,13 @@ class ProfileQrModal {
                 height: 180,
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: isDark ? const Color(0xFF1C1C1E) : AppColors.white,
+                  color: AppColors.cardBg(isDark),
                   borderRadius: BorderRadius.circular(AppTheme.radiusMd),
-                  border: Border.all(color: isDark ? Colors.white.withValues(alpha: 0.1) : AppColors.border, width: 1.5),
+                  border: Border.all(color: AppColors.cardBorder(isDark), width: 1.5),
                 ),
                 child: Container(
                   decoration: BoxDecoration(
-                    color: isDark ? const Color(0xFF2C2C2E) : AppColors.background,
+                    color: isDark ? AppColors.darkElevated : AppColors.background,
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Column(
@@ -93,10 +93,10 @@ class ProfileQrModal {
                       const SizedBox(height: 8),
                       Text(
                         user.matricula,
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 11,
                           fontWeight: FontWeight.w600,
-                          color: AppColors.textSecondary,
+                          color: AppColors.textSecondaryC(isDark),
                           letterSpacing: 1.0,
                         ),
                       ),
@@ -105,12 +105,12 @@ class ProfileQrModal {
                 ),
               ),
               const SizedBox(height: 16),
-              const Text(
+              Text(
                 'Presente este código en ventanilla\npara identificación rápida.',
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   fontSize: 12,
-                  color: AppColors.textSecondary,
+                  color: AppColors.textSecondaryC(isDark),
                   height: 1.4,
                 ),
               ),

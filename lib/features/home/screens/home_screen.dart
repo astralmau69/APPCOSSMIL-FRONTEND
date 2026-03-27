@@ -6,7 +6,7 @@ import '../../../core/constants/app_colors.dart';
 import '../../../core/theme/app_constants.dart';
 import '../../../core/extensions/responsive_extensions.dart';
 import '../../../core/animations/optimized_animations.dart';
-import '../../../core/mock/mock_user_data.dart';
+import '../../../core/session/user_session.dart';
 import '../../../core/models/news_item_model.dart';
 import '../../../core/models/user_model.dart';
 import '../../../core/services/cossmil_news_service.dart';
@@ -34,7 +34,7 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void initState() {
     super.initState();
-    final photo = MockUserData.user.photoBase64;
+    final photo = UserSession.currentUser.photoBase64;
     if (photo.isNotEmpty) {
       try { _cachedUserPhoto = base64Decode(photo); } catch (_) {}
     }
@@ -53,18 +53,19 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final user = MockUserData.user;
+    final user = UserSession.currentUser;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final responsive = ResponsiveData.of(context);
     final horizontalPadding = responsive.isSmallPhone ? 12.0 : (responsive.isPhone ? 14.0 : 20.0);
 
     return CupertinoPageScaffold(
-      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+      backgroundColor: AppColors.scaffoldBg(isDark),
       child: CustomScrollView(
         physics: const AlwaysScrollableScrollPhysics(),
         slivers: [
           CupertinoSliverNavigationBar(
-            largeTitle: Text('Inicio', style: TextStyle(color: Theme.of(context).textTheme.bodyLarge?.color)),
-            backgroundColor: Theme.of(context).scaffoldBackgroundColor.withValues(alpha: 0.95),
+            largeTitle: Text('Inicio', style: TextStyle(color: AppColors.textPrimaryC(isDark))),
+            backgroundColor: AppColors.scaffoldBg(isDark).withValues(alpha: 0.95),
             border: null,
           ),
           SliverPadding(
@@ -124,109 +125,133 @@ class _HomeScreenState extends State<HomeScreen> {
       padding: EdgeInsets.all(responsive.isSmallPhone ? 16 : 20),
       decoration: BoxDecoration(
         color: AppColors.primary,
-        gradient: LinearGradient(
+        gradient: const LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
           colors: [
             AppColors.primary,
-            AppColors.primaryDark,
+            Color(0xFF0A3B5C),
           ],
         ),
         borderRadius: BorderRadius.circular(AppSpacing.radiusXl),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.1), // Sombra más limpia, menos blur (era 20)
+            color: Colors.black.withValues(alpha: 0.1),
             blurRadius: 8,
             offset: const Offset(0, 4),
           ),
         ],
       ),
-      child: Column(
+      child: Stack(
         children: [
-          Row(
-            children: [
-              // Avatar
-              CircleAvatar(
-                radius: 50,
-                backgroundColor: AppColors.white.withValues(alpha: 0.2),
-                child: ClipOval(
-                  child: _cachedUserPhoto != null
-                      ? Image.memory(
-                          _cachedUserPhoto!,
-                          width: 100,
-                          height: 100,
-                          fit: BoxFit.cover,
-                          errorBuilder: (_, __, ___) => _fallbackAvatar(user),
-                        )
-                      : _fallbackAvatar(user),
-                ),
-              ),
-              const SizedBox(width: 14),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      user.fullName,
-                      style: AppTypography.headlineMedium.copyWith(
-                        color: AppColors.white,
-                      ),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      '${user.rank} • Mat: ${user.matricula}',
-                      style: AppTypography.bodyMedium.copyWith(
-                        color: AppColors.white.withValues(alpha: 0.85),
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
+          // Subtle inner glow overlay at top for premium feel
+          Positioned(
+            top: 0,
+            left: 0,
+            right: 0,
+            height: 80,
+            child: Container(
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.vertical(top: Radius.circular(AppSpacing.radiusXl)),
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [
+                    AppColors.white.withValues(alpha: 0.08),
+                    AppColors.white.withValues(alpha: 0.0),
                   ],
                 ),
               ),
-            ],
+            ),
           ),
-          const SizedBox(height: 16),
-          Container(
-            height: 0.5,
-            color: AppColors.white.withValues(alpha: 0.12),
-          ),
-          const SizedBox(height: 14),
-          // Status + Edad
-          Row(
+          Column(
             children: [
-              // Estado
-              _statusBadge(user),
-              _verticalDivider(),
-              // Edad
-              _contactInfo(
-                icon: Icons.cake_outlined,
-                value: '${user.age} años',
+              Row(
+                children: [
+                  // Avatar
+                  CircleAvatar(
+                    radius: 50,
+                    backgroundColor: AppColors.white.withValues(alpha: 0.2),
+                    child: ClipOval(
+                      child: _cachedUserPhoto != null
+                          ? Image.memory(
+                              _cachedUserPhoto!,
+                              width: 100,
+                              height: 100,
+                              fit: BoxFit.cover,
+                              errorBuilder: (_, __, ___) => _fallbackAvatar(user),
+                            )
+                          : _fallbackAvatar(user),
+                    ),
+                  ),
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          user.fullName,
+                          style: AppTypography.headlineMedium.copyWith(
+                            color: AppColors.white,
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          '${user.rank} • Mat: ${user.matricula}',
+                          style: AppTypography.bodyMedium.copyWith(
+                            color: AppColors.white.withValues(alpha: 0.85),
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
               ),
-            ],
-          ),
-          const SizedBox(height: 10),
-          Row(
-            children: [
-              // CI
-              _contactInfo(
-                icon: Icons.badge_outlined,
-                value: user.ci.isNotEmpty ? 'CI: ${user.ci}' : 'Sin CI',
+              const SizedBox(height: 16),
+              Container(
+                height: 0.5,
+                color: AppColors.white.withValues(alpha: 0.12),
               ),
-              _verticalDivider(),
-              // Phone
-              _contactInfo(
-                icon: Icons.phone_outlined,
-                value: user.phone.isNotEmpty ? user.phone : 'Sin teléfono',
+              const SizedBox(height: 14),
+              // Status + Edad
+              Row(
+                children: [
+                  // Estado
+                  _statusBadge(user),
+                  _verticalDivider(),
+                  // Edad
+                  _contactInfo(
+                    icon: Icons.cake_outlined,
+                    value: '${user.age} años',
+                  ),
+                ],
               ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          Row(
-            children: [
-              // Email (Full width)
-              _contactInfo(
-                icon: Icons.email_outlined,
-                value: user.email.isNotEmpty ? user.email : 'Sin correo',
+              const SizedBox(height: 10),
+              Row(
+                children: [
+                  // CI
+                  _contactInfo(
+                    icon: Icons.badge_outlined,
+                    value: user.ci.isNotEmpty ? 'CI: ${user.ci}' : 'Sin CI',
+                  ),
+                  _verticalDivider(),
+                  // Phone
+                  _contactInfo(
+                    icon: Icons.phone_outlined,
+                    value: user.phone.isNotEmpty ? user.phone : 'Sin teléfono',
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  // Email (Full width)
+                  _contactInfo(
+                    icon: Icons.email_outlined,
+                    value: user.email.isNotEmpty ? user.email : 'Sin correo',
+                  ),
+                ],
               ),
             ],
           ),
@@ -327,8 +352,16 @@ class _HomeScreenState extends State<HomeScreen> {
         icon: Icons.edit_calendar,
         label: 'Nueva\nReserva',
         color: AppColors.primary,
-        onTap: () => widget.tabShell.startBooking(
-            'Para mí', MockUserData.user.beneficiaries[0]),
+        onTap: () {
+          final bens = UserSession.currentUser.beneficiaries;
+          final titular = bens.isNotEmpty
+              ? bens.firstWhere((b) => b.isTitular, orElse: () => bens.first)
+              : null;
+          widget.tabShell.startBooking(
+            'Para mí',
+            titular,
+          );
+        },
       ),
       _QuickAction(
         icon: Icons.schedule,
@@ -372,29 +405,23 @@ class _HomeScreenState extends State<HomeScreen> {
       onTap: action.onTap,
       scaleDown: 0.95,
       child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 14),
+        padding: const EdgeInsets.symmetric(vertical: 16),
         decoration: BoxDecoration(
-          color: isDark ? const Color(0xFF1C1C1E) : AppColors.white,
+          color: AppColors.cardBg(isDark),
           borderRadius: BorderRadius.circular(AppSpacing.radiusLg),
-          border: Border.all(color: isDark ? Colors.white.withValues(alpha: 0.1) : AppColors.border, width: 0.5),
-          boxShadow: isDark ? [] : [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.02),
-              blurRadius: 4,
-              offset: const Offset(0, 2),
-            ),
-          ],
+          border: Border.all(color: AppColors.cardBorder(isDark), width: 0.5),
+          boxShadow: AppColors.cardShadowFor(isDark),
         ),
         child: Column(
           children: [
             Container(
-              width: 40,
-              height: 40,
+              width: 44,
+              height: 44,
               decoration: BoxDecoration(
                 color: action.color.withValues(alpha: 0.10),
                 borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
               ),
-              child: Icon(action.icon, size: 22, color: action.color),
+              child: Icon(action.icon, size: 24, color: action.color),
             ),
             const SizedBox(height: 6),
             FittedBox(
@@ -403,7 +430,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 action.label,
                 textAlign: TextAlign.center,
                 style: AppTypography.labelMedium.copyWith(
-                  color: Theme.of(context).textTheme.bodyLarge?.color ?? AppColors.textPrimary,
+                  color: AppColors.textPrimaryC(isDark),
                   fontSize: 13,
                   height: 1.2,
                 ),
@@ -430,12 +457,10 @@ class _HomeScreenState extends State<HomeScreen> {
           Container(
             padding: const EdgeInsets.all(20),
             decoration: BoxDecoration(
-              color: isDark ? const Color(0xFF1C1C1E) : AppColors.white,
+              color: AppColors.cardBg(isDark),
               borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
               border: Border.all(
-                color: isDark
-                    ? Colors.white.withValues(alpha: 0.08)
-                    : AppColors.border,
+                color: AppColors.cardBorder(isDark),
                 width: 0.5,
               ),
             ),
@@ -443,15 +468,13 @@ class _HomeScreenState extends State<HomeScreen> {
               children: [
                 Icon(Icons.newspaper_outlined,
                     size: 22,
-                    color: isDark
-                        ? AppColors.white.withValues(alpha: 0.3)
-                        : AppColors.textTertiary),
+                    color: AppColors.textTertiaryC(isDark)),
                 const SizedBox(width: 12),
-                const Text(
+                Text(
                   'Sin comunicados recientes',
                   style: TextStyle(
                     fontSize: 14,
-                    color: AppColors.textSecondary,
+                    color: AppColors.textSecondaryC(isDark),
                     fontWeight: FontWeight.w500,
                   ),
                 ),
@@ -543,19 +566,17 @@ class _NewsCardSkeletonState extends State<_NewsCardSkeleton>
       animation: _anim,
       builder: (context, _) {
         final base = widget.isDark
-            ? Color.lerp(const Color(0xFF2C2C2E), const Color(0xFF3A3A3C),
+            ? Color.lerp(const Color(0xFF2A2A2E), const Color(0xFF35353A),
                 _anim.value)!
-            : Color.lerp(const Color(0xFFE2E8F0), const Color(0xFFF1F5F9),
+            : Color.lerp(const Color(0xFFE8ECF0), const Color(0xFFF3F6F9),
                 _anim.value)!;
         return Container(
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-            color: widget.isDark ? const Color(0xFF1C1C1E) : AppColors.white,
+            color: AppColors.cardBg(widget.isDark),
             borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
             border: Border.all(
-              color: widget.isDark
-                  ? Colors.white.withValues(alpha: 0.08)
-                  : AppColors.border,
+              color: AppColors.cardBorder(widget.isDark),
               width: 0.5,
             ),
           ),

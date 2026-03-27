@@ -105,27 +105,27 @@ class _LoginScreenState extends State<LoginScreen>
                       duration: AppDurations.slow,
                       child: _buildLogo(logoSize, isDark),
                     ),
-                    
+
                     const SizedBox(height: 32),
-                    
+
                     // Header
                     FadeSlideIn(
                       duration: AppDurations.slow,
                       delay: const Duration(milliseconds: 100),
-                      child: _buildHeader(),
+                      child: _buildHeader(isDark),
                     ),
-                    
+
                     const SizedBox(height: 48),
-                    
+
                     // Form
                     FadeSlideIn(
                       duration: AppDurations.normal,
                       delay: const Duration(milliseconds: 200),
                       child: _buildForm(isDark),
                     ),
-                    
+
                     const SizedBox(height: 24),
-                    
+
                     // Error message
                     if (_errorMessage != null) ...[
                       FadeSlideIn(
@@ -134,23 +134,23 @@ class _LoginScreenState extends State<LoginScreen>
                       ),
                       const SizedBox(height: 16),
                     ],
-                    
+
                     // Login button
                     FadeSlideIn(
                       duration: AppDurations.normal,
                       delay: const Duration(milliseconds: 250),
                       child: _buildLoginButton(),
                     ),
-                    
+
                     const SizedBox(height: 32),
-                    
+
                     // Forgot password
                     FadeSlideIn(
                       duration: AppDurations.normal,
                       delay: const Duration(milliseconds: 300),
                       child: _buildForgotPassword(),
                     ),
-                    
+
                     const SizedBox(height: 40),
                   ],
                 ),
@@ -169,9 +169,11 @@ class _LoginScreenState extends State<LoginScreen>
       height: size,
       decoration: BoxDecoration(
         shape: BoxShape.circle,
-        color: isDark ? const Color(0xFF2C2C2E) : AppColors.white,
-        boxShadow: isDark ? [] : AppShadows.soft,
-        border: isDark ? Border.all(color: Colors.white10) : null,
+        color: AppColors.cardBg(isDark),
+        boxShadow: isDark
+            ? [BoxShadow(color: Colors.black.withValues(alpha: 0.2), blurRadius: 20, offset: const Offset(0, 8))]
+            : AppShadows.soft,
+        border: isDark ? Border.all(color: AppColors.darkBorder) : null,
       ),
       child: ClipOval(
         child: Padding(
@@ -182,7 +184,7 @@ class _LoginScreenState extends State<LoginScreen>
             errorBuilder: (_, __, ___) => Icon(
               CupertinoIcons.shield_fill,
               size: size * 0.5,
-              color: isDark ? AppColors.white : AppColors.primary,
+              color: AppColors.accentForTheme(isDark),
             ),
           ),
         ),
@@ -190,21 +192,21 @@ class _LoginScreenState extends State<LoginScreen>
     );
   }
 
-  Widget _buildHeader() {
+  Widget _buildHeader(bool isDark) {
     return Column(
       children: [
         Text(
           'Bienvenido',
           style: AppTypography.displayMedium.copyWith(
             fontWeight: FontWeight.w700,
-            color: Theme.of(context).textTheme.bodyLarge?.color,
+            color: AppColors.textPrimaryC(isDark),
           ),
         ),
         const SizedBox(height: 8),
         Text(
           'Ingrese sus credenciales de COSSMIL',
           style: AppTypography.bodyMedium.copyWith(
-            color: AppColors.textSecondary,
+            color: AppColors.textSecondaryC(isDark),
           ),
           textAlign: TextAlign.center,
         ),
@@ -270,16 +272,16 @@ class _LoginScreenState extends State<LoginScreen>
   }) {
     return Container(
       decoration: BoxDecoration(
-        color: isDark ? const Color(0xFF1C1C1E) : Colors.grey.shade50,
-        borderRadius: BorderRadius.circular(16),
+        color: isDark ? AppColors.darkCard : const Color(0xFFF8F9FB),
+        borderRadius: BorderRadius.circular(18),
         border: Border.all(
-          color: isDark ? Colors.white12 : Colors.grey.shade200,
+          color: AppColors.cardBorder(isDark),
         ),
       ),
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
       child: Row(
         children: [
-          Icon(icon, size: 24, color: isDark ? AppColors.white : AppColors.primary),
+          Icon(icon, size: 24, color: AppColors.accentForTheme(isDark)),
           const SizedBox(width: 16),
           Expanded(
             child: Column(
@@ -304,11 +306,11 @@ class _LoginScreenState extends State<LoginScreen>
                   decoration: null,
                   placeholder: placeholder,
                   placeholderStyle: TextStyle(
-                    color: isDark ? Colors.white30 : AppColors.textTertiary.withValues(alpha: 0.5),
+                    color: AppColors.textTertiaryC(isDark).withValues(alpha: 0.6),
                     fontSize: 16,
                   ),
                   style: AppTypography.bodyLarge.copyWith(
-                    color: Theme.of(context).textTheme.bodyLarge?.color,
+                    color: AppColors.textPrimaryC(isDark),
                     fontWeight: FontWeight.w500,
                   ),
                   textInputAction: isLast ? TextInputAction.done : TextInputAction.next,
@@ -370,8 +372,8 @@ class _LoginScreenState extends State<LoginScreen>
             boxShadow: _isLoading ? [] : [
               BoxShadow(
                 color: AppColors.primary.withValues(alpha: 0.3),
-                blurRadius: 12,
-                offset: const Offset(0, 6),
+                blurRadius: 16,
+                offset: const Offset(0, 8),
               )
             ],
           ),
@@ -407,7 +409,7 @@ class _LoginScreenState extends State<LoginScreen>
         child: Text(
           '¿Olvidó su contraseña?',
           style: AppTypography.bodyMedium.copyWith(
-            color: isDark ? AppColors.white : AppColors.primary,
+            color: AppColors.accentForTheme(isDark),
             fontWeight: FontWeight.w600,
           ),
         ),

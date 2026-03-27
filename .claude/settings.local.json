@@ -31,7 +31,9 @@
       "Bash(flutter install:*)",
       "Bash(flutter run:*)",
       "Bash(timeout 60)",
-      "Bash(flutter devices:*)"
+      "Bash(flutter devices:*)",
+      "Bash(git checkout:*)",
+      "Bash(git add:*)"
     ]
   }
 }
