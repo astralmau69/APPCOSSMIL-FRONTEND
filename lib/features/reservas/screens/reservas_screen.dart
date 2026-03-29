@@ -21,7 +21,13 @@ class _ReservasScreenState extends State<ReservasScreen> {
 
   List<ReservaModel> _history = [];
   bool _isLoading = true;
+  bool _isLoadingMore = false;
   String? _errorMessage;
+
+  int _currentPage = 1;
+  int _totalPages = 1;
+  int _totalElements = 0;
+  static const _pageSize = 10;
 
   @override
   void initState() {
@@ -29,27 +35,51 @@ class _ReservasScreenState extends State<ReservasScreen> {
     _fetchReservas();
   }
 
-  Future<void> _fetchReservas() async {
+  Future<void> _fetchReservas({bool loadMore = false}) async {
     if (!mounted) return;
-    setState(() {
-      _isLoading = true;
-      _errorMessage = null;
-    });
+
+    if (loadMore) {
+      if (_currentPage >= _totalPages || _isLoadingMore) return;
+      setState(() => _isLoadingMore = true);
+    } else {
+      setState(() {
+        _isLoading = true;
+        _errorMessage = null;
+        _currentPage = 1;
+      });
+    }
 
     try {
       final idper = int.tryParse(UserSession.currentUser.id) ?? 0;
-      final reservas = await _service.getReservas(idper);
+      final page = loadMore ? _currentPage + 1 : 1;
+      final result = await _service.getHistorialCitas(
+        idper,
+        pagina: page,
+        cantidad: _pageSize,
+      );
 
       if (!mounted) return;
       setState(() {
-        _history = reservas;
-        _isLoading = false;
+        if (loadMore) {
+          _history.addAll(result.reservas);
+          _isLoadingMore = false;
+        } else {
+          _history = result.reservas;
+          _isLoading = false;
+        }
+        _currentPage = page;
+        _totalPages = result.totalPages;
+        _totalElements = result.totalElements;
       });
     } catch (e) {
       if (!mounted) return;
       setState(() {
-        _errorMessage = 'No se pudo cargar el historial de reservas.';
-        _isLoading = false;
+        if (loadMore) {
+          _isLoadingMore = false;
+        } else {
+          _errorMessage = 'No se pudo cargar el historial de reservas.';
+          _isLoading = false;
+        }
       });
     }
   }
@@ -123,7 +153,7 @@ class _ReservasScreenState extends State<ReservasScreen> {
                   delay: const Duration(milliseconds: 100),
                   offsetY: 10,
                   child: _sectionHeader(
-                      context, 'HISTORIAL DE ATENCIONES', _history.length),
+                      context, 'HISTORIAL DE ATENCIONES', _totalElements),
                 ),
               ]),
             ),
@@ -134,8 +164,29 @@ class _ReservasScreenState extends State<ReservasScreen> {
             padding:
                 const EdgeInsets.only(bottom: 120, left: 12, right: 12),
             sliver: SliverList.builder(
-              itemCount: _history.length,
+              itemCount: _history.length + (_currentPage < _totalPages ? 1 : 0),
               itemBuilder: (context, index) {
+                // Botón "Cargar más" al final
+                if (index == _history.length) {
+                  return Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    child: Center(
+                      child: _isLoadingMore
+                          ? const CupertinoActivityIndicator()
+                          : CupertinoButton(
+                              onPressed: () => _fetchReservas(loadMore: true),
+                              child: Text(
+                                'Cargar más',
+                                style: TextStyle(
+                                  fontWeight: FontWeight.w700,
+                                  color: AppColors.accentForTheme(isDark),
+                                ),
+                              ),
+                            ),
+                    ),
+                  );
+                }
+
                 final shouldAnimate = index < 5;
 
                 if (shouldAnimate) {

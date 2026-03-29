@@ -213,6 +213,9 @@ class ProgramacionService {
   // ── Crear cita ───────────────────────────────────────────────────────
 
   /// Crea la cita médica definitiva en el backend.
+  ///
+  /// Retorna el objeto `data` de la respuesta que contiene:
+  /// `{ gestion, idins, idsuc, idtran, dr }` — necesarios para el PDF.
   Future<Map<String, dynamic>> crearCita({
     required Map<String, dynamic> payload,
   }) async {
@@ -222,6 +225,13 @@ class ProgramacionService {
         'ok': true,
         'message': 'Cita MOCK creada con éxito',
         'status': 200,
+        'data': {
+          'gestion': 2026,
+          'idins': 1,
+          'idsuc': 1,
+          'idtran': 165,
+          'dr': 12,
+        },
       };
     }
 
@@ -231,29 +241,73 @@ class ProgramacionService {
     );
 
     return switch (response) {
-      ApiSuccess(:final data) => data as Map<String, dynamic>,
+      ApiSuccess(:final data) => () {
+        final body = data as Map<String, dynamic>;
+        if (body['ok'] == false) {
+          final msg = body['message'] as String? ??
+              (body['errors'] is List && (body['errors'] as List).isNotEmpty
+                  ? (body['errors'] as List).first.toString()
+                  : 'Error al crear la cita.');
+          throw Exception(msg);
+        }
+        return body;
+      }(),
       ApiError(:final message) => throw Exception(message),
     };
   }
 
-  // ── Historial de reservas ────────────────────────────────────────────
+  // ── Historial de citas ──────────────────────────────────────────────
 
-  /// Obtiene el historial de reservas/atenciones del asegurado.
-  Future<List<ReservaModel>> getReservas(int idper) async {
+  /// Obtiene el historial de citas del asegurado (paginado).
+  ///
+  /// Retorna un record con la lista de reservas y los datos de paginación.
+  Future<({List<ReservaModel> reservas, int totalElements, int totalPages})>
+      getHistorialCitas(int idper, {int pagina = 1, int cantidad = 10}) async {
     if (AppConfig.useMockData) {
       await Future.delayed(const Duration(milliseconds: 400));
-      return [];
+      return (reservas: <ReservaModel>[], totalElements: 0, totalPages: 0);
     }
 
-    final response = await _api.get(ApiConstants.reservas(idper));
+    final response = await _api.get(
+      ApiConstants.historialCitas(idper, pagina, cantidad),
+    );
 
     return switch (response) {
       ApiSuccess(:final data) => () {
-        debugPrint('📦 reservas raw response: $data');
-        return _parseReservas(data);
+        debugPrint('📦 historial-citas raw response: $data');
+        final reservas = _parseReservas(data);
+        // Extraer paginación
+        int totalElements = 0;
+        int totalPages = 0;
+        if (data is Map<String, dynamic> && data['pagination'] is Map) {
+          final pag = data['pagination'] as Map<String, dynamic>;
+          totalElements = pag['totalElements'] as int? ?? 0;
+          totalPages = pag['totalPages'] as int? ?? 0;
+        }
+        return (reservas: reservas, totalElements: totalElements, totalPages: totalPages);
       }(),
       ApiError(:final message) => throw Exception(message),
     };
+  }
+
+  // ── PDF de cita médica ────────────────────────────────────────────
+
+  /// Descarga el PDF de una cita médica desde el backend.
+  /// Retorna los bytes del PDF, o null si falla.
+  Future<Uint8List?> getCitaMedicaPdf({
+    required int gestion,
+    required int idins,
+    required int idsuc,
+    required int idtran,
+    required int dr,
+  }) async {
+    if (AppConfig.useMockData) {
+      return null;
+    }
+
+    return _api.getBytes(
+      ApiConstants.citaMedicaPdf(gestion, idins, idsuc, idtran, dr),
+    );
   }
 
   // ── Parsers ─────────────────────────────────────────────────────────────

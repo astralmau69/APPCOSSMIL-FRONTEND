@@ -35,6 +35,7 @@ class BookingState {
   /// seleccionar el horario, para poder programar notificaciones locales.
   DateTime? appointmentDateTime;
   String? idcontrol;
+  int? idcon;
   int? slotNumber;
 
   void reset() {
@@ -50,6 +51,7 @@ class BookingState {
     idagenda = null;
     appointmentDateTime = null;
     idcontrol = null;
+    idcon = null;
     slotNumber = null;
   }
 }

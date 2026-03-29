@@ -7,8 +7,8 @@ import '../models/reserva_model.dart';
 import '../animations/animated_status_badge.dart';
 
 /// Card reutilizable para mostrar una reserva/cita médica.
-/// Muestra avatar del paciente, relación, especialidad, médico,
-/// fecha/hora, hospital, consultorio y código de reserva.
+/// Adaptada al formato real del backend historial-citas:
+/// especialidad, médico, regional, fechaCita, codadm, estado.
 class AppointmentCard extends StatelessWidget {
   final ReservaModel appointment;
   final VoidCallback? onTap;
@@ -47,26 +47,34 @@ class AppointmentCard extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Row 1: Avatar + Name + Status
+                // Row 1: Avatar + Especialidad + Status
                 Row(
                   children: [
-                    _buildAvatar(responsive),
+                    _buildAvatar(config, responsive),
                     const SizedBox(width: 10),
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            appointment.patientName,
+                            appointment.specialty,
                             style: AppTypography.titleLarge.copyWith(
-                              fontSize: responsive.isSmallPhone ? 16 : 18,
+                              fontSize: responsive.isSmallPhone ? 15 : 16,
                               color: AppColors.textPrimaryC(isDark),
                             ),
                             overflow: TextOverflow.ellipsis,
                             maxLines: 1,
                           ),
                           const SizedBox(height: 2),
-                          _relationshipBadge(),
+                          Text(
+                            appointment.doctorName,
+                            style: AppTypography.bodySmall.copyWith(
+                              color: AppColors.accentForTheme(isDark),
+                              fontWeight: FontWeight.w600,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
                         ],
                       ),
                     ),
@@ -77,62 +85,20 @@ class AppointmentCard extends StatelessWidget {
                 const SizedBox(height: 10),
                 Container(height: 0.5, color: AppColors.divider),
                 const SizedBox(height: 10),
-                // Row 2: Specialty + Doctor
-                Row(
-                  children: [
-                    Container(
-                      width: 30,
-                      height: 30,
-                      decoration: BoxDecoration(
-                        color: config.color.withValues(alpha: 0.08),
-                        borderRadius: BorderRadius.circular(AppSpacing.radiusSm),
-                      ),
-                      child: Icon(
-                        config.icon,
-                        size: 14,
-                        color: config.color,
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            appointment.specialty,
-                            style: AppTypography.titleSmall.copyWith(
-                              color: AppColors.textPrimaryC(isDark),
-                            ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                          Text(
-                            appointment.doctorName,
-                            style: AppTypography.bodySmall.copyWith(
-                              color: AppColors.accentForTheme(isDark),
-                            ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 10),
-                // Row 3: Details chips
+                // Row 2: Detalles (fecha, regional, código)
                 Wrap(
                   spacing: 6,
                   runSpacing: 4,
                   children: [
-                    _detailChip(Icons.calendar_today, appointment.date, isDark: isDark, isHighlight: isDark),
-                    _detailChip(Icons.schedule, appointment.time, isDark: isDark),
+                    _detailChip(Icons.calendar_today, appointment.formattedDate, isDark: isDark, isHighlight: isDark),
+                    if (appointment.time.isNotEmpty)
+                      _detailChip(Icons.schedule, appointment.time, isDark: isDark),
                     _detailChip(Icons.apartment, appointment.hospital, isDark: isDark),
-                    if (appointment.consultorio != null)
+                    if (appointment.consultorio != null && appointment.consultorio!.isNotEmpty)
                       _detailChip(Icons.meeting_room_outlined, appointment.consultorio!, isDark: isDark),
                   ],
                 ),
-                if (appointment.codigoReserva != null) ...[
+                if (appointment.codigoReserva != null && appointment.codigoReserva!.isNotEmpty) ...[
                   const SizedBox(height: 8),
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
@@ -163,9 +129,7 @@ class AppointmentCard extends StatelessWidget {
     );
   }
 
-  Widget _buildAvatar(ResponsiveData responsive) {
-    final isTitular = appointment.isTitular;
-    final color = isTitular ? AppColors.primary : AppColors.accent;
+  Widget _buildAvatar(_StatusConfig config, ResponsiveData responsive) {
     final size = responsive.isSmallPhone ? 44.0 : 50.0;
 
     return Container(
@@ -174,44 +138,20 @@ class AppointmentCard extends StatelessWidget {
       decoration: BoxDecoration(
         shape: BoxShape.circle,
         gradient: LinearGradient(
-          colors: [color, color.withValues(alpha: 0.7)],
+          colors: [config.color, config.color.withValues(alpha: 0.7)],
         ),
       ),
       alignment: Alignment.center,
-      child: Text(
-        appointment.avatarLetter,
-        style: TextStyle(
-          color: AppColors.white,
-          fontWeight: FontWeight.w900,
-          fontSize: responsive.isSmallPhone ? 18 : 20,
-        ),
-      ),
-    );
-  }
-
-  Widget _relationshipBadge() {
-    final isTitular = appointment.isTitular;
-    final color = isTitular ? AppColors.primary : AppColors.accent;
-    final label = isTitular ? 'Titular' : appointment.relationship;
-
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(6),
-      ),
-      child: Text(
-        label,
-        style: TextStyle(
-          fontSize: 14,
-          fontWeight: FontWeight.w800,
-          color: color,
-        ),
+      child: Icon(
+        config.icon,
+        color: AppColors.white,
+        size: responsive.isSmallPhone ? 20 : 24,
       ),
     );
   }
 
   Widget _detailChip(IconData icon, String text, {required bool isDark, bool isHighlight = false}) {
+    if (text.isEmpty) return const SizedBox.shrink();
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [

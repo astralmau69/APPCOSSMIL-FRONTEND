@@ -151,6 +151,39 @@ class ApiClient {
     }
   }
 
+  // ── GET Raw Bytes (para PDFs) ──────────────────────────────────────
+
+  /// Descarga bytes crudos (PDF, imágenes, etc.) con Bearer token.
+  Future<Uint8List?> getBytes(String path) async {
+    final url = Uri.parse('${ApiConstants.baseUrl}$path');
+    final token = await TokenStorage.getToken();
+
+    if (kDebugMode) debugPrint('🌐 GET (bytes) $url');
+
+    try {
+      final response = await _http.get(url, headers: _headers(token));
+
+      if (response.statusCode == 200) {
+        return response.bodyBytes;
+      }
+
+      // Si 401, intentar refresh y reintentar
+      if (response.statusCode == 401) {
+        final refreshed = await _tryRefreshToken();
+        if (refreshed) {
+          final retry = await _http.get(url, headers: _headers(await TokenStorage.getToken()));
+          if (retry.statusCode == 200) return retry.bodyBytes;
+        }
+      }
+
+      if (kDebugMode) debugPrint('   ↳ Error descargando bytes: ${response.statusCode}');
+      return null;
+    } on Exception catch (e) {
+      if (kDebugMode) debugPrint('   ↳ ERROR getBytes: $e');
+      return null;
+    }
+  }
+
   // ── Token Refresh ───────────────────────────────────────────────────
 
   /// Intenta renovar el access_token usando el refresh_token.

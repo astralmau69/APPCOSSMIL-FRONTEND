@@ -1,11 +1,11 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:printing/printing.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/theme/app_constants.dart';
 import '../../../core/session/user_session.dart';
-import '../../../core/services/pdf_service.dart';
 import '../../../core/services/programacion_service.dart';
 
 import '../../../core/animations/optimized_animations.dart';
@@ -23,6 +23,15 @@ class SummaryScreen extends StatefulWidget {
 
 class _SummaryScreenState extends State<SummaryScreen> {
   bool _isConfirming = false;
+  bool _isConfirmed = false;
+  bool _isDownloadingPdf = false;
+
+  // Datos de la respuesta de crea-cita, necesarios para el PDF del backend.
+  int? _gestion;
+  int? _idins;
+  int? _idsuc;
+  int? _idtran;
+  int? _dr;
 
   /// Fecha de la reserva (desde el estado o mañana como fallback).
   String get _fechaReserva {
@@ -142,7 +151,7 @@ class _SummaryScreenState extends State<SummaryScreen> {
                 icon: Icons.medical_services_outlined,
                 isDark: isDark,
                 children: [
-                   _rowValue(bs.specialty?.name ?? '', isBold: true, color: AppColors.primary),
+                   _rowValue(bs.specialty?.name ?? '', isBold: true, color: AppColors.accentForTheme(isDark)),
                 ],
               ),
             ),
@@ -163,11 +172,11 @@ class _SummaryScreenState extends State<SummaryScreen> {
                          width: 65,
                          height: 65,
                          decoration: BoxDecoration(
-                           color: AppColors.primary.withValues(alpha: 0.1),
+                           color: AppColors.accentForTheme(isDark).withValues(alpha: 0.1),
                            borderRadius: BorderRadius.circular(15),
-                           border: Border.all(color: AppColors.primary.withValues(alpha: 0.2)),
+                           border: Border.all(color: AppColors.accentForTheme(isDark).withValues(alpha: 0.2)),
                          ),
-                         child: Icon(Icons.person, size: 40, color: AppColors.primary.withValues(alpha: 0.6)),
+                         child: Icon(Icons.person, size: 40, color: AppColors.accentForTheme(isDark).withValues(alpha: 0.6)),
                        ),
                        const SizedBox(width: 16),
                        Expanded(
@@ -272,17 +281,32 @@ class _SummaryScreenState extends State<SummaryScreen> {
   }
 
   Widget _buildActionButtons(bool isDark) {
+    if (_isConfirmed) {
+      return _buildPostConfirmButtons(isDark);
+    }
+
     return Row(
       children: [
         Expanded(
-          child: CupertinoButton(
-            padding: const EdgeInsets.symmetric(vertical: 16),
-            onPressed: () => Navigator.pop(context),
-            child: Text(
-              'Modificar',
-              style: TextStyle(
-                color: AppColors.textSecondaryC(isDark),
-                fontWeight: FontWeight.w600,
+          child: Container(
+            decoration: BoxDecoration(
+              color: isDark ? AppColors.darkElevated : AppColors.white,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(
+                color: isDark ? AppColors.darkBorder : AppColors.border,
+                width: 1,
+              ),
+            ),
+            child: CupertinoButton(
+              padding: const EdgeInsets.symmetric(vertical: 16),
+              borderRadius: BorderRadius.circular(16),
+              onPressed: () => Navigator.pop(context),
+              child: Text(
+                'Modificar',
+                style: TextStyle(
+                  color: AppColors.textPrimaryC(isDark),
+                  fontWeight: FontWeight.w700,
+                ),
               ),
             ),
           ),
@@ -305,6 +329,147 @@ class _SummaryScreenState extends State<SummaryScreen> {
     );
   }
 
+  Widget _buildPostConfirmButtons(bool isDark) {
+    return Column(
+      children: [
+        // Mensaje de éxito
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: AppColors.accent.withValues(alpha: 0.1),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: AppColors.accent.withValues(alpha: 0.3)),
+          ),
+          child: Row(
+            children: [
+              Icon(CupertinoIcons.checkmark_circle_fill, color: AppColors.accent, size: 28),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  'Su Cita Médica se ha creado exitosamente.',
+                  style: TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.accentForTheme(isDark),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 24),
+
+        // Botón Descargar PDF
+        SizedBox(
+          width: double.infinity,
+          child: CupertinoButton.filled(
+            borderRadius: BorderRadius.circular(16),
+            onPressed: _isDownloadingPdf ? null : _downloadPdf,
+            child: _isDownloadingPdf
+                ? const CupertinoActivityIndicator(color: Colors.white)
+                : const Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(CupertinoIcons.arrow_down_doc_fill, size: 20),
+                      SizedBox(width: 10),
+                      Text(
+                        'Descargar PDF',
+                        style: TextStyle(fontWeight: FontWeight.w800, letterSpacing: 0.5),
+                      ),
+                    ],
+                  ),
+          ),
+        ),
+        const SizedBox(height: 12),
+
+        // Botón Volver al Inicio
+        SizedBox(
+          width: double.infinity,
+          child: Container(
+            decoration: BoxDecoration(
+              color: isDark ? AppColors.darkElevated : AppColors.white,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(
+                color: isDark ? AppColors.darkBorder : AppColors.border,
+                width: 1,
+              ),
+            ),
+            child: CupertinoButton(
+              borderRadius: BorderRadius.circular(16),
+              onPressed: () => widget.tabShell.finishBooking(),
+              child: Text(
+                'Volver al Inicio',
+                style: TextStyle(
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.textPrimaryC(isDark),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Future<void> _downloadPdf() async {
+    if (_gestion == null || _idins == null || _idsuc == null || _idtran == null || _dr == null) {
+      await CossmilIosAlert.show(
+        context: context,
+        title: 'Error',
+        message: 'No se encontraron los datos necesarios para generar el PDF.',
+        type: AlertType.error,
+        confirmText: 'Aceptar',
+      );
+      return;
+    }
+
+    setState(() => _isDownloadingPdf = true);
+
+    try {
+      final service = ProgramacionService();
+      final pdfBytes = await service.getCitaMedicaPdf(
+        gestion: _gestion!,
+        idins: _idins!,
+        idsuc: _idsuc!,
+        idtran: _idtran!,
+        dr: _dr!,
+      );
+
+      if (!mounted) return;
+      setState(() => _isDownloadingPdf = false);
+
+      if (pdfBytes == null || pdfBytes.isEmpty) {
+        await CossmilIosAlert.show(
+          context: context,
+          title: 'Error',
+          message: 'No se pudo descargar el PDF de la cita médica.',
+          type: AlertType.error,
+          confirmText: 'Aceptar',
+        );
+        return;
+      }
+
+      // Mostrar el PDF descargado del backend
+      await Printing.layoutPdf(
+        onLayout: (_) async => pdfBytes,
+        name: 'Cita_Medica_$_gestion-$_idtran-$_dr',
+      );
+    } catch (e) {
+      debugPrint('❌ Error descargando PDF: $e');
+      if (!mounted) return;
+      setState(() => _isDownloadingPdf = false);
+
+      await CossmilIosAlert.show(
+        context: context,
+        title: 'Error',
+        message: 'No se pudo descargar el PDF: $e',
+        type: AlertType.error,
+        confirmText: 'Aceptar',
+      );
+    }
+  }
+
   Future<void> _confirmBooking() async {
     setState(() => _isConfirming = true);
 
@@ -313,14 +478,15 @@ class _SummaryScreenState extends State<SummaryScreen> {
 
     try {
       final service = ProgramacionService();
-      
-      // Construir el payload exacto solicitado por el usuario
+
       final payload = {
         "idins": 1,
         "idsuc": int.tryParse(bs.hospital?.id ?? '') ?? 0,
         "sucursal": bs.hospital?.name ?? '',
         "idesp": int.tryParse(bs.specialty?.id ?? '') ?? 0,
         "especialidad": bs.specialty?.name ?? '',
+        "idcon": bs.idcon ?? 1,
+        "consultorio": bs.doctor?.office ?? '',
         "idmed": bs.doctor?.id ?? '',
         "medico": bs.doctor?.fullName ?? '',
         "idper": int.tryParse(user.id) ?? 0,
@@ -333,8 +499,8 @@ class _SummaryScreenState extends State<SummaryScreen> {
         "idhora": bs.idhora ?? '',
         "idcontrol": bs.idcontrol ?? '',
         "fichaExtra": 0,
-        "idseg": user.idseg ?? 101, // Fallback ASE
-        "uc": user.uc ?? "1195",    // Fallback ejemplo
+        "idseg": user.idseg ?? 101,
+        "uc": user.uc ?? "1195",
         "obs": "",
         "modalidad": "ASE"
       };
@@ -344,41 +510,32 @@ class _SummaryScreenState extends State<SummaryScreen> {
       debugPrint('✅ Resultado crea-cita: $result');
 
       if (!mounted) return;
-      setState(() => _isConfirming = false);
 
-      await CossmilIosAlert.show(
-        context: context,
-        title: '¡Cita Creada!',
-        message: 'Su Cita Médica se ha creado exitosamente. Puede visualizar los detalles y descargar su ticket a continuación.',
-        confirmText: 'Ver Cita Médica',
-        onConfirm: () async {
-          await PdfService.generateAndShowBookingPdf(
-            user: user,
-            paciente: bs.beneficiary?.fullName ?? user.fullName,
-            especialidad: bs.specialty?.name ?? '',
-            establecimiento: bs.hospital?.name ?? '',
-            consultorio: bs.doctor?.office ?? 'No especificado',
-            ciudad: bs.hospital?.city ?? '',
-            medico: bs.doctor?.fullName ?? '',
-            fecha: _fechaReserva,
-            hora: bs.selectedTime ?? '',
-          );
-          if (mounted) widget.tabShell.finishBooking();
-        },
-        cancelText: 'Volver al Inicio',
-        onCancel: () {
-          widget.tabShell.finishBooking();
-        },
-      );
+      // Extraer datos de la respuesta para el PDF
+      final responseData = result['data'] as Map<String, dynamic>?;
+
+      setState(() {
+        _isConfirming = false;
+        _isConfirmed = true;
+        _gestion = responseData?['gestion'] as int?;
+        _idins = responseData?['idins'] as int?;
+        _idsuc = responseData?['idsuc'] as int?;
+        _idtran = responseData?['idtran'] as int?;
+        _dr = responseData?['dr'] as int?;
+      });
     } catch (e) {
       debugPrint('❌ Error en _confirmBooking: $e');
       if (!mounted) return;
       setState(() => _isConfirming = false);
 
+      // Limpiar prefijo "Exception: " del mensaje
+      final errorMsg = e.toString().replaceFirst('Exception: ', '');
+
       await CossmilIosAlert.show(
         context: context,
-        title: 'Error al confirmar',
-        message: 'No se pudo registrar la reserva: $e. Verifica tu conexión e intenta nuevamente.',
+        title: 'No se pudo reservar',
+        message: errorMsg,
+        type: AlertType.warning,
         confirmText: 'Aceptar',
       );
     }
@@ -389,15 +546,15 @@ class _SummaryScreenState extends State<SummaryScreen> {
     return Column(
       children: [
         Text(
-          'Resumen de su Cita',
+          _isConfirmed ? 'Cita Confirmada' : 'Resumen de su Cita',
           style: AppTypography.displayMedium.copyWith(
             fontSize: 22,
-            color: AppColors.accentForTheme(isDark),
+            color: _isConfirmed ? AppColors.accent : AppColors.accentForTheme(isDark),
           ),
         ),
         const SizedBox(height: 6),
         Text(
-          'VERIFIQUE LOS DETALLES',
+          _isConfirmed ? 'RESERVA EXITOSA' : 'VERIFIQUE LOS DETALLES',
           style: AppTypography.labelMedium.copyWith(
             letterSpacing: 1.0,
             fontSize: 13,

@@ -56,9 +56,13 @@ class ApiConstants {
   /// Crear cita médica (POST).
   static String crearCita() => '/api/programacion/crea-cita';
 
-  /// Historial de reservas de un asegurado.
-  static String reservas(int idper) =>
-      '/api/programacion/reservas/$idper/ASE';
+  /// Historial de citas de un asegurado (paginado).
+  static String historialCitas(int idper, int nroPagina, int cantidadRegistros) =>
+      '/api/programacion/historial-citas/$idper/$nroPagina/$cantidadRegistros';
+
+  /// PDF de cita médica generado por el backend.
+  static String citaMedicaPdf(int gestion, int idins, int idsuc, int idtran, int dr) =>
+      '/api/programacion/cita-medica-pdf/$gestion/$idins/$idsuc/$idtran/$dr';
 
   /// Foto y datos básicos del asegurado por matrícula.
   static String aseguradoFoto(String matricula) =>

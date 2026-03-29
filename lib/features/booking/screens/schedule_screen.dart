@@ -323,6 +323,8 @@ class _ScheduleScreenState extends State<ScheduleScreen>
                             _medicoAsignado!.idagenda;
                         widget.tabShell.bookingState.idcontrol =
                             _medicoAsignado!.idcontrol;
+                        widget.tabShell.bookingState.idcon =
+                            _medicoAsignado!.idcon;
                       }
                       widget.tabShell.bookingState.selectedTime =
                           _selectedTime;
