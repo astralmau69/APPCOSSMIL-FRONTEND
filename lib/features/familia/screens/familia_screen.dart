@@ -246,11 +246,7 @@ class _BeneficiaryCard extends StatelessWidget {
       height: 60,
       decoration: BoxDecoration(
         shape: BoxShape.circle,
-        gradient: LinearGradient(
-          colors: [accentColor, accentColor.withValues(alpha: 0.7)],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
+        color: accentColor,
       ),
       child: ClipOval(
         child: decodedPhoto != null

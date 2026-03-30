@@ -156,12 +156,7 @@ class _BeneficiaryTile extends StatelessWidget {
               height: 56,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                gradient: LinearGradient(
-                  colors: [
-                    avatarColor,
-                    avatarColor.withValues(alpha: 0.7),
-                  ],
-                ),
+                color: avatarColor,
               ),
               child: ClipOval(
                 child: beneficiary.photoBase64.isNotEmpty

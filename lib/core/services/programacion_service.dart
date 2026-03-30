@@ -168,13 +168,14 @@ class ProgramacionService {
   // ── Médico asignado ───────────────────────────────────────────────────
 
   /// Obtiene médico asignado con agenda y horas disponibles.
-  /// [fecha] formato yyyy-MM-dd. [idhorario] obtenido de verificarHorarioAtencion.
+  /// [fecha] formato yyyy-MM-dd. [modalidad] e.g. "ASE".
   Future<MedicoAsignadoModel> getMedicoAsignado(
     int idins,
     int idsuc,
     int idesp,
     String fecha,
-    int idhorario,
+    String modalidad,
+    int idturno,
   ) async {
     if (AppConfig.useMockData) {
       await Future.delayed(const Duration(milliseconds: 400));
@@ -201,7 +202,7 @@ class ProgramacionService {
     }
 
     final response = await _api.get(
-      ApiConstants.medicoAsignado(idins, idsuc, idesp, fecha, idhorario),
+      ApiConstants.medicoAsignado(idins, idsuc, idesp, fecha, modalidad, idturno),
     );
 
     return switch (response) {

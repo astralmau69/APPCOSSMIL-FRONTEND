@@ -89,12 +89,7 @@ class _PerfilScreenState extends State<PerfilScreen> {
   Widget _fallbackAvatar(UserModel user) {
     return Container(
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [
-            AppColors.primary,
-            AppColors.primary.withValues(alpha: 0.7),
-          ],
-        ),
+        color: AppColors.primary,
       ),
       alignment: Alignment.center,
       child: Text(
@@ -429,7 +424,7 @@ class _PerfilScreenState extends State<PerfilScreen> {
                             title: Text('Modo Oscuro', style: TextStyle(fontWeight: FontWeight.w600, color: AppColors.textPrimaryC(isDarkActive))),
                             trailing: CupertinoSwitch(
                               value: isDarkActive,
-                              activeTrackColor: isDarkActive ? AppColors.razer.withValues(alpha: 0.7) : AppColors.primary,
+                              activeTrackColor: isDarkActive ? AppColors.primaryMedium.withValues(alpha: 0.7) : AppColors.primary,
                               onChanged: (val) {
                                 ThemeManager.setThemeMode(val ? ThemeMode.dark : ThemeMode.light);
                               },
@@ -542,14 +537,7 @@ class _PerfilScreenState extends State<PerfilScreen> {
     return Container(
       clipBehavior: Clip.antiAlias,
       decoration: BoxDecoration(
-        gradient: isDark
-            ? LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [AppColors.darkCard, AppColors.darkCard.withValues(alpha: 0.8)],
-              )
-            : null,
-        color: isDark ? null : AppColors.white,
+        color: isDark ? AppColors.darkCard : AppColors.white,
         borderRadius: BorderRadius.circular(AppTheme.radiusXl),
         border: Border.all(
           color: AppColors.cardBorder(isDark).withValues(alpha: 0.5),

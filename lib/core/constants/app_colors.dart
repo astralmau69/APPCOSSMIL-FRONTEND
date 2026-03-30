@@ -8,11 +8,11 @@ import 'package:flutter/material.dart';
 class AppColors {
   AppColors._();
 
-  // ── Primary (azul institucional) ──────────────────────────────────────────
-  static const Color primary = Color(0xFF0C4A6E);
-  static const Color primaryDark = Color(0xFF082F49);
-  static const Color primaryMedium = Color(0xFF0369A1);
-  static const Color primaryLight = Color(0xFFE0F2FE);
+  // ── Primary (azul institucional — Design System "Clinical Serenity") ─────
+  static const Color primary = Color(0xFF00478D);
+  static const Color primaryDark = Color(0xFF003366);
+  static const Color primaryMedium = Color(0xFF005EB8);
+  static const Color primaryLight = Color(0xFFD6E8F7);
 
   // ── Accent (verde médico / salud) ─────────────────────────────────────────
   static const Color accent = Color(0xFF059669);
@@ -24,33 +24,35 @@ class AppColors {
   static const Color goldLight = Color(0xFFFEF9C3);
   static const Color razer = Color(0xFF44D62C);
 
-  // ── Backgrounds ───────────────────────────────────────────────────────────
-  static const Color background = Color(0xFFF2F2F7);
-  static const Color surface = Color(0xFFFFFFFF);
+  // ── Surfaces (Design System tonal hierarchy) ──────────────────────────────
+  static const Color background = Color(0xFFF7F9FB);          // surface base
+  static const Color surfaceContainerLow = Color(0xFFF2F4F6); // low priority
+  static const Color surface = Color(0xFFFFFFFF);              // active cards (max lift)
+  static const Color surfaceVariant = Color(0xFFE0E3E5);       // recessed/disabled
   static const Color white = Color(0xFFFFFFFF);
 
-  // ── Dark mode surfaces (elegantes, no negro absoluto) ─────────────────────
-  static const Color darkBackground = Color(0xFF0F0F11);
-  static const Color darkSurface = Color(0xFF1A1A1E);
-  static const Color darkCard = Color(0xFF1E1E22);
-  static const Color darkElevated = Color(0xFF252529);
-  static const Color darkBorder = Color(0xFF2C2C30);
-  static const Color darkDivider = Color(0xFF232327);
+  // ── Dark mode surfaces (tonal depth, nunca negro absoluto) ────────────────
+  static const Color darkBackground = Color(0xFF101214);
+  static const Color darkSurface = Color(0xFF191C1E);
+  static const Color darkCard = Color(0xFF1E2124);
+  static const Color darkElevated = Color(0xFF262A2E);
+  static const Color darkBorder = Color(0xFF2E3236);
+  static const Color darkDivider = Color(0xFF242830);
 
-  // ── Text ──────────────────────────────────────────────────────────────────
-  static const Color textPrimary = Color(0xFF0F172A);
-  static const Color textSecondary = Color(0xFF64748B);
-  static const Color textTertiary = Color(0xFF94A3B8);
+  // ── Text (on-surface tokens) ───────────────────────────────────────────────
+  static const Color textPrimary = Color(0xFF191C1E);
+  static const Color textSecondary = Color(0xFF5A6068);
+  static const Color textTertiary = Color(0xFF8A9099);
 
   // ── Dark text ─────────────────────────────────────────────────────────────
-  static const Color darkTextPrimary = Color(0xFFF1F1F3);
-  static const Color darkTextSecondary = Color(0xFF9A9AA0);
-  static const Color darkTextTertiary = Color(0xFF6B6B73);
+  static const Color darkTextPrimary = Color(0xFFE4E6E9);
+  static const Color darkTextSecondary = Color(0xFF9BA0A8);
+  static const Color darkTextTertiary = Color(0xFF6C7178);
 
   // ── Status ────────────────────────────────────────────────────────────────
   static const Color success = Color(0xFF16A34A);
   static const Color successLight = Color(0xFFDCFCE7);
-  static const Color error = Color(0xFFDC2626);
+  static const Color error = Color(0xFFBA1A1A);
   static const Color errorLight = Color(0xFFFEE2E2);
   static const Color warning = Color(0xFFD97706);
   static const Color warningLight = Color(0xFFFEF3C7);
@@ -73,9 +75,9 @@ class AppColors {
   static const Color slotUnavailableBorder = Color(0xFFEF9A9A);
   static const Color slotUnavailableBorderDark = Color(0xFF6D2020);
 
-  // ── Borders / Dividers ────────────────────────────────────────────────────
-  static const Color border = Color(0xFFE2E8F0);
-  static const Color divider = Color(0xFFF1F5F9);
+  // ── Borders / Dividers (ghost border — outline-variant at low opacity) ───
+  static const Color border = Color(0xFFE0E3E5);
+  static const Color divider = Color(0xFFF2F4F6);
 
   // ── Semantic helpers (resolve by brightness) ──────────────────────────────
 
@@ -104,19 +106,19 @@ class AppColors {
   static Color dividerC(bool isDark) => isDark ? darkDivider : divider;
 
   /// Accent color for dark mode actions (highlights, active states).
-  static Color accentForTheme(bool isDark) => isDark ? razer : primary;
+  static Color accentForTheme(bool isDark) => isDark ? primaryMedium : primary;
 
   /// Subtle accent background.
   static Color accentBg(bool isDark) =>
       isDark ? primary.withValues(alpha: 0.15) : primaryLight;
 
-  // ── Shadows ───────────────────────────────────────────────────────────────
+  // ── Shadows (tinted with on-surface #191C1E, highly diffused) ──────────────
 
   static List<BoxShadow> cardShadowFor(bool isDark) => isDark
       ? [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.25),
-            blurRadius: 12,
+            color: const Color(0xFF191C1E).withValues(alpha: 0.30),
+            blurRadius: 32,
             offset: const Offset(0, 4),
           ),
         ]
@@ -124,37 +126,25 @@ class AppColors {
 
   static List<BoxShadow> get cardShadow => [
         BoxShadow(
-          color: const Color(0xFF0F172A).withValues(alpha: 0.03),
-          blurRadius: 24,
+          color: const Color(0xFF191C1E).withValues(alpha: 0.04),
+          blurRadius: 32,
           offset: const Offset(0, 8),
-        ),
-        BoxShadow(
-          color: const Color(0xFF0F172A).withValues(alpha: 0.02),
-          blurRadius: 8,
-          spreadRadius: -2,
-          offset: const Offset(0, 2),
         ),
       ];
 
   static List<BoxShadow> get softShadow => [
         BoxShadow(
-          color: const Color(0xFF0F172A).withValues(alpha: 0.03),
-          blurRadius: 16,
+          color: const Color(0xFF191C1E).withValues(alpha: 0.03),
+          blurRadius: 32,
           offset: const Offset(0, 4),
         ),
       ];
 
   static List<BoxShadow> get elevatedShadow => [
         BoxShadow(
-          color: const Color(0xFF0F172A).withValues(alpha: 0.04),
-          blurRadius: 36,
-          spreadRadius: 2,
-          offset: const Offset(0, 16),
-        ),
-        BoxShadow(
-          color: const Color(0xFF0F172A).withValues(alpha: 0.03),
-          blurRadius: 12,
-          offset: const Offset(0, 6),
+          color: const Color(0xFF191C1E).withValues(alpha: 0.04),
+          blurRadius: 40,
+          offset: const Offset(0, 12),
         ),
       ];
 }

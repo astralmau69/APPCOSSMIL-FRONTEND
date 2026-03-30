@@ -50,8 +50,9 @@ class ApiConstants {
 
   /// Médico asignado con agenda y horas disponibles.
   /// [fecha] formato yyyy-MM-dd (fecha de la cita, típicamente mañana).
-  static String medicoAsignado(int idins, int idsuc, int idesp, String fecha, int idhorario) =>
-      '/api/programacion/medico-asignado/$idins/$idsuc/$idesp/$fecha/ASE/$idhorario';
+  /// [idturno] es el código de turno/horario (idhorario del HorarioAtencionModel).
+  static String medicoAsignado(int idins, int idsuc, int idesp, String fecha, String modalidad, int idturno) =>
+      '/api/programacion/medico-asignado/$idins/$idsuc/$idesp/$fecha/$modalidad/$idturno';
 
   /// Crear cita médica (POST).
   static String crearCita() => '/api/programacion/crea-cita';

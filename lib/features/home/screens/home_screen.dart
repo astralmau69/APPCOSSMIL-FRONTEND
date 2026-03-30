@@ -121,139 +121,119 @@ class _HomeScreenState extends State<HomeScreen> {
   // ── Tarjeta de perfil (simplificada) ───────────────────────────────────────
 
   Widget _buildProfileCard(UserModel user, ResponsiveData responsive) {
+    final pad = responsive.isSmallPhone ? 16.0 : 20.0;
     return Container(
-      padding: EdgeInsets.all(responsive.isSmallPhone ? 16 : 20),
+      padding: EdgeInsets.all(pad),
       decoration: BoxDecoration(
         color: AppColors.primary,
-        gradient: const LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            AppColors.primary,
-            Color(0xFF0A3B5C),
-          ],
-        ),
         borderRadius: BorderRadius.circular(AppSpacing.radiusXl),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.1),
-            blurRadius: 8,
-            offset: const Offset(0, 4),
+            color: const Color(0xFF191C1E).withValues(alpha: 0.04),
+            blurRadius: 32,
+            offset: const Offset(0, 8),
           ),
         ],
       ),
-      child: Stack(
+      child: Column(
         children: [
-          // Subtle inner glow overlay at top for premium feel
-          Positioned(
-            top: 0,
-            left: 0,
-            right: 0,
-            height: 80,
-            child: Container(
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.vertical(top: Radius.circular(AppSpacing.radiusXl)),
-                gradient: LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: [
-                    AppColors.white.withValues(alpha: 0.08),
-                    AppColors.white.withValues(alpha: 0.0),
+          // ── Header: avatar + nombre + rango ──
+          Row(
+            children: [
+              CircleAvatar(
+                radius: 34,
+                backgroundColor: AppColors.white.withValues(alpha: 0.2),
+                child: ClipOval(
+                  child: _cachedUserPhoto != null
+                      ? Image.memory(
+                          _cachedUserPhoto!,
+                          width: 68,
+                          height: 68,
+                          fit: BoxFit.cover,
+                          errorBuilder: (_, __, ___) => _fallbackAvatar(user),
+                        )
+                      : _fallbackAvatar(user),
+                ),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      user.fullName,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: AppTypography.headlineMedium.copyWith(
+                        color: AppColors.white,
+                        fontSize: 17,
+                      ),
+                    ),
+                    const SizedBox(height: 3),
+                    Text(
+                      '${user.rank} • Mat: ${user.matricula}',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: AppTypography.bodyMedium.copyWith(
+                        color: AppColors.white.withValues(alpha: 0.8),
+                        fontWeight: FontWeight.w600,
+                        fontSize: 13,
+                      ),
+                    ),
                   ],
                 ),
               ),
-            ),
+              // Badge de estado
+              _statusChip(user),
+            ],
           ),
-          Column(
+          const SizedBox(height: 14),
+          Container(height: 0.5, color: AppColors.white.withValues(alpha: 0.12)),
+          const SizedBox(height: 14),
+          // ── Grilla de datos 2 columnas ──
+          Row(
             children: [
-              Row(
-                children: [
-                  // Avatar
-                  CircleAvatar(
-                    radius: 50,
-                    backgroundColor: AppColors.white.withValues(alpha: 0.2),
-                    child: ClipOval(
-                      child: _cachedUserPhoto != null
-                          ? Image.memory(
-                              _cachedUserPhoto!,
-                              width: 100,
-                              height: 100,
-                              fit: BoxFit.cover,
-                              errorBuilder: (_, __, ___) => _fallbackAvatar(user),
-                            )
-                          : _fallbackAvatar(user),
-                    ),
-                  ),
-                  const SizedBox(width: 14),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          user.fullName,
-                          style: AppTypography.headlineMedium.copyWith(
-                            color: AppColors.white,
-                          ),
-                        ),
-                        const SizedBox(height: 2),
-                        Text(
-                          '${user.rank} • Mat: ${user.matricula}',
-                          style: AppTypography.bodyMedium.copyWith(
-                            color: AppColors.white.withValues(alpha: 0.85),
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
+              Expanded(
+                child: _infoTile(
+                  icon: Icons.badge_outlined,
+                  label: 'C.I.',
+                  value: user.ci.isNotEmpty ? user.ci : '—',
+                ),
               ),
-              const SizedBox(height: 16),
-              Container(
-                height: 0.5,
-                color: AppColors.white.withValues(alpha: 0.12),
-              ),
-              const SizedBox(height: 14),
-              // Status + Edad
-              Row(
-                children: [
-                  // Estado
-                  _statusBadge(user),
-                  _verticalDivider(),
-                  // Edad
-                  _contactInfo(
-                    icon: Icons.cake_outlined,
-                    value: '${user.age} años',
-                  ),
-                ],
-              ),
-              const SizedBox(height: 10),
-              Row(
-                children: [
-                  // CI
-                  _contactInfo(
-                    icon: Icons.badge_outlined,
-                    value: user.ci.isNotEmpty ? 'CI: ${user.ci}' : 'Sin CI',
-                  ),
-                  _verticalDivider(),
-                  // Phone
-                  _contactInfo(
-                    icon: Icons.phone_outlined,
-                    value: user.phone.isNotEmpty ? user.phone : 'Sin teléfono',
-                  ),
-                ],
-              ),
-              const SizedBox(height: 12),
-              Row(
-                children: [
-                  // Email (Full width)
-                  _contactInfo(
-                    icon: Icons.email_outlined,
-                    value: user.email.isNotEmpty ? user.email : 'Sin correo',
-                  ),
-                ],
+              Expanded(
+                child: _infoTile(
+                  icon: Icons.cake_outlined,
+                  label: 'Edad',
+                  value: '${user.age} años',
+                ),
               ),
             ],
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(
+                child: _infoTile(
+                  icon: Icons.phone_outlined,
+                  label: 'Celular',
+                  value: user.phone.isNotEmpty ? user.phone : '—',
+                ),
+              ),
+              Expanded(
+                child: _infoTile(
+                  icon: Icons.bloodtype_outlined,
+                  label: 'Sangre',
+                  value: user.bloodType.isNotEmpty ? user.bloodType : '—',
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          // Email ocupa toda la fila
+          _infoTile(
+            icon: Icons.email_outlined,
+            label: 'Correo',
+            value: user.email.isNotEmpty ? user.email : '—',
           ),
         ],
       ),
@@ -266,81 +246,87 @@ class _HomeScreenState extends State<HomeScreen> {
       style: const TextStyle(
         color: AppColors.white,
         fontWeight: FontWeight.w800,
-        fontSize: 40,
+        fontSize: 28,
       ),
     );
   }
 
-  Widget _statusBadge(UserModel user) {
+  Widget _statusChip(UserModel user) {
     final enabled = user.isEnabled;
-    return Expanded(
+    final color = enabled ? const Color(0xFF4ADE80) : const Color(0xFFFB923C);
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.18),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: color.withValues(alpha: 0.4), width: 0.8),
+      ),
       child: Row(
+        mainAxisSize: MainAxisSize.min,
         children: [
           Container(
-            width: 8,
-            height: 8,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: enabled
-                  ? const Color(0xFF4ADE80)
-                  : const Color(0xFFFB923C),
+            width: 6,
+            height: 6,
+            decoration: BoxDecoration(shape: BoxShape.circle, color: color),
+          ),
+          const SizedBox(width: 5),
+          Text(
+            enabled ? 'Habilitado' : 'Inactivo',
+            style: TextStyle(
+              color: AppColors.white,
+              fontSize: 11,
+              fontWeight: FontWeight.w700,
             ),
           ),
-          const SizedBox(width: 8),
-          Column(
+        ],
+      ),
+    );
+  }
+
+  Widget _infoTile({
+    required IconData icon,
+    required String label,
+    required String value,
+  }) {
+    return Row(
+      children: [
+        Container(
+          width: 32,
+          height: 32,
+          decoration: BoxDecoration(
+            color: AppColors.white.withValues(alpha: 0.1),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Icon(icon, size: 16, color: AppColors.white.withValues(alpha: 0.7)),
+        ),
+        const SizedBox(width: 8),
+        Expanded(
+          child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                'ESTADO',
-                style: AppTypography.caption.copyWith(
-                  color: AppColors.white.withValues(alpha: 0.55),
+                label,
+                style: TextStyle(
+                  color: AppColors.white.withValues(alpha: 0.5),
+                  fontSize: 10,
                   fontWeight: FontWeight.w600,
+                  letterSpacing: 0.5,
                 ),
               ),
               Text(
-                enabled ? 'Habilitado' : 'Inactivo',
-                style: AppTypography.titleSmall.copyWith(
-                  color: AppColors.white,
-                  fontSize: 15,
+                value,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  color: AppColors.white.withValues(alpha: 0.95),
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
                 ),
               ),
             ],
           ),
-        ],
-      ),
-    );
-  }
-
-  Widget _contactInfo({
-    required IconData icon,
-    required String value,
-  }) {
-    return Expanded(
-      child: Row(
-        children: [
-          Icon(icon, size: 22, color: AppColors.white.withValues(alpha: 0.7)),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Text(
-              value,
-              style: AppTypography.bodyMedium.copyWith(
-                fontWeight: FontWeight.w600,
-                color: AppColors.white.withValues(alpha: 0.95),
-              ),
-              overflow: TextOverflow.ellipsis,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _verticalDivider() {
-    return Container(
-      width: 0.5,
-      height: 34,
-      margin: const EdgeInsets.symmetric(horizontal: 12),
-      color: AppColors.white.withValues(alpha: 0.12),
+        ),
+      ],
     );
   }
 
@@ -409,7 +395,10 @@ class _HomeScreenState extends State<HomeScreen> {
         decoration: BoxDecoration(
           color: AppColors.cardBg(isDark),
           borderRadius: BorderRadius.circular(AppSpacing.radiusLg),
-          border: Border.all(color: AppColors.cardBorder(isDark), width: 0.5),
+          border: Border.all(
+            color: const Color(0xFF191C1E).withValues(alpha: isDark ? 0.3 : 0.15),
+            width: 0.8,
+          ),
           boxShadow: AppColors.cardShadowFor(isDark),
         ),
         child: Column(
@@ -502,9 +491,8 @@ class _HomeScreenState extends State<HomeScreen> {
                   : AppColors.primary.withValues(alpha: 0.06),
               borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
               border: Border.all(
-                color: isDark
-                    ? AppColors.white.withValues(alpha: 0.1)
-                    : AppColors.primary.withValues(alpha: 0.12),
+                color: const Color(0xFF191C1E).withValues(alpha: isDark ? 0.3 : 0.15),
+                width: 0.8,
               ),
             ),
             child: Row(

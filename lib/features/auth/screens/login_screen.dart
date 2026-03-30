@@ -5,6 +5,7 @@ import '../../../core/theme/app_constants.dart';
 import '../../../core/extensions/responsive_extensions.dart';
 import '../../../core/animations/optimized_animations.dart';
 import '../../../core/animations/animated_gradient_background.dart';
+import '../../../core/theme/theme_manager.dart';
 import '../../../core/services/auth_service.dart';
 
 import '../../../core/services/location_service.dart';
@@ -17,7 +18,7 @@ class LoginScreen extends StatefulWidget {
 }
 
 class _LoginScreenState extends State<LoginScreen>
-    with SingleTickerProviderStateMixin {
+    with TickerProviderStateMixin {
   final _usernameController = TextEditingController();
   final _passwordController = TextEditingController();
   final _authService = AuthService();
@@ -27,8 +28,71 @@ class _LoginScreenState extends State<LoginScreen>
   bool _obscurePassword = true;
   String? _errorMessage;
 
+  late final AnimationController _logoCtrl;
+  late final AnimationController _floatCtrl;
+  late final Animation<double> _logoFade;
+  late final Animation<double> _logoScale;
+  late final Animation<double> _logoRotate;
+  late final Animation<Offset> _logoFloat;
+
+  @override
+  void initState() {
+    super.initState();
+    // Entrada inicial
+    _logoCtrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1500),
+    );
+
+    // Animación continua de flotación
+    _floatCtrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 2500),
+    );
+
+    _logoFade = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(
+        parent: _logoCtrl,
+        curve: const Interval(0.0, 0.6, curve: Curves.easeIn),
+      ),
+    );
+
+    _logoScale = Tween<double>(begin: 0.4, end: 1.0).animate(
+      CurvedAnimation(
+        parent: _logoCtrl,
+        curve: const Interval(0.0, 0.8, curve: Curves.elasticOut),
+      ),
+    );
+
+    _logoRotate = Tween<double>(begin: -0.1, end: 0.0).animate(
+      CurvedAnimation(
+        parent: _logoCtrl,
+        curve: const Interval(0.0, 0.8, curve: Curves.elasticOut),
+      ),
+    );
+
+    _logoFloat = Tween<Offset>(
+      begin: const Offset(0, 0),
+      end: const Offset(0, 0.05),
+    ).animate(
+      CurvedAnimation(
+        parent: _floatCtrl,
+        curve: Curves.easeInOutSine,
+      ),
+    );
+
+    Future.delayed(const Duration(milliseconds: 200), () {
+      if (mounted) {
+        _logoCtrl.forward();
+        _floatCtrl.repeat(reverse: true);
+      }
+    });
+  }
+
   @override
   void dispose() {
+    _logoCtrl.dispose();
+    _floatCtrl.dispose();
     _usernameController.dispose();
     _passwordController.dispose();
     super.dispose();
@@ -75,9 +139,9 @@ class _LoginScreenState extends State<LoginScreen>
   Widget build(BuildContext context) {
     final responsive = ResponsiveData.of(context);
     final padding = responsive.isSmallPhone ? 16.0 : (responsive.isPhone ? 24.0 : 32.0);
-    final logoSize = responsive.isSmallPhone ? 90.0
-        : responsive.isMediumPhone ? 110.0
-        : 130.0;
+    final logoSize = responsive.isSmallPhone ? 190.0
+        : responsive.isMediumPhone ? 220.0
+        : 250.0;
 
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
@@ -86,7 +150,9 @@ class _LoginScreenState extends State<LoginScreen>
       body: AnimatedGradientBackground(
         isDark: isDark,
         child: SafeArea(
-        child: SingleChildScrollView(
+        child: Stack(
+          children: [
+            SingleChildScrollView(
           physics: const BouncingScrollPhysics(),
           padding: EdgeInsets.symmetric(horizontal: padding),
           child: ConstrainedBox(
@@ -100,10 +166,19 @@ class _LoginScreenState extends State<LoginScreen>
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     const SizedBox(height: 20),
-                    // Logo
-                    FadeSlideIn(
-                      duration: AppDurations.slow,
-                      child: _buildLogo(logoSize, isDark),
+                    // Logo — entrance animations + continuous float
+                    FadeTransition(
+                      opacity: _logoFade,
+                      child: ScaleTransition(
+                        scale: _logoScale,
+                        child: RotationTransition(
+                          turns: _logoRotate,
+                          child: SlideTransition(
+                            position: _logoFloat,
+                            child: _buildLogo(logoSize, isDark),
+                          ),
+                        ),
+                      ),
                     ),
 
                     const SizedBox(height: 32),
@@ -151,12 +226,46 @@ class _LoginScreenState extends State<LoginScreen>
                       child: _buildForgotPassword(),
                     ),
 
-                    const SizedBox(height: 40),
+                    const SizedBox(height: 48),
+
+                    // Footer
+                    FadeSlideIn(
+                      duration: AppDurations.normal,
+                      delay: const Duration(milliseconds: 350),
+                      child: Text(
+                        'DNTIC@2026 ',
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w500,
+                          color: isDark
+                              ? AppColors.white.withValues(alpha: 0.4)
+                              : AppColors.textTertiary.withValues(alpha: 0.6),
+                          letterSpacing: 2.0,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 24),
                   ],
                 ),
               ),
             ),
           ),
+        ),
+            // Theme toggle button — top left
+            Positioned(
+              top: 8,
+              right: 8,
+              child: CupertinoButton(
+                padding: const EdgeInsets.all(10),
+                onPressed: () => ThemeManager.toggleTheme(),
+                child: Icon(
+                  isDark ? CupertinoIcons.sun_max_fill : CupertinoIcons.moon_fill,
+                  size: 34,
+                  color: AppColors.textSecondaryC(isDark),
+                ),
+              ),
+            ),
+          ],
         ),
       ),
       ),
@@ -164,29 +273,16 @@ class _LoginScreenState extends State<LoginScreen>
   }
 
   Widget _buildLogo(double size, bool isDark) {
-    return Container(
+    return SizedBox(
       width: size,
       height: size,
-      decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        color: AppColors.cardBg(isDark),
-        boxShadow: isDark
-            ? [BoxShadow(color: Colors.black.withValues(alpha: 0.2), blurRadius: 20, offset: const Offset(0, 8))]
-            : AppShadows.soft,
-        border: isDark ? Border.all(color: AppColors.darkBorder) : null,
-      ),
-      child: ClipOval(
-        child: Padding(
-          padding: EdgeInsets.all(size * 0.15),
-          child: Image.asset(
-            'assets/images/cossmil_logo.png',
-            fit: BoxFit.contain,
-            errorBuilder: (_, __, ___) => Icon(
-              CupertinoIcons.shield_fill,
-              size: size * 0.5,
-              color: AppColors.accentForTheme(isDark),
-            ),
-          ),
+      child: Image.asset(
+        'assets/images/cossmil_logo.png',
+        fit: BoxFit.contain,
+        errorBuilder: (_, __, ___) => Icon(
+          CupertinoIcons.shield_fill,
+          size: size * 0.5,
+          color: AppColors.accentForTheme(isDark),
         ),
       ),
     );
@@ -237,7 +333,7 @@ class _LoginScreenState extends State<LoginScreen>
         _buildModernInputField(
           label: 'Contraseña',
           controller: _passwordController,
-          placeholder: 'Su contraseña',
+          placeholder: 'Codigo o Contraseña',
           icon: CupertinoIcons.lock_fill,
           obscureText: _obscurePassword,
           isDark: isDark,
@@ -369,13 +465,11 @@ class _LoginScreenState extends State<LoginScreen>
           decoration: BoxDecoration(
             color: _isLoading ? AppColors.textSecondary : AppColors.primary,
             borderRadius: BorderRadius.circular(16),
-            boxShadow: _isLoading ? [] : [
-              BoxShadow(
-                color: AppColors.primary.withValues(alpha: 0.3),
-                blurRadius: 16,
-                offset: const Offset(0, 8),
-              )
-            ],
+            border: Border.all(
+              color: const Color(0xFF191C1E).withValues(alpha: 0.25),
+              width: 0.8,
+            ),
+            boxShadow: _isLoading ? [] : AppColors.softShadow,
           ),
           child: Center(
             child: _isLoading

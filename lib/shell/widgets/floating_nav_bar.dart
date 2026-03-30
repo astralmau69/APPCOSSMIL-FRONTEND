@@ -18,23 +18,9 @@ class FloatingNavBar extends StatelessWidget {
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    final backgroundGradient = isDark
-        ? LinearGradient(
-            colors: [
-              const Color(0xFFE91E63).withValues(alpha: 0.15),
-              AppColors.darkSurface.withValues(alpha: 0.25),
-              AppColors.darkSurface.withValues(alpha: 0.25),
-            ],
-            stops: const [0.0, 0.4, 1.0],
-            begin: Alignment.centerLeft,
-            end: Alignment.centerRight,
-          )
-        : LinearGradient(
-            colors: [
-              Colors.white.withValues(alpha: 0.70),
-              Colors.white.withValues(alpha: 0.60),
-            ],
-          );
+    final backgroundColor = isDark
+        ? AppColors.darkSurface.withValues(alpha: 0.25)
+        : Colors.white.withValues(alpha: 0.70);
 
     final borderColor = isDark
         ? AppColors.darkBorder.withValues(alpha: 0.6)
@@ -71,7 +57,7 @@ class FloatingNavBar extends StatelessWidget {
               filter: ImageFilter.blur(sigmaX: 12.0, sigmaY: 12.0),
               child: Container(
                 decoration: BoxDecoration(
-                  gradient: backgroundGradient,
+                  color: backgroundColor,
                   border: Border.all(color: borderColor, width: 0.5),
                   borderRadius: BorderRadius.circular(35),
                 ),
@@ -136,12 +122,8 @@ class FloatingNavBar extends StatelessWidget {
   }
 }
 
-// Gradient used only for the Tinder-style first nav item.
-const _kTinderGradient = LinearGradient(
-  colors: [Color(0xFFFD297B), Color(0xFFFF655B)],
-  begin: Alignment.bottomLeft,
-  end: Alignment.topRight,
-);
+// Solid color used for the first nav item accent.
+const _kTinderColor = Color(0xFFFD297B);
 
 class _NavBarItem extends StatelessWidget {
   final IconData icon;
@@ -172,14 +154,13 @@ class _NavBarItem extends StatelessWidget {
     final bgPillColor =
         isDark ? AppColors.darkElevated : Colors.black.withValues(alpha: 0.08);
 
-    // Only apply ShaderMask when it actually changes the rendering.
-    // Avoids creating 4 unnecessary compositing layers on every tab switch.
+    // Use solid accent color for the first item instead of a gradient shader.
     final Widget iconWidget = (isActive && isFirstItem)
-        ? ShaderMask(
+        ? Icon(
+            activeIcon,
             key: const ValueKey(true),
-            shaderCallback: (b) => _kTinderGradient.createShader(b),
-            blendMode: BlendMode.srcATop,
-            child: Icon(activeIcon, size: 26, color: activeColor),
+            size: 26,
+            color: _kTinderColor,
           )
         : Icon(
             isActive ? activeIcon : icon,

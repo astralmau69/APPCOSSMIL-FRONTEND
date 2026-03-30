@@ -78,8 +78,11 @@ class AppointmentCard extends StatelessWidget {
                         ],
                       ),
                     ),
-                    const SizedBox(width: 6),
-                    AnimatedStatusBadge.fromStatus(appointment.status),
+                    const SizedBox(width: 8),
+                    Flexible(
+                      flex: 0,
+                      child: AnimatedStatusBadge.fromStatus(appointment.status),
+                    ),
                   ],
                 ),
                 const SizedBox(height: 10),
@@ -137,9 +140,7 @@ class AppointmentCard extends StatelessWidget {
       height: size,
       decoration: BoxDecoration(
         shape: BoxShape.circle,
-        gradient: LinearGradient(
-          colors: [config.color, config.color.withValues(alpha: 0.7)],
-        ),
+        color: config.color,
       ),
       alignment: Alignment.center,
       child: Icon(
@@ -155,13 +156,13 @@ class AppointmentCard extends StatelessWidget {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Icon(icon, size: 14, color: isHighlight ? AppColors.razer : AppColors.textTertiaryC(isDark)),
+        Icon(icon, size: 14, color: isHighlight ? AppColors.primaryMedium : AppColors.textTertiaryC(isDark)),
         const SizedBox(width: 4),
         Flexible(
           child: Text(
             text,
             style: AppTypography.bodySmall.copyWith(
-              color: isHighlight ? AppColors.razer : null,
+              color: isHighlight ? AppColors.primaryMedium : null,
             ),
             overflow: TextOverflow.ellipsis,
           ),

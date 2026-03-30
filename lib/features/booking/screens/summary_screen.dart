@@ -121,18 +121,22 @@ class _SummaryScreenState extends State<SummaryScreen> {
                    Row(
                      children: [
                        Expanded(child: _rowValue(_fechaReserva, isBold: true, fontSize: 17)),
-                       Container(
-                         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                         decoration: BoxDecoration(
-                           color: AppColors.accent.withValues(alpha: 0.15),
-                           borderRadius: BorderRadius.circular(10),
-                         ),
-                         child: Text(
-                           bs.selectedTime ?? '--:--',
-                           style: TextStyle(
-                             color: AppColors.accentForTheme(isDark),
-                             fontWeight: FontWeight.w900,
-                             fontSize: 18,
+                       const SizedBox(width: 8),
+                       Flexible(
+                         flex: 0,
+                         child: Container(
+                           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                           decoration: BoxDecoration(
+                             color: AppColors.accent.withValues(alpha: 0.15),
+                             borderRadius: BorderRadius.circular(10),
+                           ),
+                           child: Text(
+                             bs.selectedTime ?? '--:--',
+                             style: TextStyle(
+                               color: AppColors.accentForTheme(isDark),
+                               fontWeight: FontWeight.w900,
+                               fontSize: 18,
+                             ),
                            ),
                          ),
                        ),
@@ -169,16 +173,16 @@ class _SummaryScreenState extends State<SummaryScreen> {
                      children: [
                        // Foto del médico (placeholder premium)
                        Container(
-                         width: 65,
-                         height: 65,
+                         width: 60,
+                         height: 60,
                          decoration: BoxDecoration(
                            color: AppColors.accentForTheme(isDark).withValues(alpha: 0.1),
                            borderRadius: BorderRadius.circular(15),
                            border: Border.all(color: AppColors.accentForTheme(isDark).withValues(alpha: 0.2)),
                          ),
-                         child: Icon(Icons.person, size: 40, color: AppColors.accentForTheme(isDark).withValues(alpha: 0.6)),
+                         child: Icon(Icons.person, size: 36, color: AppColors.accentForTheme(isDark).withValues(alpha: 0.6)),
                        ),
-                       const SizedBox(width: 16),
+                       const SizedBox(width: 12),
                        Expanded(
                          child: Column(
                            crossAxisAlignment: CrossAxisAlignment.start,
@@ -293,8 +297,8 @@ class _SummaryScreenState extends State<SummaryScreen> {
               color: isDark ? AppColors.darkElevated : AppColors.white,
               borderRadius: BorderRadius.circular(16),
               border: Border.all(
-                color: isDark ? AppColors.darkBorder : AppColors.border,
-                width: 1,
+                color: const Color(0xFF191C1E).withValues(alpha: isDark ? 0.3 : 0.2),
+                width: 0.8,
               ),
             ),
             child: CupertinoButton(
@@ -314,15 +318,24 @@ class _SummaryScreenState extends State<SummaryScreen> {
         const SizedBox(width: 16),
         Expanded(
           flex: 2,
-          child: CupertinoButton.filled(
-            borderRadius: BorderRadius.circular(16),
-            onPressed: _isConfirming ? null : () => _confirmBooking(),
-            child: _isConfirming
-                ? const CupertinoActivityIndicator(color: Colors.white)
-                : const Text(
-                    'Confirmar Reserva',
-                    style: TextStyle(fontWeight: FontWeight.w800, letterSpacing: 0.5),
-                  ),
+          child: Container(
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(
+                color: const Color(0xFF191C1E).withValues(alpha: 0.25),
+                width: 0.8,
+              ),
+            ),
+            child: CupertinoButton.filled(
+              borderRadius: BorderRadius.circular(16),
+              onPressed: _isConfirming ? null : () => _confirmBooking(),
+              child: _isConfirming
+                  ? const CupertinoActivityIndicator(color: Colors.white)
+                  : const Text(
+                      'Confirmar Reserva',
+                      style: TextStyle(fontWeight: FontWeight.w800, letterSpacing: 0.5),
+                    ),
+            ),
           ),
         ),
       ],
@@ -363,22 +376,31 @@ class _SummaryScreenState extends State<SummaryScreen> {
         // Botón Descargar PDF
         SizedBox(
           width: double.infinity,
-          child: CupertinoButton.filled(
-            borderRadius: BorderRadius.circular(16),
-            onPressed: _isDownloadingPdf ? null : _downloadPdf,
-            child: _isDownloadingPdf
-                ? const CupertinoActivityIndicator(color: Colors.white)
-                : const Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(CupertinoIcons.arrow_down_doc_fill, size: 20),
-                      SizedBox(width: 10),
-                      Text(
-                        'Descargar PDF',
-                        style: TextStyle(fontWeight: FontWeight.w800, letterSpacing: 0.5),
-                      ),
-                    ],
-                  ),
+          child: Container(
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(
+                color: const Color(0xFF191C1E).withValues(alpha: 0.25),
+                width: 0.8,
+              ),
+            ),
+            child: CupertinoButton.filled(
+              borderRadius: BorderRadius.circular(16),
+              onPressed: _isDownloadingPdf ? null : _downloadPdf,
+              child: _isDownloadingPdf
+                  ? const CupertinoActivityIndicator(color: Colors.white)
+                  : const Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(CupertinoIcons.arrow_down_doc_fill, size: 20),
+                        SizedBox(width: 10),
+                        Text(
+                          'Descargar PDF',
+                          style: TextStyle(fontWeight: FontWeight.w800, letterSpacing: 0.5),
+                        ),
+                      ],
+                    ),
+            ),
           ),
         ),
         const SizedBox(height: 12),
@@ -391,8 +413,8 @@ class _SummaryScreenState extends State<SummaryScreen> {
               color: isDark ? AppColors.darkElevated : AppColors.white,
               borderRadius: BorderRadius.circular(16),
               border: Border.all(
-                color: isDark ? AppColors.darkBorder : AppColors.border,
-                width: 1,
+                color: const Color(0xFF191C1E).withValues(alpha: isDark ? 0.3 : 0.2),
+                width: 0.8,
               ),
             ),
             child: CupertinoButton(

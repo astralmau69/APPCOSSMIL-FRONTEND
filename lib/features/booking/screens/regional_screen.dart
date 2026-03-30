@@ -247,12 +247,7 @@ class _RegionalScreenState extends State<RegionalScreen> {
             height: 80,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              gradient: LinearGradient(
-                colors: [
-                  avatarColor,
-                  avatarColor.withValues(alpha: 0.7),
-                ],
-              ),
+              color: avatarColor,
             ),
             child: ClipOval(
               child: (isTitular && UserSession.currentUser.photoBase64.isNotEmpty)

@@ -59,15 +59,17 @@ class _ScheduleScreenState extends State<ScheduleScreen>
       final bs = widget.tabShell.bookingState;
       final idsuc = int.tryParse(bs.hospital?.id ?? '') ?? 0;
       final idesp = int.tryParse(bs.specialty?.id ?? '') ?? 0;
-      final idhorario = bs.idhorario ?? 0;
+      final idturno = bs.idhorario ?? 2; // Turno seleccionado (idhorario del HorarioAtencionModel)
+
+      const modalidad = 'ASE';
 
       // Priorizamos HOY como pidió el usuario ("que muestre nomas de hoy luego se cambiara")
       final fechaHoy = _getFecha(0);
-      debugPrint('🌐 Consultando medico-asignado (HOY): idins=1, idsuc=$idsuc, idesp=$idesp, fecha=$fechaHoy, idhorario=$idhorario');
-      
+      debugPrint('🌐 Consultando medico-asignado (HOY): idins=1, idsuc=$idsuc, idesp=$idesp, fecha=$fechaHoy, mod=$modalidad, idturno=$idturno');
+
       try {
         _medicoAsignado = await _service.getMedicoAsignado(
-          1, idsuc, idesp, fechaHoy, idhorario,
+          1, idsuc, idesp, fechaHoy, modalidad, idturno,
         );
         _slots = _medicoAsignado!.toTimeSlots();
       } catch (e) {
@@ -79,9 +81,9 @@ class _ScheduleScreenState extends State<ScheduleScreen>
       // Si hoy no devolvió slots, probamos MAÑANA
       if (_slots.isEmpty) {
         final fechaManana = _getFecha(1);
-        debugPrint('🌐 Consultando medico-asignado (MAÑANA): idins=1, idsuc=$idsuc, idesp=$idesp, fecha=$fechaManana, idhorario=$idhorario');
+        debugPrint('🌐 Consultando medico-asignado (MAÑANA): idins=1, idsuc=$idsuc, idesp=$idesp, fecha=$fechaManana, mod=$modalidad, idturno=$idturno');
         _medicoAsignado = await _service.getMedicoAsignado(
-          1, idsuc, idesp, fechaManana, idhorario,
+          1, idsuc, idesp, fechaManana, modalidad, idturno,
         );
         _slots = _medicoAsignado!.toTimeSlots();
       }
@@ -311,51 +313,60 @@ class _ScheduleScreenState extends State<ScheduleScreen>
             delay: const Duration(milliseconds: 600),
             child: SizedBox(
             width: double.infinity,
-            child: CupertinoButton.filled(
-              borderRadius: BorderRadius.circular(AppTheme.radiusLg),
-              onPressed: _selectedTime == null
-                  ? null
-                  : () {
-                      if (_medicoAsignado != null) {
-                        widget.tabShell.bookingState.doctor =
-                            _medicoAsignado!.toDoctorModel();
-                        widget.tabShell.bookingState.idagenda =
-                            _medicoAsignado!.idagenda;
-                        widget.tabShell.bookingState.idcontrol =
-                            _medicoAsignado!.idcontrol;
-                        widget.tabShell.bookingState.idcon =
-                            _medicoAsignado!.idcon;
-                      }
-                      widget.tabShell.bookingState.selectedTime =
-                          _selectedTime;
-                      widget.tabShell.bookingState.idhora =
-                          _selectedIdhora;
-                      widget.tabShell.bookingState.slotNumber =
-                          _selectedSlotNumber;
-                      Navigator.push(
-                        context,
-                        AppPageRoute(
-                          builder: (_) => SummaryScreen(
-                              tabShell: widget.tabShell),
-                        ),
-                      );
-                    },
-              child: const Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Text(
-                    'Continuar',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w700,
+            child: Container(
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(AppTheme.radiusLg),
+                border: Border.all(
+                  color: const Color(0xFF191C1E).withValues(alpha: 0.25),
+                  width: 0.8,
+                ),
+              ),
+              child: CupertinoButton.filled(
+                borderRadius: BorderRadius.circular(AppTheme.radiusLg),
+                onPressed: _selectedTime == null
+                    ? null
+                    : () {
+                        if (_medicoAsignado != null) {
+                          widget.tabShell.bookingState.doctor =
+                              _medicoAsignado!.toDoctorModel();
+                          widget.tabShell.bookingState.idagenda =
+                              _medicoAsignado!.idagenda;
+                          widget.tabShell.bookingState.idcontrol =
+                              _medicoAsignado!.idcontrol;
+                          widget.tabShell.bookingState.idcon =
+                              _medicoAsignado!.idcon;
+                        }
+                        widget.tabShell.bookingState.selectedTime =
+                            _selectedTime;
+                        widget.tabShell.bookingState.idhora =
+                            _selectedIdhora;
+                        widget.tabShell.bookingState.slotNumber =
+                            _selectedSlotNumber;
+                        Navigator.push(
+                          context,
+                          AppPageRoute(
+                            builder: (_) => SummaryScreen(
+                                tabShell: widget.tabShell),
+                          ),
+                        );
+                      },
+                child: const Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text(
+                      'Continuar',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w700,
+                      ),
                     ),
-                  ),
-                  SizedBox(width: 8),
-                  Icon(
-                    CupertinoIcons.arrow_right,
-                    size: 16,
-                  ),
-                ],
+                    SizedBox(width: 8),
+                    Icon(
+                      CupertinoIcons.arrow_right,
+                      size: 16,
+                    ),
+                  ],
+                ),
               ),
             ),
           ),
@@ -385,9 +396,7 @@ class _ScheduleScreenState extends State<ScheduleScreen>
                 width: 40,
                 height: 40,
                 decoration: BoxDecoration(
-                  gradient: const LinearGradient(
-                    colors: [Color(0xFF0E5B85), Color(0xFF082F49)],
-                  ),
+                  color: const Color(0xFF0E5B85),
                   borderRadius: BorderRadius.circular(AppTheme.radiusMd),
                 ),
                 child: const Icon(
@@ -471,14 +480,7 @@ class _ScheduleScreenState extends State<ScheduleScreen>
             width: 52,
             height: 52,
             decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [
-                  AppColors.primary.withValues(alpha: 0.15),
-                  AppColors.primary.withValues(alpha: 0.08),
-                ],
-              ),
+              color: AppColors.primary.withValues(alpha: 0.15),
               borderRadius: BorderRadius.circular(14),
             ),
             alignment: Alignment.center,

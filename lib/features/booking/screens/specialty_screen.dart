@@ -287,19 +287,9 @@ class _SpecialtyScreenState extends State<SpecialtyScreen> {
               width: 52,
               height: 52,
               decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: showBadge
-                      ? [
-                          AppColors.accent.withValues(alpha: 0.12),
-                          AppColors.accent.withValues(alpha: 0.06),
-                        ]
-                      : [
-                          AppColors.accentForTheme(isDark).withValues(alpha: 0.12),
-                          AppColors.accentForTheme(isDark).withValues(alpha: 0.06),
-                        ],
-                ),
+                color: showBadge
+                    ? AppColors.accent.withValues(alpha: 0.10)
+                    : AppColors.accentForTheme(isDark).withValues(alpha: 0.10),
                 borderRadius: BorderRadius.circular(14),
               ),
               child: Icon(

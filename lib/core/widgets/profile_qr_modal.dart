@@ -30,12 +30,7 @@ class ProfileQrModal {
                 height: 56,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  gradient: LinearGradient(
-                    colors: [
-                      AppColors.primary,
-                      AppColors.primary.withValues(alpha: 0.7),
-                    ],
-                  ),
+                  color: AppColors.primary,
                 ),
                 alignment: Alignment.center,
                 child: Text(

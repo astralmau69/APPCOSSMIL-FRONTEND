@@ -111,14 +111,7 @@ class AppStateWidget extends StatelessWidget {
               height: 80,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                gradient: LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: [
-                    iconColor.withValues(alpha: 0.12),
-                    iconColor.withValues(alpha: 0.06),
-                  ],
-                ),
+                color: iconColor.withValues(alpha: 0.12),
               ),
               child: Icon(iconData, size: 36, color: iconColor),
             ),
@@ -141,8 +134,15 @@ class AppStateWidget extends StatelessWidget {
             ),
             if (onRetry != null) ...[
               const SizedBox(height: 28),
-              SizedBox(
+              Container(
                 height: 48,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
+                  border: Border.all(
+                    color: const Color(0xFF191C1E).withValues(alpha: 0.25),
+                    width: 0.8,
+                  ),
+                ),
                 child: CupertinoButton(
                   padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 0),
                   color: AppColors.accentForTheme(isDark),

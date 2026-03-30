@@ -54,34 +54,19 @@ class _NewsCardState extends State<NewsCard>
             color: AppColors.cardBg(isDark),
             borderRadius: BorderRadius.circular(AppTheme.radiusLg),
             border: Border.all(
-              color: AppColors.cardBorder(isDark),
+              color: const Color(0xFF191C1E).withValues(alpha: isDark ? 0.3 : 0.15),
               width: 0.8,
             ),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.05),
-                blurRadius: 10,
-                offset: const Offset(0, 4),
-              ),
-            ],
+            boxShadow: AppColors.cardShadowFor(isDark),
           ),
           child: ClipRRect(
             borderRadius: BorderRadius.circular(AppTheme.radiusLg),
             child: Stack(
               children: [
-                // Soft background gradient
+                // Solid card background — no gradient
                 Positioned.fill(
                   child: Container(
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                        colors: [
-                          accentColor.withValues(alpha: 0.03),
-                          AppColors.cardBg(isDark),
-                        ],
-                      ),
-                    ),
+                    color: AppColors.cardBg(isDark),
                   ),
                 ),
                 Padding(
@@ -92,24 +77,27 @@ class _NewsCardState extends State<NewsCard>
                       Row(
                         children: [
                           // Category Tag
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 8, vertical: 4),
-                            decoration: BoxDecoration(
-                              color: accentColor.withValues(alpha: 0.12),
-                              borderRadius: BorderRadius.circular(6),
-                            ),
-                            child: Text(
-                              widget.item.category.toUpperCase(),
-                              style: TextStyle(
-                                fontSize: 10,
-                                fontWeight: FontWeight.w800,
-                                color: accentColor,
-                                letterSpacing: 0.8,
+                          Flexible(
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 8, vertical: 4),
+                              decoration: BoxDecoration(
+                                color: accentColor.withValues(alpha: 0.12),
+                                borderRadius: BorderRadius.circular(6),
+                              ),
+                              child: Text(
+                                widget.item.category.toUpperCase(),
+                                style: TextStyle(
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.w800,
+                                  color: accentColor,
+                                  letterSpacing: 0.8,
+                                ),
+                                overflow: TextOverflow.ellipsis,
                               ),
                             ),
                           ),
-                          const Spacer(),
+                          const SizedBox(width: 8),
                           // Date
                           Icon(CupertinoIcons.calendar, 
                             size: 12, color: AppColors.textTertiaryC(isDark)),
@@ -128,6 +116,8 @@ class _NewsCardState extends State<NewsCard>
                       // Title
                       Text(
                         widget.item.title,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
                         style: TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.w800,

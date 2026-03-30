@@ -26,15 +26,28 @@ class _CossmilAppState extends State<CossmilApp> {
       builder: (context, currentThemeMode, child) {
         return MaterialApp(
           builder: (context, appChild) {
+            // Se obtiene la configuración actual de MediaQuery
+            final mediaQueryData = MediaQuery.of(context);
+            
+            // Se calcula un nuevo TextScaler que incrementa el tamaño base en un 25% 
+            // (16pt pasa a ser 20pt, cumpliendo con los +4 puntos solicitados)
+            // Esto afecta a toda la aplicación de forma adaptativa y global.
+            final double currentScale = mediaQueryData.textScaler.scale(1.0);
+            final TextScaler customTextScaler = TextScaler.linear(currentScale * 1.25);
+
             // Ensures ALL Text widgets have decoration:none by default.
             final defaultColor = currentThemeMode == ThemeMode.dark ? AppColors.darkTextPrimary : AppColors.textPrimary;
-            return DefaultTextStyle(
-              style: TextStyle(
-                decoration: TextDecoration.none,
-                color: defaultColor,
-                fontFamily: '.SF Pro Text',
+            
+            return MediaQuery(
+              data: mediaQueryData.copyWith(textScaler: customTextScaler),
+              child: DefaultTextStyle(
+                style: TextStyle(
+                  decoration: TextDecoration.none,
+                  color: defaultColor,
+                  fontFamily: '.SF Pro Text',
+                ),
+                child: appChild!,
               ),
-              child: appChild!,
             );
           },
           navigatorKey: _navigatorKey,
