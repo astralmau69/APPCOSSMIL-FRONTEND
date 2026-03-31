@@ -385,19 +385,19 @@ class _PinSetupScreenState extends State<PinSetupScreen>
 
   Widget _buildKeypad(bool isDark) {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 48),
+      padding: const EdgeInsets.symmetric(horizontal: 40),
       child: Column(
         children: [
           _buildRow([1, 2, 3], isDark),
-          const SizedBox(height: 24),
+          const SizedBox(height: 16),
           _buildRow([4, 5, 6], isDark),
-          const SizedBox(height: 24),
+          const SizedBox(height: 16),
           _buildRow([7, 8, 9], isDark),
-          const SizedBox(height: 24),
+          const SizedBox(height: 16),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const SizedBox(width: 72),
+              const SizedBox(width: 82),
               _buildKey(0, isDark),
               _buildDeleteKey(isDark),
             ],
@@ -413,21 +413,38 @@ class _PinSetupScreenState extends State<PinSetupScreen>
       );
 
   Widget _buildKey(int number, bool isDark) {
+    final bgColor = isDark 
+        ? AppColors.darkSurface.withValues(alpha: 0.8) 
+        : Colors.white.withValues(alpha: 0.9);
+    final borderColor = isDark 
+        ? Colors.white.withValues(alpha: 0.1) 
+        : Colors.black.withValues(alpha: 0.05);
+
     return OptimizedPressButton(
       onTap: _saving ? null : () => _onNumberPressed(number),
+      scaleDown: 0.9,
       child: Container(
-        width: 72,
-        height: 72,
+        width: 82,
+        height: 82,
         decoration: BoxDecoration(
           shape: BoxShape.circle,
-          color: isDark ? AppColors.darkSurface : Colors.grey.shade100,
+          color: _saving ? bgColor.withValues(alpha: 0.3) : bgColor,
+          border: Border.all(color: borderColor, width: 1.5),
+          boxShadow: isDark ? [] : [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.03),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
+            ),
+          ],
         ),
         child: Center(
           child: Text(
             number.toString(),
             style: AppTypography.displayMedium.copyWith(
-              fontSize: 28,
-              fontWeight: FontWeight.w500,
+              fontSize: 32,
+              fontWeight: FontWeight.w600,
+              color: AppColors.textPrimaryC(isDark),
             ),
           ),
         ),
@@ -438,12 +455,13 @@ class _PinSetupScreenState extends State<PinSetupScreen>
   Widget _buildDeleteKey(bool isDark) {
     return OptimizedPressButton(
       onTap: _saving ? null : _onDeletePressed,
-      child: SizedBox(
-        width: 72,
-        height: 72,
+      child: Container(
+        width: 82,
+        height: 82,
+        decoration: const BoxDecoration(shape: BoxShape.circle),
         child: Icon(
           CupertinoIcons.delete_left,
-          size: 28,
+          size: 30,
           color: AppColors.textSecondaryC(isDark),
         ),
       ),

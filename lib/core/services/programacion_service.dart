@@ -5,8 +5,10 @@ import '../models/regional_model.dart';
 import '../models/specialty_model.dart';
 import '../models/horario_atencion_model.dart';
 import '../models/medico_asignado_model.dart';
+import '../models/detalle_cita_model.dart';
 import '../models/reserva_model.dart';
 import '../mock/mock_regional_data.dart';
+import '../mock/mock_reservas_data.dart';
 import '../mock/mock_specialty_data.dart';
 import 'api_client.dart';
 
@@ -266,7 +268,15 @@ class ProgramacionService {
       getHistorialCitas(int idper, {int pagina = 1, int cantidad = 10}) async {
     if (AppConfig.useMockData) {
       await Future.delayed(const Duration(milliseconds: 400));
-      return (reservas: <ReservaModel>[], totalElements: 0, totalPages: 0);
+      final all = MockReservasData.historial;
+      final start = (pagina - 1) * cantidad;
+      final end = start + cantidad > all.length ? all.length : start + cantidad;
+      final page = start < all.length ? all.sublist(start, end) : <ReservaModel>[];
+      return (
+        reservas: page,
+        totalElements: all.length,
+        totalPages: (all.length / cantidad).ceil(),
+      );
     }
 
     final response = await _api.get(
@@ -287,6 +297,39 @@ class ProgramacionService {
         }
         return (reservas: reservas, totalElements: totalElements, totalPages: totalPages);
       }(),
+      ApiError(:final message) => throw Exception(message),
+    };
+  }
+
+  // ── Detalle de cita médica ──────────────────────────────────────────
+
+  /// Obtiene el detalle completo de una cita médica.
+  Future<DetalleCitaModel> getDetalleCitaMedica({
+    required int gestion,
+    required int idins,
+    required int idsuc,
+    required int idtran,
+    required int dr,
+  }) async {
+    if (AppConfig.useMockData) {
+      await Future.delayed(const Duration(milliseconds: 400));
+      // Buscar la reserva mock que coincida y generar detalle
+      final match = MockReservasData.historial.where(
+        (r) => r.idtran == idtran && r.dr == dr,
+      );
+      if (match.isNotEmpty) {
+        return MockReservasData.detalleFromReserva(match.first);
+      }
+      // Fallback genérico
+      return MockReservasData.detalleFromReserva(MockReservasData.historial.first);
+    }
+
+    final response = await _api.get(
+      ApiConstants.detalleCitaMedica(gestion, idins, idsuc, idtran, dr),
+    );
+
+    return switch (response) {
+      ApiSuccess(:final data) => _parseDetalleCita(data),
       ApiError(:final message) => throw Exception(message),
     };
   }
@@ -394,5 +437,15 @@ class ProgramacionService {
     return list
         .map((e) => ReservaModel.fromJson(e as Map<String, dynamic>))
         .toList();
+  }
+
+  DetalleCitaModel _parseDetalleCita(dynamic body) {
+    if (body is Map<String, dynamic>) {
+      final data = body['data'];
+      if (data is Map<String, dynamic>) {
+        return DetalleCitaModel.fromJson(data);
+      }
+    }
+    throw Exception('No se pudo obtener el detalle de la cita');
   }
 }

@@ -326,15 +326,41 @@ class _LocalAuthScreenState extends State<LocalAuthScreen>
 
             const SizedBox(height: 24),
 
-            // ── Cerrar sesión ────────────────────────────────────────
-            CupertinoButton(
-              onPressed: _onLogoutPressed,
-              child: Text(
-                'Cerrar sesión',
-                style: AppTypography.bodyMedium.copyWith(
-                  color: AppColors.error,
-                  fontWeight: FontWeight.w600,
-                ),
+            // ── Footer Actions ────────────────────────────────────────
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 32),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: CupertinoButton(
+                      onPressed: _onExitApp,
+                      child: Text(
+                        'Salir',
+                        style: AppTypography.bodyMedium.copyWith(
+                          color: AppColors.textSecondaryC(isDark),
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ),
+                  Container(
+                    width: 1,
+                    height: 16,
+                    color: AppColors.dividerC(isDark).withValues(alpha: 0.5),
+                  ),
+                  Expanded(
+                    child: CupertinoButton(
+                      onPressed: _onLogoutPressed,
+                      child: Text(
+                        'Cerrar sesión',
+                        style: AppTypography.bodyMedium.copyWith(
+                          color: AppColors.error,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ),
 
@@ -491,19 +517,19 @@ class _LocalAuthScreenState extends State<LocalAuthScreen>
 
   Widget _buildKeypad(bool isDark) {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 48),
+      padding: const EdgeInsets.symmetric(horizontal: 40),
       child: Column(
         children: [
           _buildKeyRow([1, 2, 3], isDark),
-          const SizedBox(height: 20),
+          const SizedBox(height: 16),
           _buildKeyRow([4, 5, 6], isDark),
-          const SizedBox(height: 20),
+          const SizedBox(height: 16),
           _buildKeyRow([7, 8, 9], isDark),
-          const SizedBox(height: 20),
+          const SizedBox(height: 16),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              _buildBiometricKey(),
+              _buildBiometricKey(isDark),
               _buildNumberKey(0, isDark),
               _buildDeleteKey(isDark),
             ],
@@ -522,24 +548,37 @@ class _LocalAuthScreenState extends State<LocalAuthScreen>
 
   Widget _buildNumberKey(int number, bool isDark) {
     final blocked = _isBlocked;
+    final bgColor = isDark 
+        ? AppColors.darkSurface.withValues(alpha: 0.8) 
+        : Colors.white.withValues(alpha: 0.9);
+    final borderColor = isDark 
+        ? Colors.white.withValues(alpha: 0.1) 
+        : Colors.black.withValues(alpha: 0.05);
+
     return OptimizedPressButton(
       onTap: blocked ? null : () => _onNumberPressed(number),
+      scaleDown: 0.9,
       child: Container(
-        width: 72,
-        height: 72,
+        width: 82,
+        height: 82,
         decoration: BoxDecoration(
           shape: BoxShape.circle,
-          color: blocked
-              ? (isDark ? AppColors.darkSurface : Colors.grey.shade100)
-                  .withValues(alpha: 0.5)
-              : (isDark ? AppColors.darkSurface : Colors.grey.shade100),
+          color: blocked ? bgColor.withValues(alpha: 0.3) : bgColor,
+          border: Border.all(color: borderColor, width: 1.5),
+          boxShadow: isDark ? [] : [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.03),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
+            ),
+          ],
         ),
         child: Center(
           child: Text(
             number.toString(),
             style: AppTypography.displayMedium.copyWith(
-              fontSize: 28,
-              fontWeight: FontWeight.w400,
+              fontSize: 32,
+              fontWeight: FontWeight.w600,
               color: blocked
                   ? AppColors.textTertiaryC(isDark)
                   : AppColors.textPrimaryC(isDark),
@@ -550,19 +589,23 @@ class _LocalAuthScreenState extends State<LocalAuthScreen>
     );
   }
 
-  Widget _buildBiometricKey() {
+  Widget _buildBiometricKey(bool isDark) {
     if (!_isBiometricEnabled || _isBlocked) {
-      return const SizedBox(width: 72, height: 72);
+      return const SizedBox(width: 82, height: 82);
     }
 
     return OptimizedPressButton(
       onTap: _tryBiometrics,
-      child: SizedBox(
-        width: 72,
-        height: 72,
+      child: Container(
+        width: 82,
+        height: 82,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          color: AppColors.primary.withValues(alpha: 0.1),
+        ),
         child: Icon(
           Icons.fingerprint,
-          size: 38,
+          size: 42,
           color: AppColors.primary,
         ),
       ),
@@ -572,16 +615,22 @@ class _LocalAuthScreenState extends State<LocalAuthScreen>
   Widget _buildDeleteKey(bool isDark) {
     return OptimizedPressButton(
       onTap: _isBlocked ? null : _onDeletePressed,
-      child: SizedBox(
-        width: 72,
-        height: 72,
+      child: Container(
+        width: 82,
+        height: 82,
+        decoration: const BoxDecoration(shape: BoxShape.circle),
         child: Icon(
           CupertinoIcons.delete_left,
-          size: 28,
-          color:
-              _isBlocked ? AppColors.textTertiaryC(isDark) : AppColors.textSecondaryC(isDark),
+          size: 30,
+          color: _isBlocked 
+              ? AppColors.textTertiaryC(isDark) 
+              : AppColors.textSecondaryC(isDark),
         ),
       ),
     );
+  }
+
+  void _onExitApp() {
+    SystemChannels.platform.invokeMethod('SystemNavigator.pop');
   }
 }

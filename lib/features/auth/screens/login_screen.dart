@@ -7,7 +7,7 @@ import '../../../core/animations/optimized_animations.dart';
 import '../../../core/animations/animated_gradient_background.dart';
 import '../../../core/theme/theme_manager.dart';
 import '../../../core/services/auth_service.dart';
-
+import '../../../core/services/security_service.dart';
 import '../../../core/services/location_service.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -455,6 +455,7 @@ class _LoginScreenState extends State<LoginScreen>
   }
 
   Widget _buildLoginButton() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return SizedBox(
       width: double.infinity,
       height: 56,
@@ -466,7 +467,7 @@ class _LoginScreenState extends State<LoginScreen>
             color: _isLoading ? AppColors.textSecondary : AppColors.primary,
             borderRadius: BorderRadius.circular(16),
             border: Border.all(
-              color: const Color(0xFF191C1E).withValues(alpha: 0.25),
+              color: isDark ? AppColors.darkBorder : const Color(0xFF191C1E).withValues(alpha: 0.15),
               width: 0.8,
             ),
             boxShadow: _isLoading ? [] : AppColors.softShadow,

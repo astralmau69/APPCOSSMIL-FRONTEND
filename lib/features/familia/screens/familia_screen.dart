@@ -73,6 +73,10 @@ class _FamiliaScreenState extends State<FamiliaScreen> {
                     decoration: BoxDecoration(
                       color: AppColors.accentBg(isDark),
                       borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
+                      border: Border.all(
+                        color: AppColors.accentForTheme(isDark).withValues(alpha: 0.25),
+                        width: 0.5,
+                      ),
                     ),
                     child: Text(
                       '$titleCount miembro${titleCount != 1 ? 's' : ''}',
@@ -285,6 +289,10 @@ class _BeneficiaryCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: isDark ? AppColors.darkElevated : AppColors.background,
         borderRadius: BorderRadius.circular(6),
+        border: Border.all(
+          color: AppColors.cardBorder(isDark).withValues(alpha: 0.5),
+          width: 0.5,
+        ),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,

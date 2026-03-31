@@ -396,8 +396,8 @@ class _HomeScreenState extends State<HomeScreen> {
           color: AppColors.cardBg(isDark),
           borderRadius: BorderRadius.circular(AppSpacing.radiusLg),
           border: Border.all(
-            color: const Color(0xFF191C1E).withValues(alpha: isDark ? 0.3 : 0.15),
-            width: 0.8,
+            color: isDark ? AppColors.darkBorder : const Color(0xFF191C1E).withValues(alpha: 0.12),
+            width: isDark ? 0.8 : 0.5,
           ),
           boxShadow: AppColors.cardShadowFor(isDark),
         ),
@@ -487,12 +487,12 @@ class _HomeScreenState extends State<HomeScreen> {
             padding: const EdgeInsets.symmetric(vertical: 12),
             decoration: BoxDecoration(
               color: isDark
-                  ? AppColors.primary.withValues(alpha: 0.2)
+                  ? AppColors.accentBg(true)
                   : AppColors.primary.withValues(alpha: 0.06),
               borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
               border: Border.all(
-                color: const Color(0xFF191C1E).withValues(alpha: isDark ? 0.3 : 0.15),
-                width: 0.8,
+                color: isDark ? AppColors.darkBorder : const Color(0xFF191C1E).withValues(alpha: 0.12),
+                width: isDark ? 0.8 : 0.5,
               ),
             ),
             child: Row(

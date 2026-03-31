@@ -4,6 +4,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/theme/app_constants.dart';
 import '../../../core/session/user_session.dart';
 import '../../../core/models/user_model.dart';
 import '../../../core/storage/token_storage.dart';
@@ -132,172 +133,118 @@ class _PerfilScreenState extends State<PerfilScreen> {
             child: FadeSlideIn(
               offsetY: 20,
               delay: const Duration(milliseconds: 100),
-              child: Center(
-                child: ConstrainedBox(
-                  constraints: const BoxConstraints(maxWidth: 600),
-                  child: Padding(
-                    padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
-                    child: Column(
-                      children: [
-                        const SizedBox(height: 10),
-                        // Avatar
-                        Center(
-                          child: Container(
-                            width: 110,
-                            height: 110,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: AppColors.cardBg(isDark),
-                          border: Border.all(
-                            color: AppColors.accentForTheme(isDark).withValues(alpha: 0.25),
-                            width: 3,
-                          ),
-                          boxShadow: [
-                            BoxShadow(
-                              color: AppColors.accentForTheme(isDark).withValues(alpha: 0.12),
-                              blurRadius: 16,
-                              spreadRadius: 2,
-                              offset: const Offset(0, 6),
+              child: Stack(
+                children: [
+                  // Decorative Background Gradient
+                  Container(
+                    height: 120,
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                        colors: isDark 
+                          ? [AppColors.accent.withValues(alpha: 0.15), Colors.transparent]
+                          : [AppColors.primary.withValues(alpha: 0.08), Colors.transparent],
+                      ),
+                    ),
+                  ),
+                  Center(
+                    child: ConstrainedBox(
+                      constraints: const BoxConstraints(maxWidth: 600),
+                      child: Padding(
+                        padding: const EdgeInsets.fromLTRB(20, 40, 20, 0),
+                        child: Column(
+                          children: [
+                            // Avatar with Premium Border
+                            _buildPremiumAvatar(user, isDark),
+                            
+                            const SizedBox(height: 20),
+                            
+                            // Name & Verification
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Flexible(
+                                  child: Text(
+                                    user.fullName,
+                                    textAlign: TextAlign.center,
+                                    style: AppTypography.headlineLarge.copyWith(
+                                      color: AppColors.textPrimaryC(isDark),
+                                      fontWeight: FontWeight.w900,
+                                      letterSpacing: -0.8,
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(width: 6),
+                                Icon(
+                                  CupertinoIcons.checkmark_seal_fill,
+                                  color: AppColors.accentForTheme(isDark),
+                                  size: 24,
+                                ),
+                              ],
                             ),
-                            if (isDark) BoxShadow(
-                              color: Colors.black.withValues(alpha: 0.3),
-                              blurRadius: 20,
-                              offset: const Offset(0, 8),
+                            
+                            const SizedBox(height: 8),
+                            
+                            // Badge Matrícula
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                              decoration: BoxDecoration(
+                                color: AppColors.accentForTheme(isDark).withValues(alpha: 0.1),
+                                borderRadius: BorderRadius.circular(20),
+                                border: Border.all(
+                                  color: AppColors.accentForTheme(isDark).withValues(alpha: 0.2),
+                                ),
+                              ),
+                              child: Text(
+                                'MATRÍCULA: ${user.matricula}',
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w800,
+                                  letterSpacing: 1.2,
+                                  color: AppColors.accentForTheme(isDark),
+                                ),
+                              ),
                             ),
+                            const SizedBox(height: 32),
                           ],
                         ),
-                        child: ClipOval(
-                          child: _cachedUserPhoto != null
-                              ? Image.memory(
-                                  _cachedUserPhoto!,
-                                  fit: BoxFit.cover,
-                                  errorBuilder: (_, __, ___) => _fallbackAvatar(user),
-                                )
-                              : _fallbackAvatar(user),
-                        ),
                       ),
                     ),
-                    const SizedBox(height: 16),
-                    Center(
-                      child: Text(
-                        user.displayName,
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          fontSize: 24,
-                          fontWeight: FontWeight.w800,
-                          color: AppColors.accentForTheme(isDark),
-                          letterSpacing: -0.5,
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                    const SizedBox(height: 6),
-                    Center(
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 12, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: AppColors.accentBg(isDark),
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Text(
-                          'Mat. ${user.matricula}',
-                          style: TextStyle(
-                            fontSize: 15,
-                            fontWeight: FontWeight.w700,
-                            color: AppColors.accentForTheme(isDark),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-                ),
+                  ),
+                ],
               ),
             ),
           ),
 
+          // ── Quick Info Grid ───────────────────────────
           SliverPadding(
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+            padding: const EdgeInsets.symmetric(horizontal: 20),
             sliver: SliverToBoxAdapter(
               child: Center(
                 child: ConstrainedBox(
                   constraints: const BoxConstraints(maxWidth: 600),
                   child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Row(
-                        children: [
-                      Expanded(
-                          child: _infoCard(
-                              isDark,
-                              'ESTADO',
-                              user.isEnabled ? 'Habilitado' : 'Inactivo',
-                              CupertinoIcons.checkmark_shield_fill,
-                              const Color(0xFF10B981))),
-                      const SizedBox(width: 12),
-                      Expanded(
-                          child: _infoCard(
-                              isDark,
-                              'FICHA MED.',
-                              user.hasMedicalAppointment
-                                  ? 'Activa'
-                                  : 'Ninguna',
-                              CupertinoIcons.heart_fill,
-                              const Color(0xFF3B82F6))),
+                      Padding(
+                        padding: const EdgeInsets.only(left: 4, bottom: 16),
+                        child: Text(
+                          'INFORMACIÓN PERSONAL',
+                          style: AppTypography.labelMedium.copyWith(
+                            color: AppColors.textSecondaryC(isDark),
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: 1.5,
+                          ),
+                        ),
+                      ),
+                      _buildInfoGrid(user, isDark),
                     ],
                   ),
-                  const SizedBox(height: 12),
-                  Row(
-                    children: [
-                      Expanded(
-                          child: _infoCard(
-                              isDark,
-                              'SANGRE',
-                              user.bloodType,
-                              CupertinoIcons.drop_fill,
-                              const Color(0xFFEF4444))),
-                      const SizedBox(width: 12),
-                      Expanded(
-                          child: _infoCard(
-                              isDark,
-                              'EDAD',
-                              '${user.age} años',
-                              CupertinoIcons.gift_fill,
-                              const Color(0xFFF59E0B))),
-                    ],
-                  ),
-                  const SizedBox(height: 12),
-                  Row(
-                    children: [
-                        Expanded(
-                          child: _infoCard(
-                              isDark,
-                              'DOCUMENTO CI',
-                              user.ci.isNotEmpty ? user.ci : 'Sin registro',
-                              CupertinoIcons.person_crop_rectangle,
-                              isDark ? AppColors.darkTextPrimary : const Color(0xFF8B5CF6)),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: _infoCard(
-                              isDark,
-                              'FECHA NAC.',
-                              user.birthDate.isNotEmpty
-                                  ? user.birthDate.split(' ')[0]
-                                  : 'Sin registro',
-                              CupertinoIcons.calendar,
-                              const Color(0xFFE91E63)),
-                        ),
-                      ],
-                    ),
-                  ],
                 ),
               ),
             ),
           ),
-        ),
 
         SliverToBoxAdapter(
             child: Center(
@@ -309,6 +256,14 @@ class _PerfilScreenState extends State<PerfilScreen> {
                     children: [
                       CupertinoListSection.insetGrouped(
                     backgroundColor: const Color(0x00000000),
+                    decoration: BoxDecoration(
+                      color: AppColors.cardBg(isDark),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: AppColors.cardBorder(isDark),
+                        width: 0.5,
+                      ),
+                    ),
                     header: Text('DATOS DE CONTACTO', style: TextStyle(fontWeight: FontWeight.w700, letterSpacing: 1.2, color: AppColors.textSecondaryC(isDark))),
                     children: [
                       _buildEditableTile(
@@ -339,6 +294,14 @@ class _PerfilScreenState extends State<PerfilScreen> {
                   ),
                   CupertinoListSection.insetGrouped(
                     backgroundColor: const Color(0x00000000),
+                    decoration: BoxDecoration(
+                      color: AppColors.cardBg(isDark),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: AppColors.cardBorder(isDark),
+                        width: 0.5,
+                      ),
+                    ),
                     header: Text('SEGURIDAD Y ACCESO', style: TextStyle(fontWeight: FontWeight.w700, letterSpacing: 1.2, color: AppColors.textSecondaryC(isDark))),
                     children: [
                       CupertinoListTile.notched(
@@ -391,6 +354,14 @@ class _PerfilScreenState extends State<PerfilScreen> {
                   ),
                   CupertinoListSection.insetGrouped(
                     backgroundColor: const Color(0x00000000),
+                    decoration: BoxDecoration(
+                      color: AppColors.cardBg(isDark),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: AppColors.cardBorder(isDark),
+                        width: 0.5,
+                      ),
+                    ),
                     header: Text('IDENTIFICACIÓN', style: TextStyle(fontWeight: FontWeight.w700, letterSpacing: 1.2, color: AppColors.textSecondaryC(isDark))),
                     children: [
                       CupertinoListTile.notched(
@@ -408,6 +379,14 @@ class _PerfilScreenState extends State<PerfilScreen> {
                   ),
                   CupertinoListSection.insetGrouped(
                     backgroundColor: const Color(0x00000000),
+                    decoration: BoxDecoration(
+                      color: AppColors.cardBg(isDark),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: AppColors.cardBorder(isDark),
+                        width: 0.5,
+                      ),
+                    ),
                     header: Text('APARIENCIA', style: TextStyle(fontWeight: FontWeight.w700, letterSpacing: 1.2, color: AppColors.textSecondaryC(isDark))),
                     children: [
                       ValueListenableBuilder<ThemeMode>(
@@ -436,6 +415,14 @@ class _PerfilScreenState extends State<PerfilScreen> {
                   ),
                   CupertinoListSection.insetGrouped(
                     backgroundColor: const Color(0x00000000),
+                    decoration: BoxDecoration(
+                      color: AppColors.cardBg(isDark),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: AppColors.cardBorder(isDark),
+                        width: 0.5,
+                      ),
+                    ),
                     margin: const EdgeInsets.only(top: 20, left: 20, right: 20),
                     children: [
                       CupertinoListTile(
@@ -597,6 +584,12 @@ class _PerfilScreenState extends State<PerfilScreen> {
             ? AppColors.success.withValues(alpha: 0.12)
             : AppColors.textTertiaryC(isDark).withValues(alpha: 0.12),
         borderRadius: BorderRadius.circular(6),
+        border: Border.all(
+          color: active
+              ? AppColors.success.withValues(alpha: 0.3)
+              : AppColors.cardBorder(isDark).withValues(alpha: 0.5),
+          width: 0.5,
+        ),
       ),
       child: Text(
         label,
@@ -606,6 +599,134 @@ class _PerfilScreenState extends State<PerfilScreen> {
           color: active ? AppColors.success : AppColors.textTertiaryC(isDark),
         ),
       ),
+    );
+  }
+
+  Widget _buildPremiumAvatar(UserModel user, bool isDark) {
+    return Stack(
+      alignment: Alignment.bottomRight,
+      children: [
+        Container(
+          width: 120,
+          height: 120,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: AppColors.cardBg(isDark),
+            border: Border.all(
+              color: AppColors.accentForTheme(isDark).withValues(alpha: 0.3),
+              width: 4,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: AppColors.accentForTheme(isDark).withValues(alpha: 0.15),
+                blurRadius: 20,
+                spreadRadius: 2,
+                offset: const Offset(0, 8),
+              ),
+            ],
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(4),
+            child: ClipOval(
+              child: _cachedUserPhoto != null
+                  ? Image.memory(
+                      _cachedUserPhoto!,
+                      fit: BoxFit.cover,
+                      errorBuilder: (_, __, ___) => _fallbackAvatar(user),
+                    )
+                  : _fallbackAvatar(user),
+            ),
+          ),
+        ),
+        // Active Status Indicator
+        Container(
+          width: 28,
+          height: 28,
+          decoration: BoxDecoration(
+            color: const Color(0xFF10B981),
+            shape: BoxShape.circle,
+            border: Border.all(color: AppColors.cardBg(isDark), width: 4),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildInfoGrid(UserModel user, bool isDark) {
+    return Column(
+      children: [
+        Row(
+          children: [
+            Expanded(
+              child: _infoCard(
+                isDark,
+                'ESTADO',
+                user.isEnabled ? 'Habilitado' : 'Inactivo',
+                CupertinoIcons.checkmark_shield_fill,
+                const Color(0xFF10B981),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: _infoCard(
+                isDark,
+                'FICHA MED.',
+                user.hasMedicalAppointment ? 'Activa' : 'Ninguna',
+                CupertinoIcons.heart_fill,
+                const Color(0xFF3B82F6),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        Row(
+          children: [
+            Expanded(
+              child: _infoCard(
+                isDark,
+                'SANGRE',
+                user.bloodType,
+                CupertinoIcons.drop_fill,
+                const Color(0xFFEF4444),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: _infoCard(
+                isDark,
+                'EDAD',
+                '${user.age} años',
+                CupertinoIcons.gift_fill,
+                const Color(0xFFF59E0B),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        Row(
+          children: [
+            Expanded(
+              child: _infoCard(
+                isDark,
+                'DOCUMENTO CI',
+                user.ci.isNotEmpty ? user.ci : 'Sin registro',
+                CupertinoIcons.person_crop_rectangle,
+                isDark ? AppColors.darkTextPrimary : const Color(0xFF8B5CF6),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: _infoCard(
+                isDark,
+                'FECHA NAC.',
+                user.birthDate.isNotEmpty ? user.birthDate.split(' ')[0] : 'Sin registro',
+                CupertinoIcons.calendar,
+                const Color(0xFFE91E63),
+              ),
+            ),
+          ],
+        ),
+      ],
     );
   }
 }

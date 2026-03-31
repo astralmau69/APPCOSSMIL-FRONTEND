@@ -54,8 +54,8 @@ class _NewsCardState extends State<NewsCard>
             color: AppColors.cardBg(isDark),
             borderRadius: BorderRadius.circular(AppTheme.radiusLg),
             border: Border.all(
-              color: const Color(0xFF191C1E).withValues(alpha: isDark ? 0.3 : 0.15),
-              width: 0.8,
+              color: isDark ? AppColors.darkBorder : const Color(0xFF191C1E).withValues(alpha: 0.12),
+              width: isDark ? 0.8 : 0.5,
             ),
             boxShadow: AppColors.cardShadowFor(isDark),
           ),

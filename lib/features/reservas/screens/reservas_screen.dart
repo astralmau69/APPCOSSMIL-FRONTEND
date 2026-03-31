@@ -3,14 +3,18 @@ import 'package:flutter/material.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/theme/app_constants.dart';
 import '../../../core/animations/optimized_animations.dart';
+import '../../../core/animations/app_page_route.dart';
 import '../../../core/models/reserva_model.dart';
 import '../../../core/services/programacion_service.dart';
 import '../../../core/session/user_session.dart';
 import '../../../core/widgets/appointment_card.dart';
 import '../../../core/widgets/app_state_widget.dart';
+import 'detalle_cita_screen.dart';
 
 class ReservasScreen extends StatefulWidget {
-  const ReservasScreen({super.key});
+  final ValueNotifier<int>? refreshNotifier;
+
+  const ReservasScreen({super.key, this.refreshNotifier});
 
   @override
   State<ReservasScreen> createState() => _ReservasScreenState();
@@ -32,6 +36,17 @@ class _ReservasScreenState extends State<ReservasScreen> {
   @override
   void initState() {
     super.initState();
+    _fetchReservas();
+    widget.refreshNotifier?.addListener(_onRefreshRequested);
+  }
+
+  @override
+  void dispose() {
+    widget.refreshNotifier?.removeListener(_onRefreshRequested);
+    super.dispose();
+  }
+
+  void _onRefreshRequested() {
     _fetchReservas();
   }
 
@@ -82,6 +97,15 @@ class _ReservasScreenState extends State<ReservasScreen> {
         }
       });
     }
+  }
+
+  void _openDetalle(ReservaModel reserva) {
+    Navigator.push(
+      context,
+      AppPageRoute(
+        builder: (_) => DetalleCitaScreen(reserva: reserva),
+      ),
+    );
   }
 
   int get _completedCount =>
@@ -189,6 +213,11 @@ class _ReservasScreenState extends State<ReservasScreen> {
 
                 final shouldAnimate = index < 5;
 
+                final card = AppointmentCard(
+                  appointment: _history[index],
+                  onTap: () => _openDetalle(_history[index]),
+                );
+
                 if (shouldAnimate) {
                   return Column(
                     children: [
@@ -197,8 +226,7 @@ class _ReservasScreenState extends State<ReservasScreen> {
                             Duration(milliseconds: 300 + (index * 100)),
                         duration: AppDurations.normal,
                         offsetY: 10,
-                        child: AppointmentCard(
-                            appointment: _history[index]),
+                        child: card,
                       ),
                       if (index < _history.length - 1)
                         const SizedBox(height: 10),
@@ -207,7 +235,7 @@ class _ReservasScreenState extends State<ReservasScreen> {
                 } else {
                   return Column(
                     children: [
-                      AppointmentCard(appointment: _history[index]),
+                      card,
                       if (index < _history.length - 1)
                         const SizedBox(height: 10),
                     ],
@@ -231,8 +259,7 @@ class _ReservasScreenState extends State<ReservasScreen> {
         borderRadius: BorderRadius.circular(AppSpacing.radiusLg),
         boxShadow: AppColors.cardShadowFor(isDark),
         border: Border.all(
-            color:
-                isDark ? AppColors.cardBorder(isDark) : Colors.transparent,
+            color: AppColors.cardBorder(isDark),
             width: 0.5),
       ),
       child: Row(

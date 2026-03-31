@@ -139,7 +139,7 @@ class AppStateWidget extends StatelessWidget {
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
                   border: Border.all(
-                    color: const Color(0xFF191C1E).withValues(alpha: 0.25),
+                    color: isDark ? AppColors.darkBorder : const Color(0xFF191C1E).withValues(alpha: 0.15),
                     width: 0.8,
                   ),
                 ),

@@ -19,20 +19,20 @@ class FloatingNavBar extends StatelessWidget {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     final backgroundColor = isDark
-        ? AppColors.darkSurface.withValues(alpha: 0.25)
+        ? AppColors.darkCard.withValues(alpha: 0.75)
         : Colors.white.withValues(alpha: 0.70);
 
     final borderColor = isDark
-        ? AppColors.darkBorder.withValues(alpha: 0.6)
+        ? AppColors.darkBorder.withValues(alpha: 0.7)
         : Colors.white.withValues(alpha: 0.5);
 
     final inactiveColor =
         isDark ? AppColors.darkTextSecondary : Colors.black.withValues(alpha: 0.5);
 
-    final activeColor = isDark ? Colors.white : Colors.black;
+    final activeColor = isDark ? const Color(0xFF5BA3E6) : Colors.black;
 
     final shadowColor = isDark
-        ? Colors.black.withValues(alpha: 0.4)
+        ? const Color(0xFF040810).withValues(alpha: 0.6)
         : Colors.black.withValues(alpha: 0.15);
 
     return SafeArea(
@@ -152,7 +152,7 @@ class _NavBarItem extends StatelessWidget {
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final bgPillColor =
-        isDark ? AppColors.darkElevated : Colors.black.withValues(alpha: 0.08);
+        isDark ? const Color(0xFF1A2E45) : Colors.black.withValues(alpha: 0.08);
 
     // Use solid accent color for the first item instead of a gradient shader.
     final Widget iconWidget = (isActive && isFirstItem)

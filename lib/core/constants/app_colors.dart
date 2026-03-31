@@ -31,23 +31,23 @@ class AppColors {
   static const Color surfaceVariant = Color(0xFFE0E3E5);       // recessed/disabled
   static const Color white = Color(0xFFFFFFFF);
 
-  // ── Dark mode surfaces (tonal depth, nunca negro absoluto) ────────────────
-  static const Color darkBackground = Color(0xFF101214);
-  static const Color darkSurface = Color(0xFF191C1E);
-  static const Color darkCard = Color(0xFF1E2124);
-  static const Color darkElevated = Color(0xFF262A2E);
-  static const Color darkBorder = Color(0xFF2E3236);
-  static const Color darkDivider = Color(0xFF242830);
+  // ── Dark mode surfaces (navy-tinted depth, coherente con azul institucional)
+  static const Color darkBackground = Color(0xFF0C1117);
+  static const Color darkSurface = Color(0xFF131A23);
+  static const Color darkCard = Color(0xFF1A2332);
+  static const Color darkElevated = Color(0xFF212C3D);
+  static const Color darkBorder = Color(0xFF2A3D56);
+  static const Color darkDivider = Color(0xFF1E2B3C);
 
   // ── Text (on-surface tokens) ───────────────────────────────────────────────
   static const Color textPrimary = Color(0xFF191C1E);
   static const Color textSecondary = Color(0xFF5A6068);
   static const Color textTertiary = Color(0xFF8A9099);
 
-  // ── Dark text ─────────────────────────────────────────────────────────────
-  static const Color darkTextPrimary = Color(0xFFE4E6E9);
-  static const Color darkTextSecondary = Color(0xFF9BA0A8);
-  static const Color darkTextTertiary = Color(0xFF6C7178);
+  // ── Dark text (más cálidos, mejor legibilidad sobre navy) ──────────────
+  static const Color darkTextPrimary = Color(0xFFE8ECF2);
+  static const Color darkTextSecondary = Color(0xFF9DAABA);
+  static const Color darkTextTertiary = Color(0xFF6B7A8D);
 
   // ── Status ────────────────────────────────────────────────────────────────
   static const Color success = Color(0xFF16A34A);
@@ -106,20 +106,25 @@ class AppColors {
   static Color dividerC(bool isDark) => isDark ? darkDivider : divider;
 
   /// Accent color for dark mode actions (highlights, active states).
-  static Color accentForTheme(bool isDark) => isDark ? primaryMedium : primary;
+  static Color accentForTheme(bool isDark) => isDark ? const Color(0xFF5BA3E6) : primary;
 
   /// Subtle accent background.
   static Color accentBg(bool isDark) =>
-      isDark ? primary.withValues(alpha: 0.15) : primaryLight;
+      isDark ? const Color(0xFF1A2E45) : primaryLight;
 
   // ── Shadows (tinted with on-surface #191C1E, highly diffused) ──────────────
 
   static List<BoxShadow> cardShadowFor(bool isDark) => isDark
       ? [
           BoxShadow(
-            color: const Color(0xFF191C1E).withValues(alpha: 0.30),
-            blurRadius: 32,
+            color: const Color(0xFF040810).withValues(alpha: 0.5),
+            blurRadius: 24,
             offset: const Offset(0, 4),
+          ),
+          BoxShadow(
+            color: const Color(0xFF1A3A5C).withValues(alpha: 0.08),
+            blurRadius: 12,
+            offset: const Offset(0, 2),
           ),
         ]
       : cardShadow;

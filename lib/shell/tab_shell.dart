@@ -68,6 +68,10 @@ class TabShellState extends State<TabShell>
   int _currentIndex = 0;
   final bookingState = BookingState();
 
+  /// Se incrementa cada vez que se confirma una reserva para que
+  /// ReservasScreen sepa que debe refrescar su lista.
+  final reservasRefreshNotifier = ValueNotifier<int>(0);
+
   // Evita que el bloqueo se apile múltiples veces si el lifecycle
   // se dispara repetidamente antes de que el usuario desbloquee.
   bool _isLocked = false;
@@ -99,6 +103,7 @@ class TabShellState extends State<TabShell>
   @override
   void dispose() {
     _inactivityTimer?.cancel();
+    reservasRefreshNotifier.dispose();
     WidgetsBinding.instance.removeObserver(this);
     _tabController.dispose();
     super.dispose();
@@ -194,6 +199,7 @@ class TabShellState extends State<TabShell>
   /// Vuelve al tab Inicio después de confirmar reserva.
   void finishBooking() {
     bookingState.reset();
+    reservasRefreshNotifier.value++;
     goToTab(0);
     _tabNavKeys[0].currentState?.popUntil((route) => route.isFirst);
   }
@@ -201,7 +207,7 @@ class TabShellState extends State<TabShell>
   Widget _screenForIndex(int index) {
     return switch (index) {
       0 => HomeScreen(tabShell: this),
-      1 => const ReservasScreen(),
+      1 => ReservasScreen(refreshNotifier: reservasRefreshNotifier),
       2 => RegionalScreen(tabShell: this),
       3 => const FamiliaScreen(),
       4 => const PerfilScreen(),

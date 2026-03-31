@@ -1,0 +1,98 @@
+/// Modelo del detalle de una cita médica.
+///
+/// Mapea la respuesta de GET /api/programacion/detalle-cita-medica/{gestion}/{idins}/{idsuc}/{idtran}/{dr}.
+class DetalleCitaModel {
+  final int gestion;
+  final int idins;
+  final int idsuc;
+  final int idtran;
+  final int dr;
+  final String matricula;
+  final String especialidad;
+  final String consultorio;
+  final String abrcons;
+  final String fechaCita;
+  final String horaCita;
+  final int numero;
+  final String medico;
+  final String obs;
+  final String sucursal;
+  final String codadm;
+  final String paciente;
+  final String? tipoConsulta;
+  final String estadoConfirmacion;
+  final String estadoAtencion;
+  final String fechaCreacion;
+
+  const DetalleCitaModel({
+    required this.gestion,
+    required this.idins,
+    required this.idsuc,
+    required this.idtran,
+    required this.dr,
+    required this.matricula,
+    required this.especialidad,
+    required this.consultorio,
+    required this.abrcons,
+    required this.fechaCita,
+    required this.horaCita,
+    required this.numero,
+    required this.medico,
+    required this.obs,
+    required this.sucursal,
+    required this.codadm,
+    required this.paciente,
+    this.tipoConsulta,
+    required this.estadoConfirmacion,
+    required this.estadoAtencion,
+    required this.fechaCreacion,
+  });
+
+  factory DetalleCitaModel.fromJson(Map<String, dynamic> json) {
+    return DetalleCitaModel(
+      gestion: json['gestion'] as int? ?? 0,
+      idins: json['idins'] as int? ?? 0,
+      idsuc: json['idsuc'] as int? ?? 0,
+      idtran: json['idtran'] as int? ?? 0,
+      dr: json['dr'] as int? ?? 0,
+      matricula: (json['matricula'] as String? ?? '').trim(),
+      especialidad: json['especialidad'] as String? ?? '',
+      consultorio: json['consultorio'] as String? ?? '',
+      abrcons: json['abrcons'] as String? ?? '',
+      fechaCita: json['fechaCita'] as String? ?? '',
+      horaCita: json['horaCita'] as String? ?? '',
+      numero: json['numero'] as int? ?? 0,
+      medico: json['medico'] as String? ?? '',
+      obs: json['obs'] as String? ?? '',
+      sucursal: json['sucursal'] as String? ?? '',
+      codadm: json['codadm'] as String? ?? '',
+      paciente: json['paciente'] as String? ?? '',
+      tipoConsulta: json['tipoConsulta'] as String?,
+      estadoConfirmacion: json['estadoConfirmacion'] as String? ?? '',
+      estadoAtencion: json['estadoAtencion'] as String? ?? '',
+      fechaCreacion: json['fechaCreacion'] as String? ?? '',
+    );
+  }
+
+  /// Fecha formateada dd/MM/yyyy.
+  String get formattedDate {
+    if (fechaCita.isEmpty) return '';
+    try {
+      final parts = fechaCita.split('-');
+      if (parts.length == 3) {
+        return '${parts[2]}/${parts[1].padLeft(2, '0')}/${parts[0]}';
+      }
+    } catch (_) {}
+    return fechaCita;
+  }
+
+  /// Fecha de creación formateada.
+  String get formattedCreation {
+    if (fechaCreacion.isEmpty) return '';
+    try {
+      final dt = DateTime.parse(fechaCreacion);
+      return '${dt.day.toString().padLeft(2, '0')}/${dt.month.toString().padLeft(2, '0')}/${dt.year} ${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
+    } catch (_) {}
+    return fechaCreacion;
+  }
+}

@@ -61,6 +61,10 @@ class ApiConstants {
   static String historialCitas(int idper, int nroPagina, int cantidadRegistros) =>
       '/api/programacion/historial-citas/$idper/$nroPagina/$cantidadRegistros';
 
+  /// Detalle completo de una cita médica.
+  static String detalleCitaMedica(int gestion, int idins, int idsuc, int idtran, int dr) =>
+      '/api/programacion/detalle-cita-medica/$gestion/$idins/$idsuc/$idtran/$dr';
+
   /// PDF de cita médica generado por el backend.
   static String citaMedicaPdf(int gestion, int idins, int idsuc, int idtran, int dr) =>
       '/api/programacion/cita-medica-pdf/$gestion/$idins/$idsuc/$idtran/$dr';

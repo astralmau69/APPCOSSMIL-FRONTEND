@@ -376,7 +376,7 @@ class _RegionalScreenState extends State<RegionalScreen> {
         color: AppColors.cardBg(isDark),
         borderRadius: BorderRadius.circular(AppTheme.radiusLg),
         boxShadow: isDark ? [] : AppColors.softShadow,
-        border: isDark ? Border.all(color: AppColors.cardBorder(isDark)) : null,
+        border: Border.all(color: AppColors.cardBorder(isDark), width: 0.5),
       ),
       child: Column(
         children: [

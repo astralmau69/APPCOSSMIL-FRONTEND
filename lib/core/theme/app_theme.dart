@@ -100,7 +100,7 @@ class AppTheme {
     scaffoldBackgroundColor: AppColors.darkBackground,
     fontFamily: _fontFamily,
     colorScheme: ColorScheme.dark(
-      primary: AppColors.razer,
+      primary: const Color(0xFF5BA3E6),
       secondary: AppColors.accent,
       surface: AppColors.darkSurface,
       error: AppColors.error,

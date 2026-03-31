@@ -297,7 +297,7 @@ class _SummaryScreenState extends State<SummaryScreen> {
               color: isDark ? AppColors.darkElevated : AppColors.white,
               borderRadius: BorderRadius.circular(16),
               border: Border.all(
-                color: const Color(0xFF191C1E).withValues(alpha: isDark ? 0.3 : 0.2),
+                color: isDark ? AppColors.darkBorder : const Color(0xFF191C1E).withValues(alpha: 0.15),
                 width: 0.8,
               ),
             ),
@@ -322,7 +322,7 @@ class _SummaryScreenState extends State<SummaryScreen> {
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(16),
               border: Border.all(
-                color: const Color(0xFF191C1E).withValues(alpha: 0.25),
+                color: isDark ? AppColors.darkBorder : const Color(0xFF191C1E).withValues(alpha: 0.15),
                 width: 0.8,
               ),
             ),
@@ -380,7 +380,7 @@ class _SummaryScreenState extends State<SummaryScreen> {
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(16),
               border: Border.all(
-                color: const Color(0xFF191C1E).withValues(alpha: 0.25),
+                color: isDark ? AppColors.darkBorder : const Color(0xFF191C1E).withValues(alpha: 0.15),
                 width: 0.8,
               ),
             ),
@@ -413,7 +413,7 @@ class _SummaryScreenState extends State<SummaryScreen> {
               color: isDark ? AppColors.darkElevated : AppColors.white,
               borderRadius: BorderRadius.circular(16),
               border: Border.all(
-                color: const Color(0xFF191C1E).withValues(alpha: isDark ? 0.3 : 0.2),
+                color: isDark ? AppColors.darkBorder : const Color(0xFF191C1E).withValues(alpha: 0.15),
                 width: 0.8,
               ),
             ),
