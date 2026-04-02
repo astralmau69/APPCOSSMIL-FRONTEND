@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
+import 'package:audioplayers/audioplayers.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/theme/app_constants.dart';
 import '../../../core/extensions/responsive_extensions.dart';
@@ -7,8 +8,6 @@ import '../../../core/animations/optimized_animations.dart';
 import '../../../core/animations/animated_gradient_background.dart';
 import '../../../core/theme/theme_manager.dart';
 import '../../../core/services/auth_service.dart';
-import '../../../core/services/security_service.dart';
-import '../../../core/services/location_service.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -22,11 +21,11 @@ class _LoginScreenState extends State<LoginScreen>
   final _usernameController = TextEditingController();
   final _passwordController = TextEditingController();
   final _authService = AuthService();
-  final _locationService = LocationService();
 
   bool _isLoading = false;
   bool _obscurePassword = true;
   String? _errorMessage;
+  AudioPlayer? _audioPlayer;
 
   late final AnimationController _logoCtrl;
   late final AnimationController _floatCtrl;
@@ -85,12 +84,22 @@ class _LoginScreenState extends State<LoginScreen>
       if (mounted) {
         _logoCtrl.forward();
         _floatCtrl.repeat(reverse: true);
+        _playLoginAudio();
       }
     });
   }
 
+  Future<void> _playLoginAudio() async {
+    try {
+      _audioPlayer = AudioPlayer();
+      await _audioPlayer!.play(AssetSource('vof/AUDIO 2. LOGIN.mp3'));
+    } catch (_) {}
+  }
+
   @override
   void dispose() {
+    _audioPlayer?.stop();
+    _audioPlayer?.dispose();
     _logoCtrl.dispose();
     _floatCtrl.dispose();
     _usernameController.dispose();
@@ -120,12 +129,16 @@ class _LoginScreenState extends State<LoginScreen>
     if (!mounted) return;
 
     switch (result) {
-      case AuthSuccess():
-        // Solicitar permisos de ubicación (abrirá popup del OS).
-        await _locationService.requestPermission();
-
+      case AuthSuccess(:final token):
         if (!mounted) return;
-        Navigator.pushReplacementNamed(context, '/home');
+
+        // Primer ingreso: forzar cambio de contraseña
+        // reqReset == false → no ha cambiado, debe cambiar
+        if (!token.reqReset) {
+          await _showSecurityWarningModal();
+        } else {
+          Navigator.pushReplacementNamed(context, '/home');
+        }
 
       case AuthError(:final message):
         setState(() {
@@ -133,6 +146,143 @@ class _LoginScreenState extends State<LoginScreen>
           _errorMessage = message;
         });
     }
+  }
+
+  Future<void> _showSecurityWarningModal() async {
+    if (!mounted) return;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    // Reproducir audio de advertencia de seguridad
+    AudioPlayer? warningPlayer;
+    try {
+      warningPlayer = AudioPlayer();
+      await warningPlayer.play(AssetSource('vof/AUDIO 3. ADVERTENCIA DE SEGURIDAD.mp3'));
+    } catch (_) {}
+
+    await showGeneralDialog(
+      context: context,
+      barrierDismissible: false,
+      barrierLabel: 'Advertencia de Seguridad',
+      barrierColor: Colors.black54,
+      transitionDuration: const Duration(milliseconds: 350),
+      transitionBuilder: (ctx, anim, _, child) {
+        return ScaleTransition(
+          scale: CurvedAnimation(parent: anim, curve: Curves.easeOutBack),
+          child: FadeTransition(opacity: anim, child: child),
+        );
+      },
+      pageBuilder: (ctx, _, __) => Center(
+        child: Material(
+          color: Colors.transparent,
+          child: Container(
+            width: MediaQuery.of(ctx).size.width * 0.88,
+            constraints: const BoxConstraints(maxWidth: 400),
+            decoration: BoxDecoration(
+              color: AppColors.cardBg(isDark),
+              borderRadius: BorderRadius.circular(24),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.25),
+                  blurRadius: 30,
+                  offset: const Offset(0, 12),
+                ),
+              ],
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const SizedBox(height: 28),
+                // Warning icon
+                Container(
+                  width: 72,
+                  height: 72,
+                  decoration: BoxDecoration(
+                    color: AppColors.warning.withValues(alpha: 0.12),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    CupertinoIcons.shield_lefthalf_fill,
+                    size: 36,
+                    color: AppColors.warning,
+                  ),
+                ),
+                const SizedBox(height: 20),
+                // Title
+                Text(
+                  'Advertencia de Seguridad',
+                  style: TextStyle(
+                    fontWeight: FontWeight.w800,
+                    fontSize: 20,
+                    color: AppColors.textPrimaryC(isDark),
+                    decoration: TextDecoration.none,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                // Message
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 24),
+                  child: Text(
+                    'Por seguridad y confidencialidad de su información deberá cambiar su contraseña.',
+                    style: TextStyle(
+                      fontSize: 14,
+                      height: 1.5,
+                      color: AppColors.textSecondaryC(isDark),
+                      fontWeight: FontWeight.w400,
+                      decoration: TextDecoration.none,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 24),
+                  child: Text(
+                    'Esta acción es obligatoria y no puede omitirse.',
+                    style: TextStyle(
+                      fontSize: 13,
+                      height: 1.4,
+                      color: AppColors.warning,
+                      fontWeight: FontWeight.w600,
+                      decoration: TextDecoration.none,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                ),
+                const SizedBox(height: 24),
+                // Button
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
+                  child: SizedBox(
+                    width: double.infinity,
+                    child: CupertinoButton(
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      borderRadius: BorderRadius.circular(16),
+                      color: AppColors.primary,
+                      onPressed: () {
+                        warningPlayer?.stop();
+                        warningPlayer?.dispose();
+                        Navigator.of(ctx).pop();
+                      },
+                      child: const Text(
+                        'Entendido, Continuar',
+                        style: TextStyle(
+                          fontWeight: FontWeight.w700,
+                          fontSize: 16,
+                          color: AppColors.white,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+
+    if (!mounted) return;
+    Navigator.pushReplacementNamed(context, '/password-change');
   }
 
   @override
@@ -232,16 +382,44 @@ class _LoginScreenState extends State<LoginScreen>
                     FadeSlideIn(
                       duration: AppDurations.normal,
                       delay: const Duration(milliseconds: 350),
-                      child: Text(
-                        'DNTIC@2026 ',
-                        style: TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w500,
-                          color: isDark
-                              ? AppColors.white.withValues(alpha: 0.4)
-                              : AppColors.textTertiary.withValues(alpha: 0.6),
-                          letterSpacing: 2.0,
-                        ),
+                      child: Column(
+                        children: [
+                          Text(
+                            'Dirección Nacional de Sistemas',
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w500,
+                              color: isDark
+                                  ? AppColors.white.withValues(alpha: 0.35)
+                                  : AppColors.textTertiary.withValues(alpha: 0.55),
+                              letterSpacing: 1.2,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            'COSSMIL',
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w700,
+                              color: isDark
+                                  ? AppColors.white.withValues(alpha: 0.4)
+                                  : AppColors.textTertiary.withValues(alpha: 0.6),
+                              letterSpacing: 1.5,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            '2026',
+                            style: TextStyle(
+                              fontSize: 10,
+                              fontWeight: FontWeight.w500,
+                              color: isDark
+                                  ? AppColors.white.withValues(alpha: 0.25)
+                                  : AppColors.textTertiary.withValues(alpha: 0.4),
+                              letterSpacing: 2.0,
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                     const SizedBox(height: 24),

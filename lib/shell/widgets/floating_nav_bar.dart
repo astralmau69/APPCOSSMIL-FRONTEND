@@ -17,6 +17,12 @@ class FloatingNavBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final screenWidth = MediaQuery.of(context).size.width;
+    // Responsive sizing based on screen width
+    final isSmall = screenWidth < 375;
+    final barHeight = isSmall ? 62.0 : (screenWidth < 428 ? 68.0 : 74.0);
+    final hPadding = isSmall ? 10.0 : 16.0;
+    final bottomPadding = isSmall ? 16.0 : 24.0;
 
     final backgroundColor = isDark
         ? AppColors.darkCard.withValues(alpha: 0.75)
@@ -37,9 +43,9 @@ class FloatingNavBar extends StatelessWidget {
 
     return SafeArea(
       child: Padding(
-        padding: const EdgeInsets.only(left: 16, right: 16, bottom: 24),
+        padding: EdgeInsets.only(left: hPadding, right: hPadding, bottom: bottomPadding),
         child: Container(
-          height: 70,
+          height: barHeight,
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(35),
             boxShadow: [
@@ -67,7 +73,7 @@ class FloatingNavBar extends StatelessWidget {
                     _NavBarItem(
                       icon: CupertinoIcons.house,
                       activeIcon: CupertinoIcons.house_fill,
-                      label: 'Inicio',
+                      label: 'Menú',
                       isActive: currentIndex == 0,
                       onTap: () => onTap(0),
                       activeColor: activeColor,
@@ -151,21 +157,27 @@ class _NavBarItem extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isSmall = screenWidth < 375;
+    final iconSize = isSmall ? 22.0 : (screenWidth < 428 ? 25.0 : 28.0);
+    final labelSize = isSmall ? 9.0 : (screenWidth < 428 ? 10.5 : 11.5);
+    final activeWidth = isSmall ? 56.0 : (screenWidth < 428 ? 66.0 : 72.0);
+    final inactiveWidth = isSmall ? 48.0 : (screenWidth < 428 ? 56.0 : 62.0);
+
     final bgPillColor =
         isDark ? const Color(0xFF1A2E45) : Colors.black.withValues(alpha: 0.08);
 
-    // Use solid accent color for the first item instead of a gradient shader.
     final Widget iconWidget = (isActive && isFirstItem)
         ? Icon(
             activeIcon,
             key: const ValueKey(true),
-            size: 26,
+            size: iconSize,
             color: _kTinderColor,
           )
         : Icon(
             isActive ? activeIcon : icon,
             key: ValueKey(isActive),
-            size: 26,
+            size: iconSize,
             color: isActive ? activeColor : inactiveColor,
           );
 
@@ -175,7 +187,7 @@ class _NavBarItem extends StatelessWidget {
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 220),
         curve: Curves.easeOutCubic,
-        width: isActive ? 68 : 58,
+        width: isActive ? activeWidth : inactiveWidth,
         margin: const EdgeInsets.symmetric(vertical: 4),
         decoration: BoxDecoration(
           color: isActive ? bgPillColor : Colors.transparent,
@@ -219,7 +231,7 @@ class _NavBarItem extends StatelessWidget {
             AnimatedDefaultTextStyle(
               duration: const Duration(milliseconds: 130),
               style: TextStyle(
-                fontSize: 10.5,
+                fontSize: labelSize,
                 fontWeight: isActive ? FontWeight.w700 : FontWeight.w500,
                 color: isActive ? activeColor : inactiveColor,
               ),

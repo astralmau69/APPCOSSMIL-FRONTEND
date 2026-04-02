@@ -1,0 +1,447 @@
+import 'package:flutter/cupertino.dart';
+import 'package:flutter/material.dart';
+import '../../../core/constants/app_colors.dart';
+import '../../../core/theme/app_constants.dart';
+import '../../../core/services/auth_service.dart';
+import '../../../core/session/user_session.dart';
+import '../../../core/animations/optimized_animations.dart';
+
+/// Pantalla obligatoria de actualización de datos para primer ingreso.
+/// Se muestra cuando `req_reset == false` en el token de login.
+class PasswordChangeScreen extends StatefulWidget {
+  const PasswordChangeScreen({super.key});
+
+  @override
+  State<PasswordChangeScreen> createState() => _PasswordChangeScreenState();
+}
+
+class _PasswordChangeScreenState extends State<PasswordChangeScreen> {
+  final _passwordCtrl = TextEditingController();
+  final _confirmCtrl = TextEditingController();
+  final _emailCtrl = TextEditingController();
+  final _phoneCtrl = TextEditingController();
+  final _allergiesCtrl = TextEditingController();
+  final _bloodTypeCtrl = TextEditingController();
+  final _authService = AuthService();
+
+  bool _isLoading = false;
+  bool _obscurePassword = true;
+  bool _obscureConfirm = true;
+  String? _errorMessage;
+
+  @override
+  void initState() {
+    super.initState();
+    final email = UserSession.currentUser.email;
+    if (email.isNotEmpty) _emailCtrl.text = email;
+    final phone = UserSession.currentUser.phone;
+    if (phone.isNotEmpty) _phoneCtrl.text = phone;
+    final allergies = UserSession.currentUser.allergies;
+    if (allergies.isNotEmpty) _allergiesCtrl.text = allergies;
+    final bloodType = UserSession.currentUser.bloodType;
+    if (bloodType.isNotEmpty) _bloodTypeCtrl.text = bloodType;
+  }
+
+  @override
+  void dispose() {
+    _passwordCtrl.dispose();
+    _confirmCtrl.dispose();
+    _emailCtrl.dispose();
+    _phoneCtrl.dispose();
+    _allergiesCtrl.dispose();
+    _bloodTypeCtrl.dispose();
+    super.dispose();
+  }
+
+  Future<void> _onSubmit() async {
+    final password = _passwordCtrl.text.trim();
+    final confirm = _confirmCtrl.text.trim();
+    final email = _emailCtrl.text.trim();
+    final phone = _phoneCtrl.text.trim();
+    final allergies = _allergiesCtrl.text.trim();
+    final bloodType = _bloodTypeCtrl.text.trim();
+
+    if (password.isEmpty || confirm.isEmpty || email.isEmpty || phone.isEmpty) {
+      setState(() => _errorMessage = 'Los campos de contraseña, correo y teléfono son obligatorios.');
+      return;
+    }
+
+    if (password.length < 6) {
+      setState(
+          () => _errorMessage = 'La contraseña debe tener al menos 6 caracteres.');
+      return;
+    }
+
+    if (password != confirm) {
+      setState(() => _errorMessage = 'Las contraseñas no coinciden.');
+      return;
+    }
+
+    if (!email.contains('@') || !email.contains('.')) {
+      setState(() => _errorMessage = 'Ingrese un correo electrónico válido.');
+      return;
+    }
+
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
+
+    try {
+      final idper = int.tryParse(UserSession.currentUser.id) ?? 0;
+      await _authService.updateUsuarioWeb(
+        idper: idper,
+        password: password,
+        email: email,
+        phone: phone,
+        bloodType: bloodType,
+        allergies: allergies,
+      );
+
+      if (!mounted) return;
+
+      UserSession.currentUser = UserSession.currentUser.copyWith(
+        email: email,
+        phone: phone,
+        bloodType: bloodType.isNotEmpty ? bloodType : UserSession.currentUser.bloodType,
+        allergies: allergies.isNotEmpty ? allergies : UserSession.currentUser.allergies,
+      );
+
+      Navigator.pushReplacementNamed(context, '/home');
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _isLoading = false;
+        _errorMessage = e.toString().replaceFirst('Exception: ', '');
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    return Scaffold(
+      backgroundColor: AppColors.scaffoldBg(isDark),
+      body: SafeArea(
+        child: SingleChildScrollView(
+          physics: const BouncingScrollPhysics(),
+          padding: const EdgeInsets.symmetric(horizontal: 24),
+          child: ConstrainedBox(
+            constraints: BoxConstraints(
+              minHeight: MediaQuery.of(context).size.height -
+                  MediaQuery.of(context).padding.vertical,
+            ),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const SizedBox(height: 32),
+
+                // ── Logo COSSMIL ─────────────────────────────────
+                FadeSlideIn(
+                  child: Image.asset(
+                    'assets/images/cossmil_logo.png',
+                    width: 80,
+                    height: 80,
+                    fit: BoxFit.contain,
+                    errorBuilder: (_, __, ___) => Container(
+                      width: 80,
+                      height: 80,
+                      decoration: BoxDecoration(
+                        color: AppColors.primary.withValues(alpha: 0.1),
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(
+                        CupertinoIcons.shield_lefthalf_fill,
+                        size: 40,
+                        color: AppColors.primary,
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 20),
+
+                // ── Título principal ───────────────────────────────
+                FadeSlideIn(
+                  delay: const Duration(milliseconds: 100),
+                  child: Text(
+                    'Actualización de Datos',
+                    style: AppTypography.headlineLarge.copyWith(
+                      color: AppColors.textPrimaryC(isDark),
+                      fontWeight: FontWeight.w800,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                ),
+                const SizedBox(height: 28),
+
+                // ═══ SECCIÓN: Contraseña ══════════════════════════
+                FadeSlideIn(
+                  delay: const Duration(milliseconds: 150),
+                  child: _sectionHeader(
+                    icon: CupertinoIcons.lock_shield_fill,
+                    title: 'Actualización de Contraseña',
+                    isDark: isDark,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                FadeSlideIn(
+                  delay: const Duration(milliseconds: 200),
+                  child: _buildField(
+                    label: 'Nueva Contraseña',
+                    controller: _passwordCtrl,
+                    placeholder: 'Ingrese su nueva contraseña',
+                    icon: CupertinoIcons.lock_fill,
+                    isDark: isDark,
+                    obscureText: _obscurePassword,
+                    trailing: CupertinoButton(
+                      padding: EdgeInsets.zero,
+                      minimumSize: Size.zero,
+                      onPressed: () =>
+                          setState(() => _obscurePassword = !_obscurePassword),
+                      child: Icon(
+                        _obscurePassword
+                            ? CupertinoIcons.eye_slash_fill
+                            : CupertinoIcons.eye_fill,
+                        size: 20,
+                        color: AppColors.textTertiary,
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                FadeSlideIn(
+                  delay: const Duration(milliseconds: 250),
+                  child: _buildField(
+                    label: 'Confirmar Contraseña',
+                    controller: _confirmCtrl,
+                    placeholder: 'Repita su nueva contraseña',
+                    icon: CupertinoIcons.lock_shield_fill,
+                    isDark: isDark,
+                    obscureText: _obscureConfirm,
+                    trailing: CupertinoButton(
+                      padding: EdgeInsets.zero,
+                      minimumSize: Size.zero,
+                      onPressed: () =>
+                          setState(() => _obscureConfirm = !_obscureConfirm),
+                      child: Icon(
+                        _obscureConfirm
+                            ? CupertinoIcons.eye_slash_fill
+                            : CupertinoIcons.eye_fill,
+                        size: 20,
+                        color: AppColors.textTertiary,
+                      ),
+                    ),
+                  ),
+                ),
+
+                const SizedBox(height: 24),
+
+                // ═══ SECCIÓN: Correo electrónico ══════════════════
+                FadeSlideIn(
+                  delay: const Duration(milliseconds: 300),
+                  child: _sectionHeader(
+                    icon: CupertinoIcons.mail_solid,
+                    title: 'Actualización de Correo Electrónico',
+                    isDark: isDark,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                FadeSlideIn(
+                  delay: const Duration(milliseconds: 350),
+                  child: _buildField(
+                    label: 'Correo Electrónico',
+                    controller: _emailCtrl,
+                    placeholder: 'ejemplo@correo.com',
+                    icon: CupertinoIcons.mail_solid,
+                    isDark: isDark,
+                    keyboardType: TextInputType.emailAddress,
+                  ),
+                ),
+
+                const SizedBox(height: 24),
+
+                // ═══ SECCIÓN: Número de celular ═══════════════════
+                FadeSlideIn(
+                  delay: const Duration(milliseconds: 400),
+                  child: _sectionHeader(
+                    icon: CupertinoIcons.phone_fill,
+                    title: 'Actualización de Número de Celular',
+                    isDark: isDark,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                FadeSlideIn(
+                  delay: const Duration(milliseconds: 450),
+                  child: _buildField(
+                    label: 'Número de Celular',
+                    controller: _phoneCtrl,
+                    placeholder: 'Ej. 70012345',
+                    icon: CupertinoIcons.phone_fill,
+                    isDark: isDark,
+                    keyboardType: TextInputType.phone,
+                  ),
+                ),
+
+                const SizedBox(height: 24),
+
+                // ═══ SECCIÓN: Datos Médicos ═══════════════════════
+                
+
+                // ── Error ───────────────────────────────────────
+                if (_errorMessage != null) ...[
+                  FadeSlideIn(
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 16, vertical: 12),
+                      decoration: BoxDecoration(
+                        color: AppColors.errorLight,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                            color: AppColors.error.withValues(alpha: 0.3)),
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(
+                            CupertinoIcons.exclamationmark_triangle_fill,
+                            color: AppColors.error,
+                            size: 20,
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Text(
+                              _errorMessage!,
+                              style: AppTypography.bodyMedium.copyWith(
+                                color: AppColors.error,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                ],
+
+                // ── Botón guardar ──────────────────────────────
+                FadeSlideIn(
+                  delay: const Duration(milliseconds: 500),
+                  child: SizedBox(
+                    width: double.infinity,
+                    height: 56,
+                    child: CupertinoButton(
+                      padding: EdgeInsets.zero,
+                      color: AppColors.primary,
+                      borderRadius: BorderRadius.circular(16),
+                      onPressed: _isLoading ? null : _onSubmit,
+                      child: _isLoading
+                          ? const CupertinoActivityIndicator(
+                              color: AppColors.white)
+                          : Text(
+                              'Guardar y Continuar',
+                              style: AppTypography.titleMedium.copyWith(
+                                color: AppColors.white,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 40),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// Header de sección con ícono y título
+  Widget _sectionHeader({
+    required IconData icon,
+    required String title,
+    required bool isDark,
+  }) {
+    return Row(
+      children: [
+        Icon(icon, size: 18, color: AppColors.accentForTheme(isDark)),
+        const SizedBox(width: 8),
+        Expanded(
+          child: Text(
+            title,
+            style: AppTypography.titleSmall.copyWith(
+              color: AppColors.accentForTheme(isDark),
+              fontWeight: FontWeight.w700,
+              fontSize: 14,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildField({
+    required String label,
+    required TextEditingController controller,
+    required String placeholder,
+    required IconData icon,
+    required bool isDark,
+    bool obscureText = false,
+    TextInputType keyboardType = TextInputType.text,
+    Widget? trailing,
+  }) {
+    return Container(
+      decoration: BoxDecoration(
+        color: isDark ? AppColors.darkCard : const Color(0xFFF8F9FB),
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: AppColors.cardBorder(isDark)),
+      ),
+      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+      child: Row(
+        children: [
+          Icon(icon, size: 24, color: AppColors.accentForTheme(isDark)),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  label,
+                  style: AppTypography.labelSmall.copyWith(
+                    color: AppColors.textSecondary,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                CupertinoTextField(
+                  controller: controller,
+                  obscureText: obscureText,
+                  enabled: !_isLoading,
+                  keyboardType: keyboardType,
+                  padding: EdgeInsets.zero,
+                  decoration: null,
+                  placeholder: placeholder,
+                  placeholderStyle: TextStyle(
+                    color:
+                        AppColors.textTertiaryC(isDark).withValues(alpha: 0.6),
+                    fontSize: 16,
+                  ),
+                  style: AppTypography.bodyLarge.copyWith(
+                    color: AppColors.textPrimaryC(isDark),
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          if (trailing != null) ...[
+            const SizedBox(width: 8),
+            trailing,
+          ],
+        ],
+      ),
+    );
+  }
+}

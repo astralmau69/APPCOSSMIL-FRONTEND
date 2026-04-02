@@ -96,10 +96,12 @@ class AuthService {
         }
 
         // Mapear datos básicos a UserSession.currentUser
-        final titular = BeneficiaryModel(
+        final userRoleIsTitular = tokenModel.rol == 'ROLE_ASETIT';
+        
+        final selfAsFallback = BeneficiaryModel(
           id: tokenModel.idper.toString(),
           fullName: '${tokenModel.nom} ${tokenModel.pat} ${tokenModel.mat}'.trim(),
-          relationship: 'Titular',
+          relationship: userRoleIsTitular ? 'Titular' : 'Beneficiario',
           age: tokenModel.edad,
           gender: tokenModel.genero,
           matricula: tokenModel.matricula.trim(),
@@ -107,13 +109,14 @@ class AuthService {
 
         final loggedUser = UserModel(
           id: tokenModel.idper.toString(),
-          fullName: titular.fullName,
+          fullName: selfAsFallback.fullName,
           rank: tokenModel.grado.isNotEmpty ? tokenModel.grado : 'Asegurado',
-          matricula: titular.matricula,
-          bloodType: '',
+          matricula: selfAsFallback.matricula,
+          bloodType: tokenModel.bloodType,
+          allergies: tokenModel.allergies,
           age: tokenModel.edad,
           gender: tokenModel.genero,
-          role: tokenModel.rol == 'ROLE_ASETIT' ? 'Titular' : tokenModel.rol,
+          role: userRoleIsTitular ? 'Titular' : tokenModel.rol,
           isEnabled: true,
           hasMedicalAppointment: false,
           email: tokenModel.correo.trim(),
@@ -121,12 +124,12 @@ class AuthService {
           ci: tokenModel.ci,
           idseg: tokenModel.idseg,
           uc: tokenModel.uc,
-          beneficiaries: rawBeneficiarios ?? [titular],
+          beneficiaries: rawBeneficiarios ?? [selfAsFallback],
         );
 
-        // Si se obtuvieron beneficiarios pero no incluyen al titular, agregarlo al inicio
-        if (rawBeneficiarios != null && !rawBeneficiarios.any((b) => b.isTitular)) {
-          loggedUser.beneficiaries.insert(0, titular);
+        // Si el login es del Titular, pero el grupo familiar obtenido no incluye al titular explícitamente, lo inyectamos:
+        if (rawBeneficiarios != null && userRoleIsTitular && !rawBeneficiarios.any((b) => b.isTitular)) {
+          loggedUser.beneficiaries.insert(0, selfAsFallback);
         }
 
         // Actualizar sesión global
@@ -146,14 +149,20 @@ class AuthService {
           String? titularPhoto;
           if (extraData != null) {
             titularPhoto = cleanBase64(extraData['foto2'] as String? ?? '');
+            
+            final eBloodType = (extraData['grupoSanguineo'] as String? ?? extraData['grupo_sanguineo'] as String? ?? '').trim();
+            final eAllergies = (extraData['alergias'] as String? ?? extraData['allergies'] as String? ?? '').trim();
+
             UserSession.currentUser = UserSession.currentUser.copyWith(
               photoBase64: titularPhoto,
               birthDate: extraData['fecnac'] as String? ?? '',
+              bloodType: eBloodType.isNotEmpty ? eBloodType : UserSession.currentUser.bloodType,
+              allergies: eAllergies.isNotEmpty ? eAllergies : UserSession.currentUser.allergies,
             );
 
             // Actualizar la foto en la lista de beneficiarios para el titular
             final updatedBeneficiaries = UserSession.currentUser.beneficiaries.map((b) {
-              if (b.relationship == 'Titular') {
+              if (b.isTitular) {
                 return BeneficiaryModel(
                   id: b.id,
                   fullName: b.fullName,
@@ -171,7 +180,7 @@ class AuthService {
 
           // Fetch paralelo de fotos de beneficiarios (máximo 4 para no saturar)
           final otherBeneficiaries = UserSession.currentUser.beneficiaries
-              .where((b) => b.relationship != 'Titular' && b.matricula.isNotEmpty)
+              .where((b) => !b.isTitular && b.matricula.isNotEmpty)
               .take(4)
               .toList();
 
@@ -276,6 +285,35 @@ class AuthService {
     }
 
     return null;
+  }
+
+  /// Actualiza contraseña, correo y teléfono del usuario.
+  /// Usado para el cambio obligatorio de contraseña en primer ingreso.
+  Future<bool> updateUsuarioWeb({
+    required int idper,
+    required String password,
+    required String email,
+    required String phone,
+    String? bloodType,
+    String? allergies,
+  }) async {
+    final response = await _api.put(
+      ApiConstants.updateUsuarioWeb(idper),
+      body: {
+        'pwd': password,
+        'mail': email,
+        'fon': phone,
+        if (bloodType != null && bloodType.isNotEmpty) 'grupoSanguineo': bloodType,
+        if (allergies != null && allergies.isNotEmpty) 'alergias': allergies,
+        'sw': 1,
+        'req_reset': true,
+      },
+    );
+
+    return switch (response) {
+      ApiSuccess() => true,
+      ApiError(:final message) => throw Exception(message),
+    };
   }
 
   /// Limpia un string base64 que puede contener:

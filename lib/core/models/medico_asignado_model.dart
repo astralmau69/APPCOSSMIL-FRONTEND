@@ -8,15 +8,14 @@ class MedicoAsignadoModel {
   final int idesp;
   final String idmed;
   final String medico;
-  final int oferta;
-  final int demanda;
-  final int nroini;
+  final int asignado;
   final bool estado;
   final int idcon;
   final String descripcionConsultorio;
   final String dia;
   final String fecha;
   final String idcontrol;
+  final String foto;
   final List<HoraDisponibleModel> horas;
 
   const MedicoAsignadoModel({
@@ -24,15 +23,14 @@ class MedicoAsignadoModel {
     required this.idesp,
     required this.idmed,
     required this.medico,
-    required this.oferta,
-    required this.demanda,
-    required this.nroini,
+    required this.asignado,
     required this.estado,
     required this.idcon,
     required this.descripcionConsultorio,
     required this.dia,
     required this.fecha,
     required this.idcontrol,
+    this.foto = '',
     required this.horas,
   });
 
@@ -46,15 +44,14 @@ class MedicoAsignadoModel {
       idesp: json['idesp'] as int? ?? 0,
       idmed: (json['idmed'] ?? '').toString(),
       medico: json['medico'] as String? ?? '',
-      oferta: json['oferta'] as int? ?? 0,
-      demanda: json['demanda'] as int? ?? 0,
-      nroini: json['nroini'] as int? ?? 0,
+      asignado: json['asignado'] as int? ?? 0,
       estado: json['estado'] as bool? ?? false,
       idcon: json['idcon'] as int? ?? 0,
       idcontrol: json['idcontrol'] as String? ?? '',
       descripcionConsultorio: json['descripcion'] as String? ?? '',
       dia: json['dia'] as String? ?? '',
       fecha: json['fecha'] as String? ?? '',
+      foto: json['foto'] as String? ?? '',
       horas: horasList,
     );
   }
@@ -66,23 +63,23 @@ class MedicoAsignadoModel {
         office: descripcionConsultorio,
         fecha: fecha,
         dia: dia,
+        foto: foto,
       );
 
   /// Convierte horas a TimeSlotModel para compatibilidad con la UI.
-  /// NOTA: en el backend, `estado: false` = nadie tomó la ficha (disponible),
-  ///       `estado: true` = ficha ya tomada (no disponible).
+  /// Backend: `estado: true` = disponible, `estado: false` = ocupada.
   List<TimeSlotModel> toTimeSlots() => horas
       .map((h) => TimeSlotModel(
             time: h.hora,
-            isAvailable: !h.estado, // false del backend = disponible
-            statusLevel: !h.estado ? 'high' : 'none',
+            isAvailable: h.estado,
+            statusLevel: h.estado ? 'high' : 'none',
             idhora: h.idhora,
             numero: h.numero,
           ))
       .toList();
 
-  /// Fichas disponibles (oferta - demanda).
-  int get fichasDisponibles => oferta - demanda;
+  /// Fichas disponibles (horas con estado true).
+  int get fichasDisponibles => horas.where((h) => h.estado).length;
 }
 
 /// Hora individual de la agenda médica.

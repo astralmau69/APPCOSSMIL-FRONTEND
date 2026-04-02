@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:typed_data';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/theme/app_constants.dart';
 import '../../../core/extensions/responsive_extensions.dart';
@@ -10,7 +11,6 @@ import '../../../core/session/user_session.dart';
 import '../../../core/models/news_item_model.dart';
 import '../../../core/models/user_model.dart';
 import '../../../core/services/cossmil_news_service.dart';
-import '../../../core/widgets/news_card.dart';
 import '../../../core/widgets/section_header.dart';
 import '../../../shell/tab_shell.dart';
 import 'contactos_screen.dart';
@@ -28,7 +28,6 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   List<NewsItemModel> _news = [];
   bool _isLoadingNews = true;
-  // Decoded once in initState — avoids re-decoding on every news setState.
   Uint8List? _cachedUserPhoto;
 
   @override
@@ -64,9 +63,12 @@ class _HomeScreenState extends State<HomeScreen> {
         physics: const AlwaysScrollableScrollPhysics(),
         slivers: [
           CupertinoSliverNavigationBar(
-            largeTitle: Text('Inicio', style: TextStyle(color: AppColors.textPrimaryC(isDark))),
+            largeTitle: Text('Menu Principal', style: TextStyle(color: AppColors.textPrimaryC(isDark))),
             backgroundColor: AppColors.scaffoldBg(isDark).withValues(alpha: 0.95),
             border: null,
+          ),
+          CupertinoSliverRefreshControl(
+            onRefresh: _loadNews,
           ),
           SliverPadding(
             padding: EdgeInsets.symmetric(horizontal: horizontalPadding),
@@ -86,13 +88,15 @@ class _HomeScreenState extends State<HomeScreen> {
                         child: _buildProfileCard(user, responsive),
                       ),
                       const SizedBox(height: 24),
+                      // ── Acciones principales (prominentes) ──
                       FadeSlideIn(
                         duration: AppDurations.normal,
                         delay: const Duration(milliseconds: 50),
                         offsetY: 10,
                         child: _buildQuickActions(responsive),
                       ),
-                      const SizedBox(height: 24),
+                      const SizedBox(height: 28),
+                      // ── COSSMIL Te Informa (secundario, compacto) ──
                       FadeSlideIn(
                         duration: AppDurations.normal,
                         delay: const Duration(milliseconds: 100),
@@ -104,7 +108,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         duration: AppDurations.normal,
                         delay: const Duration(milliseconds: 150),
                         offsetY: 10,
-                        child: _buildNewsSection(),
+                        child: _buildCompactNewsList(),
                       ),
                       const SizedBox(height: 120),
                     ],
@@ -118,10 +122,14 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  // ── Tarjeta de perfil (simplificada) ───────────────────────────────────────
+  // ── Tarjeta de perfil ───────────────────────────────────────────────────────
 
   Widget _buildProfileCard(UserModel user, ResponsiveData responsive) {
     final pad = responsive.isSmallPhone ? 16.0 : 20.0;
+    final avatarRadius = responsive.isSmallPhone ? 30.0 : (responsive.isMediumPhone ? 34.0 : 38.0);
+    final nameFontSize = responsive.isSmallPhone ? 16.0 : (responsive.isMediumPhone ? 18.0 : 20.0);
+    final subFontSize = responsive.isSmallPhone ? 12.0 : 13.0;
+
     return Container(
       padding: EdgeInsets.all(pad),
       decoration: BoxDecoration(
@@ -137,18 +145,17 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
       child: Column(
         children: [
-          // ── Header: avatar + nombre + rango ──
           Row(
             children: [
               CircleAvatar(
-                radius: 34,
+                radius: avatarRadius,
                 backgroundColor: AppColors.white.withValues(alpha: 0.2),
                 child: ClipOval(
                   child: _cachedUserPhoto != null
                       ? Image.memory(
                           _cachedUserPhoto!,
-                          width: 68,
-                          height: 68,
+                          width: avatarRadius * 2,
+                          height: avatarRadius * 2,
                           fit: BoxFit.cover,
                           errorBuilder: (_, __, ___) => _fallbackAvatar(user),
                         )
@@ -160,16 +167,19 @@ class _HomeScreenState extends State<HomeScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      user.fullName,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: AppTypography.headlineMedium.copyWith(
-                        color: AppColors.white,
-                        fontSize: 17,
+                    FittedBox(
+                      fit: BoxFit.scaleDown,
+                      alignment: Alignment.centerLeft,
+                      child: Text(
+                        user.fullName,
+                        style: AppTypography.headlineMedium.copyWith(
+                          color: AppColors.white,
+                          fontSize: nameFontSize,
+                          height: 1.2,
+                        ),
                       ),
                     ),
-                    const SizedBox(height: 3),
+                    const SizedBox(height: 4),
                     Text(
                       '${user.rank} • Mat: ${user.matricula}',
                       maxLines: 1,
@@ -177,20 +187,18 @@ class _HomeScreenState extends State<HomeScreen> {
                       style: AppTypography.bodyMedium.copyWith(
                         color: AppColors.white.withValues(alpha: 0.8),
                         fontWeight: FontWeight.w600,
-                        fontSize: 13,
+                        fontSize: subFontSize,
                       ),
                     ),
                   ],
                 ),
               ),
-              // Badge de estado
               _statusChip(user),
             ],
           ),
           const SizedBox(height: 14),
           Container(height: 0.5, color: AppColors.white.withValues(alpha: 0.12)),
           const SizedBox(height: 14),
-          // ── Grilla de datos 2 columnas ──
           Row(
             children: [
               Expanded(
@@ -222,18 +230,30 @@ class _HomeScreenState extends State<HomeScreen> {
               Expanded(
                 child: _infoTile(
                   icon: Icons.bloodtype_outlined,
-                  label: 'Sangre',
+                  label: 'Grupo Sanguineo',
                   value: user.bloodType.isNotEmpty ? user.bloodType : '—',
                 ),
               ),
             ],
           ),
           const SizedBox(height: 12),
-          // Email ocupa toda la fila
-          _infoTile(
-            icon: Icons.email_outlined,
-            label: 'Correo',
-            value: user.email.isNotEmpty ? user.email : '—',
+          Row(
+            children: [
+              Expanded(
+                child: _infoTile(
+                  icon: Icons.warning_amber_outlined,
+                  label: 'Alergias',
+                  value: user.allergies.isNotEmpty ? user.allergies : 'Sin registrar',
+                ),
+              ),
+              Expanded(
+                child: _infoTile(
+                  icon: Icons.email_outlined,
+                  label: 'Correo',
+                  value: user.email.isNotEmpty ? user.email : '—',
+                ),
+              ),
+            ],
           ),
         ],
       ),
@@ -330,40 +350,41 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  // ── Acciones rápidas ──────────────────────────────────────────────────────
+  // ── Acciones rápidas (grandes y prominentes) ────────────────────────────────
 
   Widget _buildQuickActions(ResponsiveData responsive) {
     final items = [
       _QuickAction(
-        icon: Icons.edit_calendar,
-        label: 'Nueva\nReserva',
+        icon: CupertinoIcons.calendar_badge_plus,
+        label: 'Nueva Reserva',
+        subtitle: 'Agendar Cita',
         color: AppColors.primary,
         onTap: () {
           final bens = UserSession.currentUser.beneficiaries;
           final titular = bens.isNotEmpty
               ? bens.firstWhere((b) => b.isTitular, orElse: () => bens.first)
               : null;
-          widget.tabShell.startBooking(
-            'Para mí',
-            titular,
-          );
+          widget.tabShell.startBooking('Para mí', titular);
         },
       ),
       _QuickAction(
-        icon: Icons.schedule,
-        label: 'Mis\nReservas',
+        icon: CupertinoIcons.clock,
+        label: 'Mis Reservas',
+        subtitle: 'Ver historial',
         color: AppColors.accent,
         onTap: () => widget.tabShell.goToTab(1),
       ),
       _QuickAction(
-        icon: Icons.people,
-        label: 'Mi\nFamilia',
+        icon: CupertinoIcons.person_2,
+        label: 'Mi Familia',
+        subtitle: 'Beneficiarios',
         color: AppColors.success,
         onTap: () => widget.tabShell.goToTab(3),
       ),
       _QuickAction(
-        icon: Icons.contact_phone,
-        label: 'Contactos\n',
+        icon: CupertinoIcons.phone,
+        label: 'Contactos',
+        subtitle: 'Llamar',
         color: AppColors.info,
         onTap: () => Navigator.push(
           context,
@@ -372,257 +393,459 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
     ];
 
-    return IntrinsicHeight(
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          for (int i = 0; i < items.length; i++) ...[
-            Expanded(child: _buildActionCard(items[i])),
-            if (i < items.length - 1) const SizedBox(width: 8),
-          ],
-        ],
-      ),
-    );
-  }
-
-  Widget _buildActionCard(_QuickAction action) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    return OptimizedPressButton(
-      onTap: action.onTap,
-      scaleDown: 0.95,
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 16),
-        decoration: BoxDecoration(
-          color: AppColors.cardBg(isDark),
-          borderRadius: BorderRadius.circular(AppSpacing.radiusLg),
-          border: Border.all(
-            color: isDark ? AppColors.darkBorder : const Color(0xFF191C1E).withValues(alpha: 0.12),
-            width: isDark ? 0.8 : 0.5,
-          ),
-          boxShadow: AppColors.cardShadowFor(isDark),
-        ),
-        child: Column(
-          children: [
-            Container(
-              width: 44,
-              height: 44,
-              decoration: BoxDecoration(
-                color: action.color.withValues(alpha: 0.10),
-                borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
-              ),
-              child: Icon(action.icon, size: 24, color: action.color),
-            ),
-            const SizedBox(height: 6),
-            FittedBox(
-              fit: BoxFit.scaleDown,
-              child: Text(
-                action.label,
-                textAlign: TextAlign.center,
-                style: AppTypography.labelMedium.copyWith(
-                  color: AppColors.textPrimaryC(isDark),
-                  fontSize: 13,
-                  height: 1.2,
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  // ── COSSMIL Te Informa — News Section ─────────────────────────────────────
-
-  Widget _buildNewsSection() {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final spacing = responsive.isSmallPhone ? 8.0 : 12.0;
 
     return Column(
       children: [
-        if (_isLoadingNews) ...[
-          _NewsCardSkeleton(isDark: isDark),
-          const SizedBox(height: 10),
-          _NewsCardSkeleton(isDark: isDark),
-        ] else if (_news.isEmpty) ...[
-          Container(
-            padding: const EdgeInsets.all(20),
-            decoration: BoxDecoration(
-              color: AppColors.cardBg(isDark),
-              borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
-              border: Border.all(
-                color: AppColors.cardBorder(isDark),
-                width: 0.5,
-              ),
-            ),
-            child: Row(
-              children: [
-                Icon(Icons.newspaper_outlined,
-                    size: 22,
-                    color: AppColors.textTertiaryC(isDark)),
-                const SizedBox(width: 12),
-                Text(
-                  'Sin comunicados recientes',
-                  style: TextStyle(
-                    fontSize: 14,
-                    color: AppColors.textSecondaryC(isDark),
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ] else ...[
-          for (int i = 0; i < (_news.length > 2 ? 2 : _news.length); i++) ...[
-            NewsCard(item: _news[i]),
-            if (i < (_news.length > 2 ? 2 : _news.length) - 1)
-              const SizedBox(height: 10),
+        Row(
+          children: [
+            Expanded(child: _buildActionCard(items[0], responsive)),
+            SizedBox(width: spacing),
+            Expanded(child: _buildActionCard(items[1], responsive)),
           ],
-        ],
-        const SizedBox(height: 12),
-        GestureDetector(
-          onTap: () => Navigator.push(
-            context,
-            CupertinoPageRoute(builder: (_) => const NoticiasScreen()),
-          ),
-          child: Container(
-            padding: const EdgeInsets.symmetric(vertical: 12),
-            decoration: BoxDecoration(
-              color: isDark
-                  ? AppColors.accentBg(true)
-                  : AppColors.primary.withValues(alpha: 0.06),
-              borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
-              border: Border.all(
-                color: isDark ? AppColors.darkBorder : const Color(0xFF191C1E).withValues(alpha: 0.12),
-                width: isDark ? 0.8 : 0.5,
-              ),
-            ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Text(
-                  'Ver todos los comunicados',
-                  style: AppTypography.titleMedium.copyWith(
-                    color: isDark ? AppColors.white : AppColors.primary,
-                  ),
-                ),
-                const SizedBox(width: 6),
-                Icon(Icons.arrow_forward,
-                    size: 14,
-                    color: isDark ? AppColors.white : AppColors.primary),
-              ],
-            ),
-          ),
+        ),
+        SizedBox(height: spacing),
+        Row(
+          children: [
+            Expanded(child: _buildActionCard(items[2], responsive)),
+            SizedBox(width: spacing),
+            Expanded(child: _buildActionCard(items[3], responsive)),
+          ],
         ),
       ],
     );
   }
 
-}
+  Widget _buildActionCard(_QuickAction action, ResponsiveData responsive) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    
+    final cardBgColor = isDark 
+        ? const Color(0xFF0284C7).withValues(alpha: 0.3) 
+        : const Color(0xFFE0F2FE);
 
-// ── Skeleton placeholder para cards de noticias ───────────────────────────────
-class _NewsCardSkeleton extends StatefulWidget {
-  final bool isDark;
-  const _NewsCardSkeleton({required this.isDark});
+    final textMainColor = isDark ? Colors.white : Colors.black;
+    final textSubColor = isDark ? Colors.white70 : Colors.black87;
+    final cardBorderColor = isDark ? Colors.black : Colors.black87;
 
-  @override
-  State<_NewsCardSkeleton> createState() => _NewsCardSkeletonState();
-}
+    // Medidas responsivas
+    final verticalPad = responsive.isSmallPhone ? 14.0 : 18.0;
+    final horizontalPad = responsive.isSmallPhone ? 10.0 : 14.0;
+    final iconBoxSize = responsive.isSmallPhone ? 40.0 : 46.0;
+    final iconSize = responsive.isSmallPhone ? 20.0 : 24.0;
+    final titleSize = responsive.isSmallPhone ? 12.5 : 14.0;
+    final subtitleSize = responsive.isSmallPhone ? 10.0 : 11.0;
 
-class _NewsCardSkeletonState extends State<_NewsCardSkeleton>
-    with SingleTickerProviderStateMixin {
-  late final AnimationController _ctrl;
-  late final Animation<double> _anim;
-
-  @override
-  void initState() {
-    super.initState();
-    _ctrl = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 900),
-    )..repeat(reverse: true);
-    _anim = CurvedAnimation(parent: _ctrl, curve: Curves.easeInOut);
-  }
-
-  @override
-  void dispose() {
-    _ctrl.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return AnimatedBuilder(
-      animation: _anim,
-      builder: (context, _) {
-        final base = widget.isDark
-            ? Color.lerp(const Color(0xFF2A2A2E), const Color(0xFF35353A),
-                _anim.value)!
-            : Color.lerp(const Color(0xFFE8ECF0), const Color(0xFFF3F6F9),
-                _anim.value)!;
-        return Container(
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: AppColors.cardBg(widget.isDark),
-            borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
-            border: Border.all(
-              color: AppColors.cardBorder(widget.isDark),
-              width: 0.5,
-            ),
+    return OptimizedPressButton(
+      onTap: action.onTap,
+      scaleDown: 0.96,
+      child: Container(
+        padding: EdgeInsets.symmetric(vertical: verticalPad, horizontal: horizontalPad),
+        decoration: BoxDecoration(
+          color: cardBgColor,
+          borderRadius: BorderRadius.circular(responsive.isSmallPhone ? 16 : 20),
+          border: Border.all(
+            color: cardBorderColor,
+            width: isDark ? 0.8 : 1.0,
           ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          boxShadow: AppColors.cardShadowFor(isDark),
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: iconBoxSize,
+              height: iconBoxSize,
+              decoration: BoxDecoration(
+                color: isDark ? action.color.withValues(alpha: 0.2) : Colors.white,
+                borderRadius: BorderRadius.circular(AppSpacing.radiusLg),
+                border: Border.all(
+                  color: isDark ? Colors.transparent : action.color.withValues(alpha: 0.5),
+                  width: 0.5,
+                ),
+              ),
+              child: Icon(action.icon, size: iconSize, color: action.color),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
                 children: [
-                  Container(
-                    width: 70,
-                    height: 20,
-                    decoration: BoxDecoration(
-                      color: base,
-                      borderRadius: BorderRadius.circular(6),
+                  FittedBox(
+                    fit: BoxFit.scaleDown,
+                    alignment: Alignment.centerLeft,
+                    child: Text(
+                      action.label,
+                      style: AppTypography.titleSmall.copyWith(
+                        color: textMainColor,
+                        fontSize: titleSize,
+                        fontWeight: FontWeight.w900,
+                      ),
                     ),
                   ),
-                  Container(
-                    width: 60,
-                    height: 14,
-                    decoration: BoxDecoration(
-                      color: base,
-                      borderRadius: BorderRadius.circular(4),
+                  const SizedBox(height: 1),
+                  FittedBox(
+                    fit: BoxFit.scaleDown,
+                    alignment: Alignment.centerLeft,
+                    child: Text(
+                      action.subtitle,
+                      style: AppTypography.bodySmall.copyWith(
+                        color: textSubColor,
+                        fontSize: subtitleSize,
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
                   ),
                 ],
               ),
-              const SizedBox(height: 10),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // ── COSSMIL Te Informa — Lista compacta ───────────────────────────────────
+
+  Widget _buildCompactNewsList() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    return Container(
+      decoration: BoxDecoration(
+        color: AppColors.cardBg(isDark),
+        borderRadius: BorderRadius.circular(AppSpacing.radiusLg),
+        border: Border.all(
+          color: isDark ? AppColors.darkBorder : const Color(0xFF191C1E).withValues(alpha: 0.10),
+          width: isDark ? 0.8 : 0.5,
+        ),
+        boxShadow: AppColors.cardShadowFor(isDark),
+      ),
+      child: Column(
+        children: [
+          if (_isLoadingNews) ...[
+            for (int i = 0; i < 4; i++)
+              _buildSkeletonRow(isDark, isLast: i == 3),
+          ] else if (_news.isEmpty)
+            Padding(
+              padding: const EdgeInsets.all(20),
+              child: Row(
+                children: [
+                  Icon(Icons.newspaper_outlined, size: 22, color: AppColors.textTertiaryC(isDark)),
+                  const SizedBox(width: 12),
+                  Text(
+                    'Sin comunicados recientes',
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: AppColors.textSecondaryC(isDark),
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ],
+              ),
+            )
+          else ...[
+            // Mostrar hasta 5 noticias compactas (solo fecha + título)
+            for (int i = 0; i < (_news.length > 5 ? 5 : _news.length); i++)
+              _buildNewsRow(_news[i], isDark, isLast: i == (_news.length > 5 ? 4 : _news.length - 1)),
+          ],
+          // Botón "Ver todos"
+          _buildViewAllButton(isDark),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildNewsRow(NewsItemModel item, bool isDark, {bool isLast = false}) {
+    return GestureDetector(
+      onTap: () => _showNewsDetail(item),
+      behavior: HitTestBehavior.opaque,
+      child: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Indicador de color por clase
+                Container(
+                  width: 4,
+                  height: 4,
+                  margin: const EdgeInsets.only(top: 7),
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: item.clase == 'A' ? AppColors.primary : AppColors.accent,
+                  ),
+                ),
+                const SizedBox(width: 10),
+                // Fecha compacta
+                SizedBox(
+                  width: 52,
+                  child: Text(
+                    _shortDate(item.dateTime),
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.textTertiaryC(isDark),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                // Título
+                Expanded(
+                  child: Text(
+                    item.title,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.textPrimaryC(isDark),
+                      height: 1.3,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Icon(
+                  CupertinoIcons.chevron_right,
+                  size: 12,
+                  color: AppColors.textTertiaryC(isDark),
+                ),
+              ],
+            ),
+          ),
+          if (!isLast)
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: Container(
+                height: 0.5,
+                color: isDark ? AppColors.darkDivider : const Color(0xFF191C1E).withValues(alpha: 0.06),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSkeletonRow(bool isDark, {bool isLast = false}) {
+    return Column(
+      children: [
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          child: Row(
+            children: [
               Container(
-                height: 16,
-                width: double.infinity,
+                width: 50,
+                height: 10,
                 decoration: BoxDecoration(
-                  color: base,
+                  color: isDark ? AppColors.darkElevated : const Color(0xFFE8ECF0),
                   borderRadius: BorderRadius.circular(4),
                 ),
               ),
-              const SizedBox(height: 6),
-              Container(
-                height: 13,
-                width: MediaQuery.of(context).size.width * 0.6,
-                decoration: BoxDecoration(
-                  color: base,
-                  borderRadius: BorderRadius.circular(4),
-                ),
-              ),
-              const SizedBox(height: 6),
-              Container(
-                height: 13,
-                width: double.infinity,
-                decoration: BoxDecoration(
-                  color: base,
-                  borderRadius: BorderRadius.circular(4),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Container(
+                  height: 12,
+                  decoration: BoxDecoration(
+                    color: isDark ? AppColors.darkElevated : const Color(0xFFE8ECF0),
+                    borderRadius: BorderRadius.circular(4),
+                  ),
                 ),
               ),
             ],
           ),
-        );
-      },
+        ),
+        if (!isLast)
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: Container(
+              height: 0.5,
+              color: isDark ? AppColors.darkDivider : const Color(0xFF191C1E).withValues(alpha: 0.06),
+            ),
+          ),
+      ],
+    );
+  }
+
+  Widget _buildViewAllButton(bool isDark) {
+    return GestureDetector(
+      onTap: () => Navigator.push(
+        context,
+        CupertinoPageRoute(builder: (_) => const NoticiasScreen()),
+      ),
+      behavior: HitTestBehavior.opaque,
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 12),
+        decoration: BoxDecoration(
+          border: Border(
+            top: BorderSide(
+              color: isDark ? AppColors.darkDivider : const Color(0xFF191C1E).withValues(alpha: 0.06),
+              width: 0.5,
+            ),
+          ),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Text(
+              'Ver todos los comunicados',
+              style: AppTypography.labelLarge.copyWith(
+                color: isDark ? AppColors.white : AppColors.primary,
+                fontSize: 13,
+              ),
+            ),
+            const SizedBox(width: 4),
+            Icon(
+              CupertinoIcons.arrow_right,
+              size: 13,
+              color: isDark ? AppColors.white : AppColors.primary,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// Formato de fecha corta: "17 Mar"
+  String _shortDate(DateTime? dt) {
+    if (dt == null) return '';
+    return DateFormat('d MMM', 'es').format(dt);
+  }
+
+  // ── Modal de detalle de noticia ───────────────────────────────────────────
+
+  void _showNewsDetail(NewsItemModel item) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => DraggableScrollableSheet(
+        initialChildSize: 0.65,
+        minChildSize: 0.4,
+        maxChildSize: 0.9,
+        builder: (_, scrollController) => Container(
+          decoration: BoxDecoration(
+            color: AppColors.cardBg(isDark),
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+          ),
+          child: Column(
+            children: [
+              // Handle bar
+              Container(
+                margin: const EdgeInsets.only(top: 12, bottom: 8),
+                width: 36,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: isDark ? AppColors.darkBorder : const Color(0xFF191C1E).withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              // Contenido scrollable
+              Expanded(
+                child: ListView(
+                  controller: scrollController,
+                  padding: const EdgeInsets.fromLTRB(20, 8, 20, 32),
+                  children: [
+                    // Entidad + fecha
+                    Row(
+                      children: [
+                        if (item.entity.isNotEmpty) ...[
+                          Expanded(
+                            child: Text(
+                              item.entity,
+                              style: TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w700,
+                                color: AppColors.primary,
+                                letterSpacing: 0.3,
+                              ),
+                            ),
+                          ),
+                        ],
+                        Text(
+                          item.date,
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.textTertiaryC(isDark),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 14),
+                    // Título
+                    Text(
+                      item.title,
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.w800,
+                        color: AppColors.textPrimaryC(isDark),
+                        height: 1.3,
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    // Imagen si existe
+                    if (item.imageUrl.isNotEmpty) ...[
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
+                        child: ConstrainedBox(
+                          constraints: const BoxConstraints(
+                            maxHeight: 400,
+                          ),
+                          child: Image.network(
+                            item.imageUrl,
+                            width: double.infinity,
+                            fit: BoxFit.contain,
+                            errorBuilder: (_, __, ___) => Container(
+                              height: 120,
+                              width: double.infinity,
+                              decoration: BoxDecoration(
+                                color: isDark ? AppColors.darkElevated : const Color(0xFFF0F2F4),
+                                borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
+                              ),
+                              child: Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Icon(CupertinoIcons.photo, size: 32, color: AppColors.textTertiaryC(isDark)),
+                                  const SizedBox(height: 8),
+                                  Text(
+                                    'No se pudo cargar la imagen',
+                                    style: TextStyle(fontSize: 12, color: AppColors.textTertiaryC(isDark)),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            loadingBuilder: (_, child, progress) {
+                              if (progress == null) return child;
+                              return Container(
+                                height: 200,
+                                decoration: BoxDecoration(
+                                  color: isDark ? AppColors.darkElevated : const Color(0xFFF0F2F4),
+                                  borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
+                                ),
+                                child: const Center(child: CupertinoActivityIndicator()),
+                              );
+                            },
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                    ],
+                    // Descripción
+                    Text(
+                      item.description,
+                      style: TextStyle(
+                        fontSize: 15,
+                        color: AppColors.textSecondaryC(isDark),
+                        height: 1.6,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }
@@ -630,12 +853,14 @@ class _NewsCardSkeletonState extends State<_NewsCardSkeleton>
 class _QuickAction {
   final IconData icon;
   final String label;
+  final String subtitle;
   final Color color;
   final VoidCallback onTap;
 
   const _QuickAction({
     required this.icon,
     required this.label,
+    required this.subtitle,
     required this.color,
     required this.onTap,
   });

@@ -1,43 +1,71 @@
-/// Modelo para comunicados institucionales de COSSMIL.
-/// Preparado para ser poblado desde un servicio REST futuro.
+import 'package:intl/intl.dart';
+
+/// Modelo para noticias/comunicados del API público de COSSMIL.
+/// Endpoint: https://www.cossmil.mil.bo/api/noticias/paginate/{page}/{perPage}/1
 class NewsItemModel {
-  final String id;
+  final int idpub;
   final String title;
-  final String summary;
-  final String date; // Formato: '18 Mar 2026'
-  final String category; // e.g. 'Aviso', 'Comunicado', 'Alerta'
-  final NewsImportance importance;
-  final bool isFeatured;
+  final String description;
+  final DateTime? dateTime;
+  final String date; // Formato legible: '17 Mar 2026'
+  final String imageUrl;
+  final String entity; // Entidad que publica (ej. "AGENCIA REGIONAL ORURO")
+  final int gestion;
+  final int idcat;
+  final String clase; // "A" o "B"
 
   const NewsItemModel({
-    required this.id,
+    required this.idpub,
     required this.title,
-    required this.summary,
+    required this.description,
+    this.dateTime,
     required this.date,
-    this.category = 'Comunicado',
-    this.importance = NewsImportance.normal,
-    this.isFeatured = false,
+    this.imageUrl = '',
+    this.entity = '',
+    this.gestion = 0,
+    this.idcat = 0,
+    this.clase = 'A',
   });
 
+  /// Base URL para las imágenes de noticias.
+  static const String _imageBaseUrl =
+      'https://www.cossmil.mil.bo/assets/images/publicaciones/';
+
   factory NewsItemModel.fromJson(Map<String, dynamic> json) {
+    // Parse fecha ISO 8601
+    DateTime? parsedDate;
+    String formattedDate = '';
+    final rawDate = json['fc'] as String?;
+    if (rawDate != null && rawDate.isNotEmpty) {
+      try {
+        parsedDate = DateTime.parse(rawDate);
+        formattedDate = DateFormat('d MMM yyyy', 'es').format(parsedDate);
+      } catch (_) {
+        formattedDate = rawDate;
+      }
+    }
+
+    // Construir URL completa de imagen siguiendo el nuevo patrón del API
+    final rawImg = json['imgurl'] as String? ?? '';
+    final gestion = json['gestion'] as int? ?? 0;
+    final idpub = json['idpub'] as int? ?? 0;
+    
+    String fullImgUrl = '';
+    if (rawImg.isNotEmpty && gestion > 0 && idpub > 0) {
+      fullImgUrl = 'https://www.cossmil.mil.bo/api//publicsImg/$gestion/$idpub/$rawImg';
+    }
+
     return NewsItemModel(
-      id: (json['id'] ?? '').toString(),
-      title: json['titulo'] as String? ?? json['title'] as String? ?? '',
-      summary: json['resumen'] as String? ?? json['summary'] as String? ?? '',
-      date: json['fecha'] as String? ?? json['date'] as String? ?? '',
-      category: json['categoria'] as String? ?? 'Comunicado',
-      importance: _parseImportance(json['importancia'] as String?),
-      isFeatured: json['destacado'] as bool? ?? false,
+      idpub: idpub,
+      title: (json['titulo'] as String? ?? '').trim(),
+      description: (json['descr'] as String? ?? '').trim(),
+      dateTime: parsedDate,
+      date: formattedDate,
+      imageUrl: fullImgUrl,
+      entity: json['ent'] as String? ?? '',
+      gestion: gestion,
+      idcat: json['idcat'] as int? ?? 0,
+      clase: json['clase'] as String? ?? 'A',
     );
   }
-
-  static NewsImportance _parseImportance(String? value) {
-    return switch (value) {
-      'critical' || 'critico' => NewsImportance.critical,
-      'warning' || 'alerta' => NewsImportance.warning,
-      _ => NewsImportance.normal,
-    };
-  }
 }
-
-enum NewsImportance { normal, warning, critical }

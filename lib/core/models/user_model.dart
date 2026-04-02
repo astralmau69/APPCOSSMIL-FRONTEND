@@ -18,6 +18,7 @@ class UserModel {
   final String birthDate;
   final int? idseg;
   final String? uc;
+  final String allergies;
   final List<BeneficiaryModel> beneficiaries;
 
   const UserModel({
@@ -38,6 +39,7 @@ class UserModel {
     this.birthDate = '',
     this.idseg,
     this.uc,
+    this.allergies = '',
     required this.beneficiaries,
   });
 
@@ -59,6 +61,7 @@ class UserModel {
     String? birthDate,
     int? idseg,
     String? uc,
+    String? allergies,
     List<BeneficiaryModel>? beneficiaries,
   }) {
     return UserModel(
@@ -80,6 +83,7 @@ class UserModel {
       birthDate: birthDate ?? this.birthDate,
       idseg: idseg ?? this.idseg,
       uc: uc ?? this.uc,
+      allergies: allergies ?? this.allergies,
       beneficiaries: beneficiaries ?? this.beneficiaries,
     );
   }
@@ -121,6 +125,9 @@ class UserModel {
                   (e) => BeneficiaryModel.fromJson(e as Map<String, dynamic>))
               .toList() ??
           [],
+      allergies: json['alergias'] as String? ??
+          json['allergies'] as String? ??
+          '',
     );
   }
 
@@ -140,10 +147,14 @@ class UserModel {
         'ci': ci,
         'photoBase64': photoBase64,
         'birthDate': birthDate,
+        'allergies': allergies,
         'beneficiaries': beneficiaries.map((b) => b.toJson()).toList(),
       };
 
   /// Nombre con rango para mostrar en UI.
   String get displayName =>
       rank.isEmpty ? fullName : '$rank $fullName';
+
+  /// Shortcut para verificar si el rol es Titular
+  bool get isTitular => role == 'Titular';
 }

@@ -53,7 +53,7 @@ Solo RegionalScreen tiene `RefreshIndicator`. Agregar en:
 
 ---
 
-### 3. ANIMACION DE EXITO AL CONFIRMAR CITA
+### 3. [x] ANIMACION DE EXITO AL CONFIRMAR CITA
 **Prioridad:** Alta
 **Impacto:** Satisfaccion del usuario, sensacion premium
 

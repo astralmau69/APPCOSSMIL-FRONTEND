@@ -72,5 +72,17 @@ class ApiConstants {
   /// Foto y datos básicos del asegurado por matrícula.
   static String aseguradoFoto(String matricula) =>
       '/api/safil/asegurado/foto/${matricula.trim()}';
+
+  /// Cancelar una cita médica.
+  static String cancelarCitaMedica(int gestion, int idins, int idsuc, int idtran, int dr) =>
+      '/api/programacion/cancelar-cita-medica/$gestion/$idins/$idsuc/$idtran/$dr';
+
+  /// Grupo familiar de un asegurado.
+  static String grupoFamiliar(int idper) =>
+      '/api/safil/afiliado/gpo-familiar/$idper';
+
+  /// Actualizar datos de usuario (contraseña, correo, teléfono).
+  static String updateUsuarioWeb(int idper) =>
+      '/api/usuarioweb/update/$idper';
 }
 

@@ -151,6 +151,72 @@ class ApiClient {
     }
   }
 
+  // ── PUT con Bearer Token ──────────────────────────────────────────
+
+  /// Realiza un PUT autenticado con body JSON.
+  /// Si recibe 401, intenta refresh_token y reintenta una vez.
+  Future<ApiClientResponse> put(String path, {Map<String, dynamic>? body}) async {
+    final result = await _doPut(path, body: body);
+
+    if (result is ApiError && result.statusCode == 401) {
+      final refreshed = await _tryRefreshToken();
+      if (refreshed) {
+        if (kDebugMode) debugPrint('🔄 Token renovado, reintentando PUT $path');
+        return _doPut(path, body: body);
+      }
+    }
+
+    return result;
+  }
+
+  /// PUT interno sin lógica de retry.
+  Future<ApiClientResponse> _doPut(String path, {Map<String, dynamic>? body}) async {
+    final url = Uri.parse('${ApiConstants.baseUrl}$path');
+    final token = await TokenStorage.getToken();
+
+    if (kDebugMode) {
+      debugPrint('🌐 PUT $url');
+      debugPrint('   📤 body: $body');
+    }
+
+    try {
+      final response = await _http.put(
+        url,
+        headers: _headers(token),
+        body: body != null ? jsonEncode(body) : null,
+      );
+
+      if (kDebugMode) {
+        debugPrint('   ↳ ${response.statusCode}');
+      }
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        final decoded = jsonDecode(response.body);
+        return ApiClientResponse.success(decoded);
+      }
+
+      if (response.statusCode == 401) {
+        return const ApiClientResponse.error(
+          'Sesión expirada. Inicie sesión nuevamente.',
+          statusCode: 401,
+        );
+      }
+
+      return ApiClientResponse.error(
+        'Error del servidor (${response.statusCode})',
+        statusCode: response.statusCode,
+      );
+    } on Exception catch (e) {
+      if (kDebugMode) {
+        debugPrint('   ↳ ERROR: $e');
+      }
+      return ApiClientResponse.error(
+        'No se pudo conectar al servidor.',
+        statusCode: 0,
+      );
+    }
+  }
+
   // ── GET Raw Bytes (para PDFs) ──────────────────────────────────────
 
   /// Descarga bytes crudos (PDF, imágenes, etc.) con Bearer token.

@@ -25,6 +25,10 @@ class AuthTokenModel {
   final String correo;
   final int? idseg;
   final String? uc;
+  final String bloodType;
+  final String allergies;
+  /// `false` = debe cambiar contraseña (primer ingreso), `true` = ya cambió.
+  final bool reqReset;
 
   const AuthTokenModel({
     required this.accessToken,
@@ -47,6 +51,9 @@ class AuthTokenModel {
     this.correo = '',
     this.idseg,
     this.uc,
+    this.bloodType = '',
+    this.allergies = '',
+    this.reqReset = true,
   });
 
   factory AuthTokenModel.fromJson(Map<String, dynamic> json) {
@@ -93,7 +100,18 @@ class AuthTokenModel {
       correo: val('correo') as String? ?? '',
       idseg: val('idseg') as int?,
       uc: val('uc')?.toString(),
+      bloodType: val('grupoSanguineo') as String? ?? val('grupo_sanguineo') as String? ?? val('bloodType') as String? ?? '',
+      allergies: val('alergias') as String? ?? val('allergies') as String? ?? '',
+      reqReset: _parseBool(val('req_reset')),
     );
+  }
+
+  /// Parsea `req_reset` que puede venir como bool o int desde el backend.
+  /// `false` / `0` = debe cambiar contraseña; `true` / `1` = ya cambió.
+  static bool _parseBool(dynamic value) {
+    if (value is bool) return value;
+    if (value is int) return value != 0;
+    return true; // default: ya cambió (no forzar)
   }
 
   Map<String, dynamic> toJson() => {

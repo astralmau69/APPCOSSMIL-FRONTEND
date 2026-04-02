@@ -75,6 +75,19 @@ class AppointmentCard extends StatelessWidget {
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                           ),
+                          if (appointment.patientName.isNotEmpty) ...[
+                            const SizedBox(height: 2),
+                            Text(
+                              'Paciente: ${appointment.patientName}',
+                              style: AppTypography.bodySmall.copyWith(
+                                color: AppColors.textSecondaryC(isDark),
+                                fontWeight: FontWeight.w500,
+                                fontSize: 12,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ],
                         ],
                       ),
                     ),

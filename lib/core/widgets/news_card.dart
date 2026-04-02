@@ -4,6 +4,7 @@ import '../constants/app_colors.dart';
 import '../theme/app_theme.dart';
 import '../models/news_item_model.dart';
 
+/// Card de noticia reutilizable — muestra título, descripción, entidad y fecha.
 class NewsCard extends StatefulWidget {
   final NewsItemModel item;
   final VoidCallback? onTap;
@@ -40,7 +41,6 @@ class _NewsCardState extends State<NewsCard>
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final accentColor = _accentForImportance(widget.item.importance);
 
     return GestureDetector(
       onTapDown: (_) => _pressCtrl.forward(),
@@ -59,115 +59,90 @@ class _NewsCardState extends State<NewsCard>
             ),
             boxShadow: AppColors.cardShadowFor(isDark),
           ),
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(AppTheme.radiusLg),
-            child: Stack(
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Solid card background — no gradient
-                Positioned.fill(
-                  child: Container(
-                    color: AppColors.cardBg(isDark),
-                  ),
-                ),
-                Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          // Category Tag
-                          Flexible(
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 8, vertical: 4),
-                              decoration: BoxDecoration(
-                                color: accentColor.withValues(alpha: 0.12),
-                                borderRadius: BorderRadius.circular(6),
-                              ),
-                              child: Text(
-                                widget.item.category.toUpperCase(),
-                                style: TextStyle(
-                                  fontSize: 10,
-                                  fontWeight: FontWeight.w800,
-                                  color: accentColor,
-                                  letterSpacing: 0.8,
-                                ),
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ),
+                Row(
+                  children: [
+                    if (widget.item.entity.isNotEmpty) ...[
+                      Flexible(
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: AppColors.primary.withValues(alpha: 0.12),
+                            borderRadius: BorderRadius.circular(6),
                           ),
-                          const SizedBox(width: 8),
-                          // Date
-                          Icon(CupertinoIcons.calendar, 
-                            size: 12, color: AppColors.textTertiaryC(isDark)),
-                          const SizedBox(width: 4),
-                          Text(
-                            widget.item.date,
+                          child: Text(
+                            widget.item.entity,
                             style: TextStyle(
-                              fontSize: 11,
-                              fontWeight: FontWeight.w600,
-                              color: AppColors.textTertiaryC(isDark),
+                              fontSize: 10,
+                              fontWeight: FontWeight.w800,
+                              color: AppColors.primary,
+                              letterSpacing: 0.5,
                             ),
+                            overflow: TextOverflow.ellipsis,
                           ),
-                        ],
-                      ),
-                      const SizedBox(height: 12),
-                      // Title
-                      Text(
-                        widget.item.title,
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w800,
-                          color: AppColors.textPrimaryC(isDark),
-                          height: 1.2,
                         ),
                       ),
-                      const SizedBox(height: 8),
-                      // Summary
-                      Text(
-                        widget.item.summary,
-                        maxLines: 3,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          fontSize: 13,
-                          color: AppColors.textSecondaryC(isDark),
-                          height: 1.5,
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-                      // Footer action
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.end,
-                        children: [
-                          Text(
-                            'Leer más',
-                            style: TextStyle(
-                              fontSize: 12,
-                              fontWeight: FontWeight.w700,
-                              color: AppColors.accentForTheme(isDark),
-                            ),
-                          ),
-                          const SizedBox(width: 4),
-                          Icon(
-                            CupertinoIcons.chevron_right,
-                            size: 10,
-                            color: AppColors.accentForTheme(isDark),
-                          ),
-                        ],
-                      ),
+                      const SizedBox(width: 8),
                     ],
+                    Icon(CupertinoIcons.calendar,
+                        size: 12, color: AppColors.textTertiaryC(isDark)),
+                    const SizedBox(width: 4),
+                    Text(
+                      widget.item.date,
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.textTertiaryC(isDark),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  widget.item.title,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w800,
+                    color: AppColors.textPrimaryC(isDark),
+                    height: 1.2,
                   ),
                 ),
-                // Importance indicator bar on top
-                Positioned(
-                  top: 0,
-                  left: 0,
-                  right: 0,
-                  height: 3,
-                  child: Container(color: accentColor),
+                const SizedBox(height: 8),
+                Text(
+                  widget.item.description,
+                  maxLines: 3,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: AppColors.textSecondaryC(isDark),
+                    height: 1.5,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    Text(
+                      'Leer más',
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.accentForTheme(isDark),
+                      ),
+                    ),
+                    const SizedBox(width: 4),
+                    Icon(
+                      CupertinoIcons.chevron_right,
+                      size: 10,
+                      color: AppColors.accentForTheme(isDark),
+                    ),
+                  ],
                 ),
               ],
             ),
@@ -175,16 +150,5 @@ class _NewsCardState extends State<NewsCard>
         ),
       ),
     );
-  }
-
-  Color _accentForImportance(NewsImportance importance) {
-    switch (importance) {
-      case NewsImportance.critical:
-        return AppColors.error;
-      case NewsImportance.warning:
-        return AppColors.warning;
-      case NewsImportance.normal:
-        return AppColors.info;
-    }
   }
 }

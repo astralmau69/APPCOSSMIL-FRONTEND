@@ -1,3 +1,4 @@
+import 'dart:typed_data';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
@@ -10,6 +11,7 @@ import '../../../core/models/reserva_model.dart';
 import '../../../core/services/programacion_service.dart';
 import '../../../core/animations/optimized_animations.dart';
 import '../../../core/widgets/app_state_widget.dart';
+import '../../../core/widgets/skeleton_loading.dart';
 import '../../../core/widgets/cossmil_ios_alert.dart';
 
 class DetalleCitaScreen extends StatefulWidget {
@@ -94,7 +96,7 @@ class _DetalleCitaScreenState extends State<DetalleCitaScreen> {
       backgroundColor: AppColors.scaffoldBg(isDark),
       navigationBar: CupertinoNavigationBar(
         middle: Text(
-          'Detalle de Cita',
+          'Detalle de Cita Médica',
           style: TextStyle(
             fontWeight: FontWeight.w800,
             fontSize: 18,
@@ -108,7 +110,11 @@ class _DetalleCitaScreenState extends State<DetalleCitaScreen> {
         child: AnimatedSwitcher(
           duration: const Duration(milliseconds: 300),
           child: _isLoading
-              ? const AppStateWidget.loading()
+              ? ListView(
+                  key: const ValueKey('skeleton'),
+                  padding: const EdgeInsets.symmetric(horizontal: 0, vertical: 16),
+                  children: const [SkeletonDetalleCita()],
+                )
               : _errorMessage != null
                   ? AppStateWidget.error(
                       key: const ValueKey('error'),
@@ -325,7 +331,7 @@ class _DetalleCitaScreenState extends State<DetalleCitaScreen> {
     return Column(
       children: [
         Text(
-          'Detalle de su Cita',
+          'Detalle de su Cita Médica',
           style: AppTypography.displayMedium.copyWith(
             fontSize: 22,
             color: AppColors.accentForTheme(isDark),
@@ -468,19 +474,20 @@ class _DetalleCitaScreenState extends State<DetalleCitaScreen> {
         ),
         child: CupertinoButton.filled(
           borderRadius: BorderRadius.circular(16),
-          onPressed: _isDownloadingPdf ? null : _downloadPdf,
+          onPressed: _isDownloadingPdf ? null : _openPdfPreview,
           child: _isDownloadingPdf
               ? const CupertinoActivityIndicator(color: Colors.white)
               : const Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Icon(CupertinoIcons.arrow_down_doc_fill, size: 20),
+                    Icon(CupertinoIcons.doc_text_search, size: 20),
                     SizedBox(width: 10),
                     Text(
-                      'Descargar PDF',
+                      'Ver Imagen de la Cita Médica',
                       style: TextStyle(
                         fontWeight: FontWeight.w800,
-                        letterSpacing: 0.5,
+                        fontSize: 14,
+                        letterSpacing: 0.3,
                       ),
                     ),
                   ],
@@ -490,7 +497,7 @@ class _DetalleCitaScreenState extends State<DetalleCitaScreen> {
     );
   }
 
-  Future<void> _downloadPdf() async {
+  Future<void> _openPdfPreview() async {
     final r = widget.reserva;
     setState(() => _isDownloadingPdf = true);
 
@@ -510,16 +517,23 @@ class _DetalleCitaScreenState extends State<DetalleCitaScreen> {
         await CossmilIosAlert.show(
           context: context,
           title: 'Error',
-          message: 'No se pudo descargar el PDF de la cita médica.',
+          message: 'No se pudo obtener el PDF de la cita médica.',
           type: AlertType.error,
           confirmText: 'Aceptar',
         );
         return;
       }
 
-      await Printing.layoutPdf(
-        onLayout: (_) async => pdfBytes,
-        name: 'Cita_Medica_${r.gestion}-${r.idtran}-${r.dr}',
+      if (!mounted) return;
+      final fileName = 'Cita_Medica_${r.gestion}-${r.idtran}-${r.dr}';
+      Navigator.push(
+        context,
+        CupertinoPageRoute(
+          builder: (_) => _PdfPreviewScreen(
+            pdfBytes: pdfBytes,
+            fileName: fileName,
+          ),
+        ),
       );
     } catch (e) {
       if (!mounted) return;
@@ -528,10 +542,160 @@ class _DetalleCitaScreenState extends State<DetalleCitaScreen> {
       await CossmilIosAlert.show(
         context: context,
         title: 'Error',
-        message: 'No se pudo descargar el PDF: $e',
+        message: 'No se pudo obtener el PDF: $e',
         type: AlertType.error,
         confirmText: 'Aceptar',
       );
     }
+  }
+}
+
+/// Pantalla de previsualizador de PDF con opciones de Descargar/Imprimir, Compartir.
+class _PdfPreviewScreen extends StatelessWidget {
+  final Uint8List pdfBytes;
+  final String fileName;
+
+  const _PdfPreviewScreen({
+    required this.pdfBytes,
+    required this.fileName,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    return CupertinoPageScaffold(
+      backgroundColor: AppColors.scaffoldBg(isDark),
+      navigationBar: CupertinoNavigationBar(
+        middle: Text(
+          'Cita Médica',
+          style: TextStyle(
+            fontWeight: FontWeight.w800,
+            fontSize: 18,
+            color: AppColors.textPrimaryC(isDark),
+          ),
+        ),
+        backgroundColor: AppColors.scaffoldBg(isDark).withValues(alpha: 0.94),
+        border: null,
+        trailing: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            CupertinoButton(
+              padding: EdgeInsets.zero,
+              onPressed: () => _sharePdf(),
+              child: Icon(
+                CupertinoIcons.share,
+                size: 22,
+                color: AppColors.accentForTheme(isDark),
+              ),
+            ),
+            CupertinoButton(
+              padding: EdgeInsets.zero,
+              onPressed: () => _printPdf(),
+              child: Icon(
+                CupertinoIcons.printer,
+                size: 22,
+                color: AppColors.accentForTheme(isDark),
+              ),
+            ),
+          ],
+        ),
+      ),
+      child: SafeArea(
+        child: Column(
+          children: [
+            Expanded(
+              child: PdfPreview(
+                build: (_) async => pdfBytes,
+                canChangePageFormat: false,
+                canChangeOrientation: false,
+                canDebug: false,
+                allowPrinting: false,
+                allowSharing: false,
+                pdfFileName: fileName,
+                loadingWidget: const Center(
+                  child: CupertinoActivityIndicator(radius: 14),
+                ),
+              ),
+            ),
+            Container(
+              padding: const EdgeInsets.fromLTRB(20, 12, 20, 16),
+              decoration: BoxDecoration(
+                color: AppColors.cardBg(isDark),
+                border: Border(
+                  top: BorderSide(
+                    color: isDark ? AppColors.darkDivider : const Color(0xFF191C1E).withValues(alpha: 0.08),
+                    width: 0.5,
+                  ),
+                ),
+              ),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: CupertinoButton(
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      color: AppColors.primary,
+                      borderRadius: BorderRadius.circular(14),
+                      onPressed: () => _printPdf(),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          const Icon(CupertinoIcons.printer, size: 18, color: AppColors.white),
+                          const SizedBox(width: 8),
+                          Text(
+                            'Descargar / Imprimir',
+                            style: AppTypography.labelLarge.copyWith(
+                              color: AppColors.white,
+                              fontSize: 13,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: CupertinoButton(
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      color: isDark ? AppColors.darkElevated : AppColors.white,
+                      borderRadius: BorderRadius.circular(14),
+                      onPressed: () => _sharePdf(),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(CupertinoIcons.share, size: 18, color: AppColors.accentForTheme(isDark)),
+                          const SizedBox(width: 8),
+                          Text(
+                            'Compartir',
+                            style: AppTypography.labelLarge.copyWith(
+                              color: AppColors.textPrimaryC(isDark),
+                              fontSize: 13,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _printPdf() {
+    Printing.layoutPdf(
+      onLayout: (_) async => pdfBytes,
+      name: fileName,
+    );
+  }
+
+  void _sharePdf() {
+    Printing.sharePdf(
+      bytes: pdfBytes,
+      filename: '$fileName.pdf',
+    );
   }
 }

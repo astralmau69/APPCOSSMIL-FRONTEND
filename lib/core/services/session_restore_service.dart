@@ -95,12 +95,20 @@ class SessionRestoreService {
         final data = response.data as Map<String, dynamic>;
         final rawPhoto = data['foto2'] as String? ?? '';
         final cleanPhoto = AuthService.cleanBase64(rawPhoto);
-        if (cleanPhoto.isNotEmpty) {
-          UserSession.currentUser = UserSession.currentUser.copyWith(photoBase64: cleanPhoto);
+        
+        final eBloodType = (data['grupoSanguineo'] as String? ?? data['grupo_sanguineo'] as String? ?? '').trim();
+        final eAllergies = (data['alergias'] as String? ?? data['allergies'] as String? ?? '').trim();
+
+        if (cleanPhoto.isNotEmpty || eBloodType.isNotEmpty || eAllergies.isNotEmpty) {
+          UserSession.currentUser = UserSession.currentUser.copyWith(
+            photoBase64: cleanPhoto.isNotEmpty ? cleanPhoto : UserSession.currentUser.photoBase64,
+            bloodType: eBloodType.isNotEmpty ? eBloodType : UserSession.currentUser.bloodType,
+            allergies: eAllergies.isNotEmpty ? eAllergies : UserSession.currentUser.allergies,
+          );
           
           // Actualizar también en la lista de beneficiarios si está el titular
           final updatedBens = UserSession.currentUser.beneficiaries.map((b) {
-            if (b.relationship == 'Titular') {
+            if (b.isTitular) {
               return BeneficiaryModel(
                 id: b.id,
                 fullName: b.fullName,
@@ -108,7 +116,7 @@ class SessionRestoreService {
                 age: b.age,
                 gender: b.gender,
                 matricula: b.matricula,
-                photoBase64: cleanPhoto,
+                photoBase64: cleanPhoto.isNotEmpty ? cleanPhoto : b.photoBase64,
               );
             }
             return b;

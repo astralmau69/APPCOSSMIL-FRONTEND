@@ -81,7 +81,7 @@ class ReservaModel {
           json['fecha'] as String? ??
           '',
       time: json['hora'] as String? ?? '',
-      status: _parseStatus(json['estado']),
+      status: _parseStatus(json['estado'], json['fechaCita']?.toString() ?? json['fecha']?.toString() ?? ''),
       consultorio: json['consultorio'] as String?,
       codigoReserva: (json['codadm'] ?? json['codigo_reserva'] ?? json['ticket']).toString(),
       gestion: gestion,
@@ -93,11 +93,27 @@ class ReservaModel {
   }
 
   /// El backend usa "S" = atendido/completado, "N" = no atendido (falta o pendiente).
-  static String _parseStatus(dynamic raw) {
+  /// Distinguimos "Pendiente" de "Falta" evaluando si la fecha ya pasó.
+  static String _parseStatus(dynamic raw, String dateStr) {
     if (raw == null) return 'Pendiente';
     final s = raw.toString().toUpperCase().trim();
     if (s == 'S') return 'Completado';
-    if (s == 'N') return 'Falta';
+    if (s == 'N') {
+      try {
+        if (dateStr.isNotEmpty) {
+          final parts = dateStr.split(' ')[0].split('-');
+          if (parts.length == 3) {
+            final appDate = DateTime(int.parse(parts[0]), int.parse(parts[1]), int.parse(parts[2]));
+            final now = DateTime.now();
+            final today = DateTime(now.year, now.month, now.day);
+            if (appDate.isBefore(today)) {
+              return 'Falta';
+            }
+          }
+        }
+      } catch (_) {}
+      return 'Pendiente';
+    }
     // Fallback para otros formatos
     final lower = s.toLowerCase();
     if (lower == 'completado' || lower == 'atendido') return 'Completado';
@@ -133,4 +149,28 @@ class ReservaModel {
   /// Si puede descargar PDF (tiene los datos necesarios).
   bool get canDownloadPdf =>
       gestion != null && idins != null && idsuc != null && idtran != null && dr != null;
+
+  ReservaModel copyWith({
+    String? status,
+  }) {
+    return ReservaModel(
+      id: id,
+      patientName: patientName,
+      relationship: relationship,
+      specialty: specialty,
+      doctorName: doctorName,
+      hospital: hospital,
+      city: city,
+      date: date,
+      time: time,
+      status: status ?? this.status,
+      consultorio: consultorio,
+      codigoReserva: codigoReserva,
+      gestion: gestion,
+      idins: idins,
+      idsuc: idsuc,
+      idtran: idtran,
+      dr: dr,
+    );
+  }
 }

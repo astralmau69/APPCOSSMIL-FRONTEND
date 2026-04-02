@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import '../config/app_config.dart';
 import '../constants/api_constants.dart';
+import '../models/beneficiary_model.dart';
 import '../models/regional_model.dart';
 import '../models/specialty_model.dart';
 import '../models/horario_atencion_model.dart';
@@ -186,9 +187,7 @@ class ProgramacionService {
         idesp: 42,
         idmed: '18',
         medico: 'VILLAGOMEZ POSTIGO MARIANELA',
-        oferta: 2,
-        demanda: 0,
-        nroini: 4,
+        asignado: 3,
         estado: true,
         idcon: 3,
         descripcionConsultorio: 'CONSULTORIO 3 - PLANTA BAJA',
@@ -196,9 +195,9 @@ class ProgramacionService {
         fecha: '2026-03-27',
         idcontrol: 'mock-control-123',
         horas: [
-          HoraDisponibleModel(idhora: 'mock-1', numero: 5, hora: '09:00', estado: false),
+          HoraDisponibleModel(idhora: 'mock-1', numero: 5, hora: '09:00', estado: true),
           HoraDisponibleModel(idhora: 'mock-2', numero: 6, hora: '09:15', estado: true),
-          HoraDisponibleModel(idhora: 'mock-3', numero: 7, hora: '09:30', estado: true),
+          HoraDisponibleModel(idhora: 'mock-3', numero: 7, hora: '09:30', estado: false),
         ],
       );
     }
@@ -286,7 +285,7 @@ class ProgramacionService {
     return switch (response) {
       ApiSuccess(:final data) => () {
         debugPrint('📦 historial-citas raw response: $data');
-        final reservas = _parseReservas(data);
+        final List<ReservaModel> reservas = _parseReservas(data);
         // Extraer paginación
         int totalElements = 0;
         int totalPages = 0;
@@ -354,7 +353,57 @@ class ProgramacionService {
     );
   }
 
+  // ── Grupo familiar ──────────────────────────────────────────────────
+
+  /// Obtiene el grupo familiar del asegurado desde el backend.
+  Future<List<BeneficiaryModel>> getGrupoFamiliar(int idper) async {
+    if (AppConfig.useMockData) {
+      await Future.delayed(const Duration(milliseconds: 400));
+      return [];
+    }
+
+    final response = await _api.get(
+      ApiConstants.grupoFamiliar(idper),
+    );
+
+    return switch (response) {
+      ApiSuccess(:final data) => () {
+        debugPrint('📦 grupo-familiar raw response: $data');
+        final list = _extractDataList(data);
+        return list
+            .map((e) => BeneficiaryModel.fromJson(e as Map<String, dynamic>))
+            .toList();
+      }(),
+      ApiError(:final message) => throw Exception(message),
+    };
+  }
+
   // ── Parsers ─────────────────────────────────────────────────────────────
+
+  /// Cancela una cita médica.
+  Future<bool> cancelarCita({
+    required int gestion,
+    required int idins,
+    required int idsuc,
+    required int idtran,
+    required int dr,
+  }) async {
+    if (AppConfig.useMockData) {
+      await Future.delayed(const Duration(milliseconds: 600));
+      return true;
+    }
+
+    // El servidor requiere método PUT para cancelar
+    final response = await _api.put(
+      ApiConstants.cancelarCitaMedica(gestion, idins, idsuc, idtran, dr),
+      body: {}, // Body vacío
+    );
+
+    return switch (response) {
+      ApiSuccess() => true,
+      ApiError(:final message) => throw Exception(message),
+    };
+  }
 
   /// Parsea respuesta estándar: `{ ok, status, message, data: [...] }`
   List<RegionalModel> _parseRegionales(dynamic body) {

@@ -1,3 +1,5 @@
+import 'dart:async';
+import 'dart:convert';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
@@ -8,6 +10,8 @@ import '../../../core/models/medico_asignado_model.dart';
 import '../../../core/services/programacion_service.dart';
 import '../../../core/widgets/breadcrumb_chips.dart';
 import '../../../core/widgets/app_state_widget.dart';
+import '../../../core/widgets/skeleton_loading.dart';
+import '../../../core/widgets/booking_stepper.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/animations/optimized_animations.dart';
 import '../../../core/animations/app_page_route.dart';
@@ -32,14 +36,21 @@ class _ScheduleScreenState extends State<ScheduleScreen>
   bool _isLoading = true;
   String? _errorMessage;
   String? _errorTitle;
-  String? _selectedTime;
-  String? _selectedIdhora;
-  int? _selectedSlotNumber;
+
+  Timer? _refreshTimer;
+  static const _refreshInterval = Duration(seconds: 15);
 
   @override
   void initState() {
     super.initState();
     _fetchData();
+    _refreshTimer = Timer.periodic(_refreshInterval, (_) => _silentRefresh());
+  }
+
+  @override
+  void dispose() {
+    _refreshTimer?.cancel();
+    super.dispose();
   }
 
   /// Fecha para el API. Pruebas: Mañana priorizado, Hoy como fallback.
@@ -127,6 +138,55 @@ class _ScheduleScreenState extends State<ScheduleScreen>
     }
   }
 
+  /// Refresca los slots silenciosamente sin mostrar loading ni perder selección.
+  Future<void> _silentRefresh() async {
+    if (!mounted || _isLoading || _medicoAsignado == null) return;
+    try {
+      final bs = widget.tabShell.bookingState;
+      final idsuc = int.tryParse(bs.hospital?.id ?? '') ?? 0;
+      final idesp = int.tryParse(bs.specialty?.id ?? '') ?? 0;
+      final idturno = bs.idhorario ?? 2;
+      final fecha = _medicoAsignado!.fecha;
+
+      final result = await _service.getMedicoAsignado(
+        1, idsuc, idesp, fecha, 'ASE', idturno,
+      );
+      if (!mounted) return;
+
+      final newSlots = result.toTimeSlots();
+
+      setState(() {
+        _medicoAsignado = result;
+        _slots = newSlots;
+      });
+    } catch (_) {
+      // Silencioso — no interrumpir al usuario
+    }
+  }
+
+  /// Solo los slots disponibles (filtra los ocupados).
+  List<TimeSlotModel> get _availableSlots =>
+      _slots.where((s) => s.isAvailable && s.statusLevel != 'none').toList();
+
+  /// Navega directamente al resumen al seleccionar una hora.
+  void _onSlotSelected(TimeSlotModel slot) {
+    if (_medicoAsignado != null) {
+      widget.tabShell.bookingState.doctor = _medicoAsignado!.toDoctorModel();
+      widget.tabShell.bookingState.idagenda = _medicoAsignado!.idagenda;
+      widget.tabShell.bookingState.idcontrol = _medicoAsignado!.idcontrol;
+      widget.tabShell.bookingState.idcon = _medicoAsignado!.idcon;
+    }
+    widget.tabShell.bookingState.selectedTime = slot.time;
+    widget.tabShell.bookingState.idhora = slot.idhora;
+    widget.tabShell.bookingState.slotNumber = slot.numero;
+    Navigator.push(
+      context,
+      AppPageRoute(
+        builder: (_) => SummaryScreen(tabShell: widget.tabShell),
+      ),
+    );
+  }
+
   /// Fecha para mostrar en la UI (la que se cargó con éxito).
   String get _fechaReserva {
     // Si _medicoAsignado tiene fecha, usar esa
@@ -175,21 +235,36 @@ class _ScheduleScreenState extends State<ScheduleScreen>
         ),
       ),
       child: SafeArea(
-        child: AnimatedSwitcher(
-          duration: const Duration(milliseconds: 300),
-          child: _isLoading
-              ? const AppStateWidget.loading()
-              : _errorMessage != null
-                  ? AppStateWidget.error(
-                      key: const ValueKey('error'),
-                      title: _errorTitle ?? 'No se pudo cargar la agenda',
-                      message: _errorMessage!,
-                      onRetry: _fetchData,
-                      icon: (_errorTitle?.contains('médico') ?? false)
-                          ? CupertinoIcons.person_badge_minus
-                          : null,
-                    )
-                  : _buildContent(context, isDark, breadcrumbs),
+        child: Column(
+          children: [
+            const BookingStepper(currentStep: 2),
+            Expanded(
+              child: AnimatedSwitcher(
+                duration: const Duration(milliseconds: 300),
+                child: _isLoading
+                    ? ListView(
+                        key: const ValueKey('skeleton'),
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        children: [
+                          BreadcrumbChips(labels: breadcrumbs),
+                          const SizedBox(height: 16),
+                          const SkeletonSchedule(),
+                        ],
+                      )
+                    : _errorMessage != null
+                        ? AppStateWidget.error(
+                            key: const ValueKey('error'),
+                            title: _errorTitle ?? 'No se pudo cargar la agenda',
+                            message: _errorMessage!,
+                            onRetry: _fetchData,
+                            icon: (_errorTitle?.contains('médico') ?? false)
+                                ? CupertinoIcons.person_badge_minus
+                                : null,
+                          )
+                        : _buildContent(context, isDark, breadcrumbs),
+              ),
+            ),
+          ],
         ),
       ),
     );
@@ -246,7 +321,7 @@ class _ScheduleScreenState extends State<ScheduleScreen>
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: Text(
-                      '${_medicoAsignado!.fichasDisponibles} fichas disponibles',
+                      '${_availableSlots.length} fichas disponibles',
                       style: TextStyle(
                         fontSize: 12,
                         fontWeight: FontWeight.w700,
@@ -260,7 +335,7 @@ class _ScheduleScreenState extends State<ScheduleScreen>
           ),
         ),
         const SizedBox(height: 14),
-        if (_slots.isEmpty)
+        if (_availableSlots.isEmpty)
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 40),
             child: Center(
@@ -306,72 +381,30 @@ class _ScheduleScreenState extends State<ScheduleScreen>
           )
         else
           _buildTimeGrid(context, isDark),
-        const SizedBox(height: 32),
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 40),
-          child: FadeSlideIn(
-            delay: const Duration(milliseconds: 600),
-            child: SizedBox(
-            width: double.infinity,
-            child: Container(
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(AppTheme.radiusLg),
-                border: Border.all(
-                  color: isDark ? AppColors.darkBorder : const Color(0xFF191C1E).withValues(alpha: 0.15),
-                  width: 0.8,
-                ),
-              ),
-              child: CupertinoButton.filled(
-                borderRadius: BorderRadius.circular(AppTheme.radiusLg),
-                onPressed: _selectedTime == null
-                    ? null
-                    : () {
-                        if (_medicoAsignado != null) {
-                          widget.tabShell.bookingState.doctor =
-                              _medicoAsignado!.toDoctorModel();
-                          widget.tabShell.bookingState.idagenda =
-                              _medicoAsignado!.idagenda;
-                          widget.tabShell.bookingState.idcontrol =
-                              _medicoAsignado!.idcontrol;
-                          widget.tabShell.bookingState.idcon =
-                              _medicoAsignado!.idcon;
-                        }
-                        widget.tabShell.bookingState.selectedTime =
-                            _selectedTime;
-                        widget.tabShell.bookingState.idhora =
-                            _selectedIdhora;
-                        widget.tabShell.bookingState.slotNumber =
-                            _selectedSlotNumber;
-                        Navigator.push(
-                          context,
-                          AppPageRoute(
-                            builder: (_) => SummaryScreen(
-                                tabShell: widget.tabShell),
-                          ),
-                        );
-                      },
-                child: const Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Text(
-                      'Continuar',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w700,
-                      ),
+        const SizedBox(height: 12),
+        // Hint de selección
+        if (_availableSlots.isNotEmpty)
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 40),
+            child: FadeSlideIn(
+              delay: const Duration(milliseconds: 600),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(CupertinoIcons.hand_draw, size: 16, color: AppColors.textSecondaryC(isDark)),
+                  const SizedBox(width: 8),
+                  Text(
+                    'Toque una hora disponible para reservar',
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w500,
+                      color: AppColors.textSecondaryC(isDark),
                     ),
-                    SizedBox(width: 8),
-                    Icon(
-                      CupertinoIcons.arrow_right,
-                      size: 16,
-                    ),
-                  ],
-                ),
+                  ),
+                ],
               ),
             ),
           ),
-          ),
-        ),
         const SizedBox(height: 32),
       ],
     );
@@ -465,6 +498,27 @@ class _ScheduleScreenState extends State<ScheduleScreen>
     final doctor = _medicoAsignado!;
     final initial = doctor.medico.isNotEmpty ? doctor.medico[0] : '?';
 
+    Widget doctorAvatar;
+    if (doctor.foto.isNotEmpty) {
+      try {
+        final photoBytes = base64Decode(doctor.foto);
+        doctorAvatar = ClipRRect(
+          borderRadius: BorderRadius.circular(14),
+          child: Image.memory(
+            photoBytes,
+            width: 52,
+            height: 52,
+            fit: BoxFit.cover,
+            errorBuilder: (_, __, ___) => _doctorInitial(initial, isDark),
+          ),
+        );
+      } catch (_) {
+        doctorAvatar = _doctorInitial(initial, isDark);
+      }
+    } else {
+      doctorAvatar = _doctorInitial(initial, isDark);
+    }
+
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 20),
       padding: const EdgeInsets.all(18),
@@ -484,14 +538,7 @@ class _ScheduleScreenState extends State<ScheduleScreen>
               borderRadius: BorderRadius.circular(14),
             ),
             alignment: Alignment.center,
-            child: Text(
-              initial,
-              style: TextStyle(
-                color: AppColors.accentForTheme(isDark),
-                fontWeight: FontWeight.w700,
-                fontSize: 22,
-              ),
-            ),
+            child: doctorAvatar,
           ),
           const SizedBox(width: 14),
           Expanded(
@@ -535,17 +582,31 @@ class _ScheduleScreenState extends State<ScheduleScreen>
     );
   }
 
+  Widget _doctorInitial(String initial, bool isDark) {
+    return Center(
+      child: Text(
+        initial,
+        style: TextStyle(
+          color: AppColors.accentForTheme(isDark),
+          fontWeight: FontWeight.w700,
+          fontSize: 22,
+        ),
+      ),
+    );
+  }
+
   Widget _buildTimeGrid(BuildContext context, bool isDark) {
+    final available = _availableSlots;
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20),
       child: Wrap(
         spacing: 10,
         runSpacing: 10,
-        children: List.generate(_slots.length, (i) {
+        children: List.generate(available.length, (i) {
           return FadeSlideIn(
             delay: Duration(milliseconds: 400 + (i * 50)),
             offsetY: 10,
-            child: _timeChip(context, _slots[i], isDark),
+            child: _timeChip(context, available[i], isDark),
           );
         }),
       ),
@@ -553,69 +614,60 @@ class _ScheduleScreenState extends State<ScheduleScreen>
   }
 
   Widget _timeChip(BuildContext context, TimeSlotModel slot, bool isDark) {
-    final isSelected = _selectedTime == slot.time;
-    final isDisabled = !slot.isAvailable || slot.statusLevel == 'none';
-
-    Color bgColor;
-    Color textColor;
-    Color borderColor;
-
-    if (isDisabled) {
-      // Ocupadas en rojo claro y visible
-      bgColor = isDark ? AppColors.slotUnavailableBgDark : AppColors.slotUnavailableBg;
-      textColor = isDark ? AppColors.slotUnavailableTextDark : AppColors.slotUnavailableText;
-      borderColor = isDark ? AppColors.slotUnavailableBorderDark : AppColors.slotUnavailableBorder;
-    } else if (isSelected) {
-      // Seleccionada en verde sólido
-      bgColor = AppColors.success;
-      textColor = AppColors.white;
-      borderColor = AppColors.success;
-    } else {
-      // Disponible (no seleccionada) en verde claro
-      bgColor = isDark ? AppColors.success.withValues(alpha: 0.15) : AppColors.successLight;
-      textColor = isDark ? AppColors.successLight : AppColors.success;
-      borderColor = isDark ? AppColors.success.withValues(alpha: 0.3) : const Color(0xFFBBF7D0);
-    }
+    // Solo slots disponibles llegan aquí
+    final Color bgColor = isDark ? const Color(0xFF064E3B) : const Color(0xFF86EFAC);
+    final Color textColor = isDark ? const Color(0xFF6EE7B7) : const Color(0xFF14532D);
+    final Color borderColor = isDark ? const Color(0xFF059669) : const Color(0xFF16A34A);
 
     return GestureDetector(
-      onTap: isDisabled
-          ? null
-          : () {
-              setState(() {
-                _selectedTime = isSelected ? null : slot.time;
-                _selectedIdhora = isSelected ? null : slot.idhora;
-                _selectedSlotNumber = isSelected ? null : slot.numero;
-              });
-            },
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        width: 100,
-        padding: const EdgeInsets.symmetric(vertical: 16),
+      onTap: () => _onSlotSelected(slot),
+      child: Container(
+        width: 108,
+        padding: const EdgeInsets.symmetric(vertical: 12),
         decoration: BoxDecoration(
           color: bgColor,
           borderRadius: BorderRadius.circular(AppTheme.radiusMd),
-          border: Border.all(color: borderColor, width: isSelected ? 2 : 1),
-          boxShadow: isSelected
-              ? [
-                  BoxShadow(
-                    color: AppColors.success.withValues(alpha: 0.25),
-                    blurRadius: 10,
-                    offset: const Offset(0, 4),
-                  ),
-                ]
-              : null,
-        ),
-        child: Center(
-          child: Text(
-            slot.time,
-            style: TextStyle(
-              fontSize: 14,
-              fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
-              color: textColor,
-              decoration: isDisabled ? TextDecoration.lineThrough : null,
-              decorationColor: textColor,
+          border: Border.all(color: borderColor, width: 2),
+          boxShadow: [
+            BoxShadow(
+              color: AppColors.success.withValues(alpha: isDark ? 0.18 : 0.30),
+              blurRadius: 10,
+              spreadRadius: isDark ? 0 : 1,
+              offset: const Offset(0, 3),
             ),
-          ),
+          ],
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              slot.timeFormatted,
+              style: TextStyle(
+                fontSize: 17,
+                fontWeight: FontWeight.w800,
+                color: textColor,
+              ),
+            ),
+            const SizedBox(height: 4),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+              decoration: BoxDecoration(
+                color: isDark
+                    ? const Color(0xFF059669).withValues(alpha: 0.3)
+                    : const Color(0xFF065F46).withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(6),
+              ),
+              child: Text(
+                'Disponible',
+                style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w800,
+                  color: isDark ? const Color(0xFF6EE7B7) : const Color(0xFF059669),
+                  letterSpacing: 0.3,
+                ),
+              ),
+            ),
+          ],
         ),
       ),
     );

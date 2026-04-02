@@ -45,7 +45,7 @@ class UserSession {
 
   /// Obtiene la edad aplicable para el filtro (titular o beneficiario).
   static int ageFor(BeneficiaryModel? beneficiary) {
-    if (beneficiary == null || beneficiary.relationship == 'Titular') {
+    if (beneficiary == null || beneficiary.isTitular) {
       return currentUser.age;
     }
     // Si es beneficiario y no tiene edad, no deberíamos usar la del titular.
@@ -55,7 +55,7 @@ class UserSession {
 
   /// Obtiene el género aplicable para el filtro.
   static String genderFor(BeneficiaryModel? beneficiary) {
-    if (beneficiary == null || beneficiary.relationship == 'Titular') {
+    if (beneficiary == null || beneficiary.isTitular) {
       return currentUser.gender;
     }
     

@@ -12,6 +12,8 @@ import '../../../core/widgets/section_header.dart';
 import '../../../core/animations/optimized_animations.dart';
 import '../../../core/animations/app_page_route.dart';
 import '../../../core/widgets/app_state_widget.dart';
+import '../../../core/widgets/skeleton_loading.dart';
+import '../../../core/widgets/booking_stepper.dart';
 import '../../../shell/tab_shell.dart';
 import 'schedule_screen.dart';
 
@@ -131,12 +133,23 @@ class _SpecialtyScreenState extends State<SpecialtyScreen> {
         ),
       ),
       child: SafeArea(
-        child: AnimatedSwitcher(
-          duration: const Duration(milliseconds: 300),
-          child: _isLoading
-              ? const AppStateWidget.loading()
-              : _errorMessage != null
-                  ? AppStateWidget.error(
+        child: Column(
+          children: [
+            const BookingStepper(currentStep: 1),
+            Expanded(
+              child: AnimatedSwitcher(
+                duration: const Duration(milliseconds: 300),
+                child: _isLoading
+                    ? ListView(
+                        key: const ValueKey('skeleton'),
+                        padding: const EdgeInsets.symmetric(vertical: 20),
+                        children: const [
+                          SizedBox(height: 16),
+                          SkeletonSpecialtyList(count: 6),
+                        ],
+                      )
+                    : _errorMessage != null
+                        ? AppStateWidget.error(
                       key: const ValueKey('error'),
                       title: _isAuthError(_errorMessage!)
                           ? 'Sesión expirada'
@@ -196,6 +209,9 @@ class _SpecialtyScreenState extends State<SpecialtyScreen> {
                             ],
                           ),
                         ),
+              ),
+            ),
+          ],
         ),
       ),
     );

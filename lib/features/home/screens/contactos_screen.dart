@@ -355,15 +355,17 @@ class _EmergencyCard extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(height: 4),
-                    Text(
-                      contact.title,
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.w700,
-                        color: AppColors.white.withValues(alpha: 0.9),
+                    FittedBox(
+                      fit: BoxFit.scaleDown,
+                      alignment: Alignment.centerLeft,
+                      child: Text(
+                        contact.title,
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.white.withValues(alpha: 0.9),
+                        ),
                       ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
                     ),
                   ],
                 ),
@@ -374,13 +376,16 @@ class _EmergencyCard extends StatelessWidget {
 
           // Phone number — BIG
           Center(
-            child: Text(
-              contact.phone,
-              style: const TextStyle(
-                fontSize: 60,
-                fontWeight: FontWeight.w900,
-                color: AppColors.white,
-                letterSpacing: 4,
+            child: FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Text(
+                contact.phone,
+                style: const TextStyle(
+                  fontSize: 60,
+                  fontWeight: FontWeight.w900,
+                  color: AppColors.white,
+                  letterSpacing: 4,
+                ),
               ),
             ),
           ),
@@ -494,36 +499,46 @@ class _ContactCard extends StatelessWidget {
                       ),
                     ),
                   ),
-                Text(
-                  contact.title,
-                  style: TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.w800,
-                    color: AppColors.textPrimaryC(isDark),
-                    letterSpacing: -0.5,
+                FittedBox(
+                  fit: BoxFit.scaleDown,
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    contact.title,
+                    style: TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.w800,
+                      color: AppColors.textPrimaryC(isDark),
+                      letterSpacing: -0.5,
+                    ),
                   ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
                 ),
                 const SizedBox(height: 4),
-                Text(
-                  contact.phone,
-                  style: TextStyle(
-                    fontSize: 26,
-                    fontWeight: FontWeight.w900,
-                    color: accentColor,
-                    letterSpacing: 1.0,
+                FittedBox(
+                  fit: BoxFit.scaleDown,
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    contact.phone,
+                    style: TextStyle(
+                      fontSize: 26,
+                      fontWeight: FontWeight.w900,
+                      color: accentColor,
+                      letterSpacing: 1.0,
+                    ),
                   ),
                 ),
                 if (contact.subtitle != null) ...[
                   const SizedBox(height: 4),
-                  Text(
-                    contact.subtitle!,
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                      color: AppColors.textSecondaryC(isDark),
-                      height: 1.3,
+                  FittedBox(
+                    fit: BoxFit.scaleDown,
+                    alignment: Alignment.centerLeft,
+                    child: Text(
+                      contact.subtitle!,
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.textSecondaryC(isDark),
+                        height: 1.3,
+                      ),
                     ),
                   ),
                 ],

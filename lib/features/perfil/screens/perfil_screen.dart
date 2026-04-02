@@ -3,7 +3,6 @@ import 'dart:typed_data';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import '../../../core/constants/app_colors.dart';
-import '../../../core/theme/app_theme.dart';
 import '../../../core/theme/app_constants.dart';
 import '../../../core/session/user_session.dart';
 import '../../../core/models/user_model.dart';
@@ -520,61 +519,6 @@ class _PerfilScreenState extends State<PerfilScreen> {
     );
   }
 
-  Widget _infoCard(bool isDark, String label, String value, IconData icon, Color color) {
-    return Container(
-      clipBehavior: Clip.antiAlias,
-      decoration: BoxDecoration(
-        color: isDark ? AppColors.darkCard : AppColors.white,
-        borderRadius: BorderRadius.circular(AppTheme.radiusXl),
-        border: Border.all(
-          color: AppColors.cardBorder(isDark).withValues(alpha: 0.5),
-          width: 0.5,
-        ),
-        boxShadow: isDark ? AppColors.cardShadowFor(isDark) : AppColors.softShadow,
-      ),
-      child: Row(
-        children: [
-          // Left accent bar
-          Container(
-            width: 3,
-            height: 100,
-            color: color,
-          ),
-          Expanded(
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(17, 20, 20, 20),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Icon(icon, size: 32, color: color),
-                  const SizedBox(height: 14),
-                  Text(
-                    label,
-                    style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w700,
-                      letterSpacing: 1.0,
-                      color: AppColors.textSecondaryC(isDark),
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    value,
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w800,
-                      color: AppColors.textPrimaryC(isDark),
-                      height: 1.1,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
 
   Widget _miniChip({required bool isDark, required String label, required bool active}) {
     return Container(
@@ -603,130 +547,115 @@ class _PerfilScreenState extends State<PerfilScreen> {
   }
 
   Widget _buildPremiumAvatar(UserModel user, bool isDark) {
-    return Stack(
-      alignment: Alignment.bottomRight,
-      children: [
-        Container(
-          width: 120,
-          height: 120,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            color: AppColors.cardBg(isDark),
-            border: Border.all(
-              color: AppColors.accentForTheme(isDark).withValues(alpha: 0.3),
-              width: 4,
-            ),
-            boxShadow: [
-              BoxShadow(
-                color: AppColors.accentForTheme(isDark).withValues(alpha: 0.15),
-                blurRadius: 20,
-                spreadRadius: 2,
-                offset: const Offset(0, 8),
-              ),
-            ],
-          ),
-          child: Padding(
-            padding: const EdgeInsets.all(4),
-            child: ClipOval(
-              child: _cachedUserPhoto != null
-                  ? Image.memory(
-                      _cachedUserPhoto!,
-                      fit: BoxFit.cover,
-                      errorBuilder: (_, __, ___) => _fallbackAvatar(user),
-                    )
-                  : _fallbackAvatar(user),
-            ),
-          ),
+    return Container(
+      width: 120,
+      height: 120,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        color: AppColors.cardBg(isDark),
+        border: Border.all(
+          color: AppColors.accentForTheme(isDark).withValues(alpha: 0.3),
+          width: 4,
         ),
-        // Active Status Indicator
-        Container(
-          width: 28,
-          height: 28,
-          decoration: BoxDecoration(
-            color: const Color(0xFF10B981),
-            shape: BoxShape.circle,
-            border: Border.all(color: AppColors.cardBg(isDark), width: 4),
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.accentForTheme(isDark).withValues(alpha: 0.15),
+            blurRadius: 20,
+            spreadRadius: 2,
+            offset: const Offset(0, 8),
           ),
+        ],
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(4),
+        child: ClipOval(
+          child: _cachedUserPhoto != null
+              ? Image.memory(
+                  _cachedUserPhoto!,
+                  fit: BoxFit.cover,
+                  errorBuilder: (_, __, ___) => _fallbackAvatar(user),
+                )
+              : _fallbackAvatar(user),
         ),
-      ],
+      ),
     );
   }
 
   Widget _buildInfoGrid(UserModel user, bool isDark) {
-    return Column(
-      children: [
-        Row(
-          children: [
-            Expanded(
-              child: _infoCard(
-                isDark,
-                'ESTADO',
-                user.isEnabled ? 'Habilitado' : 'Inactivo',
-                CupertinoIcons.checkmark_shield_fill,
-                const Color(0xFF10B981),
+    final items = <_InfoRow>[
+      _InfoRow(CupertinoIcons.checkmark_shield_fill, const Color(0xFF10B981), 'Estado', user.isEnabled ? 'Habilitado' : 'Inactivo'),
+      _InfoRow(CupertinoIcons.heart_fill, const Color(0xFF3B82F6), 'Ficha Médica', user.hasMedicalAppointment ? 'Activa' : 'Ninguna'),
+      _InfoRow(CupertinoIcons.drop_fill, const Color(0xFFEF4444), 'Tipo de Sangre', user.bloodType),
+      _InfoRow(CupertinoIcons.gift_fill, const Color(0xFFF59E0B), 'Edad', '${user.age} años'),
+      _InfoRow(CupertinoIcons.person_crop_rectangle, isDark ? AppColors.darkTextPrimary : const Color(0xFF8B5CF6), 'Documento CI', user.ci.isNotEmpty ? user.ci : 'Sin registro'),
+      _InfoRow(CupertinoIcons.calendar, const Color(0xFFE91E63), 'Fecha Nac.', user.birthDate.isNotEmpty ? user.birthDate.split(' ')[0] : 'Sin registro'),
+    ];
+
+    return Container(
+      decoration: BoxDecoration(
+        color: AppColors.cardBg(isDark),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: AppColors.cardBorder(isDark),
+          width: 0.5,
+        ),
+      ),
+      child: Column(
+        children: [
+          for (int i = 0; i < items.length; i++) ...[
+            if (i > 0)
+              Divider(
+                height: 0.5,
+                thickness: 0.5,
+                indent: 52,
+                color: AppColors.cardBorder(isDark),
               ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: _infoCard(
-                isDark,
-                'FICHA MED.',
-                user.hasMedicalAppointment ? 'Activa' : 'Ninguna',
-                CupertinoIcons.heart_fill,
-                const Color(0xFF3B82F6),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
+              child: Row(
+                children: [
+                  Container(
+                    width: 30,
+                    height: 30,
+                    decoration: BoxDecoration(
+                      color: items[i].color.withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(7),
+                    ),
+                    child: Icon(items[i].icon, size: 16, color: items[i].color),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      items[i].label,
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w500,
+                        color: AppColors.textSecondaryC(isDark),
+                      ),
+                    ),
+                  ),
+                  Text(
+                    items[i].value,
+                    style: TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.textPrimaryC(isDark),
+                    ),
+                  ),
+                ],
               ),
             ),
           ],
-        ),
-        const SizedBox(height: 12),
-        Row(
-          children: [
-            Expanded(
-              child: _infoCard(
-                isDark,
-                'SANGRE',
-                user.bloodType,
-                CupertinoIcons.drop_fill,
-                const Color(0xFFEF4444),
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: _infoCard(
-                isDark,
-                'EDAD',
-                '${user.age} años',
-                CupertinoIcons.gift_fill,
-                const Color(0xFFF59E0B),
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 12),
-        Row(
-          children: [
-            Expanded(
-              child: _infoCard(
-                isDark,
-                'DOCUMENTO CI',
-                user.ci.isNotEmpty ? user.ci : 'Sin registro',
-                CupertinoIcons.person_crop_rectangle,
-                isDark ? AppColors.darkTextPrimary : const Color(0xFF8B5CF6),
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: _infoCard(
-                isDark,
-                'FECHA NAC.',
-                user.birthDate.isNotEmpty ? user.birthDate.split(' ')[0] : 'Sin registro',
-                CupertinoIcons.calendar,
-                const Color(0xFFE91E63),
-              ),
-            ),
-          ],
-        ),
-      ],
+        ],
+      ),
     );
   }
+}
+
+class _InfoRow {
+  final IconData icon;
+  final Color color;
+  final String label;
+  final String value;
+  const _InfoRow(this.icon, this.color, this.label, this.value);
 }

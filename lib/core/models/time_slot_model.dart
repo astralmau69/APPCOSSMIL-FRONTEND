@@ -13,6 +13,25 @@ class TimeSlotModel {
     this.numero,
   });
 
+  /// Convierte hora 24h "8:00" → "8:00 AM", "14:30" → "2:30 PM"
+  String get timeFormatted {
+    try {
+      final parts = time.split(':');
+      if (parts.length < 2) return time;
+      int hour = int.parse(parts[0]);
+      final min = parts[1];
+      final period = hour >= 12 ? 'PM' : 'AM';
+      if (hour == 0) {
+        hour = 12;
+      } else if (hour > 12) {
+        hour -= 12;
+      }
+      return '$hour:$min $period';
+    } catch (_) {
+      return time;
+    }
+  }
+
   factory TimeSlotModel.fromJson(Map<String, dynamic> json) {
     return TimeSlotModel(
       time: json['hora'] as String? ?? json['time'] as String? ?? '',

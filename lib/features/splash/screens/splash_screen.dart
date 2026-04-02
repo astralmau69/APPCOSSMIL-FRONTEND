@@ -6,6 +6,8 @@ import '../../../core/theme/app_constants.dart';
 import '../../../core/storage/token_storage.dart';
 import '../../../core/services/security_service.dart';
 import '../../../core/services/session_restore_service.dart';
+import '../../../core/services/location_service.dart';
+import '../../../core/services/notification_service.dart';
 import '../../../core/animations/animated_gradient_background.dart';
 
 class SplashScreen extends StatefulWidget {
@@ -141,8 +143,11 @@ class _SplashScreenState extends State<SplashScreen>
     if (!widget.isOverlay && mounted) {
       try {
         _audioPlayer = AudioPlayer();
-        await _audioPlayer!.play(AssetSource('vof/primer-vof.mp3'));
+        await _audioPlayer!.play(AssetSource('vof/AUDIO 1. BIENVENIDA.mp3'));
       } catch (_) {}
+
+      // Solicitar permisos de ubicación y notificaciones durante el splash
+      _requestPermissions();
     }
 
     if (!mounted) return;
@@ -162,11 +167,21 @@ class _SplashScreenState extends State<SplashScreen>
     if (!mounted) return;
     _footerCtrl.forward();
 
-    // Duration
-    await Future.delayed(Duration(milliseconds: widget.isOverlay ? 2000 : 4000));
+    // Duration — 8 seg total para el audio de bienvenida
+    await Future.delayed(Duration(milliseconds: widget.isOverlay ? 2000 : 6300));
 
     if (!mounted) return;
     _navigate();
+  }
+
+  /// Solicita permisos de ubicación y notificaciones en paralelo.
+  Future<void> _requestPermissions() async {
+    try {
+      await Future.wait([
+        LocationService().requestPermission(),
+        NotificationService.initialize(),
+      ]);
+    } catch (_) {}
   }
 
   Future<void> _navigate() async {
@@ -194,7 +209,11 @@ class _SplashScreenState extends State<SplashScreen>
           if (hasPin) {
             Navigator.pushReplacementNamed(context, '/local-auth');
           } else {
-            Navigator.pushReplacementNamed(context, '/home');
+            // Sin PIN/biométrico → no mantener sesión, forzar re-login
+            await TokenStorage.deleteToken();
+            await SessionRestoreService.clearUserSession();
+            if (!mounted) return;
+            Navigator.pushReplacementNamed(context, '/login');
           }
         } else {
           Navigator.pushReplacementNamed(context, '/login');
@@ -400,13 +419,35 @@ class _SplashScreenState extends State<SplashScreen>
           ),
           const SizedBox(height: 16),
           Text(
-            'DNTIC @ 2026',
+            'Dirección Nacional de Sistemas',
             style: AppTypography.labelSmall.copyWith(
               fontWeight: FontWeight.w600,
               color: isDark
                   ? AppColors.white.withValues(alpha: 0.3)
                   : AppColors.textTertiary.withValues(alpha: 0.5),
-              letterSpacing: 3.0,
+              letterSpacing: 1.5,
+            ),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            'COSSMIL',
+            style: AppTypography.labelSmall.copyWith(
+              fontWeight: FontWeight.w700,
+              color: isDark
+                  ? AppColors.white.withValues(alpha: 0.35)
+                  : AppColors.textTertiary.withValues(alpha: 0.55),
+              letterSpacing: 2.0,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            '2026',
+            style: AppTypography.caption.copyWith(
+              fontWeight: FontWeight.w500,
+              color: isDark
+                  ? AppColors.white.withValues(alpha: 0.2)
+                  : AppColors.textTertiary.withValues(alpha: 0.4),
+              letterSpacing: 2.0,
             ),
           ),
         ],
