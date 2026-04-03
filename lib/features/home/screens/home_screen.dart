@@ -54,8 +54,7 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget build(BuildContext context) {
     final user = UserSession.currentUser;
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final responsive = ResponsiveData.of(context);
-    final horizontalPadding = responsive.isSmallPhone ? 12.0 : (responsive.isPhone ? 14.0 : 20.0);
+    final r = context.r;
 
     return CupertinoPageScaffold(
       backgroundColor: AppColors.scaffoldBg(isDark),
@@ -71,12 +70,12 @@ class _HomeScreenState extends State<HomeScreen> {
             onRefresh: _loadNews,
           ),
           SliverPadding(
-            padding: EdgeInsets.symmetric(horizontal: horizontalPadding),
+            padding: r.screenPadding,
             sliver: SliverToBoxAdapter(
               child: Center(
                 child: ConstrainedBox(
                   constraints: BoxConstraints(
-                    maxWidth: responsive.isTablet ? 700 : double.infinity,
+                    maxWidth: r.maxContentWidth,
                   ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -85,7 +84,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         duration: AppDurations.normal,
                         delay: const Duration(milliseconds: 0),
                         offsetY: 10,
-                        child: _buildProfileCard(user, responsive),
+                        child: _buildProfileCard(user),
                       ),
                       const SizedBox(height: 24),
                       // ── Acciones principales (prominentes) ──
@@ -93,7 +92,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         duration: AppDurations.normal,
                         delay: const Duration(milliseconds: 50),
                         offsetY: 10,
-                        child: _buildQuickActions(responsive),
+                        child: _buildQuickActions(),
                       ),
                       const SizedBox(height: 28),
                       // ── COSSMIL Te Informa (secundario, compacto) ──
@@ -110,7 +109,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         offsetY: 10,
                         child: _buildCompactNewsList(),
                       ),
-                      const SizedBox(height: 120),
+                      SizedBox(height: r.navBarBottomSpace),
                     ],
                   ),
                 ),
@@ -124,14 +123,13 @@ class _HomeScreenState extends State<HomeScreen> {
 
   // ── Tarjeta de perfil ───────────────────────────────────────────────────────
 
-  Widget _buildProfileCard(UserModel user, ResponsiveData responsive) {
-    final pad = responsive.isSmallPhone ? 16.0 : 20.0;
-    final avatarRadius = responsive.isSmallPhone ? 30.0 : (responsive.isMediumPhone ? 34.0 : 38.0);
-    final nameFontSize = responsive.isSmallPhone ? 16.0 : (responsive.isMediumPhone ? 18.0 : 20.0);
-    final subFontSize = responsive.isSmallPhone ? 12.0 : 13.0;
+  Widget _buildProfileCard(UserModel user) {
+    final r = context.r;
+    final avatarRadius = r.avatarMd / 2;
+    final texts = context.texts;
 
     return Container(
-      padding: EdgeInsets.all(pad),
+      padding: EdgeInsets.all(r.cardPadding),
       decoration: BoxDecoration(
         color: AppColors.primary,
         borderRadius: BorderRadius.circular(AppSpacing.radiusXl),
@@ -172,9 +170,8 @@ class _HomeScreenState extends State<HomeScreen> {
                       alignment: Alignment.centerLeft,
                       child: Text(
                         user.fullName,
-                        style: AppTypography.headlineMedium.copyWith(
+                        style: texts.headlineMedium.copyWith(
                           color: AppColors.white,
-                          fontSize: nameFontSize,
                           height: 1.2,
                         ),
                       ),
@@ -184,10 +181,9 @@ class _HomeScreenState extends State<HomeScreen> {
                       '${user.rank} • Mat: ${user.matricula}',
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: AppTypography.bodyMedium.copyWith(
+                      style: texts.bodySmall.copyWith(
                         color: AppColors.white.withValues(alpha: 0.8),
                         fontWeight: FontWeight.w600,
-                        fontSize: subFontSize,
                       ),
                     ),
                   ],
@@ -352,7 +348,8 @@ class _HomeScreenState extends State<HomeScreen> {
 
   // ── Acciones rápidas (grandes y prominentes) ────────────────────────────────
 
-  Widget _buildQuickActions(ResponsiveData responsive) {
+  Widget _buildQuickActions() {
+    final r = context.r;
     final items = [
       _QuickAction(
         icon: CupertinoIcons.calendar_badge_plus,

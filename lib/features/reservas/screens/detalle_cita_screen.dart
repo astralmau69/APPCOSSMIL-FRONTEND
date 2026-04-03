@@ -13,6 +13,7 @@ import '../../../core/animations/optimized_animations.dart';
 import '../../../core/widgets/app_state_widget.dart';
 import '../../../core/widgets/skeleton_loading.dart';
 import '../../../core/widgets/cossmil_ios_alert.dart';
+import '../../../core/extensions/responsive_extensions.dart';
 
 class DetalleCitaScreen extends StatefulWidget {
   final ReservaModel reserva;

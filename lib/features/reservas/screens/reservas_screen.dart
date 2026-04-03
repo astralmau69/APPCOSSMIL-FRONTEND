@@ -249,9 +249,14 @@ class _ReservasScreenState extends State<ReservasScreen> {
       return _emptyState(context, isDark);
     }
 
+    final r = context.r;
+
     return CupertinoPageScaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-      child: CustomScrollView(
+      child: Center(
+        child: ConstrainedBox(
+          constraints: BoxConstraints(maxWidth: r.maxContentWidth),
+          child: CustomScrollView(
         physics: const BouncingScrollPhysics(
           parent: AlwaysScrollableScrollPhysics(),
         ),
@@ -270,17 +275,17 @@ class _ReservasScreenState extends State<ReservasScreen> {
             ),
           ),
           CupertinoSliverRefreshControl(onRefresh: () async { _fetchReservas(); }),
-          
+
           if (UserSession.currentUser.isTitular && UserSession.currentUser.beneficiaries.length > 1)
             SliverToBoxAdapter(
               child: Padding(
-                padding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
+                padding: EdgeInsets.fromLTRB(r.paddingH, r.spaceSm, r.paddingH, 0),
                 child: _buildBeneficiarySelector(isDark),
               ),
             ),
 
           SliverPadding(
-            padding: const EdgeInsets.fromLTRB(20, 16, 20, 12),
+            padding: EdgeInsets.fromLTRB(r.paddingH, r.spaceMd, r.paddingH, r.spaceSm),
             sliver: SliverList(
               delegate: SliverChildListDelegate([
                 FadeSlideIn(
@@ -302,7 +307,7 @@ class _ReservasScreenState extends State<ReservasScreen> {
           ),
 
           SliverPadding(
-            padding: const EdgeInsets.only(bottom: 120, left: 12, right: 12),
+            padding: EdgeInsets.only(bottom: r.navBarBottomSpace, left: r.paddingH - 8, right: r.paddingH - 8),
             sliver: SliverList.builder(
               itemCount: visible.length + (hasMore ? 1 : (_currentPage < _totalPages ? 1 : 0)),
               itemBuilder: (context, index) {
@@ -355,7 +360,7 @@ class _ReservasScreenState extends State<ReservasScreen> {
                     background: Container(
                       alignment: Alignment.centerRight,
                       padding: const EdgeInsets.only(right: 24),
-                      margin: EdgeInsets.symmetric(horizontal: ResponsiveData.of(context).isSmallPhone ? 8 : 12),
+                      margin: EdgeInsets.symmetric(horizontal: context.r.isSmallPhone ? 8 : 12),
                       decoration: BoxDecoration(
                         color: CupertinoColors.destructiveRed.withValues(alpha: isDark ? 0.25 : 0.12),
                         borderRadius: BorderRadius.circular(AppSpacing.radiusLg),
@@ -403,6 +408,8 @@ class _ReservasScreenState extends State<ReservasScreen> {
             ),
           ),
         ],
+      ),
+        ),
       ),
     );
   }

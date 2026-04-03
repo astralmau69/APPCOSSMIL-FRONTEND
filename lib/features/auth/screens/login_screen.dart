@@ -287,10 +287,9 @@ class _LoginScreenState extends State<LoginScreen>
 
   @override
   Widget build(BuildContext context) {
-    final responsive = ResponsiveData.of(context);
-    final padding = responsive.isSmallPhone ? 16.0 : (responsive.isPhone ? 24.0 : 32.0);
-    final logoSize = responsive.isSmallPhone ? 190.0
-        : responsive.isMediumPhone ? 220.0
+    final r = context.r;
+    final logoSize = r.isSmallPhone ? 190.0
+        : r.isMediumPhone ? 220.0
         : 250.0;
 
     final isDark = Theme.of(context).brightness == Brightness.dark;
@@ -304,18 +303,18 @@ class _LoginScreenState extends State<LoginScreen>
           children: [
             SingleChildScrollView(
           physics: const BouncingScrollPhysics(),
-          padding: EdgeInsets.symmetric(horizontal: padding),
+          padding: r.screenPadding,
           child: ConstrainedBox(
             constraints: BoxConstraints(
-              minHeight: responsive.screenHeight - MediaQuery.of(context).padding.vertical,
+              minHeight: r.screenHeight - MediaQuery.of(context).padding.vertical,
             ),
             child: Center(
               child: ResponsiveContainer(
-                maxWidth: responsive.isTablet ? 450 : double.infinity,
+                maxWidth: r.isTablet ? 450 : double.infinity,
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    const SizedBox(height: 20),
+                    SizedBox(height: r.spaceLg),
                     // Logo — entrance animations + continuous float
                     FadeTransition(
                       opacity: _logoFade,
@@ -331,7 +330,7 @@ class _LoginScreenState extends State<LoginScreen>
                       ),
                     ),
 
-                    const SizedBox(height: 32),
+                    SizedBox(height: r.spaceXl),
 
                     // Header
                     FadeSlideIn(
@@ -340,7 +339,7 @@ class _LoginScreenState extends State<LoginScreen>
                       child: _buildHeader(isDark),
                     ),
 
-                    const SizedBox(height: 48),
+                    SizedBox(height: r.spaceXxl),
 
                     // Form
                     FadeSlideIn(
@@ -349,7 +348,7 @@ class _LoginScreenState extends State<LoginScreen>
                       child: _buildForm(isDark),
                     ),
 
-                    const SizedBox(height: 24),
+                    SizedBox(height: r.spaceLg),
 
                     // Error message
                     if (_errorMessage != null) ...[
@@ -357,7 +356,7 @@ class _LoginScreenState extends State<LoginScreen>
                         duration: AppDurations.fast,
                         child: _buildErrorBanner(),
                       ),
-                      const SizedBox(height: 16),
+                      SizedBox(height: r.spaceMd),
                     ],
 
                     // Login button
@@ -367,7 +366,7 @@ class _LoginScreenState extends State<LoginScreen>
                       child: _buildLoginButton(),
                     ),
 
-                    const SizedBox(height: 32),
+                    SizedBox(height: r.spaceXl),
 
                     // Forgot password
                     FadeSlideIn(
@@ -376,7 +375,7 @@ class _LoginScreenState extends State<LoginScreen>
                       child: _buildForgotPassword(),
                     ),
 
-                    const SizedBox(height: 48),
+                    SizedBox(height: r.spaceXxl),
 
                     // Footer
                     FadeSlideIn(
@@ -422,7 +421,7 @@ class _LoginScreenState extends State<LoginScreen>
                         ],
                       ),
                     ),
-                    const SizedBox(height: 24),
+                    SizedBox(height: r.spaceLg),
                   ],
                 ),
               ),
@@ -467,19 +466,20 @@ class _LoginScreenState extends State<LoginScreen>
   }
 
   Widget _buildHeader(bool isDark) {
+    final texts = context.texts;
     return Column(
       children: [
         Text(
           'Bienvenido',
-          style: AppTypography.displayMedium.copyWith(
+          style: texts.displayLarge.copyWith(
             fontWeight: FontWeight.w700,
             color: AppColors.textPrimaryC(isDark),
           ),
         ),
         const SizedBox(height: 8),
         Text(
-          'Ingrese sus credenciales de COSSMIL',
-          style: AppTypography.bodyMedium.copyWith(
+          'Ingrese su matrícula y el código ubicado en la parte posterior de su carnet de asegurado',
+          style: texts.bodyMedium.copyWith(
             color: AppColors.textSecondaryC(isDark),
           ),
           textAlign: TextAlign.center,
@@ -564,7 +564,7 @@ class _LoginScreenState extends State<LoginScreen>
               children: [
                 Text(
                   label,
-                  style: AppTypography.labelSmall.copyWith(
+                  style: context.texts.labelSmall.copyWith(
                     color: AppColors.textSecondary,
                     fontWeight: FontWeight.w600,
                   ),
@@ -583,7 +583,7 @@ class _LoginScreenState extends State<LoginScreen>
                     color: AppColors.textTertiaryC(isDark).withValues(alpha: 0.6),
                     fontSize: 16,
                   ),
-                  style: AppTypography.bodyLarge.copyWith(
+                  style: context.texts.bodyLarge.copyWith(
                     color: AppColors.textPrimaryC(isDark),
                     fontWeight: FontWeight.w500,
                   ),
@@ -636,7 +636,7 @@ class _LoginScreenState extends State<LoginScreen>
     final isDark = Theme.of(context).brightness == Brightness.dark;
     return SizedBox(
       width: double.infinity,
-      height: 56,
+      height: context.r.buttonHeight,
       child: OptimizedPressButton(
         onTap: _isLoading ? null : _onLoginPressed,
         scaleDown: 0.95,
@@ -662,7 +662,7 @@ class _LoginScreenState extends State<LoginScreen>
                   )
                 : Text(
                     'Iniciar Sesión',
-                    style: AppTypography.titleMedium.copyWith(
+                    style: context.texts.titleMedium.copyWith(
                       color: AppColors.white,
                       fontWeight: FontWeight.w700,
                     ),
@@ -681,7 +681,7 @@ class _LoginScreenState extends State<LoginScreen>
         onPressed: () {},
         child: Text(
           '¿Olvidó su contraseña?',
-          style: AppTypography.bodyMedium.copyWith(
+          style: context.texts.bodyMedium.copyWith(
             color: AppColors.accentForTheme(isDark),
             fontWeight: FontWeight.w600,
           ),
