@@ -3,6 +3,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/services.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/theme/app_constants.dart';
+import '../../../core/extensions/responsive_extensions.dart';
 import '../../../core/services/security_service.dart';
 import '../../../core/animations/optimized_animations.dart';
 
@@ -179,6 +180,7 @@ class _PinSetupScreenState extends State<PinSetupScreen>
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final r = context.r;
 
     return Scaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
@@ -190,7 +192,7 @@ class _PinSetupScreenState extends State<PinSetupScreen>
       body: SafeArea(
         child: Column(
           children: [
-            const SizedBox(height: 40),
+            SizedBox(height: r.spaceXl),
 
             // ── Header animado entre fases ──────────────────────
             AnimatedSwitcher(
@@ -207,10 +209,10 @@ class _PinSetupScreenState extends State<PinSetupScreen>
                   child: child,
                 ),
               ),
-              child: _buildPhaseHeader(isDark),
+              child: _buildPhaseHeader(isDark, r),
             ),
 
-            const SizedBox(height: 48),
+            SizedBox(height: r.spaceXxl),
 
             // ── Indicadores ─────────────────────────────────────
             AnimatedBuilder(
@@ -224,10 +226,10 @@ class _PinSetupScreenState extends State<PinSetupScreen>
                   child: child,
                 );
               },
-              child: _buildPinIndicators(isDark),
+              child: _buildPinIndicators(isDark, r),
             ),
 
-            const SizedBox(height: 16),
+            SizedBox(height: r.spaceMd),
 
             // ── Error ────────────────────────────────────────────
             AnimatedSwitcher(
@@ -235,7 +237,7 @@ class _PinSetupScreenState extends State<PinSetupScreen>
               child: _errorMessage != null
                   ? Padding(
                       key: ValueKey(_errorMessage),
-                      padding: const EdgeInsets.symmetric(horizontal: 40),
+                      padding: EdgeInsets.symmetric(horizontal: r.pinKeypadPadding),
                       child: Text(
                         _errorMessage!,
                         textAlign: TextAlign.center,
@@ -251,9 +253,9 @@ class _PinSetupScreenState extends State<PinSetupScreen>
             const Spacer(),
 
             // ── Teclado ──────────────────────────────────────────
-            _buildKeypad(isDark),
+            _buildKeypad(isDark, r),
 
-            const SizedBox(height: 32),
+            SizedBox(height: r.spaceLg),
           ],
         ),
       ),
@@ -268,25 +270,26 @@ class _PinSetupScreenState extends State<PinSetupScreen>
     }
   }
 
-  Widget _buildPhaseHeader(bool isDark) {
+  Widget _buildPhaseHeader(bool isDark, AppResponsive r) {
+    final iconSize = r.isSmallPhone ? 48.0 : 64.0;
     switch (_phase) {
       case _PinPhase.verifyCurrentPin:
         return Column(
           key: const ValueKey('verify'),
           children: [
-            const Icon(
+            Icon(
               CupertinoIcons.lock_shield_fill,
-              size: 64,
+              size: iconSize,
               color: AppColors.warning,
             ),
-            const SizedBox(height: 24),
+            SizedBox(height: r.spaceLg),
             Text(
               'Confirma tu PIN actual',
               style: AppTypography.titleLarge.copyWith(
                 fontWeight: FontWeight.bold,
               ),
             ),
-            const SizedBox(height: 8),
+            SizedBox(height: r.spaceSm),
             Text(
               'Ingresa tu PIN actual para continuar',
               style: AppTypography.bodyMedium.copyWith(
@@ -299,19 +302,19 @@ class _PinSetupScreenState extends State<PinSetupScreen>
         return Column(
           key: const ValueKey('create'),
           children: [
-            const Icon(
+            Icon(
               CupertinoIcons.lock_shield_fill,
-              size: 64,
+              size: iconSize,
               color: AppColors.primary,
             ),
-            const SizedBox(height: 24),
+            SizedBox(height: r.spaceLg),
             Text(
               widget.requireCurrentPin ? 'Crea tu nuevo PIN' : 'Crea tu PIN de acceso',
               style: AppTypography.titleLarge.copyWith(
                 fontWeight: FontWeight.bold,
               ),
             ),
-            const SizedBox(height: 8),
+            SizedBox(height: r.spaceSm),
             Text(
               'Ingresa 4 dígitos para proteger tu app',
               style: AppTypography.bodyMedium.copyWith(
@@ -324,19 +327,19 @@ class _PinSetupScreenState extends State<PinSetupScreen>
         return Column(
           key: const ValueKey('confirm'),
           children: [
-            const Icon(
+            Icon(
               CupertinoIcons.checkmark_shield_fill,
-              size: 64,
+              size: iconSize,
               color: AppColors.success,
             ),
-            const SizedBox(height: 24),
+            SizedBox(height: r.spaceLg),
             Text(
               'Confirma tu nuevo PIN',
               style: AppTypography.titleLarge.copyWith(
                 fontWeight: FontWeight.bold,
               ),
             ),
-            const SizedBox(height: 8),
+            SizedBox(height: r.spaceSm),
             Text(
               'Repite los 4 dígitos para confirmar',
               style: AppTypography.bodyMedium.copyWith(
@@ -361,17 +364,19 @@ class _PinSetupScreenState extends State<PinSetupScreen>
     }
   }
 
-  Widget _buildPinIndicators(bool isDark) {
+  Widget _buildPinIndicators(bool isDark, AppResponsive r) {
     final currentLength = _activeInput.length;
+    final dotSize = r.isSmallPhone ? 14.0 : 16.0;
+    final dotMargin = r.isSmallPhone ? 8.0 : 12.0;
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
       children: List.generate(4, (index) {
         final isActive = index < currentLength;
         return AnimatedContainer(
           duration: const Duration(milliseconds: 200),
-          margin: const EdgeInsets.symmetric(horizontal: 12),
-          width: 16,
-          height: 16,
+          margin: EdgeInsets.symmetric(horizontal: dotMargin),
+          width: dotSize,
+          height: dotSize,
           decoration: BoxDecoration(
             shape: BoxShape.circle,
             color: isActive
@@ -383,23 +388,25 @@ class _PinSetupScreenState extends State<PinSetupScreen>
     );
   }
 
-  Widget _buildKeypad(bool isDark) {
+  Widget _buildKeypad(bool isDark, AppResponsive r) {
+    final keySize = r.pinKeySize;
+    final keyGap = r.isSmallPhone ? 10.0 : 16.0;
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 40),
+      padding: EdgeInsets.symmetric(horizontal: r.pinKeypadPadding),
       child: Column(
         children: [
-          _buildRow([1, 2, 3], isDark),
-          const SizedBox(height: 16),
-          _buildRow([4, 5, 6], isDark),
-          const SizedBox(height: 16),
-          _buildRow([7, 8, 9], isDark),
-          const SizedBox(height: 16),
+          _buildRow([1, 2, 3], isDark, r),
+          SizedBox(height: keyGap),
+          _buildRow([4, 5, 6], isDark, r),
+          SizedBox(height: keyGap),
+          _buildRow([7, 8, 9], isDark, r),
+          SizedBox(height: keyGap),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const SizedBox(width: 82),
-              _buildKey(0, isDark),
-              _buildDeleteKey(isDark),
+              SizedBox(width: keySize),
+              _buildKey(0, isDark, r),
+              _buildDeleteKey(isDark, r),
             ],
           ),
         ],
@@ -407,12 +414,14 @@ class _PinSetupScreenState extends State<PinSetupScreen>
     );
   }
 
-  Row _buildRow(List<int> nums, bool isDark) => Row(
+  Row _buildRow(List<int> nums, bool isDark, AppResponsive r) => Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: nums.map((n) => _buildKey(n, isDark)).toList(),
+        children: nums.map((n) => _buildKey(n, isDark, r)).toList(),
       );
 
-  Widget _buildKey(int number, bool isDark) {
+  Widget _buildKey(int number, bool isDark, AppResponsive r) {
+    final keySize = r.pinKeySize;
+    final fontSize = r.isSmallPhone ? 24.0 : 32.0;
     final bgColor = isDark 
         ? AppColors.darkSurface.withValues(alpha: 0.8) 
         : Colors.white.withValues(alpha: 0.9);
@@ -424,8 +433,8 @@ class _PinSetupScreenState extends State<PinSetupScreen>
       onTap: _saving ? null : () => _onNumberPressed(number),
       scaleDown: 0.9,
       child: Container(
-        width: 82,
-        height: 82,
+        width: keySize,
+        height: keySize,
         decoration: BoxDecoration(
           shape: BoxShape.circle,
           color: _saving ? bgColor.withValues(alpha: 0.3) : bgColor,
@@ -442,7 +451,7 @@ class _PinSetupScreenState extends State<PinSetupScreen>
           child: Text(
             number.toString(),
             style: AppTypography.displayMedium.copyWith(
-              fontSize: 32,
+              fontSize: fontSize,
               fontWeight: FontWeight.w600,
               color: AppColors.textPrimaryC(isDark),
             ),
@@ -452,16 +461,17 @@ class _PinSetupScreenState extends State<PinSetupScreen>
     );
   }
 
-  Widget _buildDeleteKey(bool isDark) {
+  Widget _buildDeleteKey(bool isDark, AppResponsive r) {
+    final keySize = r.pinKeySize;
     return OptimizedPressButton(
       onTap: _saving ? null : _onDeletePressed,
       child: Container(
-        width: 82,
-        height: 82,
+        width: keySize,
+        height: keySize,
         decoration: const BoxDecoration(shape: BoxShape.circle),
         child: Icon(
           CupertinoIcons.delete_left,
-          size: 30,
+          size: keySize * 0.36,
           color: AppColors.textSecondaryC(isDark),
         ),
       ),

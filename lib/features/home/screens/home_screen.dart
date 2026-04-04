@@ -257,12 +257,13 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _fallbackAvatar(UserModel user) {
+    final r = context.r;
     return Text(
       user.fullName.isNotEmpty ? user.fullName[0] : 'U',
-      style: const TextStyle(
+      style: TextStyle(
         color: AppColors.white,
         fontWeight: FontWeight.w800,
-        fontSize: 28,
+        fontSize: r.avatarMd * 0.5,
       ),
     );
   }
@@ -390,23 +391,23 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
     ];
 
-    final spacing = responsive.isSmallPhone ? 8.0 : 12.0;
+    final spacing = r.isSmallPhone ? 8.0 : 12.0;
 
     return Column(
       children: [
         Row(
           children: [
-            Expanded(child: _buildActionCard(items[0], responsive)),
+            Expanded(child: _buildActionCard(items[0], ResponsiveData.of(context))),
             SizedBox(width: spacing),
-            Expanded(child: _buildActionCard(items[1], responsive)),
+            Expanded(child: _buildActionCard(items[1], ResponsiveData.of(context))),
           ],
         ),
         SizedBox(height: spacing),
         Row(
           children: [
-            Expanded(child: _buildActionCard(items[2], responsive)),
+            Expanded(child: _buildActionCard(items[2], ResponsiveData.of(context))),
             SizedBox(width: spacing),
-            Expanded(child: _buildActionCard(items[3], responsive)),
+            Expanded(child: _buildActionCard(items[3], ResponsiveData.of(context))),
           ],
         ),
       ],
@@ -711,6 +712,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   void _showNewsDetail(NewsItemModel item) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final r = context.r;
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -719,28 +721,31 @@ class _HomeScreenState extends State<HomeScreen> {
         initialChildSize: 0.65,
         minChildSize: 0.4,
         maxChildSize: 0.9,
-        builder: (_, scrollController) => Container(
-          decoration: BoxDecoration(
-            color: AppColors.cardBg(isDark),
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
-          ),
-          child: Column(
-            children: [
-              // Handle bar
-              Container(
-                margin: const EdgeInsets.only(top: 12, bottom: 8),
-                width: 36,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: isDark ? AppColors.darkBorder : const Color(0xFF191C1E).withValues(alpha: 0.15),
-                  borderRadius: BorderRadius.circular(2),
-                ),
+        builder: (_, scrollController) => Center(
+          child: ConstrainedBox(
+            constraints: BoxConstraints(maxWidth: r.maxContentWidth),
+            child: Container(
+              decoration: BoxDecoration(
+                color: AppColors.cardBg(isDark),
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
               ),
-              // Contenido scrollable
-              Expanded(
-                child: ListView(
-                  controller: scrollController,
-                  padding: const EdgeInsets.fromLTRB(20, 8, 20, 32),
+              child: Column(
+                children: [
+                  // Handle bar
+                  Container(
+                    margin: const EdgeInsets.only(top: 12, bottom: 8),
+                    width: 36,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: isDark ? AppColors.darkBorder : const Color(0xFF191C1E).withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                  // Contenido scrollable
+                  Expanded(
+                    child: ListView(
+                      controller: scrollController,
+                      padding: EdgeInsets.fromLTRB(r.paddingH, 8, r.paddingH, 32),
                   children: [
                     // Entidad + fecha
                     Row(
@@ -840,6 +845,8 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
               ),
             ],
+          ),
+        ),
           ),
         ),
       ),

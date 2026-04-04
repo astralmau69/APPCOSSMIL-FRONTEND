@@ -3,6 +3,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/extensions/responsive_extensions.dart';
 import '../../../core/theme/app_constants.dart';
 import '../../../core/session/user_session.dart';
 import '../../../core/models/regional_model.dart';
@@ -239,8 +240,8 @@ class _RegionalScreenState extends State<RegionalScreen> {
     final label = isTitular ? 'Titular' : beneficiary.relationship;
 
     return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 20),
-      padding: const EdgeInsets.all(16),
+      margin: EdgeInsets.symmetric(horizontal: context.r.paddingH),
+      padding: EdgeInsets.all(context.r.cardPadding),
       decoration: BoxDecoration(
         color: AppColors.cardBg(isDark),
         borderRadius: BorderRadius.circular(AppTheme.radiusXl),
@@ -490,7 +491,7 @@ class _RegionalScreenState extends State<RegionalScreen> {
 
   Widget _buildHospitalCards(BuildContext context, RegionalModel regional, bool isDark) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+      padding: EdgeInsets.fromLTRB(context.r.paddingH, 0, context.r.paddingH, context.r.paddingH),
       child: Column(
         children: [
           for (int i = 0; i < regional.hospitals.length; i++) ...[

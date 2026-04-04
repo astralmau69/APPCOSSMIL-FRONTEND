@@ -5,6 +5,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/services.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/theme/app_constants.dart';
+import '../../../core/extensions/responsive_extensions.dart';
 import '../../../core/services/security_service.dart';
 import '../../../core/services/session_restore_service.dart';
 import '../../../core/storage/token_storage.dart';
@@ -228,6 +229,7 @@ class _LocalAuthScreenState extends State<LocalAuthScreen>
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final r = context.r;
 
     return Scaffold(
       backgroundColor: Colors.transparent,
@@ -293,7 +295,7 @@ class _LocalAuthScreenState extends State<LocalAuthScreen>
                   child: child,
                 );
               },
-              child: _buildPinIndicators(isDark),
+              child: _buildPinIndicators(isDark, r),
             ),
 
             const SizedBox(height: 16),
@@ -322,13 +324,13 @@ class _LocalAuthScreenState extends State<LocalAuthScreen>
             const Spacer(),
 
             // ── Teclado numérico ────────────────────────────────────
-            _buildKeypad(isDark),
+            _buildKeypad(isDark, r),
 
-            const SizedBox(height: 24),
+            SizedBox(height: r.spaceLg),
 
             // ── Footer Actions ────────────────────────────────────────
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 32),
+              padding: EdgeInsets.symmetric(horizontal: r.pinKeypadPadding),
               child: Row(
                 children: [
                   Expanded(
@@ -408,6 +410,8 @@ class _LocalAuthScreenState extends State<LocalAuthScreen>
   }
 
   Widget _buildAvatar(bool isDark) {
+    final r = context.r;
+    final avatarSize = r.avatarLg;
     // Prioridad: foto real > iniciales > logo COSSMIL
     Widget avatarChild;
 
@@ -417,18 +421,18 @@ class _LocalAuthScreenState extends State<LocalAuthScreen>
         child: Image.memory(
           base64Decode(_photoBase64),
           fit: BoxFit.cover,
-          width: 80,
-          height: 80,
-          errorBuilder: (_, __, ___) => _buildInitialsOrLogo(isDark),
+          width: avatarSize,
+          height: avatarSize,
+          errorBuilder: (_, __, ___) => _buildInitialsOrLogo(isDark, avatarSize),
         ),
       );
     } else {
-      avatarChild = _buildInitialsOrLogo(isDark);
+      avatarChild = _buildInitialsOrLogo(isDark, avatarSize);
     }
 
     return Container(
-      width: 80,
-      height: 80,
+      width: avatarSize,
+      height: avatarSize,
       decoration: BoxDecoration(
         shape: BoxShape.circle,
         color: isDark ? AppColors.darkElevated : AppColors.white,
@@ -442,17 +446,16 @@ class _LocalAuthScreenState extends State<LocalAuthScreen>
     );
   }
 
-  Widget _buildInitialsOrLogo(bool isDark) {
+  Widget _buildInitialsOrLogo(bool isDark, double size) {
     final trimmed = _displayName.trim();
     if (trimmed.isNotEmpty) {
-      // Iniciales del usuario
       final parts = trimmed.split(RegExp(r'\s+'));
       final initials = parts.length >= 2
           ? '${parts[0][0]}${parts[1][0]}'.toUpperCase()
           : parts[0][0].toUpperCase();
       return Container(
-        width: 80,
-        height: 80,
+        width: size,
+        height: size,
         color: isDark
             ? AppColors.primary.withValues(alpha: 0.2)
             : AppColors.primaryLight,
@@ -460,7 +463,7 @@ class _LocalAuthScreenState extends State<LocalAuthScreen>
           child: Text(
             initials,
             style: TextStyle(
-              fontSize: 28,
+              fontSize: size * 0.35,
               fontWeight: FontWeight.w700,
               color: AppColors.primary,
               letterSpacing: 1,
@@ -472,20 +475,22 @@ class _LocalAuthScreenState extends State<LocalAuthScreen>
 
     // Fallback: logo COSSMIL
     return Padding(
-      padding: const EdgeInsets.all(12),
+      padding: EdgeInsets.all(size * 0.15),
       child: Image.asset(
         'assets/images/cossmil_logo.png',
         fit: BoxFit.contain,
         errorBuilder: (_, __, ___) => Icon(
           CupertinoIcons.shield_fill,
-          size: 32,
+          size: size * 0.4,
           color: AppColors.primary,
         ),
       ),
     );
   }
 
-  Widget _buildPinIndicators(bool isDark) {
+  Widget _buildPinIndicators(bool isDark, AppResponsive r) {
+    final dotSize = r.isSmallPhone ? 14.0 : 16.0;
+    final dotMargin = r.isSmallPhone ? 8.0 : 12.0;
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
       children: List.generate(4, (index) {
@@ -493,9 +498,9 @@ class _LocalAuthScreenState extends State<LocalAuthScreen>
         final isError = _errorMessage != null;
         return AnimatedContainer(
           duration: const Duration(milliseconds: 180),
-          margin: const EdgeInsets.symmetric(horizontal: 12),
-          width: 16,
-          height: 16,
+          margin: EdgeInsets.symmetric(horizontal: dotMargin),
+          width: dotSize,
+          height: dotSize,
           decoration: BoxDecoration(
             shape: BoxShape.circle,
             color: isError && isActive
@@ -515,23 +520,24 @@ class _LocalAuthScreenState extends State<LocalAuthScreen>
     );
   }
 
-  Widget _buildKeypad(bool isDark) {
+  Widget _buildKeypad(bool isDark, AppResponsive r) {
+    final keyGap = r.isSmallPhone ? 10.0 : 16.0;
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 40),
+      padding: EdgeInsets.symmetric(horizontal: r.pinKeypadPadding),
       child: Column(
         children: [
-          _buildKeyRow([1, 2, 3], isDark),
-          const SizedBox(height: 16),
-          _buildKeyRow([4, 5, 6], isDark),
-          const SizedBox(height: 16),
-          _buildKeyRow([7, 8, 9], isDark),
-          const SizedBox(height: 16),
+          _buildKeyRow([1, 2, 3], isDark, r),
+          SizedBox(height: keyGap),
+          _buildKeyRow([4, 5, 6], isDark, r),
+          SizedBox(height: keyGap),
+          _buildKeyRow([7, 8, 9], isDark, r),
+          SizedBox(height: keyGap),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              _buildBiometricKey(isDark),
-              _buildNumberKey(0, isDark),
-              _buildDeleteKey(isDark),
+              _buildBiometricKey(isDark, r),
+              _buildNumberKey(0, isDark, r),
+              _buildDeleteKey(isDark, r),
             ],
           ),
         ],
@@ -539,15 +545,17 @@ class _LocalAuthScreenState extends State<LocalAuthScreen>
     );
   }
 
-  Row _buildKeyRow(List<int> numbers, bool isDark) {
+  Row _buildKeyRow(List<int> numbers, bool isDark, AppResponsive r) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: numbers.map((n) => _buildNumberKey(n, isDark)).toList(),
+      children: numbers.map((n) => _buildNumberKey(n, isDark, r)).toList(),
     );
   }
 
-  Widget _buildNumberKey(int number, bool isDark) {
+  Widget _buildNumberKey(int number, bool isDark, AppResponsive r) {
     final blocked = _isBlocked;
+    final keySize = r.pinKeySize;
+    final fontSize = r.isSmallPhone ? 24.0 : 32.0;
     final bgColor = isDark 
         ? AppColors.darkSurface.withValues(alpha: 0.8) 
         : Colors.white.withValues(alpha: 0.9);
@@ -559,8 +567,8 @@ class _LocalAuthScreenState extends State<LocalAuthScreen>
       onTap: blocked ? null : () => _onNumberPressed(number),
       scaleDown: 0.9,
       child: Container(
-        width: 82,
-        height: 82,
+        width: keySize,
+        height: keySize,
         decoration: BoxDecoration(
           shape: BoxShape.circle,
           color: blocked ? bgColor.withValues(alpha: 0.3) : bgColor,
@@ -577,7 +585,7 @@ class _LocalAuthScreenState extends State<LocalAuthScreen>
           child: Text(
             number.toString(),
             style: AppTypography.displayMedium.copyWith(
-              fontSize: 32,
+              fontSize: fontSize,
               fontWeight: FontWeight.w600,
               color: blocked
                   ? AppColors.textTertiaryC(isDark)
@@ -589,39 +597,41 @@ class _LocalAuthScreenState extends State<LocalAuthScreen>
     );
   }
 
-  Widget _buildBiometricKey(bool isDark) {
+  Widget _buildBiometricKey(bool isDark, AppResponsive r) {
+    final keySize = r.pinKeySize;
     if (!_isBiometricEnabled || _isBlocked) {
-      return const SizedBox(width: 82, height: 82);
+      return SizedBox(width: keySize, height: keySize);
     }
 
     return OptimizedPressButton(
       onTap: _tryBiometrics,
       child: Container(
-        width: 82,
-        height: 82,
+        width: keySize,
+        height: keySize,
         decoration: BoxDecoration(
           shape: BoxShape.circle,
           color: AppColors.primary.withValues(alpha: 0.1),
         ),
         child: Icon(
           Icons.fingerprint,
-          size: 42,
+          size: keySize * 0.5,
           color: AppColors.primary,
         ),
       ),
     );
   }
 
-  Widget _buildDeleteKey(bool isDark) {
+  Widget _buildDeleteKey(bool isDark, AppResponsive r) {
+    final keySize = r.pinKeySize;
     return OptimizedPressButton(
       onTap: _isBlocked ? null : _onDeletePressed,
       child: Container(
-        width: 82,
-        height: 82,
+        width: keySize,
+        height: keySize,
         decoration: const BoxDecoration(shape: BoxShape.circle),
         child: Icon(
           CupertinoIcons.delete_left,
-          size: 30,
+          size: keySize * 0.36,
           color: _isBlocked 
               ? AppColors.textTertiaryC(isDark) 
               : AppColors.textSecondaryC(isDark),

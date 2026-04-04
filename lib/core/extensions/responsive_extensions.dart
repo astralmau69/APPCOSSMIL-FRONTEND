@@ -143,6 +143,20 @@ class AppResponsive {
   double get pinKeySize => _select(phoneSmall: 64, phoneMedium: 72, phoneLarge: 82, tablet: 82);
   double get pinKeypadPadding => _select(phoneSmall: 24, phoneMedium: 36, phoneLarge: 48, tablet: 60);
 
+  // ── PROFILE AVATAR (large for perfil screen) ──────────────────────────────
+  double get profileAvatarSize => _select(phoneSmall: 80, phoneMedium: 96, phoneLarge: 110, tablet: 120);
+
+  // ── BOOKING STEPPER ────────────────────────────────────────────────────────
+  double get stepperLogoSize => _select(phoneSmall: 32, phoneMedium: 40, phoneLarge: 48, tablet: 56);
+  double get stepperCircleSize => _select(phoneSmall: 24, phoneMedium: 28, phoneLarge: 30, tablet: 34);
+  double get stepperCircleSizeCurrent => _select(phoneSmall: 28, phoneMedium: 32, phoneLarge: 36, tablet: 40);
+
+  // ── HOSPITAL/DOCTOR ICON ──────────────────────────────────────────────────
+  double get listAvatarSize => _select(phoneSmall: 44, phoneMedium: 50, phoneLarge: 56, tablet: 60);
+
+  // ── TIME CHIP ─────────────────────────────────────────────────────────────
+  double get timeChipWidth => _select(phoneSmall: 86, phoneMedium: 96, phoneLarge: 108, tablet: 116);
+
   // ── GRID ──────────────────────────────────────────────────────────────────
   int get gridColumns => isTablet ? (isLandscape ? 3 : 2) : 2;
   double get gridSpacing => _select(phoneSmall: 8, phoneMedium: 10, phoneLarge: 12, tablet: 16);

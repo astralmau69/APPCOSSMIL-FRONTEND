@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/extensions/responsive_extensions.dart';
 import '../../../core/animations/optimized_animations.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -159,7 +160,7 @@ class ContactosScreen extends StatelessWidget {
             ),
           ),
           SliverPadding(
-            padding: const EdgeInsets.fromLTRB(20, 12, 20, 40),
+            padding: EdgeInsets.fromLTRB(context.r.paddingH, 12, context.r.paddingH, 40),
             sliver: SliverList(
               delegate: SliverChildListDelegate([
                 // Subtitle
@@ -248,13 +249,17 @@ class ContactosScreen extends StatelessWidget {
             ),
           ),
           const SizedBox(width: 8),
-          Text(
-            text,
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.w800,
-              color: AppColors.textSecondaryC(isDark),
-              letterSpacing: 1.5,
+          Flexible(
+            child: Text(
+              text,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w800,
+                color: AppColors.textSecondaryC(isDark),
+                letterSpacing: 1.5,
+              ),
             ),
           ),
         ],
@@ -320,8 +325,8 @@ class _EmergencyCard extends StatelessWidget {
           Row(
             children: [
               Container(
-                width: 44,
-                height: 44,
+                width: context.r.avatarMd,
+                height: context.r.avatarMd,
                 decoration: BoxDecoration(
                   color: AppColors.white.withValues(alpha: 0.18),
                   borderRadius: BorderRadius.circular(12),
@@ -463,8 +468,8 @@ class _ContactCard extends StatelessWidget {
         children: [
           // Icon
           Container(
-            width: 60,
-            height: 60,
+            width: context.r.listAvatarSize,
+            height: context.r.listAvatarSize,
             decoration: BoxDecoration(
               color: accentColor.withValues(alpha: 0.08),
               borderRadius: BorderRadius.circular(14),
@@ -557,8 +562,8 @@ class _ContactCard extends StatelessWidget {
                   ContactosScreen._makePhoneCall(contact.phone);
                 },
                 child: Container(
-                  width: 52,
-                  height: 52,
+                  width: context.r.avatarMd,
+                  height: context.r.avatarMd,
                   decoration: BoxDecoration(
                     color: accentColor.withValues(alpha: 0.10),
                     borderRadius: BorderRadius.circular(12),
@@ -574,8 +579,8 @@ class _ContactCard extends StatelessWidget {
                 minimumSize: const Size.square(36),
                 onPressed: onCopy,
                 child: Container(
-                  width: 52,
-                  height: 52,
+                  width: context.r.avatarMd,
+                  height: context.r.avatarMd,
                   decoration: BoxDecoration(
                     color: AppColors.background,
                     borderRadius: BorderRadius.circular(12),

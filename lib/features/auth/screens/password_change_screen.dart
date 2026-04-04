@@ -2,6 +2,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/theme/app_constants.dart';
+import '../../../core/extensions/responsive_extensions.dart';
 import '../../../core/services/auth_service.dart';
 import '../../../core/session/user_session.dart';
 import '../../../core/animations/optimized_animations.dart';
@@ -120,21 +121,24 @@ class _PasswordChangeScreenState extends State<PasswordChangeScreen> {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final r = context.r;
 
     return Scaffold(
       backgroundColor: AppColors.scaffoldBg(isDark),
       body: SafeArea(
         child: SingleChildScrollView(
           physics: const BouncingScrollPhysics(),
-          padding: const EdgeInsets.symmetric(horizontal: 24),
-          child: ConstrainedBox(
-            constraints: BoxConstraints(
-              minHeight: MediaQuery.of(context).size.height -
-                  MediaQuery.of(context).padding.vertical,
-            ),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
+          padding: r.screenPadding,
+          child: Center(
+            child: ConstrainedBox(
+              constraints: BoxConstraints(
+                minHeight: MediaQuery.of(context).size.height -
+                    MediaQuery.of(context).padding.vertical,
+                maxWidth: r.isTablet ? 500 : double.infinity,
+              ),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
                 const SizedBox(height: 32),
 
                 // ── Logo COSSMIL ─────────────────────────────────
@@ -329,7 +333,7 @@ class _PasswordChangeScreenState extends State<PasswordChangeScreen> {
                   delay: const Duration(milliseconds: 500),
                   child: SizedBox(
                     width: double.infinity,
-                    height: 56,
+                    height: r.buttonHeight,
                     child: CupertinoButton(
                       padding: EdgeInsets.zero,
                       color: AppColors.primary,
@@ -351,6 +355,7 @@ class _PasswordChangeScreenState extends State<PasswordChangeScreen> {
                 const SizedBox(height: 40),
               ],
             ),
+          ),
           ),
         ),
       ),

@@ -2,6 +2,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/theme/app_constants.dart';
+import '../../../core/extensions/responsive_extensions.dart';
 import '../../../core/services/security_service.dart';
 import '../../../core/animations/optimized_animations.dart';
 import '../../auth/screens/pin_setup_screen.dart';
@@ -165,7 +166,7 @@ class _SecuritySetupScreenState extends State<SecuritySetupScreen> {
           ? const Center(child: CupertinoActivityIndicator())
           : SafeArea(
               child: ListView(
-                padding: const EdgeInsets.fromLTRB(20, 20, 20, 48),
+                padding: EdgeInsets.fromLTRB(context.r.paddingH, 20, context.r.paddingH, 48),
                 children: [
                   // ── Cabecera de estado ───────────────────────
                   _buildStatusHeader(isDark),

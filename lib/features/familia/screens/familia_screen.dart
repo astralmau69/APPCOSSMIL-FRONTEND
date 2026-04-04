@@ -8,6 +8,7 @@ import '../../../core/models/beneficiary_model.dart';
 import '../../../core/services/programacion_service.dart';
 import '../../../core/session/user_session.dart';
 import '../../../core/theme/app_constants.dart';
+import '../../../core/extensions/responsive_extensions.dart';
 
 class FamiliaScreen extends StatefulWidget {
   const FamiliaScreen({super.key});
@@ -275,8 +276,8 @@ class _FamiliaScreenState extends State<FamiliaScreen> {
               ),
             ),
             SliverPadding(
-              padding: const EdgeInsets.only(
-                  top: 12, left: 20, right: 20, bottom: 120),
+              padding: EdgeInsets.only(
+                  top: 12, left: context.r.paddingH, right: context.r.paddingH, bottom: context.r.navBarBottomSpace),
               sliver: SliverList(
                 delegate: SliverChildBuilderDelegate(
                   (context, index) {
@@ -345,7 +346,7 @@ class _BeneficiaryCard extends StatelessWidget {
       child: Row(
         children: [
           // ── Avatar ──
-          _buildAvatar(accentColor),
+          _buildAvatar(context, accentColor),
           const SizedBox(width: 14),
           // ── Info ──
           Expanded(
@@ -358,7 +359,7 @@ class _BeneficiaryCard extends StatelessWidget {
                       child: Text(
                         b.fullName,
                         style: TextStyle(
-                          fontSize: 16,
+                          fontSize: context.r.isSmallPhone ? 14 : 16,
                           fontWeight: FontWeight.w700,
                           color: AppColors.textPrimaryC(isDark),
                         ),
@@ -438,10 +439,11 @@ class _BeneficiaryCard extends StatelessWidget {
     );
   }
 
-  Widget _buildAvatar(Color accentColor) {
+  Widget _buildAvatar(BuildContext context, Color accentColor) {
+    final avatarSize = context.r.listAvatarSize;
     return Container(
-      width: 60,
-      height: 60,
+      width: avatarSize,
+      height: avatarSize,
       decoration: BoxDecoration(
         shape: BoxShape.circle,
         color: accentColor,
@@ -451,23 +453,24 @@ class _BeneficiaryCard extends StatelessWidget {
             ? Image.memory(
                 decodedPhoto!,
                 fit: BoxFit.cover,
-                width: 60,
-                height: 60,
-                errorBuilder: (_, __, ___) => _initial(),
+                width: avatarSize,
+                height: avatarSize,
+                errorBuilder: (_, __, ___) => _initial(context),
               )
-            : _initial(),
+            : _initial(context),
       ),
     );
   }
 
-  Widget _initial() {
+  Widget _initial(BuildContext context) {
+    final avatarSize = context.r.listAvatarSize;
     return Center(
       child: Text(
         beneficiary.initial,
-        style: const TextStyle(
+        style: TextStyle(
           color: AppColors.white,
           fontWeight: FontWeight.w800,
-          fontSize: 22,
+          fontSize: avatarSize * 0.37,
         ),
       ),
     );

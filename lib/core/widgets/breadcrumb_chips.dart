@@ -1,10 +1,8 @@
 import 'package:flutter/material.dart';
 import '../constants/app_colors.dart';
+import '../extensions/responsive_extensions.dart';
 
-/// Paleta de colores centralizada — COSSMIL App.
-/// Azul institucional + verde médico + acentos dorados.
-
-/// Fila de breadcrumb chips scrollable.
+/// Fila de breadcrumb chips scrollable — responsive.
 class BreadcrumbChips extends StatelessWidget {
   final List<String> labels;
 
@@ -12,28 +10,34 @@ class BreadcrumbChips extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final r = context.r;
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20),
-      child: Wrap(
-        spacing: 6,
-        runSpacing: 8,
-        crossAxisAlignment: WrapCrossAlignment.center,
-        children: [
-          for (int i = 0; i < labels.length; i++) ...[
-            _chip(context, labels[i], i == labels.length - 1),
-            if (i < labels.length - 1) _separator(context),
+      padding: EdgeInsets.symmetric(horizontal: r.paddingH),
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        physics: const BouncingScrollPhysics(),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            for (int i = 0; i < labels.length; i++) ...[
+              _chip(context, labels[i], i == labels.length - 1, r),
+              if (i < labels.length - 1) _separator(context),
+            ],
           ],
-        ],
+        ),
       ),
     );
   }
 
-  Widget _chip(BuildContext context, String label, bool isLast) {
+  Widget _chip(BuildContext context, String label, bool isLast, AppResponsive r) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final primaryColor = AppColors.accentForTheme(isDark);
+    final fs = r.isSmallPhone ? 12.0 : 14.0;
+    final pH = r.isSmallPhone ? 10.0 : 16.0;
+    final pV = r.isSmallPhone ? 6.0 : 8.0;
     
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
+      padding: EdgeInsets.symmetric(horizontal: pH, vertical: pV),
       decoration: BoxDecoration(
         color: isLast
             ? primaryColor.withValues(alpha: 0.12)
@@ -48,7 +52,7 @@ class BreadcrumbChips extends StatelessWidget {
       child: Text(
         label,
         style: TextStyle(
-          fontSize: 16,
+          fontSize: fs,
           fontWeight: isLast ? FontWeight.w800 : FontWeight.w600,
           color: primaryColor,
           letterSpacing: 0.1,
@@ -59,10 +63,10 @@ class BreadcrumbChips extends StatelessWidget {
 
   Widget _separator(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 4),
+      padding: const EdgeInsets.symmetric(horizontal: 2),
       child: Icon(
         Icons.chevron_right,
-        size: 16,
+        size: 14,
         color: AppColors.textTertiaryC(Theme.of(context).brightness == Brightness.dark).withValues(alpha: 0.5),
       ),
     );

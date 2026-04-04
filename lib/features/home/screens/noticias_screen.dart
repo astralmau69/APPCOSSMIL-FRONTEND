@@ -2,6 +2,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/theme/app_constants.dart';
+import '../../../core/extensions/responsive_extensions.dart';
 import '../../../core/models/news_item_model.dart';
 import '../../../core/services/cossmil_news_service.dart';
 import '../../../core/animations/optimized_animations.dart';
@@ -128,7 +129,7 @@ class _NoticiasScreenState extends State<NoticiasScreen> {
             )
           else ...[
             SliverPadding(
-              padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+              padding: EdgeInsets.fromLTRB(context.r.paddingH, 12, context.r.paddingH, 0),
               sliver: SliverList.builder(
                 itemCount: _news.length + (_isLoadingMore ? 1 : 0),
                 itemBuilder: (context, i) {
@@ -153,7 +154,7 @@ class _NoticiasScreenState extends State<NoticiasScreen> {
             ),
             // Indicador de página
             SliverPadding(
-              padding: const EdgeInsets.fromLTRB(16, 8, 16, 120),
+              padding: EdgeInsets.fromLTRB(context.r.paddingH, 8, context.r.paddingH, context.r.navBarBottomSpace),
               sliver: SliverToBoxAdapter(
                 child: Center(
                   child: Text(
@@ -269,7 +270,7 @@ class _NoticiasScreenState extends State<NoticiasScreen> {
               Expanded(
                 child: ListView(
                   controller: scrollController,
-                  padding: const EdgeInsets.fromLTRB(20, 8, 20, 32),
+                  padding: EdgeInsets.fromLTRB(context.r.paddingH, 8, context.r.paddingH, 32),
                   children: [
                     Row(
                       children: [
@@ -404,12 +405,12 @@ class _NewsListCard extends StatelessWidget {
                 borderRadius: BorderRadius.circular(AppSpacing.radiusSm),
                 child: Image.network(
                   item.imageUrl,
-                  width: 56,
-                  height: 56,
+                  width: context.r.avatarMd,
+                  height: context.r.avatarMd,
                   fit: BoxFit.cover,
                   errorBuilder: (_, __, ___) => Container(
-                    width: 56,
-                    height: 56,
+                    width: context.r.avatarMd,
+                    height: context.r.avatarMd,
                     decoration: BoxDecoration(
                       color: isDark ? AppColors.darkElevated : AppColors.primaryLight,
                       borderRadius: BorderRadius.circular(AppSpacing.radiusSm),

@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/theme/app_constants.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/extensions/responsive_extensions.dart';
 import '../../../core/session/user_session.dart';
 import '../../../core/models/specialty_model.dart';
 import '../../../core/services/programacion_service.dart';
@@ -246,7 +247,7 @@ class _SpecialtyScreenState extends State<SpecialtyScreen> {
   }) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 20),
+      margin: EdgeInsets.symmetric(horizontal: context.r.paddingH),
       decoration: BoxDecoration(
         color: AppColors.cardBg(isDark),
         borderRadius: BorderRadius.circular(AppTheme.radiusXl),
@@ -266,7 +267,7 @@ class _SpecialtyScreenState extends State<SpecialtyScreen> {
               _specialtyTile(context, specialties[i], showBadge),
             if (i < specialties.length - 1)
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
+                padding: EdgeInsets.symmetric(horizontal: context.r.cardPadding),
                 child: Container(
                   height: 0.5,
                   color: AppColors.dividerC(isDark),
@@ -296,12 +297,12 @@ class _SpecialtyScreenState extends State<SpecialtyScreen> {
         );
       },
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+        padding: EdgeInsets.symmetric(horizontal: context.r.cardPadding, vertical: context.r.cardPadding),
         child: Row(
           children: [
             Container(
-              width: 52,
-              height: 52,
+              width: context.r.listAvatarSize,
+              height: context.r.listAvatarSize,
               decoration: BoxDecoration(
                 color: showBadge
                     ? AppColors.accent.withValues(alpha: 0.10)

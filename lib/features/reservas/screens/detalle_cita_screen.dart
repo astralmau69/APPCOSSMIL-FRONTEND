@@ -132,9 +132,12 @@ class _DetalleCitaScreenState extends State<DetalleCitaScreen> {
   Widget _buildContent(bool isDark) {
     final d = _detalle!;
 
-    return ListView(
-      key: const ValueKey('content'),
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+    return Center(
+      child: ConstrainedBox(
+        constraints: BoxConstraints(maxWidth: context.r.maxContentWidth),
+        child: ListView(
+          key: const ValueKey('content'),
+          padding: EdgeInsets.symmetric(horizontal: context.r.paddingH, vertical: 16),
       children: [
         // Header
         FadeSlideIn(
@@ -250,8 +253,8 @@ class _DetalleCitaScreenState extends State<DetalleCitaScreen> {
               Row(
                 children: [
                   Container(
-                    width: 52,
-                    height: 52,
+                    width: context.r.listAvatarSize,
+                    height: context.r.listAvatarSize,
                     decoration: BoxDecoration(
                       color: AppColors.accentForTheme(isDark).withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(14),
@@ -261,7 +264,7 @@ class _DetalleCitaScreenState extends State<DetalleCitaScreen> {
                     ),
                     child: Icon(
                       Icons.person,
-                      size: 30,
+                      size: context.r.listAvatarSize * 0.58,
                       color: AppColors.accentForTheme(isDark).withValues(alpha: 0.6),
                     ),
                   ),
@@ -325,16 +328,19 @@ class _DetalleCitaScreenState extends State<DetalleCitaScreen> {
 
         const SizedBox(height: 40),
       ],
+    ),
+      ),
     );
   }
 
   Widget _buildHeader(bool isDark, DetalleCitaModel d) {
+    final r = context.r;
     return Column(
       children: [
         Text(
           'Detalle de su Cita Médica',
           style: AppTypography.displayMedium.copyWith(
-            fontSize: 22,
+            fontSize: r.isSmallPhone ? 18 : 22,
             color: AppColors.accentForTheme(isDark),
           ),
         ),
@@ -437,22 +443,26 @@ class _DetalleCitaScreenState extends State<DetalleCitaScreen> {
             color: AppColors.textSecondaryC(isDark),
           ),
         ),
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-          decoration: BoxDecoration(
-            color: chipColor.withValues(alpha: 0.12),
-            borderRadius: BorderRadius.circular(8),
-            border: Border.all(
-              color: chipColor.withValues(alpha: 0.3),
-              width: 0.5,
+        Flexible(
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+            decoration: BoxDecoration(
+              color: chipColor.withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(
+                color: chipColor.withValues(alpha: 0.3),
+                width: 0.5,
+              ),
             ),
-          ),
-          child: Text(
-            value,
-            style: TextStyle(
-              fontSize: 13,
-              fontWeight: FontWeight.w700,
-              color: chipColor,
+            child: Text(
+              value,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w700,
+                color: chipColor,
+              ),
             ),
           ),
         ),

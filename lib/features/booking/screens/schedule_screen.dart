@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../../../core/theme/app_constants.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/extensions/responsive_extensions.dart';
 import '../../../core/models/time_slot_model.dart';
 import '../../../core/models/medico_asignado_model.dart';
 import '../../../core/services/programacion_service.dart';
@@ -294,7 +295,7 @@ class _ScheduleScreenState extends State<ScheduleScreen>
           delay: const Duration(milliseconds: 150),
           offsetY: 10,
           child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 24),
+            padding: EdgeInsets.symmetric(horizontal: context.r.paddingH),
             child: Row(
               children: [
                 Container(
@@ -412,7 +413,7 @@ class _ScheduleScreenState extends State<ScheduleScreen>
 
   Widget _buildDateAndInfoHeader(BuildContext context, bool isDark) {
     return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 20),
+      margin: EdgeInsets.symmetric(horizontal: context.r.paddingH),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: AppColors.cardBg(isDark),
@@ -506,8 +507,8 @@ class _ScheduleScreenState extends State<ScheduleScreen>
           borderRadius: BorderRadius.circular(14),
           child: Image.memory(
             photoBytes,
-            width: 52,
-            height: 52,
+            width: context.r.listAvatarSize,
+            height: context.r.listAvatarSize,
             fit: BoxFit.cover,
             errorBuilder: (_, __, ___) => _doctorInitial(initial, isDark),
           ),
@@ -520,8 +521,8 @@ class _ScheduleScreenState extends State<ScheduleScreen>
     }
 
     return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 20),
-      padding: const EdgeInsets.all(18),
+      margin: EdgeInsets.symmetric(horizontal: context.r.paddingH),
+      padding: EdgeInsets.all(context.r.cardPadding),
       decoration: BoxDecoration(
         color: AppColors.cardBg(isDark),
         borderRadius: BorderRadius.circular(AppTheme.radiusLg),
@@ -531,8 +532,8 @@ class _ScheduleScreenState extends State<ScheduleScreen>
       child: Row(
         children: [
           Container(
-            width: 52,
-            height: 52,
+            width: context.r.listAvatarSize,
+            height: context.r.listAvatarSize,
             decoration: BoxDecoration(
               color: AppColors.primary.withValues(alpha: 0.15),
               borderRadius: BorderRadius.circular(14),
@@ -589,7 +590,7 @@ class _ScheduleScreenState extends State<ScheduleScreen>
         style: TextStyle(
           color: AppColors.accentForTheme(isDark),
           fontWeight: FontWeight.w700,
-          fontSize: 22,
+          fontSize: context.r.listAvatarSize * 0.42,
         ),
       ),
     );
@@ -598,7 +599,7 @@ class _ScheduleScreenState extends State<ScheduleScreen>
   Widget _buildTimeGrid(BuildContext context, bool isDark) {
     final available = _availableSlots;
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20),
+      padding: EdgeInsets.symmetric(horizontal: context.r.paddingH),
       child: Wrap(
         spacing: 10,
         runSpacing: 10,
@@ -622,7 +623,7 @@ class _ScheduleScreenState extends State<ScheduleScreen>
     return GestureDetector(
       onTap: () => _onSlotSelected(slot),
       child: Container(
-        width: 108,
+        width: context.r.timeChipWidth,
         padding: const EdgeInsets.symmetric(vertical: 12),
         decoration: BoxDecoration(
           color: bgColor,

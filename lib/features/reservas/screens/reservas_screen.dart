@@ -573,13 +573,17 @@ class _ReservasScreenState extends State<ReservasScreen> {
             ),
           ),
           const SizedBox(width: 8),
-          Text(
-            text,
-            style: TextStyle(
-              fontSize: 13,
-              fontWeight: FontWeight.w700,
-              color: AppColors.textSecondaryC(isDark),
-              letterSpacing: 1.0,
+          Flexible(
+            child: Text(
+              text,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w700,
+                color: AppColors.textSecondaryC(isDark),
+                letterSpacing: 1.0,
+              ),
             ),
           ),
           const SizedBox(width: 8),

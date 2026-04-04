@@ -3,6 +3,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 
 import '../../core/constants/app_colors.dart';
+import '../../core/extensions/responsive_extensions.dart';
 
 class FloatingNavBar extends StatelessWidget {
   final int currentIndex;
@@ -17,12 +18,11 @@ class FloatingNavBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final screenWidth = MediaQuery.of(context).size.width;
-    // Responsive sizing based on screen width
-    final isSmall = screenWidth < 375;
-    final barHeight = isSmall ? 62.0 : (screenWidth < 428 ? 68.0 : 74.0);
-    final hPadding = isSmall ? 10.0 : 16.0;
-    final bottomPadding = isSmall ? 16.0 : 24.0;
+    final r = context.r;
+    // Responsive sizing via centralized tokens
+    final barHeight = r.isSmallPhone ? 62.0 : (r.isMediumPhone ? 68.0 : 74.0);
+    final hPadding = r.isSmallPhone ? 10.0 : r.paddingH;
+    final bottomPadding = r.isSmallPhone ? 16.0 : 24.0;
 
     final backgroundColor = isDark
         ? AppColors.darkCard.withValues(alpha: 0.75)

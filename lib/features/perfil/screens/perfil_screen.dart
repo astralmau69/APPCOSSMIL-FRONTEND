@@ -4,6 +4,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/theme/app_constants.dart';
+import '../../../core/extensions/responsive_extensions.dart';
 import '../../../core/session/user_session.dart';
 import '../../../core/models/user_model.dart';
 import '../../../core/storage/token_storage.dart';
@@ -87,6 +88,7 @@ class _PerfilScreenState extends State<PerfilScreen> {
   }
 
   Widget _fallbackAvatar(UserModel user) {
+    final avatarSize = context.r.profileAvatarSize;
     return Container(
       decoration: BoxDecoration(
         color: AppColors.primary,
@@ -94,8 +96,8 @@ class _PerfilScreenState extends State<PerfilScreen> {
       alignment: Alignment.center,
       child: Text(
         user.fullName.isNotEmpty ? user.fullName[0] : 'U',
-        style: const TextStyle(
-          fontSize: 40,
+        style: TextStyle(
+          fontSize: avatarSize * 0.4,
           fontWeight: FontWeight.w800,
           color: AppColors.white,
         ),
@@ -136,7 +138,7 @@ class _PerfilScreenState extends State<PerfilScreen> {
                 children: [
                   // Decorative Background Gradient
                   Container(
-                    height: 120,
+                    height: context.r.profileAvatarSize,
                     decoration: BoxDecoration(
                       gradient: LinearGradient(
                         begin: Alignment.topCenter,
@@ -151,7 +153,7 @@ class _PerfilScreenState extends State<PerfilScreen> {
                     child: ConstrainedBox(
                       constraints: const BoxConstraints(maxWidth: 600),
                       child: Padding(
-                        padding: const EdgeInsets.fromLTRB(20, 40, 20, 0),
+                        padding: EdgeInsets.fromLTRB(context.r.paddingH, 40, context.r.paddingH, 0),
                         child: Column(
                           children: [
                             // Avatar with Premium Border
@@ -195,13 +197,16 @@ class _PerfilScreenState extends State<PerfilScreen> {
                                   color: AppColors.accentForTheme(isDark).withValues(alpha: 0.2),
                                 ),
                               ),
-                              child: Text(
-                                'MATRÍCULA: ${user.matricula}',
-                                style: TextStyle(
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.w800,
-                                  letterSpacing: 1.2,
-                                  color: AppColors.accentForTheme(isDark),
+                              child: FittedBox(
+                                fit: BoxFit.scaleDown,
+                                child: Text(
+                                  'MATRÍCULA: ${user.matricula}',
+                                  style: TextStyle(
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w800,
+                                    letterSpacing: 1.2,
+                                    color: AppColors.accentForTheme(isDark),
+                                  ),
                                 ),
                               ),
                             ),
@@ -218,7 +223,7 @@ class _PerfilScreenState extends State<PerfilScreen> {
 
           // ── Quick Info Grid ───────────────────────────
           SliverPadding(
-            padding: const EdgeInsets.symmetric(horizontal: 20),
+            padding: EdgeInsets.symmetric(horizontal: context.r.paddingH),
             sliver: SliverToBoxAdapter(
               child: Center(
                 child: ConstrainedBox(
@@ -250,7 +255,7 @@ class _PerfilScreenState extends State<PerfilScreen> {
               child: ConstrainedBox(
                 constraints: const BoxConstraints(maxWidth: 600),
                 child: Padding(
-                  padding: const EdgeInsets.only(bottom: 120, top: 20),
+                  padding: EdgeInsets.only(bottom: context.r.navBarBottomSpace, top: context.r.paddingH),
                   child: Column(
                     children: [
                       CupertinoListSection.insetGrouped(
@@ -547,9 +552,10 @@ class _PerfilScreenState extends State<PerfilScreen> {
   }
 
   Widget _buildPremiumAvatar(UserModel user, bool isDark) {
+    final avatarSize = context.r.profileAvatarSize;
     return Container(
-      width: 120,
-      height: 120,
+      width: avatarSize,
+      height: avatarSize,
       decoration: BoxDecoration(
         shape: BoxShape.circle,
         color: AppColors.cardBg(isDark),
@@ -634,12 +640,16 @@ class _PerfilScreenState extends State<PerfilScreen> {
                       ),
                     ),
                   ),
-                  Text(
-                    items[i].value,
-                    style: TextStyle(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w700,
-                      color: AppColors.textPrimaryC(isDark),
+                  Flexible(
+                    child: Text(
+                      items[i].value,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.textPrimaryC(isDark),
+                      ),
                     ),
                   ),
                 ],

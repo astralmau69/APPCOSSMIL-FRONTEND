@@ -8,6 +8,7 @@ import 'package:printing/printing.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/theme/app_constants.dart';
+import '../../../core/extensions/responsive_extensions.dart';
 import '../../../core/session/user_session.dart';
 import '../../../core/services/programacion_service.dart';
 
@@ -139,7 +140,7 @@ class _SummaryScreenState extends State<SummaryScreen> {
                     const BookingStepper(currentStep: 3),
                     Expanded(
                       child: ListView(
-                        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+                        padding: EdgeInsets.symmetric(horizontal: context.r.paddingH, vertical: 8),
                         children: [
                           _buildHeader(),
                           const SizedBox(height: 16),

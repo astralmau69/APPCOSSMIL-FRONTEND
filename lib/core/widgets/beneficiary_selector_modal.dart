@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import '../constants/app_colors.dart';
+import '../extensions/responsive_extensions.dart';
 import '../models/beneficiary_model.dart';
 
 
@@ -44,79 +45,95 @@ class _ModalContent extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      constraints: BoxConstraints(
-        maxHeight: MediaQuery.of(context).size.height * 0.65,
-      ),
-      decoration: BoxDecoration(
-        color: AppColors.cardBg(Theme.of(context).brightness == Brightness.dark),
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          const SizedBox(height: 12),
-          // Handle bar
-          Container(
-            width: 40,
-            height: 4,
-            decoration: BoxDecoration(
-              color: AppColors.border,
-              borderRadius: BorderRadius.circular(2),
-            ),
+    final r = context.r;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return Center(
+      child: ConstrainedBox(
+        constraints: BoxConstraints(
+          maxWidth: r.maxContentWidth,
+        ),
+        child: Container(
+          constraints: BoxConstraints(
+            maxHeight: MediaQuery.of(context).size.height * 0.65,
           ),
-          const SizedBox(height: 20),
-          // Title
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 24),
-            child: Row(
-              children: [
-                const Icon(Icons.people_alt, size: 20, color: AppColors.primary),
-                const SizedBox(width: 10),
-                Text(
-                  '¿Para quién es la reserva?',
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w800,
-                    color: AppColors.textPrimaryC(Theme.of(context).brightness == Brightness.dark),
-                    letterSpacing: -0.3,
+          decoration: BoxDecoration(
+            color: AppColors.cardBg(isDark),
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const SizedBox(height: 12),
+              // Handle bar
+              Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: AppColors.border,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              SizedBox(height: r.spaceLg),
+              // Title
+              Padding(
+                padding: EdgeInsets.symmetric(horizontal: r.paddingH),
+                child: Row(
+                  children: [
+                    Icon(Icons.people_alt, size: r.iconSm, color: AppColors.primary),
+                    SizedBox(width: r.spaceSm),
+                    Expanded(
+                      child: Text(
+                        '¿Para quién es la reserva?',
+                        style: TextStyle(
+                          fontSize: r.isSmallPhone ? 15 : 18,
+                          fontWeight: FontWeight.w800,
+                          color: AppColors.textPrimaryC(isDark),
+                          letterSpacing: -0.3,
+                        ),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              SizedBox(height: r.spaceXs),
+              Padding(
+                padding: EdgeInsets.symmetric(horizontal: r.paddingH),
+                child: Align(
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    'Selecciona el miembro de tu grupo familiar',
+                    style: TextStyle(
+                      fontSize: r.isSmallPhone ? 12 : 14,
+                      fontWeight: FontWeight.w500,
+                      color: AppColors.textSecondaryC(isDark),
+                    ),
                   ),
                 ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 6),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 24),
-            child: Text(
-              'Selecciona el miembro de tu grupo familiar',
-              style: TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w500,
-                color: AppColors.textSecondaryC(Theme.of(context).brightness == Brightness.dark),
               ),
-            ),
+              SizedBox(height: r.spaceMd),
+              Container(height: 0.5, color: AppColors.border),
+              // List
+              Flexible(
+                child: ListView.builder(
+                  padding: const EdgeInsets.symmetric(vertical: 8),
+                  itemCount: beneficiaries.length,
+                  itemBuilder: (context, index) {
+                    final b = beneficiaries[index];
+                    final isSelected = b.id == currentId;
+                    return _BeneficiaryTile(
+                      beneficiary: b,
+                      isSelected: isSelected,
+                      onTap: () => Navigator.pop(context, b),
+                    );
+                  },
+                ),
+              ),
+              SizedBox(height: MediaQuery.of(context).padding.bottom + 8),
+            ],
           ),
-          const SizedBox(height: 16),
-          Container(height: 0.5, color: AppColors.border),
-          // List
-          Flexible(
-            child: ListView.builder(
-              padding: const EdgeInsets.symmetric(vertical: 8),
-              itemCount: beneficiaries.length,
-              itemBuilder: (context, index) {
-                final b = beneficiaries[index];
-                final isSelected = b.id == currentId;
-                return _BeneficiaryTile(
-                  beneficiary: b,
-                  isSelected: isSelected,
-                  onTap: () => Navigator.pop(context, b),
-                );
-              },
-            ),
-          ),
-          SizedBox(height: MediaQuery.of(context).padding.bottom + 8),
-        ],
+        ),
       ),
     );
   }
@@ -136,15 +153,17 @@ class _BeneficiaryTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final r = context.r;
     final isTitular = beneficiary.isTitular;
     final avatarColor = isTitular ? AppColors.primary : AppColors.accent;
     final label = isTitular ? 'Yo (Titular)' : beneficiary.relationship;
+    final avatarSize = r.avatarMd;
 
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
       onTap: onTap,
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+        padding: EdgeInsets.symmetric(horizontal: r.paddingH, vertical: r.cardPadding),
         color: isSelected
             ? (isDark ? AppColors.primary.withValues(alpha: 0.15) : AppColors.primaryLight)
             : Colors.transparent,
@@ -152,8 +171,8 @@ class _BeneficiaryTile extends StatelessWidget {
           children: [
             // Avatar
             Container(
-              width: 56,
-              height: 56,
+              width: avatarSize,
+              height: avatarSize,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
                 color: avatarColor,
@@ -163,12 +182,12 @@ class _BeneficiaryTile extends StatelessWidget {
                     ? Image.memory(
                         base64Decode(beneficiary.photoBase64),
                         fit: BoxFit.cover,
-                        errorBuilder: (_, __, ___) => _fallbackAvatar(beneficiary),
+                        errorBuilder: (_, __, ___) => _fallbackAvatar(beneficiary, avatarSize),
                       )
-                    : _fallbackAvatar(beneficiary),
+                    : _fallbackAvatar(beneficiary, avatarSize),
               ),
             ),
-            const SizedBox(width: 14),
+            SizedBox(width: r.spaceMd),
             // Name + relationship
             Expanded(
               child: Column(
@@ -176,8 +195,10 @@ class _BeneficiaryTile extends StatelessWidget {
                 children: [
                   Text(
                     beneficiary.fullName,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
                     style: TextStyle(
-                      fontSize: 16,
+                      fontSize: r.isSmallPhone ? 14 : 16,
                       fontWeight: FontWeight.w700,
                       color: AppColors.textPrimaryC(isDark),
                     ),
@@ -195,7 +216,7 @@ class _BeneficiaryTile extends StatelessWidget {
                     child: Text(
                       label,
                       style: TextStyle(
-                        fontSize: 15,
+                        fontSize: r.isSmallPhone ? 12 : 14,
                         fontWeight: FontWeight.w700,
                         color: isTitular
                             ? AppColors.primary
@@ -227,14 +248,14 @@ class _BeneficiaryTile extends StatelessWidget {
     );
   }
 
-  Widget _fallbackAvatar(BeneficiaryModel beneficiary) {
+  Widget _fallbackAvatar(BeneficiaryModel beneficiary, double size) {
     return Center(
       child: Text(
         beneficiary.initial,
-        style: const TextStyle(
+        style: TextStyle(
           color: Colors.white,
           fontWeight: FontWeight.w800,
-          fontSize: 20,
+          fontSize: size * 0.36,
         ),
       ),
     );

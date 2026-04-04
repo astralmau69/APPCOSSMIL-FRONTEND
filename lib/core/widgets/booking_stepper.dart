@@ -1,6 +1,7 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import '../constants/app_colors.dart';
+import '../extensions/responsive_extensions.dart';
 import '../theme/app_constants.dart';
 
 /// Stepper visual horizontal para el flujo de reserva de 4 pasos.
@@ -21,9 +22,10 @@ class BookingStepper extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final r = context.r;
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+      padding: EdgeInsets.symmetric(horizontal: r.paddingH, vertical: r.spaceMd),
       decoration: BoxDecoration(
         color: isDark
             ? AppColors.darkSurface.withValues(alpha: 0.6)
@@ -40,15 +42,15 @@ class BookingStepper extends StatelessWidget {
         children: [
           // COSSMIL logo prominente
           Padding(
-            padding: const EdgeInsets.only(bottom: 10),
+            padding: EdgeInsets.only(bottom: r.spaceSm),
             child: Image.asset(
               'assets/images/cossmil_logo.png',
-              width: 48,
-              height: 48,
+              width: r.stepperLogoSize,
+              height: r.stepperLogoSize,
               fit: BoxFit.contain,
               errorBuilder: (_, __, ___) => Icon(
                 CupertinoIcons.shield_fill,
-                size: 32,
+                size: r.stepperLogoSize * 0.65,
                 color: AppColors.accentForTheme(isDark),
               ),
             ),
@@ -61,7 +63,7 @@ class BookingStepper extends StatelessWidget {
                 return Expanded(child: _buildConnector(stepBefore, isDark));
               }
               final stepIndex = i ~/ 2;
-              return _buildStep(stepIndex, isDark);
+              return _buildStep(stepIndex, isDark, r);
             }),
           ),
         ],
@@ -69,7 +71,7 @@ class BookingStepper extends StatelessWidget {
     );
   }
 
-  Widget _buildStep(int index, bool isDark) {
+  Widget _buildStep(int index, bool isDark, AppResponsive r) {
     final step = _steps[index];
     final isCompleted = index < currentStep;
     final isCurrent = index == currentStep;
@@ -94,14 +96,18 @@ class BookingStepper extends StatelessWidget {
       labelColor = isDark ? AppColors.darkTextTertiary : AppColors.textTertiary;
     }
 
+    final circleSize = isCurrent ? r.stepperCircleSizeCurrent : r.stepperCircleSize;
+    final iconS = isCurrent ? circleSize * 0.44 : circleSize * 0.47;
+    final labelFs = isCurrent ? (r.isSmallPhone ? 9.0 : 10.5) : (r.isSmallPhone ? 8.0 : 9.5);
+
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
         AnimatedContainer(
           duration: AppDurations.normal,
           curve: AppCurves.snappy,
-          width: isCurrent ? 36 : 30,
-          height: isCurrent ? 36 : 30,
+          width: circleSize,
+          height: circleSize,
           decoration: BoxDecoration(
             color: circleColor,
             shape: BoxShape.circle,
@@ -117,15 +123,15 @@ class BookingStepper extends StatelessWidget {
           ),
           child: Center(
             child: isCompleted
-                ? Icon(CupertinoIcons.checkmark, size: 15, color: iconColor)
-                : Icon(step.icon, size: isCurrent ? 16 : 14, color: iconColor),
+                ? Icon(CupertinoIcons.checkmark, size: iconS, color: iconColor)
+                : Icon(step.icon, size: iconS, color: iconColor),
           ),
         ),
-        const SizedBox(height: 5),
+        SizedBox(height: r.spaceXs),
         AnimatedDefaultTextStyle(
           duration: AppDurations.normal,
           style: TextStyle(
-            fontSize: isCurrent ? 10.5 : 9.5,
+            fontSize: labelFs,
             fontWeight: isCurrent ? FontWeight.w700 : FontWeight.w500,
             color: labelColor,
             letterSpacing: 0.1,
