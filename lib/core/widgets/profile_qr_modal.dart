@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../constants/app_colors.dart';
+import '../extensions/responsive_extensions.dart';
 import '../theme/app_theme.dart';
 import '../models/user_model.dart';
 
@@ -36,32 +37,29 @@ class ProfileQrModal {
                 child: Text(
                   user.fullName.isNotEmpty ? user.fullName[0] : '?',
                   style: const TextStyle(
-                    fontSize: 24,
                     fontWeight: FontWeight.w800,
                     color: AppColors.white,
                   ),
                 ),
               ),
-              const SizedBox(height: 12),
+              SizedBox(height: context.r.spaceMd),
               Text(
                 user.displayName,
                 textAlign: TextAlign.center,
                 style: TextStyle(
-                  fontSize: 17,
                   fontWeight: FontWeight.w700,
                   color: AppColors.textPrimaryC(isDark),
                 ),
               ),
-              const SizedBox(height: 4),
+              SizedBox(height: context.r.spaceXs),
               Text(
                 'Mat. ${user.matricula}',
                 style: TextStyle(
-                  fontSize: 13,
                   fontWeight: FontWeight.w500,
                   color: AppColors.textSecondaryC(isDark),
                 ),
               ),
-              const SizedBox(height: 24),
+              SizedBox(height: context.r.spaceLg),
               // QR Placeholder
               Container(
                 width: 180,
@@ -75,7 +73,7 @@ class ProfileQrModal {
                 child: Container(
                   decoration: BoxDecoration(
                     color: isDark ? AppColors.darkElevated : AppColors.background,
-                    borderRadius: BorderRadius.circular(8),
+                    borderRadius: BorderRadius.circular(context.r.radiusSm),
                   ),
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
@@ -85,11 +83,10 @@ class ProfileQrModal {
                         size: 100,
                         color: AppColors.primary.withValues(alpha: 0.8),
                       ),
-                      const SizedBox(height: 8),
+                      SizedBox(height: context.r.spaceSm),
                       Text(
                         user.matricula,
                         style: TextStyle(
-                          fontSize: 11,
                           fontWeight: FontWeight.w600,
                           color: AppColors.textSecondaryC(isDark),
                           letterSpacing: 1.0,
@@ -99,17 +96,16 @@ class ProfileQrModal {
                   ),
                 ),
               ),
-              const SizedBox(height: 16),
+              SizedBox(height: context.r.spaceMd),
               Text(
                 'Presente este código en ventanilla\npara identificación rápida.',
                 textAlign: TextAlign.center,
                 style: TextStyle(
-                  fontSize: 12,
                   color: AppColors.textSecondaryC(isDark),
                   height: 1.4,
                 ),
               ),
-              const SizedBox(height: 20),
+              SizedBox(height: context.r.spaceLg),
               SizedBox(
                 width: double.infinity,
                 child: TextButton(
@@ -117,7 +113,6 @@ class ProfileQrModal {
                   child: const Text(
                     'Cerrar',
                     style: TextStyle(
-                      fontSize: 15,
                       fontWeight: FontWeight.w600,
                       color: AppColors.primary,
                     ),

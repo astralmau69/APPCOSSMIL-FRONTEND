@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../theme/app_constants.dart';
+import '../extensions/responsive_extensions.dart';
 
 /// Widget reutilizable para bloques de texto con título y cuerpo.
 ///
@@ -25,12 +26,12 @@ class TextSection extends StatelessWidget {
         children: [
           Text(
             _title,
-            style: AppTypography.titleMedium,
+            style: context.texts.titleMedium,
           ),
-          const SizedBox(height: 6),
+          SizedBox(height: context.r.spaceSm),
           Text(
             _body,
-            style: AppTypography.bodyMedium,
+            style: context.texts.bodyMedium,
           ),
         ],
       ),

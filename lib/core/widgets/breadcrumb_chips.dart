@@ -42,7 +42,7 @@ class BreadcrumbChips extends StatelessWidget {
         color: isLast
             ? primaryColor.withValues(alpha: 0.12)
             : primaryColor.withValues(alpha: 0.05),
-        borderRadius: BorderRadius.circular(24),
+        borderRadius: BorderRadius.circular(context.r.modalRadius),
         border: Border.all(
           color: isLast
               ? primaryColor.withValues(alpha: 0.3)

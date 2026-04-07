@@ -1,3 +1,4 @@
+import '../extensions/string_extensions.dart';
 import 'beneficiary_model.dart';
 
 class UserModel {
@@ -91,10 +92,10 @@ class UserModel {
   factory UserModel.fromJson(Map<String, dynamic> json) {
     return UserModel(
       id: (json['idper'] ?? json['id'] ?? '').toString(),
-      fullName: json['nombre_completo'] as String? ??
+      fullName: (json['nombre_completo'] as String? ??
           json['fullName'] as String? ??
-          '',
-      rank: json['grado'] as String? ?? json['rank'] as String? ?? '',
+          '').toDisplayCase,
+      rank: (json['grado'] as String? ?? json['rank'] as String? ?? '').toDisplayCase,
       matricula: json['matricula'] as String? ?? '',
       bloodType: json['tipo_sangre'] as String? ??
           json['bloodType'] as String? ??
@@ -125,9 +126,9 @@ class UserModel {
                   (e) => BeneficiaryModel.fromJson(e as Map<String, dynamic>))
               .toList() ??
           [],
-      allergies: json['alergias'] as String? ??
+      allergies: (json['alergias'] as String? ??
           json['allergies'] as String? ??
-          '',
+          '').toDisplayCase,
     );
   }
 

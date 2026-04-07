@@ -6,6 +6,7 @@ import '../../../core/extensions/responsive_extensions.dart';
 import '../../../core/models/news_item_model.dart';
 import '../../../core/services/cossmil_news_service.dart';
 import '../../../core/animations/optimized_animations.dart';
+import '../../../core/utils/error_mapper.dart';
 
 /// Pantalla dedicada para comunicados y noticias de COSSMIL con paginación.
 class NoticiasScreen extends StatefulWidget {
@@ -62,7 +63,7 @@ class _NoticiasScreenState extends State<NoticiasScreen> {
       });
     } catch (e) {
       if (!mounted) return;
-      setState(() { _error = e.toString(); _isLoading = false; });
+      setState(() { _error = ErrorMapper.message(e); _isLoading = false; });
     }
   }
 
@@ -140,7 +141,7 @@ class _NoticiasScreenState extends State<NoticiasScreen> {
                     );
                   }
                   return Padding(
-                    padding: const EdgeInsets.only(bottom: 12),
+                    padding: EdgeInsets.only(bottom: context.r.spaceMd),
                     child: FadeSlideIn(
                       delay: Duration(milliseconds: i < 10 ? i * 60 : 0),
                       child: _NewsListCard(
@@ -160,7 +161,6 @@ class _NoticiasScreenState extends State<NoticiasScreen> {
                   child: Text(
                     'Página $_currentPage de $_totalPages',
                     style: TextStyle(
-                      fontSize: 12,
                       fontWeight: FontWeight.w600,
                       color: AppColors.textTertiaryC(isDark),
                     ),
@@ -177,13 +177,13 @@ class _NoticiasScreenState extends State<NoticiasScreen> {
   Widget _buildErrorState(bool isDark) {
     return Center(
       child: Padding(
-        padding: const EdgeInsets.all(32),
+        padding: EdgeInsets.all(context.r.spaceXl),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             Icon(CupertinoIcons.wifi_slash,
                 size: 40, color: AppColors.textTertiaryC(isDark)),
-            const SizedBox(height: 16),
+            SizedBox(height: context.r.spaceMd),
             Text(
               'No se pudo cargar los comunicados',
               textAlign: TextAlign.center,
@@ -192,12 +192,11 @@ class _NoticiasScreenState extends State<NoticiasScreen> {
                 color: AppColors.textPrimaryC(isDark),
               ),
             ),
-            const SizedBox(height: 8),
+            SizedBox(height: context.r.spaceSm),
             Text(
               'Verifica tu conexión y desliza hacia abajo para reintentar.',
               textAlign: TextAlign.center,
               style: TextStyle(
-                fontSize: 13,
                 color: AppColors.textSecondaryC(isDark),
               ),
             ),
@@ -218,21 +217,19 @@ class _NoticiasScreenState extends State<NoticiasScreen> {
             size: 60,
             color: AppColors.textTertiaryC(isDark).withValues(alpha: 0.5),
           ),
-          const SizedBox(height: 20),
+          SizedBox(height: context.r.spaceLg),
           Text(
             'Sin comunicados recientes',
             style: TextStyle(
-              fontSize: 17,
               fontWeight: FontWeight.w700,
               color: AppColors.textPrimaryC(isDark),
             ),
           ),
-          const SizedBox(height: 8),
+          SizedBox(height: context.r.spaceSm),
           Text(
             'Te notificaremos cuando haya nuevos avisos importantes de COSSMIL.',
             textAlign: TextAlign.center,
             style: TextStyle(
-              fontSize: 14,
               color: AppColors.textSecondaryC(isDark),
             ),
           ),
@@ -264,7 +261,7 @@ class _NoticiasScreenState extends State<NoticiasScreen> {
                 height: 4,
                 decoration: BoxDecoration(
                   color: isDark ? AppColors.darkBorder : const Color(0xFF191C1E).withValues(alpha: 0.15),
-                  borderRadius: BorderRadius.circular(2),
+                  borderRadius: BorderRadius.circular(context.r.spaceXs),
                 ),
               ),
               Expanded(
@@ -279,7 +276,6 @@ class _NoticiasScreenState extends State<NoticiasScreen> {
                             child: Text(
                               item.entity,
                               style: TextStyle(
-                                fontSize: 11,
                                 fontWeight: FontWeight.w700,
                                 color: AppColors.primary,
                                 letterSpacing: 0.3,
@@ -289,27 +285,25 @@ class _NoticiasScreenState extends State<NoticiasScreen> {
                         Text(
                           item.date,
                           style: TextStyle(
-                            fontSize: 12,
                             fontWeight: FontWeight.w600,
                             color: AppColors.textTertiaryC(isDark),
                           ),
                         ),
                       ],
                     ),
-                    const SizedBox(height: 14),
+                    SizedBox(height: context.r.spaceMd),
                     Text(
                       item.title,
                       style: TextStyle(
-                        fontSize: 20,
                         fontWeight: FontWeight.w800,
                         color: AppColors.textPrimaryC(isDark),
                         height: 1.3,
                       ),
                     ),
-                    const SizedBox(height: 16),
+                    SizedBox(height: context.r.spaceMd),
                     if (item.imageUrl.isNotEmpty) ...[
                       ClipRRect(
-                        borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
+                        borderRadius: BorderRadius.circular(context.r.radiusMd),
                         child: ConstrainedBox(
                           constraints: const BoxConstraints(
                             maxHeight: 400,
@@ -323,16 +317,16 @@ class _NoticiasScreenState extends State<NoticiasScreen> {
                               width: double.infinity,
                               decoration: BoxDecoration(
                                 color: isDark ? AppColors.darkElevated : const Color(0xFFF0F2F4),
-                                borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
+                                borderRadius: BorderRadius.circular(context.r.radiusMd),
                               ),
                               child: Column(
                                 mainAxisAlignment: MainAxisAlignment.center,
                                 children: [
                                   Icon(CupertinoIcons.photo, size: 32, color: AppColors.textTertiaryC(isDark)),
-                                  const SizedBox(height: 8),
+                                  SizedBox(height: context.r.spaceSm),
                                   Text(
                                     'No se pudo cargar la imagen',
-                                    style: TextStyle(fontSize: 12, color: AppColors.textTertiaryC(isDark)),
+                                    style: context.texts.bodySmall.copyWith(color: AppColors.textTertiaryC(isDark)),
                                   ),
                                 ],
                               ),
@@ -343,7 +337,7 @@ class _NoticiasScreenState extends State<NoticiasScreen> {
                                 height: 200,
                                 decoration: BoxDecoration(
                                   color: isDark ? AppColors.darkElevated : const Color(0xFFF0F2F4),
-                                  borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
+                                  borderRadius: BorderRadius.circular(context.r.radiusMd),
                                 ),
                                 child: const Center(child: CupertinoActivityIndicator()),
                               );
@@ -351,12 +345,11 @@ class _NoticiasScreenState extends State<NoticiasScreen> {
                           ),
                         ),
                       ),
-                      const SizedBox(height: 16),
+                      SizedBox(height: context.r.spaceMd),
                     ],
                     Text(
                       item.description,
                       style: TextStyle(
-                        fontSize: 15,
                         color: AppColors.textSecondaryC(isDark),
                         height: 1.6,
                       ),
@@ -386,10 +379,10 @@ class _NewsListCard extends StatelessWidget {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        padding: const EdgeInsets.all(14),
+        padding: EdgeInsets.all(context.r.spaceMd),
         decoration: BoxDecoration(
           color: AppColors.cardBg(isDark),
-          borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
+          borderRadius: BorderRadius.circular(context.r.radiusMd),
           border: Border.all(
             color: isDark ? AppColors.darkBorder : const Color(0xFF191C1E).withValues(alpha: 0.08),
             width: isDark ? 0.8 : 0.5,
@@ -402,7 +395,7 @@ class _NewsListCard extends StatelessWidget {
             // Imagen thumbnail (si existe)
             if (item.imageUrl.isNotEmpty) ...[
               ClipRRect(
-                borderRadius: BorderRadius.circular(AppSpacing.radiusSm),
+                borderRadius: BorderRadius.circular(context.r.radiusSm),
                 child: Image.network(
                   item.imageUrl,
                   width: context.r.avatarMd,
@@ -413,7 +406,7 @@ class _NewsListCard extends StatelessWidget {
                     height: context.r.avatarMd,
                     decoration: BoxDecoration(
                       color: isDark ? AppColors.darkElevated : AppColors.primaryLight,
-                      borderRadius: BorderRadius.circular(AppSpacing.radiusSm),
+                      borderRadius: BorderRadius.circular(context.r.radiusSm),
                     ),
                     child: Icon(
                       CupertinoIcons.news,
@@ -423,7 +416,7 @@ class _NewsListCard extends StatelessWidget {
                   ),
                 ),
               ),
-              const SizedBox(width: 12),
+              SizedBox(width: context.r.spaceMd),
             ],
             Expanded(
               child: Column(
@@ -435,13 +428,12 @@ class _NewsListCard extends StatelessWidget {
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(
-                      fontSize: 14,
                       fontWeight: FontWeight.w700,
                       color: AppColors.textPrimaryC(isDark),
                       height: 1.3,
                     ),
                   ),
-                  const SizedBox(height: 6),
+                  SizedBox(height: context.r.spaceSm),
                   // Entidad + fecha
                   Row(
                     children: [
@@ -452,14 +444,13 @@ class _NewsListCard extends StatelessWidget {
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                             style: TextStyle(
-                              fontSize: 11,
                               fontWeight: FontWeight.w600,
                               color: AppColors.textTertiaryC(isDark),
                             ),
                           ),
                         ),
                         Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 6),
+                          padding: EdgeInsets.symmetric(horizontal: context.r.spaceSm),
                           child: Text(
                             '·',
                             style: TextStyle(
@@ -472,7 +463,6 @@ class _NewsListCard extends StatelessWidget {
                       Text(
                         item.date,
                         style: TextStyle(
-                          fontSize: 11,
                           fontWeight: FontWeight.w600,
                           color: AppColors.textTertiaryC(isDark),
                         ),
@@ -482,9 +472,9 @@ class _NewsListCard extends StatelessWidget {
                 ],
               ),
             ),
-            const SizedBox(width: 8),
+            SizedBox(width: context.r.spaceSm),
             Padding(
-              padding: const EdgeInsets.only(top: 4),
+              padding: EdgeInsets.only(top: context.r.spaceXs),
               child: Icon(
                 CupertinoIcons.chevron_right,
                 size: 14,

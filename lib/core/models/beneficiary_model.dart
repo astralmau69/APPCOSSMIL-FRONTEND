@@ -1,3 +1,5 @@
+import '../extensions/string_extensions.dart';
+
 class BeneficiaryModel {
   final String id;
   final String fullName;
@@ -33,10 +35,10 @@ class BeneficiaryModel {
 
     return BeneficiaryModel(
       id: (json['idper'] ?? json['idben'] ?? json['id'] ?? '').toString(),
-      fullName: fullName,
+      fullName: fullName.toDisplayCase,
       relationship: (json['parentesco'] as String? ??
           json['relationship'] as String? ??
-          '').trim(),
+          '').trim().toDisplayCase,
       matricula: (json['mtrben'] ??
                   json['matricula'] ??
                   json['nromatricula'] ??

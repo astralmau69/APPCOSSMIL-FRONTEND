@@ -4,6 +4,8 @@ class ApiConstants {
   // ─── Servidor ──────────────────────────────────────────────────────────────
   static const String baseUrl = 'http://10.150.10.13:9999';
 
+  static const String appVersion = '1.0.0';
+
   // ─── Endpoints ─────────────────────────────────────────────────────────────
   static const String tokenEndpoint = '/api/security/oauth/token';
 
@@ -22,6 +24,13 @@ class ApiConstants {
   static Uri get tokenUri => Uri.parse('$baseUrl$tokenEndpoint');
 
   // ─── Programación (endpoints protegidos con Bearer) ────────────────────────
+  
+  /// Verificación de versión de la aplicación.
+  static String verificaVersion(String version) =>
+      '/api/programacion/verifica-version/$version';
+
+  /// Obtener fecha del servidor.
+  static String fechaServidor() => '/api/programacion/fecha-servidor';
 
   /// Regionales por departamento.
   static String regionalesPorDepartamento(int idins) =>
@@ -49,10 +58,9 @@ class ApiConstants {
       '/api/programacion/horarios-atencion/$idins/$idsuc';
 
   /// Médico asignado con agenda y horas disponibles.
-  /// [fecha] formato yyyy-MM-dd (fecha de la cita, típicamente mañana).
-  /// [idturno] es el código de turno/horario (idhorario del HorarioAtencionModel).
-  static String medicoAsignado(int idins, int idsuc, int idesp, String fecha, String modalidad, int idturno) =>
-      '/api/programacion/medico-asignado/$idins/$idsuc/$idesp/$fecha/$modalidad/$idturno';
+  /// [fecha] obtenida de fecha-servidor (fechaCitaMovil).
+  static String medicoAsignado(int idins, int idsuc, int idesp, String fecha, String modalidad) =>
+      '/api/programacion/medico-asignado/$idins/$idsuc/$idesp/$fecha/$modalidad';
 
   /// Crear cita médica (POST).
   static String crearCita() => '/api/programacion/crea-cita';

@@ -1,6 +1,7 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import '../constants/app_colors.dart';
+import '../extensions/responsive_extensions.dart';
 import '../theme/app_theme.dart';
 import '../models/news_item_model.dart';
 
@@ -69,15 +70,14 @@ class _NewsCardState extends State<NewsCard>
                     if (widget.item.entity.isNotEmpty) ...[
                       Flexible(
                         child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          padding: EdgeInsets.symmetric(horizontal: context.r.spaceSm, vertical: 4),
                           decoration: BoxDecoration(
                             color: AppColors.primary.withValues(alpha: 0.12),
-                            borderRadius: BorderRadius.circular(6),
+                            borderRadius: BorderRadius.circular(context.r.badgeRadius),
                           ),
                           child: Text(
                             widget.item.entity,
                             style: TextStyle(
-                              fontSize: 10,
                               fontWeight: FontWeight.w800,
                               color: AppColors.primary,
                               letterSpacing: 0.5,
@@ -86,57 +86,53 @@ class _NewsCardState extends State<NewsCard>
                           ),
                         ),
                       ),
-                      const SizedBox(width: 8),
+                      SizedBox(width: context.r.spaceSm),
                     ],
                     Icon(CupertinoIcons.calendar,
                         size: 12, color: AppColors.textTertiaryC(isDark)),
-                    const SizedBox(width: 4),
+                    SizedBox(width: context.r.spaceXs),
                     Text(
                       widget.item.date,
                       style: TextStyle(
-                        fontSize: 11,
                         fontWeight: FontWeight.w600,
                         color: AppColors.textTertiaryC(isDark),
                       ),
                     ),
                   ],
                 ),
-                const SizedBox(height: 12),
+                SizedBox(height: context.r.spaceMd),
                 Text(
                   widget.item.title,
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
-                    fontSize: 16,
                     fontWeight: FontWeight.w800,
                     color: AppColors.textPrimaryC(isDark),
                     height: 1.2,
                   ),
                 ),
-                const SizedBox(height: 8),
+                SizedBox(height: context.r.spaceSm),
                 Text(
                   widget.item.description,
                   maxLines: 3,
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
-                    fontSize: 13,
                     color: AppColors.textSecondaryC(isDark),
                     height: 1.5,
                   ),
                 ),
-                const SizedBox(height: 12),
+                SizedBox(height: context.r.spaceMd),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.end,
                   children: [
                     Text(
                       'Leer más',
                       style: TextStyle(
-                        fontSize: 12,
                         fontWeight: FontWeight.w700,
                         color: AppColors.accentForTheme(isDark),
                       ),
                     ),
-                    const SizedBox(width: 4),
+                    SizedBox(width: context.r.spaceXs),
                     Icon(
                       CupertinoIcons.chevron_right,
                       size: 10,

@@ -11,6 +11,7 @@ import '../../../core/theme/app_constants.dart';
 import '../../../core/extensions/responsive_extensions.dart';
 import '../../../core/session/user_session.dart';
 import '../../../core/services/programacion_service.dart';
+import '../../../core/utils/error_mapper.dart';
 
 import '../../../core/animations/optimized_animations.dart';
 import '../../../core/animations/success_check_animation.dart';
@@ -59,6 +60,17 @@ class _SummaryScreenState extends State<SummaryScreen> {
     return formatted[0].toUpperCase() + formatted.substring(1);
   }
 
+  /// Asegura que la hora tenga formato HH:mm (e.g. "9:45" → "09:45").
+  String _padHora(String hora) {
+    if (hora.isEmpty) return hora;
+    final parts = hora.split(':');
+    if (parts.length >= 2) {
+      final h = parts[0].padLeft(2, '0');
+      return '$h:${parts[1]}';
+    }
+    return hora;
+  }
+
   /// Convierte hora 24h "8:00" → "8:00 AM", "14:30" → "2:30 PM"
   String _formatTimeAmPm(String? rawTime) {
     if (rawTime == null || rawTime.isEmpty) return '--:--';
@@ -97,7 +109,7 @@ class _SummaryScreenState extends State<SummaryScreen> {
       navigationBar: CupertinoNavigationBar(
         middle: Text(
           'Confirmar Reserva',
-          style: TextStyle(fontWeight: FontWeight.w800, fontSize: 18, color: AppColors.textPrimaryC(isDark)),
+          style: context.texts.headlineMedium.copyWith(fontWeight: FontWeight.w800, color: AppColors.textPrimaryC(isDark)),
         ),
         backgroundColor: AppColors.scaffoldBg(isDark).withValues(alpha: 0.94),
         border: null,
@@ -114,19 +126,17 @@ class _SummaryScreenState extends State<SummaryScreen> {
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       const SuccessCheckAnimation(size: 140),
-                      const SizedBox(height: 32),
+                      SizedBox(height: context.r.spaceXl),
                       Text(
                         '¡Reserva Exitosa!',
-                        style: AppTypography.displayMedium.copyWith(
-                          fontSize: 28,
+                        style: context.texts.displayLarge.copyWith(
                           color: AppColors.accentForTheme(isDark),
                         ),
                       ),
-                      const SizedBox(height: 8),
+                      SizedBox(height: context.r.spaceSm),
                       Text(
                         'Generando confirmación...',
                         style: TextStyle(
-                          fontSize: 15,
                           color: AppColors.textSecondaryC(isDark),
                           fontWeight: FontWeight.w500,
                         ),
@@ -143,7 +153,7 @@ class _SummaryScreenState extends State<SummaryScreen> {
                         padding: EdgeInsets.symmetric(horizontal: context.r.paddingH, vertical: 8),
                         children: [
                           _buildHeader(),
-                          const SizedBox(height: 16),
+                          SizedBox(height: context.r.spaceMd),
 
                           // ── 1. Hospital Regional ──
                           _infoRow(
@@ -167,20 +177,19 @@ class _SummaryScreenState extends State<SummaryScreen> {
 
                           // ── 3. Hora y Fecha ──
                           Padding(
-                            padding: const EdgeInsets.symmetric(vertical: 10),
+                            padding: EdgeInsets.symmetric(vertical: context.r.spaceSm),
                             child: Row(
                               children: [
                                 Icon(CupertinoIcons.calendar_badge_plus, size: 18, color: AppColors.textTertiaryC(isDark)),
-                                const SizedBox(width: 10),
+                                SizedBox(width: context.r.spaceSm),
                                 Expanded(
                                   child: Column(
                                     crossAxisAlignment: CrossAxisAlignment.start,
                                     children: [
                                       Text(
                                         _fechaReserva,
-                                        style: TextStyle(
-                                          fontSize: 14,
-                                          fontWeight: FontWeight.w600,
+                                        style: context.texts.titleMedium.copyWith(
+                                          fontWeight: FontWeight.w700,
                                           color: AppColors.textPrimaryC(isDark),
                                         ),
                                       ),
@@ -188,15 +197,14 @@ class _SummaryScreenState extends State<SummaryScreen> {
                                   ),
                                 ),
                                 Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                                  padding: EdgeInsets.symmetric(horizontal: context.r.spaceSm, vertical: 5),
                                   decoration: BoxDecoration(
                                     color: AppColors.accentForTheme(isDark).withValues(alpha: 0.12),
-                                    borderRadius: BorderRadius.circular(8),
+                                    borderRadius: BorderRadius.circular(context.r.radiusSm),
                                   ),
                                   child: Text(
                                     _formatTimeAmPm(bs.selectedTime),
                                     style: TextStyle(
-                                      fontSize: 15,
                                       fontWeight: FontWeight.w800,
                                       color: AppColors.accentForTheme(isDark),
                                     ),
@@ -210,7 +218,7 @@ class _SummaryScreenState extends State<SummaryScreen> {
 
                           // ── 4. Especialidad + Médico ──
                           Padding(
-                            padding: const EdgeInsets.symmetric(vertical: 10),
+                            padding: EdgeInsets.symmetric(vertical: context.r.spaceSm),
                             child: Row(
                               children: [
                                 // Foto del médico
@@ -219,14 +227,14 @@ class _SummaryScreenState extends State<SummaryScreen> {
                                   height: 48,
                                   decoration: BoxDecoration(
                                     color: AppColors.accentForTheme(isDark).withValues(alpha: 0.08),
-                                    borderRadius: BorderRadius.circular(14),
+                                    borderRadius: BorderRadius.circular(context.r.radiusMd),
                                   ),
                                   child: ClipRRect(
-                                    borderRadius: BorderRadius.circular(14),
+                                    borderRadius: BorderRadius.circular(context.r.radiusMd),
                                     child: _buildPhoto(bs.doctor?.foto, isDark, icon: CupertinoIcons.person_fill),
                                   ),
                                 ),
-                                const SizedBox(width: 12),
+                                SizedBox(width: context.r.spaceMd),
                                 Expanded(
                                   child: Column(
                                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -234,26 +242,21 @@ class _SummaryScreenState extends State<SummaryScreen> {
                                       Text(
                                         bs.specialty?.name ?? '',
                                         style: TextStyle(
-                                          fontSize: 12,
                                           fontWeight: FontWeight.w700,
                                           color: AppColors.accentForTheme(isDark),
                                           letterSpacing: 0.5,
                                         ),
                                       ),
-                                      const SizedBox(height: 2),
-                                      FittedBox(
-                                        fit: BoxFit.scaleDown,
-                                        alignment: Alignment.centerLeft,
-                                        child: Text(
-                                          bs.doctor?.fullName ?? 'Sin médico',
-                                          style: TextStyle(
-                                            fontSize: 15,
-                                            fontWeight: FontWeight.w700,
-                                            color: AppColors.textPrimaryC(isDark),
-                                          ),
-                                          maxLines: 2,
-                                          overflow: TextOverflow.ellipsis,
+                                      SizedBox(height: context.r.spaceXs),
+                                      Text(
+                                        bs.doctor?.fullName ?? 'Sin médico',
+                                        style: context.texts.titleMedium.copyWith(
+                                          fontWeight: FontWeight.w800,
+                                          color: AppColors.textPrimaryC(isDark),
+                                          height: 1.2,
                                         ),
+                                        maxLines: 2,
+                                        overflow: TextOverflow.ellipsis,
                                       ),
                                     ],
                                   ),
@@ -266,7 +269,7 @@ class _SummaryScreenState extends State<SummaryScreen> {
 
                           // ── 5. Paciente ──
                           Padding(
-                            padding: const EdgeInsets.symmetric(vertical: 10),
+                            padding: EdgeInsets.symmetric(vertical: context.r.spaceSm),
                             child: Row(
                               children: [
                                 // Foto del paciente
@@ -275,10 +278,10 @@ class _SummaryScreenState extends State<SummaryScreen> {
                                   height: 48,
                                   decoration: BoxDecoration(
                                     color: AppColors.primary.withValues(alpha: 0.08),
-                                    borderRadius: BorderRadius.circular(14),
+                                    borderRadius: BorderRadius.circular(context.r.radiusMd),
                                   ),
                                   child: ClipRRect(
-                                    borderRadius: BorderRadius.circular(14),
+                                    borderRadius: BorderRadius.circular(context.r.radiusMd),
                                     child: _buildPhoto(
                                       bs.beneficiary?.photoBase64 ?? user.photoBase64,
                                       isDark,
@@ -286,30 +289,25 @@ class _SummaryScreenState extends State<SummaryScreen> {
                                     ),
                                   ),
                                 ),
-                                const SizedBox(width: 12),
+                                SizedBox(width: context.r.spaceMd),
                                 Expanded(
                                   child: Column(
                                     crossAxisAlignment: CrossAxisAlignment.start,
                                     children: [
-                                      FittedBox(
-                                        fit: BoxFit.scaleDown,
-                                        alignment: Alignment.centerLeft,
-                                        child: Text(
-                                          bs.beneficiary?.fullName ?? user.fullName,
-                                          style: TextStyle(
-                                            fontSize: 15,
-                                            fontWeight: FontWeight.w700,
-                                            color: AppColors.textPrimaryC(isDark),
-                                          ),
-                                          maxLines: 2,
-                                          overflow: TextOverflow.ellipsis,
+                                      Text(
+                                        bs.beneficiary?.fullName ?? user.fullName,
+                                        style: context.texts.titleMedium.copyWith(
+                                          fontWeight: FontWeight.w800,
+                                          color: AppColors.textPrimaryC(isDark),
+                                          height: 1.2,
                                         ),
+                                        maxLines: 2,
+                                        overflow: TextOverflow.ellipsis,
                                       ),
-                                      const SizedBox(height: 2),
+                                      SizedBox(height: context.r.spaceXs),
                                       Text(
                                         'Mat. ${bs.beneficiary?.matricula ?? user.matricula}',
                                         style: TextStyle(
-                                          fontSize: 13,
                                           fontWeight: FontWeight.w500,
                                           color: AppColors.textSecondaryC(isDark),
                                         ),
@@ -321,11 +319,11 @@ class _SummaryScreenState extends State<SummaryScreen> {
                             ),
                           ),
 
-                          const SizedBox(height: 20),
+                          SizedBox(height: context.r.spaceLg),
 
                           // Botones
                           _buildActionButtons(isDark),
-                          const SizedBox(height: 24),
+                          SizedBox(height: context.r.spaceLg),
                         ],
                       ),
                     ),
@@ -343,19 +341,19 @@ class _SummaryScreenState extends State<SummaryScreen> {
     required String value,
   }) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 6),
+      padding: EdgeInsets.symmetric(vertical: context.r.chipPaddingV),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           Container(
-            padding: const EdgeInsets.all(10),
+            padding: EdgeInsets.all(context.r.spaceSm),
             decoration: BoxDecoration(
                color: AppColors.textTertiaryC(isDark).withValues(alpha: 0.08),
                shape: BoxShape.circle,
             ),
             child: Icon(icon, size: 20, color: AppColors.textTertiaryC(isDark)),
           ),
-          const SizedBox(width: 14),
+          SizedBox(width: context.r.spaceMd),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -363,17 +361,15 @@ class _SummaryScreenState extends State<SummaryScreen> {
                 Text(
                   label.toUpperCase(),
                   style: TextStyle(
-                    fontSize: 10,
                     fontWeight: FontWeight.w800,
                     color: AppColors.textSecondaryC(isDark),
                     letterSpacing: 0.5,
                   ),
                 ),
-                const SizedBox(height: 2),
+                SizedBox(height: context.r.spaceXs),
                 Text(
                   value,
                   style: TextStyle(
-                    fontSize: 15,
                     fontWeight: FontWeight.w700,
                     color: AppColors.textPrimaryC(isDark),
                     height: 1.2,
@@ -429,15 +425,15 @@ class _SummaryScreenState extends State<SummaryScreen> {
           child: Container(
             decoration: BoxDecoration(
               color: isDark ? AppColors.darkElevated : AppColors.white,
-              borderRadius: BorderRadius.circular(16),
+              borderRadius: BorderRadius.circular(context.r.cardRadius),
               border: Border.all(
                 color: isDark ? AppColors.darkBorder : const Color(0xFF191C1E).withValues(alpha: 0.15),
                 width: 0.8,
               ),
             ),
             child: CupertinoButton(
-              padding: const EdgeInsets.symmetric(vertical: 16),
-              borderRadius: BorderRadius.circular(16),
+              padding: EdgeInsets.symmetric(vertical: context.r.spaceMd),
+              borderRadius: BorderRadius.circular(context.r.cardRadius),
               onPressed: () => Navigator.pop(context),
               child: Text(
                 'Modificar',
@@ -449,19 +445,19 @@ class _SummaryScreenState extends State<SummaryScreen> {
             ),
           ),
         ),
-        const SizedBox(width: 16),
+        SizedBox(width: context.r.spaceMd),
         Expanded(
           flex: 2,
           child: Container(
             decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(16),
+              borderRadius: BorderRadius.circular(context.r.cardRadius),
               border: Border.all(
                 color: isDark ? AppColors.darkBorder : const Color(0xFF191C1E).withValues(alpha: 0.15),
                 width: 0.8,
               ),
             ),
             child: CupertinoButton.filled(
-              borderRadius: BorderRadius.circular(16),
+              borderRadius: BorderRadius.circular(context.r.cardRadius),
               onPressed: _isConfirming ? null : () => _confirmBooking(),
               child: _isConfirming
                   ? const CupertinoActivityIndicator(color: Colors.white)
@@ -490,50 +486,49 @@ class _SummaryScreenState extends State<SummaryScreen> {
             );
           },
         ),
-        const SizedBox(height: 16),
+        SizedBox(height: context.r.spaceMd),
         Text(
           'Su Cita Médica se ha creado exitosamente.',
           textAlign: TextAlign.center,
           style: TextStyle(
-            fontSize: 16,
             fontWeight: FontWeight.w700,
             color: AppColors.accentForTheme(isDark),
             height: 1.3,
           ),
         ),
-        const SizedBox(height: 28),
+        SizedBox(height: context.r.spaceXl),
 
         // Botón Ver Imagen de la Cita Médica (abre previsualizador)
         SizedBox(
           width: double.infinity,
           child: Container(
             decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(16),
+              borderRadius: BorderRadius.circular(context.r.cardRadius),
               border: Border.all(
                 color: isDark ? AppColors.darkBorder : const Color(0xFF191C1E).withValues(alpha: 0.15),
                 width: 0.8,
               ),
             ),
             child: CupertinoButton.filled(
-              borderRadius: BorderRadius.circular(16),
+              borderRadius: BorderRadius.circular(context.r.cardRadius),
               onPressed: _isDownloadingPdf ? null : _openPdfPreview,
               child: _isDownloadingPdf
                   ? const CupertinoActivityIndicator(color: Colors.white)
-                  : const Row(
+                  : Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         Icon(CupertinoIcons.doc_text_search, size: 20),
                         SizedBox(width: 10),
                         Text(
                           'Ver Imagen de la Cita Médica',
-                          style: TextStyle(fontWeight: FontWeight.w800, fontSize: 14, letterSpacing: 0.3),
+                          style: context.texts.bodyMedium.copyWith(fontWeight: FontWeight.w800, letterSpacing: 0.3),
                         ),
                       ],
                     ),
             ),
           ),
         ),
-        const SizedBox(height: 12),
+        SizedBox(height: context.r.spaceMd),
 
         // Botón Volver al Inicio
         SizedBox(
@@ -541,15 +536,15 @@ class _SummaryScreenState extends State<SummaryScreen> {
           child: Container(
             decoration: BoxDecoration(
               color: isDark ? AppColors.darkElevated : AppColors.white,
-              borderRadius: BorderRadius.circular(16),
+              borderRadius: BorderRadius.circular(context.r.cardRadius),
               border: Border.all(
                 color: isDark ? AppColors.darkBorder : const Color(0xFF191C1E).withValues(alpha: 0.15),
                 width: 0.8,
               ),
             ),
             child: CupertinoButton(
-              borderRadius: BorderRadius.circular(16),
-              onPressed: () => widget.tabShell.finishBooking(),
+              borderRadius: BorderRadius.circular(context.r.cardRadius),
+              onPressed: () => widget.tabShell.finishBooking(idtran: _idtran, dr: _dr),
               child: Text(
                 'Volver al Inicio',
                 style: TextStyle(
@@ -568,9 +563,9 @@ class _SummaryScreenState extends State<SummaryScreen> {
     if (_gestion == null || _idins == null || _idsuc == null || _idtran == null || _dr == null) {
       await CossmilIosAlert.show(
         context: context,
-        title: 'Error',
-        message: 'No se encontraron los datos necesarios para generar el PDF.',
-        type: AlertType.error,
+        title: 'PDF no disponible',
+        message: 'No se encontraron los datos necesarios para generar el PDF. Intenta nuevamente.',
+        type: AlertType.warning,
         confirmText: 'Aceptar',
       );
       return;
@@ -594,9 +589,9 @@ class _SummaryScreenState extends State<SummaryScreen> {
       if (pdfBytes == null || pdfBytes.isEmpty) {
         await CossmilIosAlert.show(
           context: context,
-          title: 'Error',
-          message: 'No se pudo obtener el PDF de la cita médica.',
-          type: AlertType.error,
+          title: 'PDF no disponible',
+          message: 'No se pudo obtener el PDF de la cita en este momento. Intenta nuevamente más tarde.',
+          type: AlertType.warning,
           confirmText: 'Aceptar',
         );
         return;
@@ -651,7 +646,7 @@ class _SummaryScreenState extends State<SummaryScreen> {
         "fecha": bs.doctor?.fecha ?? '',
         "dia": bs.doctor?.dia ?? '',
         "numero": bs.slotNumber ?? 0,
-        "hora": bs.selectedTime ?? '',
+        "hora": _padHora(bs.selectedTime ?? ''),
         "idagenda": bs.idagenda ?? '',
         "idhora": bs.idhora ?? '',
         "idcontrol": bs.idcontrol ?? '',
@@ -713,6 +708,11 @@ class _SummaryScreenState extends State<SummaryScreen> {
             hora: horaStr,
             paciente: pacienteName,
             ticketNumber: ticketNum,
+            gestion: _gestion,
+            idins: _idins,
+            idsuc: _idsuc,
+            idtran: _idtran,
+            dr: _dr,
           );
           await NotificationService.scheduleAppointmentReminders(
             ticketNumber: ticketNum,
@@ -722,6 +722,11 @@ class _SummaryScreenState extends State<SummaryScreen> {
             paciente: pacienteName,
             fecha: fechaStr,
             hora: horaStr,
+            gestion: _gestion,
+            idins: _idins,
+            idsuc: _idsuc,
+            idtran: _idtran,
+            dr: _dr,
           );
         }
       } catch (e) {
@@ -741,8 +746,7 @@ class _SummaryScreenState extends State<SummaryScreen> {
       if (!mounted) return;
       setState(() => _isConfirming = false);
 
-      // Limpiar prefijo "Exception: " del mensaje
-      final errorMsg = e.toString().replaceFirst('Exception: ', '');
+      final errorMsg = ErrorMapper.message(e, context: ErrorContext.crearCita);
 
       await CossmilIosAlert.show(
         context: context,
@@ -760,17 +764,15 @@ class _SummaryScreenState extends State<SummaryScreen> {
       children: [
         Text(
           _isConfirmed ? 'Cita Confirmada' : 'Resumen de su Cita Médica',
-          style: AppTypography.displayMedium.copyWith(
-            fontSize: 22,
+          style: context.texts.displayLarge.copyWith(
             color: _isConfirmed ? AppColors.accent : AppColors.accentForTheme(isDark),
           ),
         ),
-        const SizedBox(height: 6),
+        SizedBox(height: context.r.spaceSm),
         Text(
           _isConfirmed ? 'RESERVA EXITOSA' : 'VERIFIQUE LOS DETALLES',
-          style: AppTypography.labelMedium.copyWith(
+          style: context.texts.labelSmall.copyWith(
             letterSpacing: 1.0,
-            fontSize: 13,
             color: AppColors.textSecondaryC(isDark),
           ),
         ),
@@ -800,7 +802,6 @@ class _PdfPreviewScreen extends StatelessWidget {
           'Cita Médica',
           style: TextStyle(
             fontWeight: FontWeight.w800,
-            fontSize: 18,
             color: AppColors.textPrimaryC(isDark),
           ),
         ),
@@ -850,7 +851,7 @@ class _PdfPreviewScreen extends StatelessWidget {
             ),
             // Barra de acciones inferior
             Container(
-              padding: const EdgeInsets.fromLTRB(20, 12, 20, 16),
+              padding: EdgeInsets.fromLTRB(context.r.paddingH, context.r.spaceMd, context.r.paddingH, context.r.spaceMd),
               decoration: BoxDecoration(
                 color: AppColors.cardBg(isDark),
                 border: Border(
@@ -865,44 +866,42 @@ class _PdfPreviewScreen extends StatelessWidget {
                   // Descargar / Imprimir
                   Expanded(
                     child: CupertinoButton(
-                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      padding: EdgeInsets.symmetric(vertical: context.r.spaceMd),
                       color: AppColors.primary,
-                      borderRadius: BorderRadius.circular(14),
+                      borderRadius: BorderRadius.circular(context.r.radiusMd),
                       onPressed: () => _printPdf(context),
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
                           const Icon(CupertinoIcons.printer, size: 18, color: AppColors.white),
-                          const SizedBox(width: 8),
+                          SizedBox(width: context.r.spaceSm),
                           Text(
                             'Descargar / Imprimir',
-                            style: AppTypography.labelLarge.copyWith(
+                            style: context.texts.labelLarge.copyWith(
                               color: AppColors.white,
-                              fontSize: 13,
                             ),
                           ),
                         ],
                       ),
                     ),
                   ),
-                  const SizedBox(width: 10),
+                  SizedBox(width: context.r.spaceSm),
                   // Compartir
                   Expanded(
                     child: CupertinoButton(
-                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      padding: EdgeInsets.symmetric(vertical: context.r.spaceMd),
                       color: isDark ? AppColors.darkElevated : AppColors.white,
-                      borderRadius: BorderRadius.circular(14),
+                      borderRadius: BorderRadius.circular(context.r.radiusMd),
                       onPressed: () => _sharePdf(context),
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
                           Icon(CupertinoIcons.share, size: 18, color: AppColors.accentForTheme(isDark)),
-                          const SizedBox(width: 8),
+                          SizedBox(width: context.r.spaceSm),
                           Text(
                             'Compartir',
-                            style: AppTypography.labelLarge.copyWith(
+                            style: context.texts.labelLarge.copyWith(
                               color: AppColors.textPrimaryC(isDark),
-                              fontSize: 13,
                             ),
                           ),
                         ],

@@ -12,63 +12,104 @@ import '../animations/animated_status_badge.dart';
 class AppointmentCard extends StatelessWidget {
   final ReservaModel appointment;
   final VoidCallback? onTap;
+  final bool isHighlighted;
 
   const AppointmentCard({
     super.key,
     required this.appointment,
     this.onTap,
+    this.isHighlighted = false,
   });
 
   @override
   Widget build(BuildContext context) {
     final config = _statusConfig(appointment.status);
-    final responsive = ResponsiveData.of(context);
+    final r = context.r;
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Padding(
-      padding: EdgeInsets.symmetric(horizontal: responsive.isSmallPhone ? 8 : 12),
+      padding: EdgeInsets.symmetric(horizontal: r.spaceSm),
       child: OptimizedPressButton(
         onTap: onTap,
         scaleDown: 0.98,
         child: RepaintBoundary(
           child: Container(
-            padding: EdgeInsets.all(responsive.isSmallPhone ? 12 : 14),
+            padding: EdgeInsets.all(r.cardPadding),
             decoration: BoxDecoration(
-              color: AppColors.cardBg(isDark),
-              borderRadius: BorderRadius.circular(AppSpacing.radiusLg),
+              color: isHighlighted
+                  ? (isDark ? const Color(0xFF0C2D1E) : const Color(0xFFF0FDF4))
+                  : AppColors.cardBg(isDark),
+              borderRadius: BorderRadius.circular(r.cardRadius),
               border: Border.all(
-                color: config.isHighlighted
-                    ? config.color.withValues(alpha: 0.3)
-                    : AppColors.cardBorder(isDark),
-                width: 0.5,
+                color: isHighlighted
+                    ? AppColors.success
+                    : config.isHighlighted
+                        ? config.color.withValues(alpha: 0.3)
+                        : AppColors.cardBorder(isDark),
+                width: isHighlighted ? 1.5 : 0.5,
               ),
-              boxShadow: isDark ? [] : AppShadows.soft,
+              boxShadow: isHighlighted
+                  ? [
+                      BoxShadow(
+                        color: AppColors.success.withValues(alpha: isDark ? 0.25 : 0.20),
+                        blurRadius: 12,
+                        spreadRadius: 1,
+                        offset: const Offset(0, 2),
+                      ),
+                    ]
+                  : AppColors.cardShadowFor(isDark),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                if (isHighlighted) ...[
+                  Container(
+                    width: double.infinity,
+                    padding: EdgeInsets.symmetric(horizontal: r.chipPaddingH, vertical: r.chipPaddingV + 2),
+                    decoration: BoxDecoration(
+                      color: isDark ? const Color(0xFF065F46) : AppColors.success,
+                      borderRadius: BorderRadius.circular(r.radiusSm),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Icon(Icons.check_circle, size: 14, color: Colors.white),
+                        SizedBox(width: r.spaceXs),
+                        Text(
+                          'NUEVA RESERVA',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w800,
+                            fontSize: r.sectionLabelSize,
+                            letterSpacing: 0.8,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  SizedBox(height: r.spaceSm),
+                ],
                 // Row 1: Avatar + Especialidad + Status
                 Row(
                   children: [
-                    _buildAvatar(config, responsive),
-                    const SizedBox(width: 10),
+                    _buildAvatar(context, config, r),
+                    SizedBox(width: r.spaceSm),
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
                             appointment.specialty,
-                            style: AppTypography.titleLarge.copyWith(
-                              fontSize: responsive.isSmallPhone ? 15 : 16,
+                            style: context.texts.titleLarge.copyWith(
                               color: AppColors.textPrimaryC(isDark),
                             ),
                             overflow: TextOverflow.ellipsis,
                             maxLines: 1,
                           ),
-                          const SizedBox(height: 2),
+                          SizedBox(height: context.r.spaceXs),
                           Text(
                             appointment.doctorName,
-                            style: AppTypography.bodySmall.copyWith(
+                            style: context.texts.bodySmall.copyWith(
                               color: AppColors.accentForTheme(isDark),
                               fontWeight: FontWeight.w600,
                             ),
@@ -76,13 +117,12 @@ class AppointmentCard extends StatelessWidget {
                             overflow: TextOverflow.ellipsis,
                           ),
                           if (appointment.patientName.isNotEmpty) ...[
-                            const SizedBox(height: 2),
+                            SizedBox(height: context.r.spaceXs),
                             Text(
                               'Paciente: ${appointment.patientName}',
-                              style: AppTypography.bodySmall.copyWith(
+                              style: context.texts.bodySmall.copyWith(
                                 color: AppColors.textSecondaryC(isDark),
                                 fontWeight: FontWeight.w500,
-                                fontSize: 12,
                               ),
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
@@ -91,47 +131,54 @@ class AppointmentCard extends StatelessWidget {
                         ],
                       ),
                     ),
-                    const SizedBox(width: 8),
+                    SizedBox(width: r.spaceXs),
                     Flexible(
                       flex: 0,
                       child: AnimatedStatusBadge.fromStatus(appointment.status),
                     ),
                   ],
                 ),
-                const SizedBox(height: 10),
+                SizedBox(height: r.spaceSm),
                 Container(height: 0.5, color: AppColors.divider),
-                const SizedBox(height: 10),
+                SizedBox(height: r.spaceSm),
                 // Row 2: Detalles (fecha, regional, código)
                 Wrap(
-                  spacing: 6,
-                  runSpacing: 4,
+                  spacing: r.spaceXs,
+                  runSpacing: r.spaceXs,
                   children: [
-                    _detailChip(Icons.calendar_today, appointment.formattedDate, isDark: isDark, isHighlight: isDark),
+                    _detailChip(context, Icons.calendar_today, appointment.formattedDate, isDark: isDark, isHighlight: isDark),
                     if (appointment.time.isNotEmpty)
-                      _detailChip(Icons.schedule, appointment.time, isDark: isDark),
-                    _detailChip(Icons.apartment, appointment.hospital, isDark: isDark),
+                      _detailChip(context, Icons.schedule, appointment.time, isDark: isDark),
                     if (appointment.consultorio != null && appointment.consultorio!.isNotEmpty)
-                      _detailChip(Icons.meeting_room_outlined, appointment.consultorio!, isDark: isDark),
+                      _detailChip(context, Icons.meeting_room_outlined, appointment.consultorio!, isDark: isDark),
                   ],
                 ),
-                if (appointment.codigoReserva != null && appointment.codigoReserva!.isNotEmpty) ...[
-                  const SizedBox(height: 8),
+                if (appointment.hospital.isNotEmpty) ...[
+                  SizedBox(height: r.spaceXs),
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+                    width: double.infinity,
+                    padding: EdgeInsets.symmetric(horizontal: r.chipPaddingH, vertical: r.chipPaddingV + 2),
                     decoration: BoxDecoration(
                       color: isDark ? AppColors.darkElevated : AppColors.background,
-                      borderRadius: BorderRadius.circular(AppSpacing.radiusSm),
+                      borderRadius: BorderRadius.circular(r.radiusSm),
                       border: Border.all(color: isDark ? AppColors.darkBorder : AppColors.border, width: 0.5),
                     ),
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Icon(Icons.confirmation_number_outlined,
-                            size: 12, color: AppColors.textTertiaryC(isDark)),
-                        const SizedBox(width: 4),
-                        Text(
-                          appointment.codigoReserva!,
-                          style: AppTypography.labelSmall,
+                        Icon(Icons.local_hospital_outlined,
+                            size: 14, color: AppColors.textTertiaryC(isDark)),
+                        SizedBox(width: r.spaceXs),
+                        Flexible(
+                          child: Text(
+                            appointment.hospital,
+                            style: context.texts.bodySmall.copyWith(
+                                fontWeight: FontWeight.w600,
+                                color: AppColors.textSecondaryC(isDark),
+                            ),
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                          ),
                         ),
                       ],
                     ),
@@ -145,8 +192,8 @@ class AppointmentCard extends StatelessWidget {
     );
   }
 
-  Widget _buildAvatar(_StatusConfig config, ResponsiveData responsive) {
-    final size = responsive.isSmallPhone ? 44.0 : 50.0;
+  Widget _buildAvatar(BuildContext context, _StatusConfig config, AppResponsive r) {
+    final size = r.listAvatarSize;
 
     return Container(
       width: size,
@@ -159,22 +206,22 @@ class AppointmentCard extends StatelessWidget {
       child: Icon(
         config.icon,
         color: AppColors.white,
-        size: responsive.isSmallPhone ? 20 : 24,
+        size: r.iconMd,
       ),
     );
   }
 
-  Widget _detailChip(IconData icon, String text, {required bool isDark, bool isHighlight = false}) {
+  Widget _detailChip(BuildContext context, IconData icon, String text, {required bool isDark, bool isHighlight = false}) {
     if (text.isEmpty) return const SizedBox.shrink();
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
         Icon(icon, size: 14, color: isHighlight ? AppColors.primaryMedium : AppColors.textTertiaryC(isDark)),
-        const SizedBox(width: 4),
+        SizedBox(width: context.r.spaceXs),
         Flexible(
           child: Text(
             text,
-            style: AppTypography.bodySmall.copyWith(
+            style: context.texts.bodySmall.copyWith(
               color: isHighlight ? AppColors.primaryMedium : null,
             ),
             overflow: TextOverflow.ellipsis,

@@ -56,7 +56,7 @@ class ApiClient {
       }
 
       if (response.statusCode == 200) {
-        final body = jsonDecode(response.body);
+        final body = jsonDecode(utf8.decode(response.bodyBytes));
         return ApiClientResponse.success(body);
       }
 
@@ -125,7 +125,7 @@ class ApiClient {
       }
 
       if (response.statusCode == 200 || response.statusCode == 201) {
-        final decoded = jsonDecode(response.body);
+        final decoded = jsonDecode(utf8.decode(response.bodyBytes));
         return ApiClientResponse.success(decoded);
       }
 
@@ -191,7 +191,7 @@ class ApiClient {
       }
 
       if (response.statusCode == 200 || response.statusCode == 201) {
-        final decoded = jsonDecode(response.body);
+        final decoded = jsonDecode(utf8.decode(response.bodyBytes));
         return ApiClientResponse.success(decoded);
       }
 
@@ -293,7 +293,7 @@ class ApiClient {
       );
 
       if (response.statusCode == 200) {
-        final json = jsonDecode(response.body) as Map<String, dynamic>;
+        final json = jsonDecode(utf8.decode(response.bodyBytes)) as Map<String, dynamic>;
         final newAccessToken = (json['access_token'] as String? ?? '').trim();
         final newRefreshToken = (json['refresh_token'] as String? ?? '').trim();
 

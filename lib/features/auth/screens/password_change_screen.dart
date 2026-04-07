@@ -6,6 +6,7 @@ import '../../../core/extensions/responsive_extensions.dart';
 import '../../../core/services/auth_service.dart';
 import '../../../core/session/user_session.dart';
 import '../../../core/animations/optimized_animations.dart';
+import '../../../core/utils/error_mapper.dart';
 
 /// Pantalla obligatoria de actualización de datos para primer ingreso.
 /// Se muestra cuando `req_reset == false` en el token de login.
@@ -113,7 +114,7 @@ class _PasswordChangeScreenState extends State<PasswordChangeScreen> {
       if (!mounted) return;
       setState(() {
         _isLoading = false;
-        _errorMessage = e.toString().replaceFirst('Exception: ', '');
+        _errorMessage = ErrorMapper.message(e, context: ErrorContext.cambiarPassword);
       });
     }
   }
@@ -139,7 +140,7 @@ class _PasswordChangeScreenState extends State<PasswordChangeScreen> {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                const SizedBox(height: 32),
+                SizedBox(height: context.r.spaceXl),
 
                 // ── Logo COSSMIL ─────────────────────────────────
                 FadeSlideIn(
@@ -163,21 +164,21 @@ class _PasswordChangeScreenState extends State<PasswordChangeScreen> {
                     ),
                   ),
                 ),
-                const SizedBox(height: 20),
+                SizedBox(height: context.r.spaceLg),
 
                 // ── Título principal ───────────────────────────────
                 FadeSlideIn(
                   delay: const Duration(milliseconds: 100),
                   child: Text(
                     'Actualización de Datos',
-                    style: AppTypography.headlineLarge.copyWith(
+                    style: context.texts.headlineLarge.copyWith(
                       color: AppColors.textPrimaryC(isDark),
                       fontWeight: FontWeight.w800,
                     ),
                     textAlign: TextAlign.center,
                   ),
                 ),
-                const SizedBox(height: 28),
+                SizedBox(height: context.r.spaceXl),
 
                 // ═══ SECCIÓN: Contraseña ══════════════════════════
                 FadeSlideIn(
@@ -188,7 +189,7 @@ class _PasswordChangeScreenState extends State<PasswordChangeScreen> {
                     isDark: isDark,
                   ),
                 ),
-                const SizedBox(height: 12),
+                SizedBox(height: context.r.spaceMd),
                 FadeSlideIn(
                   delay: const Duration(milliseconds: 200),
                   child: _buildField(
@@ -213,7 +214,7 @@ class _PasswordChangeScreenState extends State<PasswordChangeScreen> {
                     ),
                   ),
                 ),
-                const SizedBox(height: 12),
+                SizedBox(height: context.r.spaceMd),
                 FadeSlideIn(
                   delay: const Duration(milliseconds: 250),
                   child: _buildField(
@@ -239,7 +240,7 @@ class _PasswordChangeScreenState extends State<PasswordChangeScreen> {
                   ),
                 ),
 
-                const SizedBox(height: 24),
+                SizedBox(height: context.r.spaceLg),
 
                 // ═══ SECCIÓN: Correo electrónico ══════════════════
                 FadeSlideIn(
@@ -250,7 +251,7 @@ class _PasswordChangeScreenState extends State<PasswordChangeScreen> {
                     isDark: isDark,
                   ),
                 ),
-                const SizedBox(height: 12),
+                SizedBox(height: context.r.spaceMd),
                 FadeSlideIn(
                   delay: const Duration(milliseconds: 350),
                   child: _buildField(
@@ -263,7 +264,7 @@ class _PasswordChangeScreenState extends State<PasswordChangeScreen> {
                   ),
                 ),
 
-                const SizedBox(height: 24),
+                SizedBox(height: context.r.spaceLg),
 
                 // ═══ SECCIÓN: Número de celular ═══════════════════
                 FadeSlideIn(
@@ -274,7 +275,7 @@ class _PasswordChangeScreenState extends State<PasswordChangeScreen> {
                     isDark: isDark,
                   ),
                 ),
-                const SizedBox(height: 12),
+                SizedBox(height: context.r.spaceMd),
                 FadeSlideIn(
                   delay: const Duration(milliseconds: 450),
                   child: _buildField(
@@ -287,7 +288,7 @@ class _PasswordChangeScreenState extends State<PasswordChangeScreen> {
                   ),
                 ),
 
-                const SizedBox(height: 24),
+                SizedBox(height: context.r.spaceLg),
 
                 // ═══ SECCIÓN: Datos Médicos ═══════════════════════
                 
@@ -300,7 +301,7 @@ class _PasswordChangeScreenState extends State<PasswordChangeScreen> {
                           horizontal: 16, vertical: 12),
                       decoration: BoxDecoration(
                         color: AppColors.errorLight,
-                        borderRadius: BorderRadius.circular(12),
+                        borderRadius: BorderRadius.circular(context.r.radiusMd),
                         border: Border.all(
                             color: AppColors.error.withValues(alpha: 0.3)),
                       ),
@@ -311,11 +312,11 @@ class _PasswordChangeScreenState extends State<PasswordChangeScreen> {
                             color: AppColors.error,
                             size: 20,
                           ),
-                          const SizedBox(width: 12),
+                          SizedBox(width: context.r.spaceMd),
                           Expanded(
                             child: Text(
                               _errorMessage!,
-                              style: AppTypography.bodyMedium.copyWith(
+                              style: context.texts.bodyMedium.copyWith(
                                 color: AppColors.error,
                                 fontWeight: FontWeight.w500,
                               ),
@@ -325,7 +326,7 @@ class _PasswordChangeScreenState extends State<PasswordChangeScreen> {
                       ),
                     ),
                   ),
-                  const SizedBox(height: 16),
+                  SizedBox(height: context.r.spaceMd),
                 ],
 
                 // ── Botón guardar ──────────────────────────────
@@ -337,14 +338,14 @@ class _PasswordChangeScreenState extends State<PasswordChangeScreen> {
                     child: CupertinoButton(
                       padding: EdgeInsets.zero,
                       color: AppColors.primary,
-                      borderRadius: BorderRadius.circular(16),
+                      borderRadius: BorderRadius.circular(context.r.buttonRadius),
                       onPressed: _isLoading ? null : _onSubmit,
                       child: _isLoading
                           ? const CupertinoActivityIndicator(
                               color: AppColors.white)
                           : Text(
                               'Guardar y Continuar',
-                              style: AppTypography.titleMedium.copyWith(
+                              style: context.texts.titleMedium.copyWith(
                                 color: AppColors.white,
                                 fontWeight: FontWeight.w700,
                               ),
@@ -352,7 +353,7 @@ class _PasswordChangeScreenState extends State<PasswordChangeScreen> {
                     ),
                   ),
                 ),
-                const SizedBox(height: 40),
+                SizedBox(height: context.r.spaceXxl),
               ],
             ),
           ),
@@ -371,14 +372,13 @@ class _PasswordChangeScreenState extends State<PasswordChangeScreen> {
     return Row(
       children: [
         Icon(icon, size: 18, color: AppColors.accentForTheme(isDark)),
-        const SizedBox(width: 8),
+        SizedBox(width: context.r.spaceSm),
         Expanded(
           child: Text(
             title,
-            style: AppTypography.titleSmall.copyWith(
+            style: context.texts.titleMedium.copyWith(
               color: AppColors.accentForTheme(isDark),
               fontWeight: FontWeight.w700,
-              fontSize: 14,
             ),
           ),
         ),
@@ -399,14 +399,14 @@ class _PasswordChangeScreenState extends State<PasswordChangeScreen> {
     return Container(
       decoration: BoxDecoration(
         color: isDark ? AppColors.darkCard : const Color(0xFFF8F9FB),
-        borderRadius: BorderRadius.circular(18),
+        borderRadius: BorderRadius.circular(context.r.cardRadius),
         border: Border.all(color: AppColors.cardBorder(isDark)),
       ),
       padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
       child: Row(
         children: [
           Icon(icon, size: 24, color: AppColors.accentForTheme(isDark)),
-          const SizedBox(width: 16),
+          SizedBox(width: context.r.spaceMd),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -414,12 +414,12 @@ class _PasswordChangeScreenState extends State<PasswordChangeScreen> {
               children: [
                 Text(
                   label,
-                  style: AppTypography.labelSmall.copyWith(
+                  style: context.texts.labelSmall.copyWith(
                     color: AppColors.textSecondary,
                     fontWeight: FontWeight.w600,
                   ),
                 ),
-                const SizedBox(height: 4),
+                SizedBox(height: context.r.spaceXs),
                 CupertinoTextField(
                   controller: controller,
                   obscureText: obscureText,
@@ -431,9 +431,8 @@ class _PasswordChangeScreenState extends State<PasswordChangeScreen> {
                   placeholderStyle: TextStyle(
                     color:
                         AppColors.textTertiaryC(isDark).withValues(alpha: 0.6),
-                    fontSize: 16,
                   ),
-                  style: AppTypography.bodyLarge.copyWith(
+                  style: context.texts.bodyLarge.copyWith(
                     color: AppColors.textPrimaryC(isDark),
                     fontWeight: FontWeight.w500,
                   ),
@@ -442,7 +441,7 @@ class _PasswordChangeScreenState extends State<PasswordChangeScreen> {
             ),
           ),
           if (trailing != null) ...[
-            const SizedBox(width: 8),
+            SizedBox(width: context.r.spaceSm),
             trailing,
           ],
         ],

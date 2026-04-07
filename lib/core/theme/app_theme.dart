@@ -7,7 +7,10 @@ import '../extensions/responsive_extensions.dart';
 class AppTheme {
   AppTheme._();
 
-  static const String _fontFamily = '.SF Pro Text';
+  // Usar null permite que cada plataforma use su fuente nativa:
+  // iOS → SF Pro, Android → Roboto. Ambas soportan acentos completos.
+  // Hardcodear '.SF Pro Text' causaba cajas (□) en Android para á é í ó ú ñ.
+  static const String? _fontFamily = null;
 
   static ThemeData light(BuildContext context) {
     final texts = context.texts;

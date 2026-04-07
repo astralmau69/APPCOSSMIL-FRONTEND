@@ -16,6 +16,7 @@ import '../../../core/widgets/app_state_widget.dart';
 import '../../../core/widgets/skeleton_loading.dart';
 import '../../../core/widgets/booking_stepper.dart';
 import '../../../shell/tab_shell.dart';
+import '../../../core/utils/error_mapper.dart';
 import 'schedule_screen.dart';
 
 class SpecialtyScreen extends StatefulWidget {
@@ -96,7 +97,7 @@ class _SpecialtyScreenState extends State<SpecialtyScreen> {
     } catch (e) {
       if (mounted) {
         setState(() {
-          _errorMessage = e.toString();
+          _errorMessage = ErrorMapper.message(e, context: ErrorContext.cargarEspecialidades);
           _isLoading = false;
         });
       }
@@ -120,7 +121,6 @@ class _SpecialtyScreenState extends State<SpecialtyScreen> {
           'Especialidad',
           style: TextStyle(
             fontWeight: FontWeight.w700,
-            fontSize: 17,
             color: AppColors.textPrimaryC(isDark),
           ),
         ),
@@ -143,7 +143,7 @@ class _SpecialtyScreenState extends State<SpecialtyScreen> {
                 child: _isLoading
                     ? ListView(
                         key: const ValueKey('skeleton'),
-                        padding: const EdgeInsets.symmetric(vertical: 20),
+                        padding: EdgeInsets.symmetric(vertical: context.r.spaceLg),
                         children: const [
                           SizedBox(height: 16),
                           SkeletonSpecialtyList(count: 6),
@@ -152,21 +152,18 @@ class _SpecialtyScreenState extends State<SpecialtyScreen> {
                     : _errorMessage != null
                         ? AppStateWidget.error(
                       key: const ValueKey('error'),
-                      title: _isAuthError(_errorMessage!)
+                      title: _errorMessage!.contains('sesión') || _errorMessage!.contains('Sesión')
                           ? 'Sesión expirada'
                           : 'No se pudieron cargar las especialidades',
-                      message: _isAuthError(_errorMessage!)
-                          ? 'Tu sesión ha expirado. Por favor, vuelve a iniciar sesión para continuar.'
-                          : 'Ocurrió un problema al consultar las especialidades disponibles. '
-                            'Verifica tu conexión a internet e intenta nuevamente.',
-                      onRetry: _isAuthError(_errorMessage!)
+                      message: _errorMessage!,
+                      onRetry: _errorMessage!.contains('sesión') || _errorMessage!.contains('Sesión')
                           ? () => Navigator.of(context, rootNavigator: true)
                               .pushReplacementNamed('/login')
                           : _fetchData,
-                      retryLabel: _isAuthError(_errorMessage!)
+                      retryLabel: _errorMessage!.contains('sesión') || _errorMessage!.contains('Sesión')
                           ? 'Ir al login'
                           : 'Reintentar',
-                      icon: _isAuthError(_errorMessage!)
+                      icon: _errorMessage!.contains('sesión') || _errorMessage!.contains('Sesión')
                           ? CupertinoIcons.lock_shield
                           : CupertinoIcons.wifi_slash,
                     )
@@ -181,23 +178,23 @@ class _SpecialtyScreenState extends State<SpecialtyScreen> {
                           key: const ValueKey('data'),
                           onRefresh: _fetchData,
                           child: ListView(
-                            padding: const EdgeInsets.symmetric(vertical: 20),
+                            padding: EdgeInsets.symmetric(vertical: context.r.spaceLg),
                             children: [
                               BreadcrumbChips(labels: breadcrumbs),
-                              const SizedBox(height: 24),
+                              SizedBox(height: context.r.spaceLg),
                               if (_directas.isNotEmpty) ...[
                                 const SectionHeader(text: 'CONSULTA DIRECTA'),
-                                const SizedBox(height: 12),
+                                SizedBox(height: context.r.spaceMd),
                                 _buildSpecialtyList(
                                   context,
                                   _directas,
                                   startDelay: 50,
                                 ),
-                                const SizedBox(height: 28),
+                                SizedBox(height: context.r.spaceXl),
                               ],
                               if (_interconsultas.isNotEmpty) ...[
                                 const SectionHeader(text: 'INTERCONSULTA (HABILITADAS)'),
-                                const SizedBox(height: 12),
+                                SizedBox(height: context.r.spaceMd),
                                 _buildSpecialtyList(
                                   context,
                                   _interconsultas,
@@ -206,7 +203,7 @@ class _SpecialtyScreenState extends State<SpecialtyScreen> {
                                 ),
                               ],
                               if (_directas.isNotEmpty && _interconsultas.isEmpty)
-                                const SizedBox(height: 8),
+                                SizedBox(height: context.r.spaceSm),
                             ],
                           ),
                         ),
@@ -250,7 +247,7 @@ class _SpecialtyScreenState extends State<SpecialtyScreen> {
       margin: EdgeInsets.symmetric(horizontal: context.r.paddingH),
       decoration: BoxDecoration(
         color: AppColors.cardBg(isDark),
-        borderRadius: BorderRadius.circular(AppTheme.radiusXl),
+        borderRadius: BorderRadius.circular(context.r.radiusXl),
         border: Border.all(color: AppColors.cardBorder(isDark)),
         boxShadow: isDark ? [] : AppColors.softShadow,
       ),
@@ -307,7 +304,7 @@ class _SpecialtyScreenState extends State<SpecialtyScreen> {
                 color: showBadge
                     ? AppColors.accent.withValues(alpha: 0.10)
                     : AppColors.accentForTheme(isDark).withValues(alpha: 0.10),
-                borderRadius: BorderRadius.circular(14),
+                borderRadius: BorderRadius.circular(context.r.radiusMd),
               ),
               child: Icon(
                 _iconForSpecialty(specialty.name),
@@ -317,17 +314,19 @@ class _SpecialtyScreenState extends State<SpecialtyScreen> {
                     : AppColors.accentForTheme(isDark),
               ),
             ),
-            const SizedBox(width: 14),
+            SizedBox(width: context.r.spaceMd),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
                     specialty.name,
-                    style: AppTypography.titleMedium.copyWith(
+                    style: context.texts.titleMedium.copyWith(
                       color: AppColors.textPrimaryC(isDark),
+                      fontWeight: FontWeight.w800,
+                      height: 1.1,
                     ),
-                    maxLines: 1,
+                    maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                   ),
                   const SizedBox(height: 3),
@@ -335,8 +334,7 @@ class _SpecialtyScreenState extends State<SpecialtyScreen> {
                     specialty.description.isNotEmpty
                         ? specialty.description
                         : 'Especialidad Médica',
-                    style: AppTypography.bodySmall.copyWith(
-                      fontSize: 13,
+                    style: context.texts.bodySmall.copyWith(
                       color: AppColors.textSecondaryC(isDark),
                       fontStyle: specialty.description.isEmpty
                           ? FontStyle.italic
@@ -350,12 +348,12 @@ class _SpecialtyScreenState extends State<SpecialtyScreen> {
             ),
             if (showBadge && specialty.isAuthorized) ...[
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                padding: EdgeInsets.symmetric(horizontal: context.r.chipPaddingH, vertical: context.r.chipPaddingV),
                 decoration: BoxDecoration(
                   color: isDark
                       ? AppColors.accent.withValues(alpha: 0.15)
                       : AppColors.accentLight,
-                  borderRadius: BorderRadius.circular(8),
+                  borderRadius: BorderRadius.circular(context.r.radiusSm),
                   border: Border.all(
                     color: AppColors.accent.withValues(alpha: 0.3),
                   ),
@@ -363,14 +361,13 @@ class _SpecialtyScreenState extends State<SpecialtyScreen> {
                 child: Text(
                   'AUTORIZADO',
                   style: TextStyle(
-                    fontSize: 10,
                     fontWeight: FontWeight.w800,
                     color: isDark ? AppColors.accentLight : AppColors.accentDark,
                     letterSpacing: 0.8,
                   ),
                 ),
               ),
-              const SizedBox(width: 6),
+              SizedBox(width: context.r.spaceSm),
             ],
             Icon(
               CupertinoIcons.chevron_right,

@@ -151,7 +151,7 @@ class _PerfilScreenState extends State<PerfilScreen> {
                   ),
                   Center(
                     child: ConstrainedBox(
-                      constraints: const BoxConstraints(maxWidth: 600),
+                      constraints: BoxConstraints(maxWidth: context.r.maxContentWidth),
                       child: Padding(
                         padding: EdgeInsets.fromLTRB(context.r.paddingH, 40, context.r.paddingH, 0),
                         child: Column(
@@ -159,7 +159,7 @@ class _PerfilScreenState extends State<PerfilScreen> {
                             // Avatar with Premium Border
                             _buildPremiumAvatar(user, isDark),
                             
-                            const SizedBox(height: 20),
+                            SizedBox(height: context.r.spaceLg),
                             
                             // Name & Verification
                             Row(
@@ -169,14 +169,14 @@ class _PerfilScreenState extends State<PerfilScreen> {
                                   child: Text(
                                     user.fullName,
                                     textAlign: TextAlign.center,
-                                    style: AppTypography.headlineLarge.copyWith(
+                                    style: context.texts.headlineLarge.copyWith(
                                       color: AppColors.textPrimaryC(isDark),
                                       fontWeight: FontWeight.w900,
                                       letterSpacing: -0.8,
                                     ),
                                   ),
                                 ),
-                                const SizedBox(width: 6),
+                                SizedBox(width: context.r.spaceSm),
                                 Icon(
                                   CupertinoIcons.checkmark_seal_fill,
                                   color: AppColors.accentForTheme(isDark),
@@ -185,14 +185,14 @@ class _PerfilScreenState extends State<PerfilScreen> {
                               ],
                             ),
                             
-                            const SizedBox(height: 8),
+                            SizedBox(height: context.r.spaceSm),
                             
                             // Badge Matrícula
                             Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                              padding: EdgeInsets.symmetric(horizontal: context.r.tileHorizontalPad, vertical: context.r.chipPaddingV),
                               decoration: BoxDecoration(
                                 color: AppColors.accentForTheme(isDark).withValues(alpha: 0.1),
-                                borderRadius: BorderRadius.circular(20),
+                                borderRadius: BorderRadius.circular(context.r.chipRadius),
                                 border: Border.all(
                                   color: AppColors.accentForTheme(isDark).withValues(alpha: 0.2),
                                 ),
@@ -202,7 +202,6 @@ class _PerfilScreenState extends State<PerfilScreen> {
                                 child: Text(
                                   'MATRÍCULA: ${user.matricula}',
                                   style: TextStyle(
-                                    fontSize: 13,
                                     fontWeight: FontWeight.w800,
                                     letterSpacing: 1.2,
                                     color: AppColors.accentForTheme(isDark),
@@ -210,7 +209,7 @@ class _PerfilScreenState extends State<PerfilScreen> {
                                 ),
                               ),
                             ),
-                            const SizedBox(height: 32),
+                            SizedBox(height: context.r.spaceXl),
                           ],
                         ),
                       ),
@@ -227,15 +226,15 @@ class _PerfilScreenState extends State<PerfilScreen> {
             sliver: SliverToBoxAdapter(
               child: Center(
                 child: ConstrainedBox(
-                  constraints: const BoxConstraints(maxWidth: 600),
+                  constraints: BoxConstraints(maxWidth: context.r.maxContentWidth),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Padding(
-                        padding: const EdgeInsets.only(left: 4, bottom: 16),
+                        padding: EdgeInsets.only(left: context.r.spaceXs, bottom: context.r.spaceMd),
                         child: Text(
                           'INFORMACIÓN PERSONAL',
-                          style: AppTypography.labelMedium.copyWith(
+                          style: context.texts.labelSmall.copyWith(
                             color: AppColors.textSecondaryC(isDark),
                             fontWeight: FontWeight.w800,
                             letterSpacing: 1.5,
@@ -253,7 +252,7 @@ class _PerfilScreenState extends State<PerfilScreen> {
         SliverToBoxAdapter(
             child: Center(
               child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 600),
+                constraints: BoxConstraints(maxWidth: context.r.maxContentWidth),
                 child: Padding(
                   padding: EdgeInsets.only(bottom: context.r.navBarBottomSpace, top: context.r.paddingH),
                   child: Column(
@@ -310,10 +309,10 @@ class _PerfilScreenState extends State<PerfilScreen> {
                     children: [
                       CupertinoListTile.notched(
                         leading: Container(
-                          padding: const EdgeInsets.all(4),
+                          padding: EdgeInsets.all(context.r.spaceXs),
                           decoration: BoxDecoration(
                             color: _hasPin ? AppColors.success : AppColors.textTertiary,
-                            borderRadius: BorderRadius.circular(6),
+                            borderRadius: BorderRadius.circular(context.r.badgeRadius),
                           ),
                           child: const Icon(CupertinoIcons.lock_shield_fill, color: AppColors.white, size: 20),
                         ),
@@ -327,7 +326,7 @@ class _PerfilScreenState extends State<PerfilScreen> {
                             Text(_securitySummary),
                             if (_hasPin) ...
                               [
-                                const SizedBox(height: 6),
+                                SizedBox(height: context.r.spaceSm),
                                 Row(
                                   children: [
                                     _miniChip(
@@ -335,7 +334,7 @@ class _PerfilScreenState extends State<PerfilScreen> {
                                       label: 'PIN',
                                       active: _hasPin,
                                     ),
-                                    const SizedBox(width: 6),
+                                    SizedBox(width: context.r.spaceSm),
                                     if (_bioStatus != DeviceBiometricStatus.unavailable)
                                       _miniChip(
                                         isDark: isDark,
@@ -370,8 +369,8 @@ class _PerfilScreenState extends State<PerfilScreen> {
                     children: [
                       CupertinoListTile.notched(
                         leading: Container(
-                          padding: const EdgeInsets.all(4),
-                          decoration: BoxDecoration(color: AppColors.accentForTheme(isDark), borderRadius: BorderRadius.circular(6)),
+                          padding: EdgeInsets.all(context.r.spaceXs),
+                          decoration: BoxDecoration(color: AppColors.accentForTheme(isDark), borderRadius: BorderRadius.circular(context.r.badgeRadius)),
                           child: const Icon(CupertinoIcons.qrcode, color: AppColors.white, size: 20),
                         ),
                         title: const Text('Mi Código QR', style: TextStyle(fontWeight: FontWeight.w600)),
@@ -400,8 +399,8 @@ class _PerfilScreenState extends State<PerfilScreen> {
                           final isDarkActive = Theme.of(context).brightness == Brightness.dark;
                           return CupertinoListTile(
                             leading: Container(
-                              padding: const EdgeInsets.all(4),
-                              decoration: BoxDecoration(color: AppColors.accentForTheme(isDarkActive), borderRadius: BorderRadius.circular(6)),
+                              padding: EdgeInsets.all(context.r.spaceXs),
+                              decoration: BoxDecoration(color: AppColors.accentForTheme(isDarkActive), borderRadius: BorderRadius.circular(context.r.badgeRadius)),
                               child: Icon(isDarkActive ? CupertinoIcons.moon_fill : CupertinoIcons.sun_max_fill, color: AppColors.white, size: 20),
                             ),
                             title: Text('Modo Oscuro', style: TextStyle(fontWeight: FontWeight.w600, color: AppColors.textPrimaryC(isDarkActive))),
@@ -427,7 +426,7 @@ class _PerfilScreenState extends State<PerfilScreen> {
                         width: 0.5,
                       ),
                     ),
-                    margin: const EdgeInsets.only(top: 20, left: 20, right: 20),
+                    margin: EdgeInsets.only(top: context.r.spaceLg, left: context.r.paddingH, right: context.r.paddingH),
                     children: [
                       CupertinoListTile(
                         leading: const Icon(CupertinoIcons.square_arrow_left, color: CupertinoColors.destructiveRed),
@@ -488,24 +487,23 @@ class _PerfilScreenState extends State<PerfilScreen> {
   }) {
     return CupertinoListTile(
       leading: Icon(icon, color: AppColors.accentForTheme(isDark), size: 24),
-      title: Text(label, style: TextStyle(fontSize: 14, color: AppColors.textSecondaryC(isDark))),
+      title: Text(label, style: context.texts.bodyMedium.copyWith(color: AppColors.textSecondaryC(isDark))),
       subtitle: isEditing
           ? CupertinoTextField(
               controller: controller,
               keyboardType: keyboardType,
               autofocus: true,
-              padding: const EdgeInsets.symmetric(vertical: 6),
+              padding: EdgeInsets.symmetric(vertical: context.r.spaceSm),
               decoration: BoxDecoration(
                 border: Border(bottom: BorderSide(color: AppColors.accentForTheme(isDark).withValues(alpha: 0.5), width: 1)),
                 borderRadius: BorderRadius.zero,
               ),
-              style: TextStyle(fontSize: 17, fontWeight: FontWeight.w600, color: AppColors.textPrimaryC(isDark)),
+              style: context.texts.titleLarge.copyWith(fontWeight: FontWeight.w600, color: AppColors.textPrimaryC(isDark)),
               onSubmitted: (_) => onSave(),
             )
           : Text(
               value.isNotEmpty ? value : 'Sin registrar',
               style: TextStyle(
-                fontSize: 17,
                 fontWeight: FontWeight.w600,
                 color: value.isNotEmpty
                     ? AppColors.textPrimaryC(isDark)
@@ -527,12 +525,12 @@ class _PerfilScreenState extends State<PerfilScreen> {
 
   Widget _miniChip({required bool isDark, required String label, required bool active}) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+      padding: EdgeInsets.symmetric(horizontal: context.r.spaceSm, vertical: 2),
       decoration: BoxDecoration(
         color: active
             ? AppColors.success.withValues(alpha: 0.12)
             : AppColors.textTertiaryC(isDark).withValues(alpha: 0.12),
-        borderRadius: BorderRadius.circular(6),
+        borderRadius: BorderRadius.circular(context.r.badgeRadius),
         border: Border.all(
           color: active
               ? AppColors.success.withValues(alpha: 0.3)
@@ -543,7 +541,6 @@ class _PerfilScreenState extends State<PerfilScreen> {
       child: Text(
         label,
         style: TextStyle(
-          fontSize: 11,
           fontWeight: FontWeight.w700,
           color: active ? AppColors.success : AppColors.textTertiaryC(isDark),
         ),
@@ -573,7 +570,7 @@ class _PerfilScreenState extends State<PerfilScreen> {
         ],
       ),
       child: Padding(
-        padding: const EdgeInsets.all(4),
+        padding: EdgeInsets.all(context.r.spaceXs),
         child: ClipOval(
           child: _cachedUserPhoto != null
               ? Image.memory(
@@ -617,7 +614,7 @@ class _PerfilScreenState extends State<PerfilScreen> {
                 color: AppColors.cardBorder(isDark),
               ),
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
+              padding: EdgeInsets.symmetric(horizontal: context.r.tileHorizontalPad, vertical: context.r.tileVerticalPad),
               child: Row(
                 children: [
                   Container(
@@ -629,12 +626,11 @@ class _PerfilScreenState extends State<PerfilScreen> {
                     ),
                     child: Icon(items[i].icon, size: 16, color: items[i].color),
                   ),
-                  const SizedBox(width: 12),
+                  SizedBox(width: context.r.spaceMd),
                   Expanded(
                     child: Text(
                       items[i].label,
                       style: TextStyle(
-                        fontSize: 14,
                         fontWeight: FontWeight.w500,
                         color: AppColors.textSecondaryC(isDark),
                       ),
@@ -646,7 +642,6 @@ class _PerfilScreenState extends State<PerfilScreen> {
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(
-                        fontSize: 15,
                         fontWeight: FontWeight.w700,
                         color: AppColors.textPrimaryC(isDark),
                       ),

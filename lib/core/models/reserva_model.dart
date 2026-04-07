@@ -1,3 +1,5 @@
+import '../extensions/string_extensions.dart';
+
 /// Modelo de una cita/atención devuelta por el backend.
 ///
 /// Mapea la respuesta de GET /api/programacion/historial-citas/{idper}/{page}/{size}.
@@ -12,7 +14,7 @@ class ReservaModel {
   final String city;
   final String date;
   final String time;
-  final String status; // 'Completado', 'Falta', 'Pendiente'
+  final String status; // 'Completado', 'Falta', 'Pendiente', 'Cancelado'
   final String? consultorio;
   final String? codigoReserva;
 
@@ -22,6 +24,9 @@ class ReservaModel {
   final int? idsuc;
   final int? idtran;
   final int? dr;
+
+  /// Estado de cancelación del backend: "0" = no cancelada, "1" = cancelada.
+  final String estadoCancelacion;
 
   const ReservaModel({
     required this.id,
@@ -41,6 +46,7 @@ class ReservaModel {
     this.idsuc,
     this.idtran,
     this.dr,
+    this.estadoCancelacion = '0',
   });
 
   /// Parsea la respuesta real del endpoint historial-citas.
@@ -62,26 +68,32 @@ class ReservaModel {
     final gestion = json['gestion'] as int?;
     final idins = json['idins'] as int?;
     final idsuc = json['idsuc'] as int?;
-    final idtran = json['idtran'] as int?;
+    final int? idtran = (json['idtran'] ?? json['idtram']) as int?;
     final dr = json['dr'] as int?;
+    
+    // estadoCancelacion: "0" = no cancelada, "1" = cancelada
+    final estadoCancelacionVal = (json['estadoCancelacion'] ?? json['cancelado'] ?? '0').toString();
+    final bool isCancelado = estadoCancelacionVal == '1';
 
     return ReservaModel(
       id: (json['codadm'] ?? json['idreserva'] ?? json['id'] ?? '').toString(),
-      patientName: json['paciente'] as String? ??
+      patientName: (json['paciente'] as String? ??
           json['nombre_paciente'] as String? ??
-          '',
-      relationship: json['parentesco'] as String? ?? 'Titular',
-      specialty: json['especialidad'] as String? ?? '',
-      doctorName: json['medico'] as String? ?? '',
-      hospital: json['regional'] as String? ??
+          '').toDisplayCase,
+      relationship: (json['parentesco'] as String? ?? 'Titular').toDisplayCase,
+      specialty: (json['especialidad'] as String? ?? '').toDisplayCase,
+      doctorName: (json['medico'] as String? ?? '').toDisplayCase,
+      hospital: (json['regional'] as String? ??
           json['sucursal'] as String? ??
-          '',
-      city: json['ciudad'] as String? ?? '',
+          '').toDisplayCase,
+      city: (json['ciudad'] as String? ?? '').toDisplayCase,
       date: json['fechaCita'] as String? ??
           json['fecha'] as String? ??
           '',
       time: json['hora'] as String? ?? '',
-      status: _parseStatus(json['estado'], json['fechaCita']?.toString() ?? json['fecha']?.toString() ?? ''),
+      status: isCancelado
+          ? 'Cancelado'
+          : _parseStatus(json['estado'], json['fechaCita']?.toString() ?? json['fecha']?.toString() ?? ''),
       consultorio: json['consultorio'] as String?,
       codigoReserva: (json['codadm'] ?? json['codigo_reserva'] ?? json['ticket']).toString(),
       gestion: gestion,
@@ -89,6 +101,7 @@ class ReservaModel {
       idsuc: idsuc,
       idtran: idtran,
       dr: dr,
+      estadoCancelacion: estadoCancelacionVal,
     );
   }
 
@@ -97,6 +110,8 @@ class ReservaModel {
   static String _parseStatus(dynamic raw, String dateStr) {
     if (raw == null) return 'Pendiente';
     final s = raw.toString().toUpperCase().trim();
+    if (s == '1') return 'Cancelado';
+    if (s == '0') return 'Pendiente';
     if (s == 'S') return 'Completado';
     if (s == 'N') {
       try {
@@ -150,8 +165,13 @@ class ReservaModel {
   bool get canDownloadPdf =>
       gestion != null && idins != null && idsuc != null && idtran != null && dr != null;
 
+  /// Si se puede cancelar: estadoCancelacion == "0" y tiene los IDs necesarios.
+  bool get canCancel =>
+      estadoCancelacion == '0' && canDownloadPdf && status != 'Cancelado';
+
   ReservaModel copyWith({
     String? status,
+    String? estadoCancelacion,
   }) {
     return ReservaModel(
       id: id,
@@ -171,6 +191,7 @@ class ReservaModel {
       idsuc: idsuc,
       idtran: idtran,
       dr: dr,
+      estadoCancelacion: estadoCancelacion ?? this.estadoCancelacion,
     );
   }
 }

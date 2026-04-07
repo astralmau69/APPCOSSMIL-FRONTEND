@@ -241,7 +241,7 @@ class _PinSetupScreenState extends State<PinSetupScreen>
                       child: Text(
                         _errorMessage!,
                         textAlign: TextAlign.center,
-                        style: AppTypography.bodySmall.copyWith(
+                        style: context.texts.bodySmall.copyWith(
                           color: AppColors.error,
                           fontWeight: FontWeight.w600,
                         ),
@@ -285,14 +285,14 @@ class _PinSetupScreenState extends State<PinSetupScreen>
             SizedBox(height: r.spaceLg),
             Text(
               'Confirma tu PIN actual',
-              style: AppTypography.titleLarge.copyWith(
+              style: context.texts.titleLarge.copyWith(
                 fontWeight: FontWeight.bold,
               ),
             ),
             SizedBox(height: r.spaceSm),
             Text(
               'Ingresa tu PIN actual para continuar',
-              style: AppTypography.bodyMedium.copyWith(
+              style: context.texts.bodyMedium.copyWith(
                 color: AppColors.textSecondaryC(isDark),
               ),
             ),
@@ -310,14 +310,14 @@ class _PinSetupScreenState extends State<PinSetupScreen>
             SizedBox(height: r.spaceLg),
             Text(
               widget.requireCurrentPin ? 'Crea tu nuevo PIN' : 'Crea tu PIN de acceso',
-              style: AppTypography.titleLarge.copyWith(
+              style: context.texts.titleLarge.copyWith(
                 fontWeight: FontWeight.bold,
               ),
             ),
             SizedBox(height: r.spaceSm),
             Text(
               'Ingresa 4 dígitos para proteger tu app',
-              style: AppTypography.bodyMedium.copyWith(
+              style: context.texts.bodyMedium.copyWith(
                 color: AppColors.textSecondaryC(isDark),
               ),
             ),
@@ -335,14 +335,14 @@ class _PinSetupScreenState extends State<PinSetupScreen>
             SizedBox(height: r.spaceLg),
             Text(
               'Confirma tu nuevo PIN',
-              style: AppTypography.titleLarge.copyWith(
+              style: context.texts.titleLarge.copyWith(
                 fontWeight: FontWeight.bold,
               ),
             ),
             SizedBox(height: r.spaceSm),
             Text(
               'Repite los 4 dígitos para confirmar',
-              style: AppTypography.bodyMedium.copyWith(
+              style: context.texts.bodyMedium.copyWith(
                 color: AppColors.textSecondaryC(isDark),
               ),
             ),
@@ -450,7 +450,7 @@ class _PinSetupScreenState extends State<PinSetupScreen>
         child: Center(
           child: Text(
             number.toString(),
-            style: AppTypography.displayMedium.copyWith(
+            style: context.texts.displayLarge.copyWith(
               fontSize: fontSize,
               fontWeight: FontWeight.w600,
               color: AppColors.textPrimaryC(isDark),

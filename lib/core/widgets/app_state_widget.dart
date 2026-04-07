@@ -1,6 +1,7 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import '../constants/app_colors.dart';
+import '../extensions/responsive_extensions.dart';
 import '../theme/app_constants.dart';
 
 /// Shared loading / empty / error states to ensure consistent UX across all screens.
@@ -73,10 +74,10 @@ class AppStateWidget extends StatelessWidget {
                   backgroundColor: AppColors.accentForTheme(isDark).withValues(alpha: 0.12),
                 ),
               ),
-              const SizedBox(height: 20),
+              SizedBox(height: context.r.spaceLg),
               Text(
                 'Cargando...',
-                style: AppTypography.bodyMedium.copyWith(
+                style: context.texts.bodyMedium.copyWith(
                   color: AppColors.textSecondaryC(isDark),
                   fontWeight: FontWeight.w500,
                 ),
@@ -115,29 +116,29 @@ class AppStateWidget extends StatelessWidget {
               ),
               child: Icon(iconData, size: 36, color: iconColor),
             ),
-            const SizedBox(height: 24),
+            SizedBox(height: context.r.spaceLg),
             Text(
               titleText,
-              style: AppTypography.headlineSmall.copyWith(
+              style: context.texts.headlineMedium.copyWith(
                 color: AppColors.textPrimaryC(isDark),
               ),
               textAlign: TextAlign.center,
             ),
-            const SizedBox(height: 8),
+            SizedBox(height: context.r.spaceSm),
             Text(
               msgText,
-              style: AppTypography.bodyMedium.copyWith(
+              style: context.texts.bodyMedium.copyWith(
                 color: AppColors.textSecondaryC(isDark),
                 height: 1.5,
               ),
               textAlign: TextAlign.center,
             ),
             if (onRetry != null) ...[
-              const SizedBox(height: 28),
+              SizedBox(height: context.r.spaceXl),
               Container(
                 height: 48,
                 decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
+                  borderRadius: BorderRadius.circular(context.r.radiusMd),
                   border: Border.all(
                     color: isDark ? AppColors.darkBorder : const Color(0xFF191C1E).withValues(alpha: 0.15),
                     width: 0.8,
@@ -146,7 +147,7 @@ class AppStateWidget extends StatelessWidget {
                 child: CupertinoButton(
                   padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 0),
                   color: AppColors.accentForTheme(isDark),
-                  borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
+                  borderRadius: BorderRadius.circular(context.r.radiusMd),
                   onPressed: onRetry,
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
@@ -156,11 +157,10 @@ class AppStateWidget extends StatelessWidget {
                         size: 16,
                         color: isDark ? Colors.black : AppColors.white,
                       ),
-                      const SizedBox(width: 8),
+                      SizedBox(width: context.r.spaceSm),
                       Text(
                         retryLabel ?? 'Reintentar',
                         style: TextStyle(
-                          fontSize: 15,
                           fontWeight: FontWeight.w700,
                           color: isDark ? Colors.black : AppColors.white,
                         ),

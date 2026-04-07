@@ -1,3 +1,5 @@
+import '../extensions/string_extensions.dart';
+
 class HospitalModel {
   final String id;
   final String name;
@@ -35,10 +37,10 @@ class HospitalModel {
 
     return HospitalModel(
       id: (json['idsuc'] ?? json['id'] ?? '').toString(),
-      name: json['sucursal'] as String? ?? json['name'] as String? ?? '',
+      name: (json['sucursal'] as String? ?? json['name'] as String? ?? '').toDisplayCase,
       shortName: json['sigla'] as String? ?? json['sucursal_corto'] as String? ?? json['shortName'] as String? ?? '',
-      city: json['ciudad'] as String? ?? json['city'] as String? ?? '',
-      address: json['direccion'] as String? ?? json['address'] as String? ?? '',
+      city: (json['ciudad'] as String? ?? json['city'] as String? ?? '').toDisplayCase,
+      address: (json['direccion'] as String? ?? json['address'] as String? ?? '').toDisplayCase,
       latitude: rawLat,
       longitude: rawLng,
     );

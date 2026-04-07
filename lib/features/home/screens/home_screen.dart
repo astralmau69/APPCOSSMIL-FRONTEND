@@ -69,6 +69,11 @@ class _HomeScreenState extends State<HomeScreen> {
           CupertinoSliverRefreshControl(
             onRefresh: _loadNews,
           ),
+          // Banner de estado de horario
+          if (widget.tabShell.isInHorario != null)
+            SliverToBoxAdapter(
+              child: _buildHorarioBanner(isDark, context.r),
+            ),
           SliverPadding(
             padding: r.screenPadding,
             sliver: SliverToBoxAdapter(
@@ -86,7 +91,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         offsetY: 10,
                         child: _buildProfileCard(user),
                       ),
-                      const SizedBox(height: 24),
+                      SizedBox(height: r.spaceLg),
                       // ── Acciones principales (prominentes) ──
                       FadeSlideIn(
                         duration: AppDurations.normal,
@@ -94,7 +99,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         offsetY: 10,
                         child: _buildQuickActions(),
                       ),
-                      const SizedBox(height: 28),
+                      SizedBox(height: r.spaceXl),
                       // ── COSSMIL Te Informa (secundario, compacto) ──
                       FadeSlideIn(
                         duration: AppDurations.normal,
@@ -102,7 +107,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         offsetY: 10,
                         child: const SectionHeader(text: 'COSSMIL TE INFORMA', padding: EdgeInsets.only(left: 4)),
                       ),
-                      const SizedBox(height: 8),
+                      SizedBox(height: r.spaceSm),
                       FadeSlideIn(
                         duration: AppDurations.normal,
                         delay: const Duration(milliseconds: 150),
@@ -129,10 +134,10 @@ class _HomeScreenState extends State<HomeScreen> {
     final texts = context.texts;
 
     return Container(
-      padding: EdgeInsets.all(r.cardPadding),
+      padding: r.cardInsets,
       decoration: BoxDecoration(
         color: AppColors.primary,
-        borderRadius: BorderRadius.circular(AppSpacing.radiusXl),
+        borderRadius: BorderRadius.circular(r.cardRadius),
         boxShadow: [
           BoxShadow(
             color: const Color(0xFF191C1E).withValues(alpha: 0.04),
@@ -160,7 +165,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       : _fallbackAvatar(user),
                 ),
               ),
-              const SizedBox(width: 14),
+              SizedBox(width: r.spaceMd),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -176,7 +181,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         ),
                       ),
                     ),
-                    const SizedBox(height: 4),
+                    SizedBox(height: r.spaceXs),
                     Text(
                       '${user.rank} • Mat: ${user.matricula}',
                       maxLines: 1,
@@ -192,9 +197,9 @@ class _HomeScreenState extends State<HomeScreen> {
               _statusChip(user),
             ],
           ),
-          const SizedBox(height: 14),
+          SizedBox(height: r.spaceMd),
           Container(height: 0.5, color: AppColors.white.withValues(alpha: 0.12)),
-          const SizedBox(height: 14),
+          SizedBox(height: r.spaceMd),
           Row(
             children: [
               Expanded(
@@ -213,7 +218,7 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
             ],
           ),
-          const SizedBox(height: 12),
+          SizedBox(height: r.spaceMd),
           Row(
             children: [
               Expanded(
@@ -232,7 +237,7 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
             ],
           ),
-          const SizedBox(height: 12),
+          SizedBox(height: r.spaceMd),
           Row(
             children: [
               Expanded(
@@ -269,13 +274,14 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _statusChip(UserModel user) {
+    final r = context.r;
     final enabled = user.isEnabled;
     final color = enabled ? const Color(0xFF4ADE80) : const Color(0xFFFB923C);
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+      padding: EdgeInsets.symmetric(horizontal: r.chipPaddingH, vertical: r.chipPaddingV),
       decoration: BoxDecoration(
         color: color.withValues(alpha: 0.18),
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(r.chipRadius),
         border: Border.all(color: color.withValues(alpha: 0.4), width: 0.8),
       ),
       child: Row(
@@ -286,12 +292,11 @@ class _HomeScreenState extends State<HomeScreen> {
             height: 6,
             decoration: BoxDecoration(shape: BoxShape.circle, color: color),
           ),
-          const SizedBox(width: 5),
+          SizedBox(width: r.spaceXs),
           Text(
             enabled ? 'Habilitado' : 'Inactivo',
-            style: TextStyle(
+            style: context.texts.labelSmall.copyWith(
               color: AppColors.white,
-              fontSize: 11,
               fontWeight: FontWeight.w700,
             ),
           ),
@@ -305,38 +310,36 @@ class _HomeScreenState extends State<HomeScreen> {
     required String label,
     required String value,
   }) {
+    final r = context.r;
     return Row(
       children: [
         Container(
-          width: 32,
-          height: 32,
+          width: r.infoTileIconBox,
+          height: r.infoTileIconBox,
           decoration: BoxDecoration(
             color: AppColors.white.withValues(alpha: 0.1),
-            borderRadius: BorderRadius.circular(8),
+            borderRadius: BorderRadius.circular(r.radiusSm),
           ),
-          child: Icon(icon, size: 16, color: AppColors.white.withValues(alpha: 0.7)),
+          child: Icon(icon, size: r.infoTileIconSize, color: AppColors.white.withValues(alpha: 0.7)),
         ),
-        const SizedBox(width: 8),
+        SizedBox(width: r.spaceSm),
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
                 label,
-                style: TextStyle(
+                style: context.texts.labelSmall.copyWith(
                   color: AppColors.white.withValues(alpha: 0.5),
-                  fontSize: 10,
                   fontWeight: FontWeight.w600,
-                  letterSpacing: 0.5,
                 ),
               ),
               Text(
                 value,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: TextStyle(
+                style: context.texts.bodySmall.copyWith(
                   color: AppColors.white.withValues(alpha: 0.95),
-                  fontSize: 13,
                   fontWeight: FontWeight.w600,
                 ),
               ),
@@ -344,6 +347,79 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ),
       ],
+    );
+  }
+
+  // ── Banner de estado de horario ─────────────────────────────────────────────
+
+  Widget _buildHorarioBanner(bool isDark, AppResponsive r) {
+    final enHora = widget.tabShell.isInHorario == true;
+    final horarios = widget.tabShell.horariosApp;
+    final horarioTexts = horarios.isNotEmpty
+        ? horarios.map((h) => h.rangoHorario).join(' | ')
+        : '';
+
+    final Color accentColor;
+    final Color bgColor;
+    final Color textColor;
+    final IconData icon;
+    final String mensaje;
+
+    if (enHora) {
+      accentColor = AppColors.success;
+      bgColor = isDark
+          ? AppColors.success.withValues(alpha: 0.15)
+          : const Color(0xFFECFDF5);
+      textColor = isDark ? AppColors.success : const Color(0xFF065F46);
+      icon = CupertinoIcons.checkmark_seal_fill;
+      mensaje = 'Reservas habilitadas. Puede agendar su cita medica ahora.';
+    } else {
+      accentColor = AppColors.warning;
+      bgColor = isDark
+          ? AppColors.warning.withValues(alpha: 0.15)
+          : const Color(0xFFFFFBEB);
+      textColor = isDark ? AppColors.warning : const Color(0xFF92400E);
+      icon = CupertinoIcons.clock_fill;
+      mensaje = horarioTexts.isNotEmpty
+          ? 'Fuera de horario de reservas. Horarios: $horarioTexts'
+          : 'Fuera de horario de reservas.';
+    }
+
+    return Padding(
+      padding: EdgeInsets.symmetric(horizontal: r.paddingH, vertical: r.spaceSm),
+      child: Center(
+        child: ConstrainedBox(
+          constraints: BoxConstraints(maxWidth: r.maxContentWidth),
+          child: Container(
+            padding: EdgeInsets.symmetric(horizontal: r.spaceMd, vertical: r.spaceSm),
+            decoration: BoxDecoration(
+              color: bgColor,
+              borderRadius: BorderRadius.circular(r.radiusMd),
+              border: Border.all(
+                color: accentColor.withValues(alpha: 0.4),
+                width: 0.8,
+              ),
+            ),
+            child: Row(
+              children: [
+                Icon(icon, size: r.iconSm, color: accentColor),
+                SizedBox(width: r.spaceSm),
+                Expanded(
+                  child: Text(
+                    mensaje,
+                    style: context.texts.labelSmall.copyWith(
+                      color: textColor,
+                      fontWeight: FontWeight.w600,
+                    ),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
     );
   }
 
@@ -391,31 +467,33 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
     ];
 
-    final spacing = r.isSmallPhone ? 8.0 : 12.0;
+    final spacing = r.gridSpacing;
 
     return Column(
       children: [
         Row(
           children: [
-            Expanded(child: _buildActionCard(items[0], ResponsiveData.of(context))),
+            Expanded(child: _buildActionCard(items[0])),
             SizedBox(width: spacing),
-            Expanded(child: _buildActionCard(items[1], ResponsiveData.of(context))),
+            Expanded(child: _buildActionCard(items[1])),
           ],
         ),
         SizedBox(height: spacing),
         Row(
           children: [
-            Expanded(child: _buildActionCard(items[2], ResponsiveData.of(context))),
+            Expanded(child: _buildActionCard(items[2])),
             SizedBox(width: spacing),
-            Expanded(child: _buildActionCard(items[3], ResponsiveData.of(context))),
+            Expanded(child: _buildActionCard(items[3])),
           ],
         ),
       ],
     );
   }
 
-  Widget _buildActionCard(_QuickAction action, ResponsiveData responsive) {
+  Widget _buildActionCard(_QuickAction action) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final r = context.r;
+    final texts = context.texts;
     
     final cardBgColor = isDark 
         ? const Color(0xFF0284C7).withValues(alpha: 0.3) 
@@ -425,22 +503,14 @@ class _HomeScreenState extends State<HomeScreen> {
     final textSubColor = isDark ? Colors.white70 : Colors.black87;
     final cardBorderColor = isDark ? Colors.black : Colors.black87;
 
-    // Medidas responsivas
-    final verticalPad = responsive.isSmallPhone ? 14.0 : 18.0;
-    final horizontalPad = responsive.isSmallPhone ? 10.0 : 14.0;
-    final iconBoxSize = responsive.isSmallPhone ? 40.0 : 46.0;
-    final iconSize = responsive.isSmallPhone ? 20.0 : 24.0;
-    final titleSize = responsive.isSmallPhone ? 12.5 : 14.0;
-    final subtitleSize = responsive.isSmallPhone ? 10.0 : 11.0;
-
     return OptimizedPressButton(
       onTap: action.onTap,
       scaleDown: 0.96,
       child: Container(
-        padding: EdgeInsets.symmetric(vertical: verticalPad, horizontal: horizontalPad),
+        padding: EdgeInsets.symmetric(vertical: r.tileVerticalPad, horizontal: r.tileHorizontalPad),
         decoration: BoxDecoration(
           color: cardBgColor,
-          borderRadius: BorderRadius.circular(responsive.isSmallPhone ? 16 : 20),
+          borderRadius: BorderRadius.circular(r.cardRadius),
           border: Border.all(
             color: cardBorderColor,
             width: isDark ? 0.8 : 1.0,
@@ -450,19 +520,19 @@ class _HomeScreenState extends State<HomeScreen> {
         child: Row(
           children: [
             Container(
-              width: iconBoxSize,
-              height: iconBoxSize,
+              width: r.listAvatarSize,
+              height: r.listAvatarSize,
               decoration: BoxDecoration(
                 color: isDark ? action.color.withValues(alpha: 0.2) : Colors.white,
-                borderRadius: BorderRadius.circular(AppSpacing.radiusLg),
+                borderRadius: BorderRadius.circular(r.radiusLg),
                 border: Border.all(
                   color: isDark ? Colors.transparent : action.color.withValues(alpha: 0.5),
                   width: 0.5,
                 ),
               ),
-              child: Icon(action.icon, size: iconSize, color: action.color),
+              child: Icon(action.icon, size: r.iconMd, color: action.color),
             ),
-            const SizedBox(width: 10),
+            SizedBox(width: r.spaceSm),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -473,22 +543,20 @@ class _HomeScreenState extends State<HomeScreen> {
                     alignment: Alignment.centerLeft,
                     child: Text(
                       action.label,
-                      style: AppTypography.titleSmall.copyWith(
+                      style: texts.titleMedium.copyWith(
                         color: textMainColor,
-                        fontSize: titleSize,
                         fontWeight: FontWeight.w900,
                       ),
                     ),
                   ),
-                  const SizedBox(height: 1),
+                  SizedBox(height: r.spaceXs),
                   FittedBox(
                     fit: BoxFit.scaleDown,
                     alignment: Alignment.centerLeft,
                     child: Text(
                       action.subtitle,
-                      style: AppTypography.bodySmall.copyWith(
+                      style: texts.bodySmall.copyWith(
                         color: textSubColor,
-                        fontSize: subtitleSize,
                         fontWeight: FontWeight.w600,
                       ),
                     ),
@@ -507,10 +575,11 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget _buildCompactNewsList() {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
+    final r = context.r;
     return Container(
       decoration: BoxDecoration(
         color: AppColors.cardBg(isDark),
-        borderRadius: BorderRadius.circular(AppSpacing.radiusLg),
+        borderRadius: BorderRadius.circular(r.cardRadius),
         border: Border.all(
           color: isDark ? AppColors.darkBorder : const Color(0xFF191C1E).withValues(alpha: 0.10),
           width: isDark ? 0.8 : 0.5,
@@ -528,11 +597,10 @@ class _HomeScreenState extends State<HomeScreen> {
               child: Row(
                 children: [
                   Icon(Icons.newspaper_outlined, size: 22, color: AppColors.textTertiaryC(isDark)),
-                  const SizedBox(width: 12),
+                  SizedBox(width: r.spaceMd),
                   Text(
                     'Sin comunicados recientes',
                     style: TextStyle(
-                      fontSize: 14,
                       color: AppColors.textSecondaryC(isDark),
                       fontWeight: FontWeight.w500,
                     ),
@@ -553,13 +621,14 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildNewsRow(NewsItemModel item, bool isDark, {bool isLast = false}) {
+    final r = context.r;
     return GestureDetector(
       onTap: () => _showNewsDetail(item),
       behavior: HitTestBehavior.opaque,
       child: Column(
         children: [
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            padding: r.tilePadding,
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -573,38 +642,34 @@ class _HomeScreenState extends State<HomeScreen> {
                     color: item.clase == 'A' ? AppColors.primary : AppColors.accent,
                   ),
                 ),
-                const SizedBox(width: 10),
+                SizedBox(width: r.spaceSm),
                 // Fecha compacta
                 SizedBox(
                   width: 52,
                   child: Text(
                     _shortDate(item.dateTime),
-                    style: TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w600,
+                    style: context.texts.labelSmall.copyWith(
                       color: AppColors.textTertiaryC(isDark),
                     ),
                   ),
                 ),
-                const SizedBox(width: 8),
+                SizedBox(width: r.spaceSm),
                 // Título
                 Expanded(
                   child: Text(
                     item.title,
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      fontSize: 13,
+                    style: context.texts.bodySmall.copyWith(
                       fontWeight: FontWeight.w600,
                       color: AppColors.textPrimaryC(isDark),
-                      height: 1.3,
                     ),
                   ),
                 ),
-                const SizedBox(width: 8),
+                SizedBox(width: r.spaceSm),
                 Icon(
                   CupertinoIcons.chevron_right,
-                  size: 12,
+                  size: r.iconSm * 0.6,
                   color: AppColors.textTertiaryC(isDark),
                 ),
               ],
@@ -612,7 +677,7 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
           if (!isLast)
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
+              padding: EdgeInsets.symmetric(horizontal: r.tileHorizontalPad),
               child: Container(
                 height: 0.5,
                 color: isDark ? AppColors.darkDivider : const Color(0xFF191C1E).withValues(alpha: 0.06),
@@ -624,10 +689,11 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildSkeletonRow(bool isDark, {bool isLast = false}) {
+    final r = context.r;
     return Column(
       children: [
         Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          padding: r.tilePadding,
           child: Row(
             children: [
               Container(
@@ -635,16 +701,16 @@ class _HomeScreenState extends State<HomeScreen> {
                 height: 10,
                 decoration: BoxDecoration(
                   color: isDark ? AppColors.darkElevated : const Color(0xFFE8ECF0),
-                  borderRadius: BorderRadius.circular(4),
+                  borderRadius: BorderRadius.circular(r.spaceXs),
                 ),
               ),
-              const SizedBox(width: 12),
+              SizedBox(width: r.spaceMd),
               Expanded(
                 child: Container(
                   height: 12,
                   decoration: BoxDecoration(
                     color: isDark ? AppColors.darkElevated : const Color(0xFFE8ECF0),
-                    borderRadius: BorderRadius.circular(4),
+                    borderRadius: BorderRadius.circular(r.spaceXs),
                   ),
                 ),
               ),
@@ -653,7 +719,7 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
         if (!isLast)
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
+            padding: EdgeInsets.symmetric(horizontal: r.tileHorizontalPad),
             child: Container(
               height: 0.5,
               color: isDark ? AppColors.darkDivider : const Color(0xFF191C1E).withValues(alpha: 0.06),
@@ -671,7 +737,7 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
       behavior: HitTestBehavior.opaque,
       child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 12),
+        padding: EdgeInsets.symmetric(vertical: context.r.spaceMd),
         decoration: BoxDecoration(
           border: Border(
             top: BorderSide(
@@ -685,15 +751,14 @@ class _HomeScreenState extends State<HomeScreen> {
           children: [
             Text(
               'Ver todos los comunicados',
-              style: AppTypography.labelLarge.copyWith(
+              style: context.texts.labelLarge.copyWith(
                 color: isDark ? AppColors.white : AppColors.primary,
-                fontSize: 13,
               ),
             ),
-            const SizedBox(width: 4),
+            SizedBox(width: context.r.spaceXs),
             Icon(
               CupertinoIcons.arrow_right,
-              size: 13,
+              size: context.r.iconSm * 0.65,
               color: isDark ? AppColors.white : AppColors.primary,
             ),
           ],
@@ -727,18 +792,18 @@ class _HomeScreenState extends State<HomeScreen> {
             child: Container(
               decoration: BoxDecoration(
                 color: AppColors.cardBg(isDark),
-                borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+                borderRadius: BorderRadius.vertical(top: Radius.circular(r.modalRadius)),
               ),
               child: Column(
                 children: [
                   // Handle bar
                   Container(
-                    margin: const EdgeInsets.only(top: 12, bottom: 8),
+                    margin: EdgeInsets.only(top: r.spaceMd, bottom: r.spaceSm),
                     width: 36,
                     height: 4,
                     decoration: BoxDecoration(
                       color: isDark ? AppColors.darkBorder : const Color(0xFF191C1E).withValues(alpha: 0.15),
-                      borderRadius: BorderRadius.circular(2),
+                      borderRadius: BorderRadius.circular(context.r.spaceXs),
                     ),
                   ),
                   // Contenido scrollable
@@ -755,7 +820,6 @@ class _HomeScreenState extends State<HomeScreen> {
                             child: Text(
                               item.entity,
                               style: TextStyle(
-                                fontSize: 11,
                                 fontWeight: FontWeight.w700,
                                 color: AppColors.primary,
                                 letterSpacing: 0.3,
@@ -766,29 +830,27 @@ class _HomeScreenState extends State<HomeScreen> {
                         Text(
                           item.date,
                           style: TextStyle(
-                            fontSize: 12,
                             fontWeight: FontWeight.w600,
                             color: AppColors.textTertiaryC(isDark),
                           ),
                         ),
                       ],
                     ),
-                    const SizedBox(height: 14),
+                    SizedBox(height: context.r.spaceMd),
                     // Título
                     Text(
                       item.title,
                       style: TextStyle(
-                        fontSize: 20,
                         fontWeight: FontWeight.w800,
                         color: AppColors.textPrimaryC(isDark),
                         height: 1.3,
                       ),
                     ),
-                    const SizedBox(height: 16),
+                    SizedBox(height: context.r.spaceMd),
                     // Imagen si existe
                     if (item.imageUrl.isNotEmpty) ...[
                       ClipRRect(
-                        borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
+                        borderRadius: BorderRadius.circular(context.r.radiusMd),
                         child: ConstrainedBox(
                           constraints: const BoxConstraints(
                             maxHeight: 400,
@@ -802,16 +864,16 @@ class _HomeScreenState extends State<HomeScreen> {
                               width: double.infinity,
                               decoration: BoxDecoration(
                                 color: isDark ? AppColors.darkElevated : const Color(0xFFF0F2F4),
-                                borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
+                                borderRadius: BorderRadius.circular(r.radiusMd),
                               ),
                               child: Column(
                                 mainAxisAlignment: MainAxisAlignment.center,
                                 children: [
                                   Icon(CupertinoIcons.photo, size: 32, color: AppColors.textTertiaryC(isDark)),
-                                  const SizedBox(height: 8),
+                                  SizedBox(height: context.r.spaceSm),
                                   Text(
                                     'No se pudo cargar la imagen',
-                                    style: TextStyle(fontSize: 12, color: AppColors.textTertiaryC(isDark)),
+                                    style: context.texts.bodySmall.copyWith(color: AppColors.textTertiaryC(isDark)),
                                   ),
                                 ],
                               ),
@@ -822,7 +884,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                 height: 200,
                                 decoration: BoxDecoration(
                                   color: isDark ? AppColors.darkElevated : const Color(0xFFF0F2F4),
-                                  borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
+                                  borderRadius: BorderRadius.circular(r.radiusMd),
                                 ),
                                 child: const Center(child: CupertinoActivityIndicator()),
                               );
@@ -830,13 +892,12 @@ class _HomeScreenState extends State<HomeScreen> {
                           ),
                         ),
                       ),
-                      const SizedBox(height: 16),
+                      SizedBox(height: r.spaceMd),
                     ],
                     // Descripción
                     Text(
                       item.description,
                       style: TextStyle(
-                        fontSize: 15,
                         color: AppColors.textSecondaryC(isDark),
                         height: 1.6,
                       ),

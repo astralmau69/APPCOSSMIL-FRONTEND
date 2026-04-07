@@ -19,9 +19,40 @@ import 'api_client.dart';
 /// Cuando `useMockData` es false, usa [ApiClient] con Bearer token.
 class ProgramacionService {
   final ApiClient _api;
+  
+  /// Caché en memoria de citas canceladas en la sesión actual.
+  /// Previene que el historial rebote a "Pendiente" si el backend tarda en propagar el estado.
+  static final Set<String> localCanceledIds = {};
 
   ProgramacionService({ApiClient? apiClient})
       : _api = apiClient ?? ApiClient();
+
+  // ── Verificar Versión ───────────────────────────────────────────────────
+
+  /// Verifica si la versión de la app es válida según el backend.
+  /// Lanza excepción si la versión no es válida o hay un error.
+  Future<bool> verificarVersion() async {
+    if (AppConfig.useMockData) return true;
+
+    final response = await _api.get(
+      ApiConstants.verificaVersion(ApiConstants.appVersion),
+    );
+
+    return switch (response) {
+      ApiSuccess(:final data) => () {
+        if (data is Map<String, dynamic>) {
+            final isOk = data['data'] == true;
+            if (!isOk) {
+                final msg = data['message'] ?? 'Es necesario actualizar la versión del aplicativo.';
+                throw Exception(msg);
+            }
+            return true;
+        }
+        return true;
+      }(),
+      ApiError(:final message) => throw Exception(message),
+    };
+  }
 
   // ── Regionales por departamento ─────────────────────────────────────────
 
@@ -168,17 +199,46 @@ class ProgramacionService {
     };
   }
 
+  // ── Fecha del servidor ────────────────────────────────────────────────
+
+  /// Obtiene la fecha del servidor, útil para determinar la fecha para citas médicas.
+  /// Retorna un mapa con 'fechaServidor' y 'fechaCitaMovil'.
+  Future<Map<String, String>> getFechaServidor() async {
+    if (AppConfig.useMockData) {
+      await Future.delayed(const Duration(milliseconds: 200));
+      return {
+        'fechaServidor': DateTime.now().toIso8601String(),
+        'fechaCitaMovil': DateTime.now().add(const Duration(days: 1)).toString().split(' ').first,
+      };
+    }
+
+    final response = await _api.get(ApiConstants.fechaServidor());
+
+    return switch (response) {
+      ApiSuccess(:final data) => () {
+        if (data is Map<String, dynamic> && data['data'] is Map<String, dynamic>) {
+          final payload = data['data'] as Map<String, dynamic>;
+          return {
+            'fechaServidor': payload['fechaServidor']?.toString() ?? '',
+            'fechaCitaMovil': payload['fechaCitaMovil']?.toString() ?? '',
+          };
+        }
+        throw Exception('Formato de fecha inválido');
+      }(),
+      ApiError(:final message) => throw Exception(message),
+    };
+  }
+
   // ── Médico asignado ───────────────────────────────────────────────────
 
   /// Obtiene médico asignado con agenda y horas disponibles.
-  /// [fecha] formato yyyy-MM-dd. [modalidad] e.g. "ASE".
+  /// [fecha] obtenida por getFechaServidor.
   Future<MedicoAsignadoModel> getMedicoAsignado(
     int idins,
     int idsuc,
     int idesp,
     String fecha,
     String modalidad,
-    int idturno,
   ) async {
     if (AppConfig.useMockData) {
       await Future.delayed(const Duration(milliseconds: 400));
@@ -203,7 +263,7 @@ class ProgramacionService {
     }
 
     final response = await _api.get(
-      ApiConstants.medicoAsignado(idins, idsuc, idesp, fecha, modalidad, idturno),
+      ApiConstants.medicoAsignado(idins, idsuc, idesp, fecha, modalidad),
     );
 
     return switch (response) {
@@ -393,14 +453,16 @@ class ProgramacionService {
       return true;
     }
 
-    // El servidor requiere método PUT para cancelar
+    // El servidor requiere método PUT para cancelar, pero falla con body vacío json en Spring
     final response = await _api.put(
       ApiConstants.cancelarCitaMedica(gestion, idins, idsuc, idtran, dr),
-      body: {}, // Body vacío
     );
 
     return switch (response) {
-      ApiSuccess() => true,
+      ApiSuccess() => () {
+        localCanceledIds.add('${idtran}_$dr');
+        return true;
+      }(),
       ApiError(:final message) => throw Exception(message),
     };
   }
@@ -484,7 +546,13 @@ class ProgramacionService {
   List<ReservaModel> _parseReservas(dynamic body) {
     final list = _extractDataList(body);
     return list
-        .map((e) => ReservaModel.fromJson(e as Map<String, dynamic>))
+        .map((e) {
+          var model = ReservaModel.fromJson(e as Map<String, dynamic>);
+          if (localCanceledIds.contains('${model.idtran}_${model.dr}')) {
+            model = model.copyWith(status: 'Cancelado');
+          }
+          return model;
+        })
         .toList();
   }
 

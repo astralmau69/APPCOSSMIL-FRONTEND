@@ -11,6 +11,8 @@ import 'api_client.dart';
 import '../storage/token_storage.dart';
 import 'security_service.dart';
 import 'session_restore_service.dart';
+import '../extensions/string_extensions.dart';
+import '../utils/error_mapper.dart';
 
 /// Resultado del intento de login.
 sealed class AuthResult {
@@ -68,7 +70,7 @@ class AuthService {
       );
 
       if (response.statusCode == 200) {
-        final json = jsonDecode(response.body) as Map<String, dynamic>;
+        final json = jsonDecode(utf8.decode(response.bodyBytes)) as Map<String, dynamic>;
         final tokenModel = AuthTokenModel.fromJson(json);
 
         if (kDebugMode) {
@@ -100,7 +102,7 @@ class AuthService {
         
         final selfAsFallback = BeneficiaryModel(
           id: tokenModel.idper.toString(),
-          fullName: '${tokenModel.nom} ${tokenModel.pat} ${tokenModel.mat}'.trim(),
+          fullName: '${tokenModel.nom} ${tokenModel.pat} ${tokenModel.mat}'.trim().toDisplayCase,
           relationship: userRoleIsTitular ? 'Titular' : 'Beneficiario',
           age: tokenModel.edad,
           gender: tokenModel.genero,
@@ -140,7 +142,7 @@ class AuthService {
 
         // Guardar nombre de usuario para la pantalla de desbloqueo local
         await SecurityService.saveDisplayName(
-          '${tokenModel.nom} ${tokenModel.pat} ${tokenModel.mat}'.trim(),
+          '${tokenModel.nom} ${tokenModel.pat} ${tokenModel.mat}'.trim().toDisplayCase,
         );
 
         // Intentar cargar la foto jefe y luego la de sus familiares
@@ -230,9 +232,9 @@ class AuthService {
         return const AuthError('Usuario o contraseña incorrectos.');
       }
 
-      return AuthError('Error del servidor (${response.statusCode}).');
+      return const AuthError('El servidor no está disponible en este momento. Intenta más tarde.');
     } on Exception catch (e) {
-      return AuthError('No se pudo conectar al servidor: $e');
+      return AuthError(ErrorMapper.message(e, context: ErrorContext.login));
     }
   }
 

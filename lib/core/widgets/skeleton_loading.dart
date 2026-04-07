@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../constants/app_colors.dart';
+import '../extensions/responsive_extensions.dart';
 import '../theme/app_constants.dart';
 
 /// Shimmer animation wrapper — children receive the animated [color] via builder.
@@ -57,7 +58,7 @@ class _ShimmerBoxState extends State<ShimmerBox>
             return Column(
               children: [
                 widget.builder(context, color),
-                if (i < widget.count - 1) const SizedBox(height: 12),
+                if (i < widget.count - 1) SizedBox(height: context.r.spaceMd),
               ],
             );
           }),
@@ -127,11 +128,11 @@ class SkeletonAppointmentCard extends StatelessWidget {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     return ShimmerBox(
       builder: (context, color) => Container(
-        margin: const EdgeInsets.symmetric(horizontal: 12),
-        padding: const EdgeInsets.all(14),
+        margin: EdgeInsets.symmetric(horizontal: context.r.spaceMd),
+        padding: EdgeInsets.all(context.r.spaceMd),
         decoration: BoxDecoration(
           color: AppColors.cardBg(isDark),
-          borderRadius: BorderRadius.circular(AppSpacing.radiusLg),
+          borderRadius: BorderRadius.circular(context.r.cardRadius),
           border: Border.all(color: AppColors.cardBorder(isDark), width: 0.5),
         ),
         child: Column(
@@ -140,13 +141,13 @@ class SkeletonAppointmentCard extends StatelessWidget {
             Row(
               children: [
                 SkeletonCircle(size: 50, color: color),
-                const SizedBox(width: 10),
+                SizedBox(width: context.r.spaceSm),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       SkeletonLine(width: 140, height: 16, color: color),
-                      const SizedBox(height: 6),
+                      SizedBox(height: context.r.spaceSm),
                       SkeletonLine(width: 100, height: 12, color: color),
                     ],
                   ),
@@ -154,15 +155,15 @@ class SkeletonAppointmentCard extends StatelessWidget {
                 SkeletonLine(width: 70, height: 24, color: color, radius: 12),
               ],
             ),
-            const SizedBox(height: 10),
+            SizedBox(height: context.r.spaceSm),
             Container(height: 0.5, color: AppColors.dividerC(isDark)),
-            const SizedBox(height: 10),
+            SizedBox(height: context.r.spaceSm),
             Row(
               children: [
                 SkeletonLine(width: 80, height: 12, color: color),
-                const SizedBox(width: 12),
+                SizedBox(width: context.r.spaceMd),
                 SkeletonLine(width: 50, height: 12, color: color),
-                const SizedBox(width: 12),
+                SizedBox(width: context.r.spaceMd),
                 SkeletonLine(width: 90, height: 12, color: color),
               ],
             ),
@@ -182,28 +183,28 @@ class SkeletonBeneficiaryCard extends StatelessWidget {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     return ShimmerBox(
       builder: (context, color) => Container(
-        padding: const EdgeInsets.all(18),
+        padding: EdgeInsets.all(context.r.cardPadding),
         decoration: BoxDecoration(
           color: AppColors.cardBg(isDark),
-          borderRadius: BorderRadius.circular(AppSpacing.radiusLg),
+          borderRadius: BorderRadius.circular(context.r.cardRadius),
           border: Border.all(color: AppColors.cardBorder(isDark), width: 0.5),
         ),
         child: Row(
           children: [
             SkeletonCircle(size: 60, color: color),
-            const SizedBox(width: 14),
+            SizedBox(width: context.r.spaceMd),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   SkeletonLine(width: 160, height: 16, color: color),
-                  const SizedBox(height: 6),
+                  SizedBox(height: context.r.spaceSm),
                   SkeletonLine(width: 100, height: 12, color: color),
-                  const SizedBox(height: 8),
+                  SizedBox(height: context.r.spaceSm),
                   Row(
                     children: [
                       SkeletonLine(width: 70, height: 18, color: color, radius: 6),
-                      const SizedBox(width: 6),
+                      SizedBox(width: context.r.spaceSm),
                       SkeletonLine(width: 55, height: 18, color: color, radius: 6),
                     ],
                   ),
@@ -230,7 +231,7 @@ class SkeletonSpecialtyList extends StatelessWidget {
         margin: const EdgeInsets.symmetric(horizontal: 20),
         decoration: BoxDecoration(
           color: AppColors.cardBg(isDark),
-          borderRadius: BorderRadius.circular(AppSpacing.radiusXl),
+          borderRadius: BorderRadius.circular(context.r.radiusXl),
           border: Border.all(color: AppColors.cardBorder(isDark)),
         ),
         child: Column(
@@ -244,14 +245,14 @@ class SkeletonSpecialtyList extends StatelessWidget {
                     children: [
                       SkeletonLine(
                           width: 52, height: 52, color: color, radius: 14),
-                      const SizedBox(width: 14),
+                      SizedBox(width: context.r.spaceMd),
                       Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             SkeletonLine(
                                 width: 130, height: 15, color: color),
-                            const SizedBox(height: 6),
+                            SizedBox(height: context.r.spaceSm),
                             SkeletonLine(
                                 width: 180, height: 12, color: color),
                           ],
@@ -293,7 +294,7 @@ class SkeletonSchedule extends StatelessWidget {
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
                 color: AppColors.cardBg(isDark),
-                borderRadius: BorderRadius.circular(AppSpacing.radiusLg),
+                borderRadius: BorderRadius.circular(context.r.cardRadius),
                 border:
                     Border.all(color: AppColors.cardBorder(isDark), width: 0.5),
               ),
@@ -301,12 +302,12 @@ class SkeletonSchedule extends StatelessWidget {
                 children: [
                   SkeletonLine(
                       width: 40, height: 40, color: color, radius: 10),
-                  const SizedBox(width: 12),
+                  SizedBox(width: context.r.spaceMd),
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       SkeletonLine(width: 180, height: 16, color: color),
-                      const SizedBox(height: 6),
+                      SizedBox(height: context.r.spaceSm),
                       SkeletonLine(width: 140, height: 12, color: color),
                     ],
                   ),
@@ -316,10 +317,10 @@ class SkeletonSchedule extends StatelessWidget {
             const SizedBox(height: 18),
             // Doctor card
             Container(
-              padding: const EdgeInsets.all(18),
+              padding: EdgeInsets.all(context.r.cardPadding),
               decoration: BoxDecoration(
                 color: AppColors.cardBg(isDark),
-                borderRadius: BorderRadius.circular(AppSpacing.radiusLg),
+                borderRadius: BorderRadius.circular(context.r.cardRadius),
                 border:
                     Border.all(color: AppColors.cardBorder(isDark), width: 0.5),
               ),
@@ -327,13 +328,13 @@ class SkeletonSchedule extends StatelessWidget {
                 children: [
                   SkeletonLine(
                       width: 52, height: 52, color: color, radius: 14),
-                  const SizedBox(width: 14),
+                  SizedBox(width: context.r.spaceMd),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         SkeletonLine(width: 170, height: 16, color: color),
-                        const SizedBox(height: 6),
+                        SizedBox(height: context.r.spaceSm),
                         SkeletonLine(width: 120, height: 12, color: color),
                       ],
                     ),
@@ -341,10 +342,10 @@ class SkeletonSchedule extends StatelessWidget {
                 ],
               ),
             ),
-            const SizedBox(height: 24),
+            SizedBox(height: context.r.spaceLg),
             // Section header
             SkeletonLine(width: 120, height: 16, color: color),
-            const SizedBox(height: 14),
+            SizedBox(height: context.r.spaceMd),
             // Time grid
             Wrap(
               spacing: 10,
@@ -379,22 +380,22 @@ class SkeletonRegionalList extends StatelessWidget {
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
               color: AppColors.cardBg(isDark),
-              borderRadius: BorderRadius.circular(AppSpacing.radiusXl),
+              borderRadius: BorderRadius.circular(context.r.radiusXl),
               border:
                   Border.all(color: AppColors.cardBorder(isDark), width: 0.5),
             ),
             child: Row(
               children: [
                 SkeletonCircle(size: 80, color: color),
-                const SizedBox(width: 14),
+                SizedBox(width: context.r.spaceMd),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       SkeletonLine(width: 80, height: 12, color: color),
-                      const SizedBox(height: 6),
+                      SizedBox(height: context.r.spaceSm),
                       SkeletonLine(width: 150, height: 18, color: color),
-                      const SizedBox(height: 8),
+                      SizedBox(height: context.r.spaceSm),
                       SkeletonLine(
                           width: 60, height: 22, color: color, radius: 8),
                     ],
@@ -403,13 +404,13 @@ class SkeletonRegionalList extends StatelessWidget {
               ],
             ),
           ),
-          const SizedBox(height: 20),
+          SizedBox(height: context.r.spaceLg),
           // Title
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 24),
+            padding: EdgeInsets.symmetric(horizontal: context.r.spaceLg),
             child: SkeletonLine(width: 260, height: 20, color: color),
           ),
-          const SizedBox(height: 14),
+          SizedBox(height: context.r.spaceMd),
           // Regional items
           ...List.generate(count, (i) {
             return Padding(
@@ -420,14 +421,14 @@ class SkeletonRegionalList extends StatelessWidget {
                     const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
                 decoration: BoxDecoration(
                   color: AppColors.cardBg(isDark),
-                  borderRadius: BorderRadius.circular(AppSpacing.radiusLg),
+                  borderRadius: BorderRadius.circular(context.r.cardRadius),
                   border: Border.all(
                       color: AppColors.cardBorder(isDark), width: 0.5),
                 ),
                 child: Row(
                   children: [
                     SkeletonCircle(size: 18, color: color),
-                    const SizedBox(width: 10),
+                    SizedBox(width: context.r.spaceSm),
                     SkeletonLine(width: 140 + (i * 10).toDouble(),
                         height: 16, color: color),
                     const Spacer(),
@@ -458,16 +459,16 @@ class SkeletonDetalleCita extends StatelessWidget {
           children: [
             // Status header
             Center(child: SkeletonLine(width: 120, height: 28, color: color, radius: 14)),
-            const SizedBox(height: 24),
+            SizedBox(height: context.r.spaceLg),
             // Info cards
             ...List.generate(4, (i) {
               return Padding(
-                padding: const EdgeInsets.only(bottom: 16),
+                padding: EdgeInsets.only(bottom: context.r.spaceMd),
                 child: Container(
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
                     color: AppColors.cardBg(isDark),
-                    borderRadius: BorderRadius.circular(AppSpacing.radiusLg),
+                    borderRadius: BorderRadius.circular(context.r.cardRadius),
                     border: Border.all(
                         color: AppColors.cardBorder(isDark), width: 0.5),
                   ),
@@ -477,14 +478,14 @@ class SkeletonDetalleCita extends StatelessWidget {
                       Row(
                         children: [
                           SkeletonCircle(size: 16, color: color),
-                          const SizedBox(width: 8),
+                          SizedBox(width: context.r.spaceSm),
                           SkeletonLine(width: 100, height: 11, color: color),
                         ],
                       ),
-                      const SizedBox(height: 12),
+                      SizedBox(height: context.r.spaceMd),
                       SkeletonLine(width: 200, height: 16, color: color),
                       if (i == 0) ...[
-                        const SizedBox(height: 6),
+                        SizedBox(height: context.r.spaceSm),
                         SkeletonLine(width: 150, height: 12, color: color),
                       ],
                     ],
@@ -511,26 +512,26 @@ class SkeletonPerfilHeader extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 20),
         child: Column(
           children: [
-            const SizedBox(height: 40),
+            SizedBox(height: context.r.spaceXxl),
             // Avatar
             SkeletonCircle(size: 120, color: color),
-            const SizedBox(height: 20),
+            SizedBox(height: context.r.spaceLg),
             // Name
             SkeletonLine(width: 200, height: 22, color: color),
-            const SizedBox(height: 10),
+            SizedBox(height: context.r.spaceSm),
             // Badge
             SkeletonLine(width: 140, height: 28, color: color, radius: 20),
-            const SizedBox(height: 32),
+            SizedBox(height: context.r.spaceXl),
             // Section header
             Align(
               alignment: Alignment.centerLeft,
               child: SkeletonLine(width: 180, height: 13, color: color),
             ),
-            const SizedBox(height: 16),
+            SizedBox(height: context.r.spaceMd),
             // Info grid (2x3)
             ...List.generate(3, (row) {
               return Padding(
-                padding: const EdgeInsets.only(bottom: 12),
+                padding: EdgeInsets.only(bottom: context.r.spaceMd),
                 child: Row(
                   children: [
                     Expanded(
@@ -539,7 +540,7 @@ class SkeletonPerfilHeader extends StatelessWidget {
                         decoration: BoxDecoration(
                           color: AppColors.cardBg(isDark),
                           borderRadius:
-                              BorderRadius.circular(AppSpacing.radiusXl),
+                              BorderRadius.circular(context.r.radiusXl),
                           border: Border.all(
                               color: AppColors.cardBorder(isDark), width: 0.5),
                         ),
@@ -549,22 +550,22 @@ class SkeletonPerfilHeader extends StatelessWidget {
                           children: [
                             SkeletonLine(
                                 width: 32, height: 32, color: color, radius: 6),
-                            const SizedBox(height: 14),
+                            SizedBox(height: context.r.spaceMd),
                             SkeletonLine(width: 50, height: 10, color: color),
-                            const SizedBox(height: 4),
+                            SizedBox(height: context.r.spaceXs),
                             SkeletonLine(width: 70, height: 16, color: color),
                           ],
                         ),
                       ),
                     ),
-                    const SizedBox(width: 12),
+                    SizedBox(width: context.r.spaceMd),
                     Expanded(
                       child: Container(
                         height: 100,
                         decoration: BoxDecoration(
                           color: AppColors.cardBg(isDark),
                           borderRadius:
-                              BorderRadius.circular(AppSpacing.radiusXl),
+                              BorderRadius.circular(context.r.radiusXl),
                           border: Border.all(
                               color: AppColors.cardBorder(isDark), width: 0.5),
                         ),
@@ -574,9 +575,9 @@ class SkeletonPerfilHeader extends StatelessWidget {
                           children: [
                             SkeletonLine(
                                 width: 32, height: 32, color: color, radius: 6),
-                            const SizedBox(height: 14),
+                            SizedBox(height: context.r.spaceMd),
                             SkeletonLine(width: 60, height: 10, color: color),
-                            const SizedBox(height: 4),
+                            SizedBox(height: context.r.spaceXs),
                             SkeletonLine(width: 50, height: 16, color: color),
                           ],
                         ),
@@ -605,7 +606,7 @@ class SkeletonNewsCard extends StatelessWidget {
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
           color: AppColors.cardBg(isDark),
-          borderRadius: BorderRadius.circular(AppSpacing.radiusLg),
+          borderRadius: BorderRadius.circular(context.r.cardRadius),
           border: Border.all(color: AppColors.cardBorder(isDark), width: 0.5),
         ),
         child: Column(
@@ -618,11 +619,11 @@ class SkeletonNewsCard extends StatelessWidget {
                 SkeletonLine(width: 60, height: 14, color: color),
               ],
             ),
-            const SizedBox(height: 10),
+            SizedBox(height: context.r.spaceSm),
             SkeletonLine(width: double.infinity, height: 16, color: color),
-            const SizedBox(height: 6),
+            SizedBox(height: context.r.spaceSm),
             SkeletonLine(width: 200, height: 13, color: color),
-            const SizedBox(height: 6),
+            SizedBox(height: context.r.spaceSm),
             SkeletonLine(width: double.infinity, height: 13, color: color),
           ],
         ),
@@ -647,10 +648,10 @@ class SkeletonReservasList extends StatelessWidget {
           children: [
             // Summary bar
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+              padding: EdgeInsets.symmetric(horizontal: context.r.tileHorizontalPad, vertical: 12),
               decoration: BoxDecoration(
                 color: AppColors.cardBg(isDark),
-                borderRadius: BorderRadius.circular(AppSpacing.radiusLg),
+                borderRadius: BorderRadius.circular(context.r.cardRadius),
                 border:
                     Border.all(color: AppColors.cardBorder(isDark), width: 0.5),
               ),
@@ -660,7 +661,7 @@ class SkeletonReservasList extends StatelessWidget {
                     child: Column(
                       children: [
                         SkeletonLine(width: 30, height: 22, color: color),
-                        const SizedBox(height: 4),
+                        SizedBox(height: context.r.spaceXs),
                         SkeletonLine(width: 70, height: 11, color: color),
                       ],
                     ),
@@ -670,7 +671,7 @@ class SkeletonReservasList extends StatelessWidget {
                     child: Column(
                       children: [
                         SkeletonLine(width: 30, height: 22, color: color),
-                        const SizedBox(height: 4),
+                        SizedBox(height: context.r.spaceXs),
                         SkeletonLine(width: 40, height: 11, color: color),
                       ],
                     ),
@@ -678,27 +679,27 @@ class SkeletonReservasList extends StatelessWidget {
                 ],
               ),
             ),
-            const SizedBox(height: 12),
+            SizedBox(height: context.r.spaceMd),
             // Section header
             Row(
               children: [
                 SkeletonLine(width: 3, height: 16, color: color),
-                const SizedBox(width: 8),
+                SizedBox(width: context.r.spaceSm),
                 SkeletonLine(width: 180, height: 13, color: color),
-                const SizedBox(width: 8),
+                SizedBox(width: context.r.spaceSm),
                 SkeletonLine(width: 28, height: 20, color: color, radius: 10),
               ],
             ),
-            const SizedBox(height: 16),
+            SizedBox(height: context.r.spaceMd),
             // Card list
             ...List.generate(count, (i) {
               return Padding(
                 padding: const EdgeInsets.only(bottom: 10),
                 child: Container(
-                  padding: const EdgeInsets.all(14),
+                  padding: EdgeInsets.all(context.r.spaceMd),
                   decoration: BoxDecoration(
                     color: AppColors.cardBg(isDark),
-                    borderRadius: BorderRadius.circular(AppSpacing.radiusLg),
+                    borderRadius: BorderRadius.circular(context.r.cardRadius),
                     border: Border.all(
                         color: AppColors.cardBorder(isDark), width: 0.5),
                   ),
@@ -708,7 +709,7 @@ class SkeletonReservasList extends StatelessWidget {
                       Row(
                         children: [
                           SkeletonCircle(size: 50, color: color),
-                          const SizedBox(width: 10),
+                          SizedBox(width: context.r.spaceSm),
                           Expanded(
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
@@ -717,7 +718,7 @@ class SkeletonReservasList extends StatelessWidget {
                                     width: 120 + (i * 15).toDouble(),
                                     height: 16,
                                     color: color),
-                                const SizedBox(height: 6),
+                                SizedBox(height: context.r.spaceSm),
                                 SkeletonLine(
                                     width: 90, height: 12, color: color),
                               ],
@@ -727,16 +728,16 @@ class SkeletonReservasList extends StatelessWidget {
                               width: 70, height: 24, color: color, radius: 12),
                         ],
                       ),
-                      const SizedBox(height: 10),
+                      SizedBox(height: context.r.spaceSm),
                       Container(
                           height: 0.5, color: AppColors.dividerC(isDark)),
-                      const SizedBox(height: 10),
+                      SizedBox(height: context.r.spaceSm),
                       Row(
                         children: [
                           SkeletonLine(width: 80, height: 12, color: color),
-                          const SizedBox(width: 12),
+                          SizedBox(width: context.r.spaceMd),
                           SkeletonLine(width: 50, height: 12, color: color),
-                          const SizedBox(width: 12),
+                          SizedBox(width: context.r.spaceMd),
                           SkeletonLine(width: 70, height: 12, color: color),
                         ],
                       ),

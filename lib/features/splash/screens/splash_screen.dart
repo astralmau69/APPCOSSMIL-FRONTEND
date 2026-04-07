@@ -1,209 +1,426 @@
 import 'package:flutter/material.dart';
+
 import 'package:flutter/services.dart';
+
 import 'package:audioplayers/audioplayers.dart';
+
 import '../../../core/constants/app_colors.dart';
+import '../../../core/utils/error_mapper.dart';
+
 import '../../../core/theme/app_constants.dart';
+
 import '../../../core/storage/token_storage.dart';
+
 import '../../../core/services/security_service.dart';
+
 import '../../../core/services/session_restore_service.dart';
+
 import '../../../core/services/location_service.dart';
+
 import '../../../core/services/notification_service.dart';
+
 import '../../../core/animations/animated_gradient_background.dart';
+import '../../../core/extensions/responsive_extensions.dart';
+import '../../../core/services/programacion_service.dart';
+import '../../../core/widgets/cossmil_ios_alert.dart';
 
 class SplashScreen extends StatefulWidget {
+
   /// true = viene de segundo plano (no reproduce audio, duración breve).
+
   final bool isOverlay;
+
   const SplashScreen({super.key, this.isOverlay = false});
 
+
+
   @override
+
   State<SplashScreen> createState() => _SplashScreenState();
+
 }
 
+
+
 class _SplashScreenState extends State<SplashScreen>
+
     with TickerProviderStateMixin {
+
   // Logo: fade + spring scale + rotation entrance
+
   late final AnimationController _logoCtrl;
+
   late final Animation<double> _logoFade;
+
   late final Animation<double> _logoScale;
+
   late final Animation<double> _logoRotate;
 
+
+
   // Floating effect
+
   late final AnimationController _floatCtrl;
+
   late final Animation<Offset> _logoFloat;
 
+
+
   // Triple ripple rings
+
   late final AnimationController _rippleCtrl;
+
   late final Animation<double> _ripple1Scale;
+
   late final Animation<double> _ripple2Scale;
+
   late final Animation<double> _ripple3Scale;
+
   late final Animation<double> _rippleOpacity;
 
+
+
   // Pulsing glow
+
   late final AnimationController _glowCtrl;
+
   late final Animation<double> _glowOpacity;
 
+
+
   // Tagline beneath logo
+
   late final AnimationController _taglineCtrl;
+
   late final Animation<double> _taglineFade;
+
   late final Animation<Offset> _taglineSlide;
 
+
+
   // Footer
+
   late final AnimationController _footerCtrl;
+
   late final Animation<double> _footerFade;
 
+
+
   AudioPlayer? _audioPlayer;
+
   bool _navigated = false;
 
+
+
   @override
+
   void initState() {
+
     super.initState();
+
     _setupAnimations();
+
     _runSequence();
+
   }
+
+
 
   void _setupAnimations() {
+
     // Logo entrance
+
     _logoCtrl = AnimationController(
+
       vsync: this,
+
       duration: const Duration(milliseconds: 1800),
+
     );
+
     _logoFade = Tween<double>(begin: 0.0, end: 1.0).animate(
+
       CurvedAnimation(parent: _logoCtrl, curve: const Interval(0.0, 0.4, curve: Curves.easeIn)),
+
     );
+
     _logoScale = Tween<double>(begin: 0.4, end: 1.0).animate(
+
       CurvedAnimation(parent: _logoCtrl, curve: const Interval(0.0, 0.7, curve: Curves.elasticOut)),
+
     );
+
     _logoRotate = Tween<double>(begin: -0.15, end: 0.0).animate(
+
       CurvedAnimation(parent: _logoCtrl, curve: const Interval(0.0, 0.7, curve: Curves.elasticOut)),
+
     );
+
+
 
     // Floating effect
+
     _floatCtrl = AnimationController(
+
       vsync: this,
+
       duration: const Duration(milliseconds: 3000),
+
     );
+
     _logoFloat = Tween<Offset>(
+
       begin: const Offset(0, -0.02),
+
       end: const Offset(0, 0.02),
+
     ).animate(CurvedAnimation(parent: _floatCtrl, curve: Curves.easeInOutSine));
 
+
+
     // Triple Ripple
+
     _rippleCtrl = AnimationController(
+
       vsync: this,
+
       duration: const Duration(milliseconds: 2000),
+
     );
+
     _ripple1Scale = Tween<double>(begin: 0.8, end: 2.2).animate(
+
       CurvedAnimation(parent: _rippleCtrl, curve: const Interval(0.0, 0.8, curve: Curves.easeOutQuart)),
+
     );
+
     _ripple2Scale = Tween<double>(begin: 0.8, end: 2.0).animate(
+
       CurvedAnimation(parent: _rippleCtrl, curve: const Interval(0.15, 0.95, curve: Curves.easeOutQuart)),
+
     );
+
     _ripple3Scale = Tween<double>(begin: 0.8, end: 1.8).animate(
+
       CurvedAnimation(parent: _rippleCtrl, curve: const Interval(0.3, 1.0, curve: Curves.easeOutQuart)),
+
     );
+
     _rippleOpacity = TweenSequence<double>([
+
       TweenSequenceItem(tween: Tween<double>(begin: 0.0, end: 0.5), weight: 30),
+
       TweenSequenceItem(tween: Tween<double>(begin: 0.5, end: 0.0), weight: 70),
+
     ]).animate(_rippleCtrl);
 
+
+
     // Glow pulse
+
     _glowCtrl = AnimationController(
+
       vsync: this,
+
       duration: const Duration(milliseconds: 2500),
+
     );
+
     _glowOpacity = Tween<double>(begin: 0.05, end: 0.25).animate(
+
       CurvedAnimation(parent: _glowCtrl, curve: Curves.easeInOutSine),
+
     );
+
+
 
     // Tagline — slides up + fades in
+
     _taglineCtrl = AnimationController(
+
       vsync: this,
+
       duration: const Duration(milliseconds: 1200),
+
     );
+
     _taglineFade = Tween<double>(begin: 0.0, end: 1.0).animate(
+
       CurvedAnimation(parent: _taglineCtrl, curve: const Interval(0.0, 0.8, curve: Curves.easeIn)),
+
     );
+
     _taglineSlide = Tween<Offset>(
+
       begin: const Offset(0, 0.8),
+
       end: Offset.zero,
+
     ).animate(CurvedAnimation(parent: _taglineCtrl, curve: Curves.easeOutQuint));
 
+
+
     // Footer
+
     _footerCtrl = AnimationController(
+
       vsync: this,
+
       duration: const Duration(milliseconds: 800),
+
     );
+
     _footerFade = CurvedAnimation(parent: _footerCtrl, curve: Curves.easeIn);
+
   }
+
+
 
   Future<void> _runSequence() async {
+
     // Initial delay
+
     await Future.delayed(const Duration(milliseconds: 300));
 
+
+
     if (!widget.isOverlay && mounted) {
+
       try {
+
         _audioPlayer = AudioPlayer();
+
         await _audioPlayer!.play(AssetSource('vof/AUDIO 1. BIENVENIDA.mp3'));
+
       } catch (_) {}
 
+
+
       // Solicitar permisos de ubicación y notificaciones durante el splash
+
       _requestPermissions();
+
     }
 
+
+
     if (!mounted) return;
+
     _logoCtrl.forward();
+
     _floatCtrl.repeat(reverse: true);
+
     _glowCtrl.repeat(reverse: true);
 
+
+
     await Future.delayed(const Duration(milliseconds: 600));
+
     if (!mounted) return;
+
     _rippleCtrl.repeat();
 
+
+
     await Future.delayed(const Duration(milliseconds: 400));
+
     if (!mounted) return;
+
     _taglineCtrl.forward();
 
+
+
     await Future.delayed(const Duration(milliseconds: 400));
+
     if (!mounted) return;
+
     _footerCtrl.forward();
 
+
+
     // Duration — 8 seg total para el audio de bienvenida
+
     await Future.delayed(Duration(milliseconds: widget.isOverlay ? 2000 : 6300));
 
+
+
     if (!mounted) return;
+
     _navigate();
+
   }
+
+
 
   /// Solicita permisos de ubicación y notificaciones en paralelo.
+
   Future<void> _requestPermissions() async {
+
     try {
+
       await Future.wait([
+
         LocationService().requestPermission(),
+
         NotificationService.initialize(),
+
       ]);
+
     } catch (_) {}
+
   }
 
+
+
   Future<void> _navigate() async {
+
     if (_navigated || !mounted) return;
+
     _navigated = true;
 
+
+
     if (widget.isOverlay) {
+
       Navigator.pop(context);
+
     } else {
+
       try {
+
         final hasToken = await TokenStorage.hasToken();
+
         final hasPin = await SecurityService.hasPin();
+
+
 
         if (!mounted) return;
 
+
+
         if (hasToken) {
+
           final restored = await SessionRestoreService.restoreUserSession();
+
           if (!mounted) return;
+
+
 
           if (!restored) {
             Navigator.pushReplacementNamed(context, '/login');
             return;
+          }
+
+          // Verificación de Versión Obligatoria
+          try {
+            await ProgramacionService().verificarVersion();
+          } catch (e) {
+            if (!mounted) return;
+            final raw = e.toString().replaceAll('Exception: ', '');
+            final isVersionMsg = raw.toLowerCase().contains('versión') || raw.toLowerCase().contains('actualizar');
+            final msg = isVersionMsg ? raw : ErrorMapper.message(e, context: ErrorContext.verificarVersion);
+            await _showUpdateDialog(msg);
+            return; // Bloquea la navegación permanentemente
           }
 
           if (hasPin) {
@@ -215,145 +432,67 @@ class _SplashScreenState extends State<SplashScreen>
             if (!mounted) return;
             Navigator.pushReplacementNamed(context, '/login');
           }
+
         } else {
+
           Navigator.pushReplacementNamed(context, '/login');
+
         }
+
       } catch (e) {
+
         try {
+
           await TokenStorage.deleteToken();
+
           await SecurityService.clearSecurityData();
+
         } catch (_) {}
+
         
+
         if (mounted) {
+
           Navigator.pushReplacementNamed(context, '/login');
+
         }
+
       }
+
     }
+
   }
 
-  @override
-  void dispose() {
-    _audioPlayer?.stop();
-    _audioPlayer?.dispose();
-    _logoCtrl.dispose();
-    _floatCtrl.dispose();
-    _rippleCtrl.dispose();
-    _glowCtrl.dispose();
-    _taglineCtrl.dispose();
-    _footerCtrl.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final size = MediaQuery.of(context).size;
-    final logoSize = (size.width * 0.55).clamp(200.0, 320.0);
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-
-    return AnnotatedRegion<SystemUiOverlayStyle>(
-      value: isDark ? SystemUiOverlayStyle.light : SystemUiOverlayStyle.dark,
-      child: Scaffold(
-        backgroundColor: isDark ? AppColors.darkBackground : AppColors.background,
-        body: AnimatedGradientBackground(
-          isDark: isDark,
-          child: SafeArea(
-            child: SizedBox.expand(
-              child: Column(
-                children: [
-                  const Spacer(flex: 3),
-                  _buildLogoGroup(context, logoSize),
-                  const SizedBox(height: 48),
-                  _buildTagline(context),
-                  const Spacer(flex: 4),
-                  _buildFooter(context),
-                  const SizedBox(height: 24),
-                ],
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildLogoGroup(BuildContext context, double logoSize) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    return FadeTransition(
-      opacity: _logoFade,
-      child: ScaleTransition(
-        scale: _logoScale,
-        child: RotationTransition(
-          turns: _logoRotate,
-          child: SlideTransition(
-            position: _logoFloat,
-            child: Stack(
-              alignment: Alignment.center,
+  Future<void> _showUpdateDialog(String message) async {
+    return showDialog<void>(
+      context: context,
+      barrierDismissible: false, // Bloquear salida
+      builder: (BuildContext ctx) {
+        final isDark = Theme.of(ctx).brightness == Brightness.dark;
+        return PopScope(
+          canPop: false,
+          child: AlertDialog(
+            backgroundColor: AppColors.cardBg(isDark),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            title: Row(
               children: [
-                // Triple Ripples
-                _buildRipple(_ripple1Scale, 0.8),
-                _buildRipple(_ripple2Scale, 0.5),
-                _buildRipple(_ripple3Scale, 0.3),
-                
-                // Pulsing glow halo
-                AnimatedBuilder(
-                  animation: _glowOpacity,
-                  builder: (context, _) {
-                    return Container(
-                      width: logoSize * 1.2,
-                      height: logoSize * 1.2,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        boxShadow: [
-                          BoxShadow(
-                            color: AppColors.primary.withValues(alpha: _glowOpacity.value),
-                            blurRadius: 40,
-                            spreadRadius: 5,
-                          ),
-                        ],
-                      ),
-                    );
-                  },
-                ),
-                
-                // Logo Image
-                SizedBox(
-                  width: logoSize,
-                  height: logoSize,
-                  child: Image.asset(
-                    'assets/images/cossmil_logo.png',
-                    fit: BoxFit.contain,
-                    errorBuilder: (_, __, ___) => Icon(
-                      Icons.shield,
-                      size: logoSize * 0.5,
-                      color: isDark ? AppColors.white : AppColors.primary,
+                const Icon(Icons.system_update, color: AppColors.warning, size: 28),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    'Actualización Requerida',
+                    style: TextStyle(
+                      fontWeight: FontWeight.w800,
+                      color: AppColors.textPrimaryC(isDark),
+                      fontSize: 18,
                     ),
                   ),
                 ),
               ],
             ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildRipple(Animation<double> scale, double opacityMultiplier) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    return AnimatedBuilder(
-      animation: _rippleCtrl,
-      builder: (context, _) {
-        return Transform.scale(
-          scale: scale.value,
-          child: Container(
-            width: 200,
-            height: 200,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              border: Border.all(
-                color: (isDark ? AppColors.primaryMedium : AppColors.primary)
-                    .withValues(alpha: _rippleOpacity.value * opacityMultiplier),
-                width: 1.5,
-              ),
+            content: Text(
+              message,
+              style: TextStyle(color: AppColors.textSecondaryC(isDark), height: 1.4),
             ),
           ),
         );
@@ -361,97 +500,450 @@ class _SplashScreenState extends State<SplashScreen>
     );
   }
 
-  Widget _buildTagline(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    return FadeTransition(
-      opacity: _taglineFade,
-      child: SlideTransition(
-        position: _taglineSlide,
-        child: Column(
-          children: [
-            Text(
-              'COSSMIL',
-              style: AppTypography.displayLarge.copyWith(
-                fontWeight: FontWeight.w900,
-                letterSpacing: 8.0,
-                color: isDark ? AppColors.white : AppColors.primaryDark,
-              ),
-            ),
-            const SizedBox(height: 12),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-              decoration: BoxDecoration(
-                border: Border.symmetric(
-                  horizontal: BorderSide(
-                    color: (isDark ? AppColors.white : AppColors.primary)
-                        .withValues(alpha: 0.2),
-                    width: 0.5,
-                  ),
-                ),
-              ),
-              child: Text(
-                'Corporación del Seguro Social Militar',
-                style: AppTypography.labelMedium.copyWith(
-                  letterSpacing: 1.5,
-                  color: isDark
-                      ? AppColors.white.withValues(alpha: 0.6)
-                      : AppColors.textSecondary,
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
+  @override
+  void dispose() {
+
+    _audioPlayer?.stop();
+
+    _audioPlayer?.dispose();
+
+    _logoCtrl.dispose();
+
+    _floatCtrl.dispose();
+
+    _rippleCtrl.dispose();
+
+    _glowCtrl.dispose();
+
+    _taglineCtrl.dispose();
+
+    _footerCtrl.dispose();
+
+    super.dispose();
+
   }
 
-  Widget _buildFooter(BuildContext context) {
+
+
+  @override
+
+  Widget build(BuildContext context) {
+
+    final size = MediaQuery.of(context).size;
+
+    final logoSize = (size.width * 0.55).clamp(200.0, 320.0);
+
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    return FadeTransition(
-      opacity: _footerFade,
-      child: Column(
-        children: [
-          Container(
-            width: 40,
-            height: 1,
-            color: (isDark ? AppColors.white : AppColors.primary)
-                .withValues(alpha: 0.15),
-          ),
-          const SizedBox(height: 16),
-          Text(
-            'Dirección Nacional de Sistemas',
-            style: AppTypography.labelSmall.copyWith(
-              fontWeight: FontWeight.w600,
-              color: isDark
-                  ? AppColors.white.withValues(alpha: 0.3)
-                  : AppColors.textTertiary.withValues(alpha: 0.5),
-              letterSpacing: 1.5,
+
+
+
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+
+      value: isDark ? SystemUiOverlayStyle.light : SystemUiOverlayStyle.dark,
+
+      child: Scaffold(
+
+        backgroundColor: isDark ? AppColors.darkBackground : AppColors.background,
+
+        body: AnimatedGradientBackground(
+
+          isDark: isDark,
+
+          child: SafeArea(
+
+            child: SizedBox.expand(
+
+              child: Column(
+
+                children: [
+
+                  const Spacer(flex: 3),
+
+                  _buildLogoGroup(context, logoSize),
+
+                  SizedBox(height: context.r.spaceXxl),
+
+                  _buildTagline(context),
+
+                  const Spacer(flex: 4),
+
+                  _buildFooter(context),
+
+                  SizedBox(height: context.r.spaceLg),
+
+                ],
+
+              ),
+
             ),
+
           ),
-          const SizedBox(height: 2),
-          Text(
-            'COSSMIL',
-            style: AppTypography.labelSmall.copyWith(
-              fontWeight: FontWeight.w700,
-              color: isDark
-                  ? AppColors.white.withValues(alpha: 0.35)
-                  : AppColors.textTertiary.withValues(alpha: 0.55),
-              letterSpacing: 2.0,
-            ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            '2026',
-            style: AppTypography.caption.copyWith(
-              fontWeight: FontWeight.w500,
-              color: isDark
-                  ? AppColors.white.withValues(alpha: 0.2)
-                  : AppColors.textTertiary.withValues(alpha: 0.4),
-              letterSpacing: 2.0,
-            ),
-          ),
-        ],
+
+        ),
+
       ),
+
     );
+
   }
+
+
+
+  Widget _buildLogoGroup(BuildContext context, double logoSize) {
+
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    return FadeTransition(
+
+      opacity: _logoFade,
+
+      child: ScaleTransition(
+
+        scale: _logoScale,
+
+        child: RotationTransition(
+
+          turns: _logoRotate,
+
+          child: SlideTransition(
+
+            position: _logoFloat,
+
+            child: Stack(
+
+              alignment: Alignment.center,
+
+              children: [
+
+                // Triple Ripples
+
+                _buildRipple(_ripple1Scale, 0.8),
+
+                _buildRipple(_ripple2Scale, 0.5),
+
+                _buildRipple(_ripple3Scale, 0.3),
+
+                
+
+                // Pulsing glow halo
+
+                AnimatedBuilder(
+
+                  animation: _glowOpacity,
+
+                  builder: (context, _) {
+
+                    return Container(
+
+                      width: logoSize * 1.2,
+
+                      height: logoSize * 1.2,
+
+                      decoration: BoxDecoration(
+
+                        shape: BoxShape.circle,
+
+                        boxShadow: [
+
+                          BoxShadow(
+
+                            color: AppColors.primary.withValues(alpha: _glowOpacity.value),
+
+                            blurRadius: 40,
+
+                            spreadRadius: 5,
+
+                          ),
+
+                        ],
+
+                      ),
+
+                    );
+
+                  },
+
+                ),
+
+                
+
+                // Logo Image
+
+                SizedBox(
+
+                  width: logoSize,
+
+                  height: logoSize,
+
+                  child: Image.asset(
+
+                    'assets/images/cossmil_logo.png',
+
+                    fit: BoxFit.contain,
+
+                    errorBuilder: (_, __, ___) => Icon(
+
+                      Icons.shield,
+
+                      size: logoSize * 0.5,
+
+                      color: isDark ? AppColors.white : AppColors.primary,
+
+                    ),
+
+                  ),
+
+                ),
+
+              ],
+
+            ),
+
+          ),
+
+        ),
+
+      ),
+
+    );
+
+  }
+
+
+
+  Widget _buildRipple(Animation<double> scale, double opacityMultiplier) {
+
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    return AnimatedBuilder(
+
+      animation: _rippleCtrl,
+
+      builder: (context, _) {
+
+        return Transform.scale(
+
+          scale: scale.value,
+
+          child: Container(
+
+            width: 200,
+
+            height: 200,
+
+            decoration: BoxDecoration(
+
+              shape: BoxShape.circle,
+
+              border: Border.all(
+
+                color: (isDark ? AppColors.primaryMedium : AppColors.primary)
+
+                    .withValues(alpha: _rippleOpacity.value * opacityMultiplier),
+
+                width: 1.5,
+
+              ),
+
+            ),
+
+          ),
+
+        );
+
+      },
+
+    );
+
+  }
+
+
+
+  Widget _buildTagline(BuildContext context) {
+
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    return FadeTransition(
+
+      opacity: _taglineFade,
+
+      child: SlideTransition(
+
+        position: _taglineSlide,
+
+        child: Column(
+
+          children: [
+
+            Text(
+
+              'COSSMIL',
+
+              style: context.texts.displayLarge.copyWith(
+
+                fontWeight: FontWeight.w900,
+
+                letterSpacing: 8.0,
+
+                color: isDark ? AppColors.white : AppColors.primaryDark,
+
+              ),
+
+            ),
+
+            SizedBox(height: context.r.spaceMd),
+
+            Container(
+
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+
+              decoration: BoxDecoration(
+
+                border: Border.symmetric(
+
+                  horizontal: BorderSide(
+
+                    color: (isDark ? AppColors.white : AppColors.primary)
+
+                        .withValues(alpha: 0.2),
+
+                    width: 0.5,
+
+                  ),
+
+                ),
+
+              ),
+
+              child: Text(
+
+                'Corporación del Seguro Social Militar',
+
+                style: context.texts.labelSmall.copyWith(
+
+                  letterSpacing: 1.5,
+
+                  color: isDark
+
+                      ? AppColors.white.withValues(alpha: 0.6)
+
+                      : AppColors.textSecondary,
+
+                ),
+
+              ),
+
+            ),
+
+          ],
+
+        ),
+
+      ),
+
+    );
+
+  }
+
+
+
+  Widget _buildFooter(BuildContext context) {
+
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    return FadeTransition(
+
+      opacity: _footerFade,
+
+      child: Column(
+
+        children: [
+
+          Container(
+
+            width: 40,
+
+            height: 1,
+
+            color: (isDark ? AppColors.white : AppColors.primary)
+
+                .withValues(alpha: 0.15),
+
+          ),
+
+          SizedBox(height: context.r.spaceMd),
+
+          Text(
+
+            'Dirección Nacional de Sistemas',
+
+            style: context.texts.labelSmall.copyWith(
+
+              fontWeight: FontWeight.w600,
+
+              color: isDark
+
+                  ? AppColors.white.withValues(alpha: 0.3)
+
+                  : AppColors.textTertiary.withValues(alpha: 0.5),
+
+              letterSpacing: 1.5,
+
+            ),
+
+          ),
+
+          SizedBox(height: context.r.spaceXs),
+
+          Text(
+
+            'COSSMIL',
+
+            style: context.texts.labelSmall.copyWith(
+
+              fontWeight: FontWeight.w700,
+
+              color: isDark
+
+                  ? AppColors.white.withValues(alpha: 0.35)
+
+                  : AppColors.textTertiary.withValues(alpha: 0.55),
+
+              letterSpacing: 2.0,
+
+            ),
+
+          ),
+
+          SizedBox(height: context.r.spaceXs),
+
+          Text(
+
+            '2026',
+
+            style: context.texts.labelSmall.copyWith(
+
+              fontWeight: FontWeight.w500,
+
+              color: isDark
+
+                  ? AppColors.white.withValues(alpha: 0.2)
+
+                  : AppColors.textTertiary.withValues(alpha: 0.4),
+
+              letterSpacing: 2.0,
+
+            ),
+
+          ),
+
+        ],
+
+      ),
+
+    );
+
+  }
+
 }
+

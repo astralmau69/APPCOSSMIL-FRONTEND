@@ -1,3 +1,5 @@
+import '../extensions/string_extensions.dart';
+
 /// Modelo del detalle de una cita médica.
 ///
 /// Mapea la respuesta de GET /api/programacion/detalle-cita-medica/{gestion}/{idins}/{idsuc}/{idtran}/{dr}.
@@ -53,20 +55,20 @@ class DetalleCitaModel {
       gestion: json['gestion'] as int? ?? 0,
       idins: json['idins'] as int? ?? 0,
       idsuc: json['idsuc'] as int? ?? 0,
-      idtran: json['idtran'] as int? ?? 0,
+      idtran: (json['idtran'] ?? json['idtram']) as int? ?? 0,
       dr: json['dr'] as int? ?? 0,
       matricula: (json['matricula'] as String? ?? '').trim(),
-      especialidad: json['especialidad'] as String? ?? '',
-      consultorio: json['consultorio'] as String? ?? '',
-      abrcons: json['abrcons'] as String? ?? '',
+      especialidad: (json['especialidad'] as String? ?? '').toDisplayCase,
+      consultorio: (json['consultorio'] as String? ?? '').toDisplayCase,
+      abrcons: (json['abrcons'] as String? ?? '').toDisplayCase,
       fechaCita: json['fechaCita'] as String? ?? '',
       horaCita: json['horaCita'] as String? ?? '',
       numero: json['numero'] as int? ?? 0,
-      medico: json['medico'] as String? ?? '',
+      medico: (json['medico'] as String? ?? '').toDisplayCase,
       obs: json['obs'] as String? ?? '',
-      sucursal: json['sucursal'] as String? ?? '',
+      sucursal: (json['sucursal'] as String? ?? '').toDisplayCase,
       codadm: json['codadm'] as String? ?? '',
-      paciente: json['paciente'] as String? ?? '',
+      paciente: (json['paciente'] as String? ?? '').toDisplayCase,
       tipoConsulta: json['tipoConsulta'] as String?,
       estadoConfirmacion: json['estadoConfirmacion'] as String? ?? '',
       estadoAtencion: json['estadoAtencion'] as String? ?? '',

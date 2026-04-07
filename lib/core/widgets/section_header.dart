@@ -1,48 +1,49 @@
 import 'package:flutter/material.dart';
 import '../constants/app_colors.dart';
-import '../theme/app_constants.dart';
+import '../extensions/responsive_extensions.dart';
 
 /// Widget reutilizable para cabeceras de sección con estilo consistente.
 ///
 /// Muestra una barra de acento vertical + texto uppercase con tracking.
 class SectionHeader extends StatelessWidget {
   final String text;
-  final EdgeInsetsGeometry padding;
+  final EdgeInsetsGeometry? padding;
   final bool showAccentBar;
 
   const SectionHeader({
     super.key,
     required this.text,
-    this.padding = const EdgeInsets.only(left: 24),
+    this.padding,
     this.showAccentBar = true,
   });
 
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final r = context.r;
 
     return Padding(
-      padding: padding,
+      padding: padding ?? EdgeInsets.only(left: r.paddingH),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
           if (showAccentBar) ...[
             Container(
-              width: 3,
-              height: 16,
+              width: r.sectionBarWidth,
+              height: r.sectionBarHeight,
               decoration: BoxDecoration(
                 color: AppColors.accentForTheme(isDark),
-                borderRadius: BorderRadius.circular(2),
+                borderRadius: BorderRadius.circular(context.r.spaceXs),
               ),
             ),
-            const SizedBox(width: 10),
+            SizedBox(width: r.spaceSm),
           ],
           Flexible(
             child: Text(
               text,
-              style: AppTypography.labelMedium.copyWith(
+              style: context.texts.labelSmall.copyWith(
                 letterSpacing: 1.0,
-                fontSize: 13,
+                fontSize: r.sectionLabelSize,
                 color: AppColors.textSecondaryC(isDark),
               ),
             ),

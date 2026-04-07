@@ -1,3 +1,4 @@
+import '../extensions/string_extensions.dart';
 import 'doctor_model.dart';
 import 'time_slot_model.dart';
 
@@ -43,12 +44,12 @@ class MedicoAsignadoModel {
       idagenda: json['idagenda'] as String? ?? '',
       idesp: json['idesp'] as int? ?? 0,
       idmed: (json['idmed'] ?? '').toString(),
-      medico: json['medico'] as String? ?? '',
+      medico: (json['medico'] as String? ?? '').toDisplayCase,
       asignado: json['asignado'] as int? ?? 0,
       estado: json['estado'] as bool? ?? false,
       idcon: json['idcon'] as int? ?? 0,
       idcontrol: json['idcontrol'] as String? ?? '',
-      descripcionConsultorio: json['descripcion'] as String? ?? '',
+      descripcionConsultorio: (json['descripcion'] as String? ?? '').toDisplayCase,
       dia: json['dia'] as String? ?? '',
       fecha: json['fecha'] as String? ?? '',
       foto: json['foto'] as String? ?? '',

@@ -172,13 +172,13 @@ class _FamiliaScreenState extends State<FamiliaScreen> {
               hasScrollBody: false,
               child: Center(
                 child: Padding(
-                  padding: const EdgeInsets.all(32),
+                  padding: EdgeInsets.all(context.r.spaceXl),
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       Icon(CupertinoIcons.wifi_slash,
                           size: 40, color: AppColors.textTertiaryC(isDark)),
-                      const SizedBox(height: 16),
+                      SizedBox(height: context.r.spaceMd),
                       Text(
                         'No se pudo cargar la información',
                         textAlign: TextAlign.center,
@@ -187,12 +187,11 @@ class _FamiliaScreenState extends State<FamiliaScreen> {
                           color: AppColors.textPrimaryC(isDark),
                         ),
                       ),
-                      const SizedBox(height: 8),
+                      SizedBox(height: context.r.spaceSm),
                       Text(
                         'Verifica tu conexión y desliza hacia abajo para reintentar.',
                         textAlign: TextAlign.center,
                         style: TextStyle(
-                          fontSize: 13,
                           color: AppColors.textSecondaryC(isDark),
                         ),
                       ),
@@ -205,7 +204,7 @@ class _FamiliaScreenState extends State<FamiliaScreen> {
             // Info header
             SliverToBoxAdapter(
               child: Padding(
-                padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
+                padding: EdgeInsets.fromLTRB(context.r.paddingH, context.r.spaceMd, context.r.paddingH, 0),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -217,7 +216,7 @@ class _FamiliaScreenState extends State<FamiliaScreen> {
                           decoration: BoxDecoration(
                             color: AppColors.accentBg(isDark),
                             borderRadius:
-                                BorderRadius.circular(AppSpacing.radiusMd),
+                                BorderRadius.circular(context.r.radiusMd),
                             border: Border.all(
                               color: AppColors.accentForTheme(isDark)
                                   .withValues(alpha: 0.25),
@@ -229,7 +228,6 @@ class _FamiliaScreenState extends State<FamiliaScreen> {
                                 ? '$titleCount miembro${titleCount != 1 ? 's' : ''}'
                                 : 'Beneficiario',
                             style: TextStyle(
-                              fontSize: 13,
                               fontWeight: FontWeight.w700,
                               color: AppColors.accentForTheme(isDark),
                             ),
@@ -238,15 +236,15 @@ class _FamiliaScreenState extends State<FamiliaScreen> {
                       ],
                     ),
                     if (!_isTitular) ...[
-                      const SizedBox(height: 12),
+                      SizedBox(height: context.r.spaceMd),
                       Container(
-                        padding: const EdgeInsets.all(12),
+                        padding: EdgeInsets.all(context.r.spaceMd),
                         decoration: BoxDecoration(
                           color: isDark
                               ? AppColors.info.withValues(alpha: 0.1)
                               : const Color(0xFFEFF6FF),
                           borderRadius:
-                              BorderRadius.circular(AppSpacing.radiusMd),
+                              BorderRadius.circular(context.r.radiusMd),
                           border: Border.all(
                             color: AppColors.info.withValues(alpha: 0.2),
                           ),
@@ -255,13 +253,12 @@ class _FamiliaScreenState extends State<FamiliaScreen> {
                           children: [
                             Icon(CupertinoIcons.info_circle,
                                 size: 18, color: AppColors.info),
-                            const SizedBox(width: 10),
+                            SizedBox(width: context.r.spaceSm),
                             Expanded(
                               child: Text(
                                 'Como beneficiario solo puedes ver tu propia información. '
                                 'El titular del grupo puede gestionar reservas para todos los miembros.',
                                 style: TextStyle(
-                                  fontSize: 12,
                                   color: AppColors.textSecondaryC(isDark),
                                   height: 1.4,
                                 ),
@@ -290,7 +287,7 @@ class _FamiliaScreenState extends State<FamiliaScreen> {
                       delay: Duration(milliseconds: 60 + (index * 70)),
                       offsetY: 14,
                       child: Padding(
-                        padding: const EdgeInsets.only(bottom: 12),
+                        padding: EdgeInsets.only(bottom: context.r.spaceMd),
                         child: _BeneficiaryCard(
                           beneficiary: b,
                           decodedPhoto: decodedPhoto,
@@ -331,23 +328,23 @@ class _BeneficiaryCard extends StatelessWidget {
         : AppColors.accent;
 
     return Container(
-      padding: const EdgeInsets.all(18),
+      padding: EdgeInsets.all(context.r.spaceMd), // Usar space en vez de hardcard bounds
       decoration: BoxDecoration(
         color: AppColors.cardBg(isDark),
-        borderRadius: BorderRadius.circular(AppSpacing.radiusLg),
+        borderRadius: BorderRadius.circular(context.r.radiusLg), // radio más grande y consistente
         border: Border.all(
           color: isTitular
               ? accentColor.withValues(alpha: isDark ? 0.35 : 0.2)
               : AppColors.cardBorder(isDark),
-          width: isTitular ? 1.0 : 0.5,
+          width: isTitular ? 1.5 : 0.8, // Borde más presente
         ),
-        boxShadow: AppColors.cardShadowFor(isDark),
+        boxShadow: isDark ? [] : AppColors.softShadow,
       ),
       child: Row(
         children: [
           // ── Avatar ──
           _buildAvatar(context, accentColor),
-          const SizedBox(width: 14),
+          SizedBox(width: context.r.spaceMd),
           // ── Info ──
           Expanded(
             child: Column(
@@ -358,12 +355,12 @@ class _BeneficiaryCard extends StatelessWidget {
                     Expanded(
                       child: Text(
                         b.fullName,
-                        style: TextStyle(
-                          fontSize: context.r.isSmallPhone ? 14 : 16,
-                          fontWeight: FontWeight.w700,
+                        style: context.texts.titleMedium.copyWith(
+                          fontWeight: FontWeight.w800,
                           color: AppColors.textPrimaryC(isDark),
+                          height: 1.2,
                         ),
-                        maxLines: 1,
+                        maxLines: 2,
                         overflow: TextOverflow.ellipsis,
                       ),
                     ),
@@ -374,12 +371,11 @@ class _BeneficiaryCard extends StatelessWidget {
                         decoration: BoxDecoration(
                           color: AppColors.accentForTheme(isDark)
                               .withValues(alpha: 0.12),
-                          borderRadius: BorderRadius.circular(6),
+                          borderRadius: BorderRadius.circular(context.r.badgeRadius),
                         ),
                         child: Text(
                           'TITULAR',
                           style: TextStyle(
-                            fontSize: 9,
                             fontWeight: FontWeight.w800,
                             letterSpacing: 0.6,
                             color: AppColors.accentForTheme(isDark),
@@ -388,16 +384,16 @@ class _BeneficiaryCard extends StatelessWidget {
                       ),
                   ],
                 ),
-                const SizedBox(height: 4),
+                SizedBox(height: context.r.spaceXs),
                 Text(
-                  isTitular ? 'Titular de la cuenta' : b.relationship,
-                  style: TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w500,
+                  isTitular ? 'Titular de la cuenta' : b.relationship.toUpperCase(),
+                  style: context.texts.bodySmall.copyWith(
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 0.5,
                     color: AppColors.textSecondaryC(isDark),
                   ),
                 ),
-                const SizedBox(height: 8),
+                SizedBox(height: context.r.spaceSm),
                 // ── Chips de info ──
                 Wrap(
                   spacing: 6,
@@ -405,30 +401,36 @@ class _BeneficiaryCard extends StatelessWidget {
                   children: [
                     if (b.matricula.isNotEmpty)
                       _chip(
+                        context: context,
                         icon: CupertinoIcons.number,
                         label: 'Mat. ${b.matricula}',
                         isDark: isDark,
+                        r: context.r,
                       ),
                     if (b.age != null)
                       _chip(
+                        context: context,
                         icon: CupertinoIcons.calendar,
                         label: '${b.age} años',
                         isDark: isDark,
+                        r: context.r,
                       ),
                     if (b.effectiveGender.isNotEmpty)
                       _chip(
+                        context: context,
                         icon: b.effectiveGender == 'FEMENINO'
                             ? Icons.female
                             : Icons.male,
                         label: b.effectiveGender == 'FEMENINO' ? 'F' : 'M',
                         isDark: isDark,
+                        r: context.r,
                       ),
                   ],
                 ),
               ],
             ),
           ),
-          const SizedBox(width: 8),
+          SizedBox(width: context.r.spaceSm),
           Icon(
             CupertinoIcons.chevron_right,
             color: AppColors.textTertiaryC(isDark),
@@ -440,7 +442,7 @@ class _BeneficiaryCard extends StatelessWidget {
   }
 
   Widget _buildAvatar(BuildContext context, Color accentColor) {
-    final avatarSize = context.r.listAvatarSize;
+    final avatarSize = context.r.listAvatarSize * 1.25; // Responsive con token real
     return Container(
       width: avatarSize,
       height: avatarSize,
@@ -477,15 +479,17 @@ class _BeneficiaryCard extends StatelessWidget {
   }
 
   Widget _chip({
+    required BuildContext context,
     required IconData icon,
     required String label,
     required bool isDark,
+    required AppResponsive r,
   }) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      padding: EdgeInsets.symmetric(horizontal: r.chipPaddingH, vertical: r.chipPaddingV),
       decoration: BoxDecoration(
         color: isDark ? AppColors.darkElevated : AppColors.background,
-        borderRadius: BorderRadius.circular(6),
+        borderRadius: BorderRadius.circular(r.badgeRadius),
         border: Border.all(
           color: AppColors.cardBorder(isDark).withValues(alpha: 0.5),
           width: 0.5,
@@ -497,12 +501,11 @@ class _BeneficiaryCard extends StatelessWidget {
           Icon(icon,
               size: 11,
               color: AppColors.textSecondaryC(isDark)),
-          const SizedBox(width: 4),
+          SizedBox(width: r.spaceXs),
           Text(
             label,
-            style: TextStyle(
-              fontSize: 11,
-              fontWeight: FontWeight.w600,
+            style: context.texts.labelSmall.copyWith(
+              fontWeight: FontWeight.w700,
               color: AppColors.textSecondaryC(isDark),
             ),
           ),

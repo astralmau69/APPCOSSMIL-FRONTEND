@@ -1,3 +1,5 @@
+import '../extensions/string_extensions.dart';
+
 class SpecialtyModel {
   final String id;
   final String name;
@@ -18,8 +20,8 @@ class SpecialtyModel {
   factory SpecialtyModel.fromJson(Map<String, dynamic> json) {
     return SpecialtyModel(
       id: (json['idesp'] ?? json['id'] ?? '').toString(),
-      name: json['especialidad'] as String? ?? json['name'] as String? ?? '',
-      description: json['descripcion'] as String? ?? json['description'] as String? ?? '',
+      name: (json['especialidad'] as String? ?? json['name'] as String? ?? '').toDisplayCase,
+      description: (json['descripcion'] as String? ?? json['description'] as String? ?? '').toDisplayCase,
       isInterconsulta: json['interconsulta'] as bool? ?? false,
       isAuthorized: json['autorizada'] as bool? ?? false,
       referredBy: json['referido_por'] as String?,

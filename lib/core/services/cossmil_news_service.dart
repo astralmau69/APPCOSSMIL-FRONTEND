@@ -23,7 +23,9 @@ class CossmilNewsService {
           .timeout(_timeout);
 
       if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
+        // Forzar decodificación UTF-8 desde bytes para que acentos (á,é,í,ó,ú,ñ) se muestren correctamente.
+        // response.body puede fallar si el servidor no envía charset=utf-8 en el Content-Type.
+        final data = jsonDecode(utf8.decode(response.bodyBytes));
         if (data is Map<String, dynamic>) {
           final list = data['data'] as List? ?? [];
           final items = list

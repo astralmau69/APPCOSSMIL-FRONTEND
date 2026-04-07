@@ -161,9 +161,58 @@ class AppResponsive {
   int get gridColumns => isTablet ? (isLandscape ? 3 : 2) : 2;
   double get gridSpacing => _select(phoneSmall: 8, phoneMedium: 10, phoneLarge: 12, tablet: 16);
 
+  // ── UNIFIED RADII (single source of truth) ────────────────────────────────
+  double get cardRadius => _select(phoneSmall: 14, phoneMedium: 16, phoneLarge: 18, tablet: 20);
+  double get buttonRadius => _select(phoneSmall: 12, phoneMedium: 14, phoneLarge: 16, tablet: 16);
+  double get inputRadius => _select(phoneSmall: 14, phoneMedium: 16, phoneLarge: 18, tablet: 18);
+  double get chipRadius => 20.0;
+  double get modalRadius => _select(phoneSmall: 20, phoneMedium: 22, phoneLarge: 24, tablet: 24);
+  double get badgeRadius => 6.0;
+
+  // ── NAV BAR ──────────────────────────────────────────────────────────────
+  double get navTitleSize => _select(phoneSmall: 16, phoneMedium: 17, phoneLarge: 18, tablet: 20);
+
+  // ── SECTION HEADERS ──────────────────────────────────────────────────────
+  double get sectionLabelSize => _select(phoneSmall: 12, phoneMedium: 13, phoneLarge: 13, tablet: 15);
+  double get sectionBarWidth => 3.0;
+  double get sectionBarHeight => 16.0;
+
+  // ── LIST ITEMS ───────────────────────────────────────────────────────────
+  double get listItemSpacing => _select(phoneSmall: 10, phoneMedium: 12, phoneLarge: 12, tablet: 14);
+  double get tileVerticalPad => _select(phoneSmall: 12, phoneMedium: 14, phoneLarge: 16, tablet: 18);
+  double get tileHorizontalPad => _select(phoneSmall: 14, phoneMedium: 16, phoneLarge: 18, tablet: 20);
+
+  // ── CHIPS / BADGES ───────────────────────────────────────────────────────
+  double get chipPaddingH => _select(phoneSmall: 8, phoneMedium: 10, phoneLarge: 10, tablet: 12);
+  double get chipPaddingV => _select(phoneSmall: 3, phoneMedium: 4, phoneLarge: 4, tablet: 5);
+
+  // ── MODAL / DIALOG ───────────────────────────────────────────────────────
+  double get modalPadding => _select(phoneSmall: 20, phoneMedium: 24, phoneLarge: 24, tablet: 28);
+  double get modalWidthFactor => _select(phoneSmall: 0.92, phoneMedium: 0.88, phoneLarge: 0.85, tablet: 0.70);
+  double get modalMaxWidth => _select(phoneSmall: 360, phoneMedium: 400, phoneLarge: 420, tablet: 500);
+
+  // ── INFO TILE (profile card info rows) ───────────────────────────────────
+  double get infoTileIconBox => _select(phoneSmall: 28, phoneMedium: 32, phoneLarge: 34, tablet: 38);
+  double get infoTileIconSize => _select(phoneSmall: 14, phoneMedium: 16, phoneLarge: 18, tablet: 20);
+
+  // ── LOGIN LOGO ────────────────────────────────────────────────────────────
+  double get logoSize => _select(phoneSmall: 190, phoneMedium: 220, phoneLarge: 250, tablet: 280);
+
+  // ── SUMMARY / DETAIL (cards with photo + info) ────────────────────────────
+  double get summaryPhotoSize => _select(phoneSmall: 44, phoneMedium: 48, phoneLarge: 52, tablet: 56);
+
+  // ── EMPTY STATE ───────────────────────────────────────────────────────────
+  double get emptyIconSize => _select(phoneSmall: 52, phoneMedium: 60, phoneLarge: 64, tablet: 72);
+
+  // ── FILTER CHIP ───────────────────────────────────────────────────────────
+  double get filterChipHeight => _select(phoneSmall: 36, phoneMedium: 40, phoneLarge: 44, tablet: 48);
+  double get filterChipPadH => _select(phoneSmall: 12, phoneMedium: 14, phoneLarge: 16, tablet: 18);
+  double get filterChipPadV => _select(phoneSmall: 6, phoneMedium: 8, phoneLarge: 8, tablet: 10);
+
   // ── EDGE INSETS HELPERS ───────────────────────────────────────────────────
   EdgeInsets get screenPadding => EdgeInsets.symmetric(horizontal: paddingH);
   EdgeInsets get cardInsets => EdgeInsets.all(cardPadding);
+  EdgeInsets get tilePadding => EdgeInsets.symmetric(horizontal: tileHorizontalPad, vertical: tileVerticalPad);
 }
 
 /// Helper para construir layouts responsivos de forma simple y limpia.
@@ -256,7 +305,7 @@ class ResponsiveTypography {
       fontWeight: weight,
       letterSpacing: letterSpacing,
       height: height,
-      fontFamily: '.SF Pro Text',
+      // Fuente nativa de cada plataforma (SF Pro en iOS, Roboto en Android)
     );
   }
 

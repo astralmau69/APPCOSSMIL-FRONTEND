@@ -245,20 +245,20 @@ class _LocalAuthScreenState extends State<LocalAuthScreen>
               child: Column(
                 children: [
                   _buildAvatar(isDark),
-                  const SizedBox(height: 20),
+                  SizedBox(height: context.r.spaceLg),
                   Text(
                     _displayName.isNotEmpty
                         ? 'Bienvenido de vuelta'
                         : 'Desbloquea tu app',
-                    style: AppTypography.bodyMedium.copyWith(
+                    style: context.texts.bodyMedium.copyWith(
                       color: AppColors.textSecondaryC(isDark),
                     ),
                   ),
                   if (_displayName.isNotEmpty) ...[
-                    const SizedBox(height: 4),
+                    SizedBox(height: context.r.spaceXs),
                     Text(
                       _displayName,
-                      style: AppTypography.titleLarge.copyWith(
+                      style: context.texts.titleLarge.copyWith(
                         fontWeight: FontWeight.w700,
                         color: isDark ? AppColors.accentForTheme(isDark) : null,
                       ),
@@ -266,12 +266,12 @@ class _LocalAuthScreenState extends State<LocalAuthScreen>
                       overflow: TextOverflow.ellipsis,
                     ),
                   ],
-                  const SizedBox(height: 24),
+                  SizedBox(height: context.r.spaceLg),
                   Text(
                     _isBlocked
                         ? 'Ingreso temporalmente bloqueado'
                         : 'Ingresa tu PIN de seguridad',
-                    style: AppTypography.bodyMedium.copyWith(
+                    style: context.texts.bodyMedium.copyWith(
                       color: _isBlocked
                           ? AppColors.warning
                           : AppColors.textSecondaryC(isDark),
@@ -282,7 +282,7 @@ class _LocalAuthScreenState extends State<LocalAuthScreen>
               ),
             ),
 
-            const SizedBox(height: 40),
+            SizedBox(height: context.r.spaceXxl),
 
             // ── Indicadores de PIN ──────────────────────────────────
             AnimatedBuilder(
@@ -298,7 +298,7 @@ class _LocalAuthScreenState extends State<LocalAuthScreen>
               child: _buildPinIndicators(isDark, r),
             ),
 
-            const SizedBox(height: 16),
+            SizedBox(height: context.r.spaceMd),
 
             // ── Mensaje de error o cooldown ─────────────────────────
             AnimatedSwitcher(
@@ -312,7 +312,7 @@ class _LocalAuthScreenState extends State<LocalAuthScreen>
                           child: Text(
                             _errorMessage!,
                             textAlign: TextAlign.center,
-                            style: AppTypography.bodySmall.copyWith(
+                            style: context.texts.bodySmall.copyWith(
                               color: AppColors.error,
                               fontWeight: FontWeight.w600,
                             ),
@@ -338,7 +338,7 @@ class _LocalAuthScreenState extends State<LocalAuthScreen>
                       onPressed: _onExitApp,
                       child: Text(
                         'Salir',
-                        style: AppTypography.bodyMedium.copyWith(
+                        style: context.texts.bodyMedium.copyWith(
                           color: AppColors.textSecondaryC(isDark),
                           fontWeight: FontWeight.w600,
                         ),
@@ -355,7 +355,7 @@ class _LocalAuthScreenState extends State<LocalAuthScreen>
                       onPressed: _onLogoutPressed,
                       child: Text(
                         'Cerrar sesión',
-                        style: AppTypography.bodyMedium.copyWith(
+                        style: context.texts.bodyMedium.copyWith(
                           color: AppColors.error,
                           fontWeight: FontWeight.w600,
                         ),
@@ -366,7 +366,7 @@ class _LocalAuthScreenState extends State<LocalAuthScreen>
               ),
             ),
 
-            const SizedBox(height: 16),
+            SizedBox(height: context.r.spaceMd),
           ],
         ),
       ),
@@ -382,7 +382,7 @@ class _LocalAuthScreenState extends State<LocalAuthScreen>
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
       decoration: BoxDecoration(
         color: AppColors.warning.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(context.r.radiusMd),
         border: Border.all(color: AppColors.warning.withValues(alpha: 0.3)),
       ),
       child: Row(
@@ -390,10 +390,10 @@ class _LocalAuthScreenState extends State<LocalAuthScreen>
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           const Icon(CupertinoIcons.timer, size: 16, color: AppColors.warning),
-          const SizedBox(width: 8),
+          SizedBox(width: context.r.spaceSm),
           Text(
             'Demasiados intentos. Intenta en ${secs}s',
-            style: AppTypography.bodySmall.copyWith(
+            style: context.texts.bodySmall.copyWith(
               color: AppColors.warning,
               fontWeight: FontWeight.w600,
             ),
@@ -584,7 +584,7 @@ class _LocalAuthScreenState extends State<LocalAuthScreen>
         child: Center(
           child: Text(
             number.toString(),
-            style: AppTypography.displayMedium.copyWith(
+            style: context.texts.displayLarge.copyWith(
               fontSize: fontSize,
               fontWeight: FontWeight.w600,
               color: blocked

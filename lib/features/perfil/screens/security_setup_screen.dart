@@ -170,18 +170,18 @@ class _SecuritySetupScreenState extends State<SecuritySetupScreen> {
                 children: [
                   // ── Cabecera de estado ───────────────────────
                   _buildStatusHeader(isDark),
-                  const SizedBox(height: 28),
+                  SizedBox(height: context.r.spaceXl),
 
                   // ── Chips de resumen ─────────────────────────
                   if (_hasPin) _buildStatusChips(isDark),
-                  if (_hasPin) const SizedBox(height: 28),
+                  if (_hasPin) SizedBox(height: context.r.spaceXl),
 
                   // ── Métodos de acceso ────────────────────────
                   _buildAccessSection(isDark),
 
                   // ── Zona de riesgo ───────────────────────────
                   if (_hasPin) ...[
-                    const SizedBox(height: 36),
+                    SizedBox(height: context.r.spaceXl),
                     _buildDestructiveSection(isDark),
                   ],
                 ],
@@ -197,22 +197,22 @@ class _SecuritySetupScreenState extends State<SecuritySetupScreen> {
       child: Column(
         children: [
           _buildStatusIcon(isDark),
-          const SizedBox(height: 20),
+          SizedBox(height: context.r.spaceLg),
           Text(
             _hasPin ? 'Tu acceso está protegido' : 'Sin protección activa',
             textAlign: TextAlign.center,
-            style: AppTypography.titleLarge.copyWith(
+            style: context.texts.titleLarge.copyWith(
               fontWeight: FontWeight.w700,
               color: _hasPin ? AppColors.success : null,
             ),
           ),
-          const SizedBox(height: 8),
+          SizedBox(height: context.r.spaceSm),
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 24),
+            padding: EdgeInsets.symmetric(horizontal: context.r.spaceLg),
             child: Text(
               _statusSubtitle,
               textAlign: TextAlign.center,
-              style: AppTypography.bodyMedium.copyWith(
+              style: context.texts.bodyMedium.copyWith(
                 color: AppColors.textSecondaryC(isDark),
                 height: 1.5,
               ),
@@ -265,7 +265,7 @@ class _SecuritySetupScreenState extends State<SecuritySetupScreen> {
           active: _hasPin,
           isDark: isDark,
         ),
-        const SizedBox(width: 10),
+        SizedBox(width: context.r.spaceSm),
         _buildStatusChip(
           icon: _bioStatus == DeviceBiometricStatus.unavailable
               ? CupertinoIcons.xmark_shield
@@ -278,7 +278,7 @@ class _SecuritySetupScreenState extends State<SecuritySetupScreen> {
               _bioStatus == DeviceBiometricStatus.available,
           isDark: isDark,
         ),
-        const SizedBox(width: 10),
+        SizedBox(width: context.r.spaceSm),
         _buildStatusChip(
           icon: CupertinoIcons.timer,
           label: 'Inactividad',
@@ -305,7 +305,7 @@ class _SecuritySetupScreenState extends State<SecuritySetupScreen> {
           color: active
               ? AppColors.success.withValues(alpha: 0.07)
               : (isDark ? Colors.white.withValues(alpha: 0.05) : Colors.grey.shade50),
-          borderRadius: BorderRadius.circular(14),
+          borderRadius: BorderRadius.circular(context.r.radiusMd),
           border: Border.all(
             color: active
                 ? AppColors.success.withValues(alpha: 0.2)
@@ -315,21 +315,20 @@ class _SecuritySetupScreenState extends State<SecuritySetupScreen> {
         child: Column(
           children: [
             Icon(icon, size: 18, color: color),
-            const SizedBox(height: 6),
+            SizedBox(height: context.r.spaceSm),
             Text(
               label,
-              style: AppTypography.labelSmall.copyWith(
+              style: context.texts.labelSmall.copyWith(
                 color: AppColors.textSecondaryC(isDark),
                 fontWeight: FontWeight.w600,
               ),
             ),
-            const SizedBox(height: 2),
+            SizedBox(height: context.r.spaceXs),
             Text(
               value,
-              style: AppTypography.bodySmall.copyWith(
+              style: context.texts.bodySmall.copyWith(
                 color: color,
                 fontWeight: FontWeight.w700,
-                fontSize: 11,
               ),
               textAlign: TextAlign.center,
             ),
@@ -346,20 +345,20 @@ class _SecuritySetupScreenState extends State<SecuritySetupScreen> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         _sectionLabel('MÉTODO DE ACCESO', isDark: isDark),
-        const SizedBox(height: 12),
+        SizedBox(height: context.r.spaceMd),
 
         // ── PIN card ──────────────────────────────────────────
         _buildPinCard(isDark),
 
         // ── Biometría: disponible y enrollada ─────────────────
         if (_bioStatus == DeviceBiometricStatus.available) ...[
-          const SizedBox(height: 12),
+          SizedBox(height: context.r.spaceMd),
           _buildBiometricCard(isDark),
         ],
 
         // ── Biometría: hardware pero sin huellas registradas ──
         if (_bioStatus == DeviceBiometricStatus.notEnrolled) ...[
-          const SizedBox(height: 16),
+          SizedBox(height: context.r.spaceMd),
           _buildNotEnrolledBanner(isDark),
         ],
 
@@ -421,12 +420,12 @@ class _SecuritySetupScreenState extends State<SecuritySetupScreen> {
 
   Widget _buildNotEnrolledBanner(bool isDark) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      padding: EdgeInsets.symmetric(horizontal: context.r.tileHorizontalPad, vertical: 14),
       decoration: BoxDecoration(
         color: isDark
             ? AppColors.warning.withValues(alpha: 0.08)
             : AppColors.warningLight,
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(context.r.radiusMd),
         border: Border.all(
           color: AppColors.warning.withValues(alpha: 0.25),
         ),
@@ -439,13 +438,13 @@ class _SecuritySetupScreenState extends State<SecuritySetupScreen> {
             size: 16,
             color: AppColors.warning,
           ),
-          const SizedBox(width: 10),
+          SizedBox(width: context.r.spaceSm),
           Expanded(
             child: Text(
               'Tu dispositivo tiene lector de huella, pero aún no has '
               'registrado ninguna huella en Ajustes del sistema. '
               'Ve a Ajustes → Seguridad → Huella dactilar para activarla.',
-              style: AppTypography.bodySmall.copyWith(
+              style: context.texts.bodySmall.copyWith(
                 color: AppColors.warning,
                 height: 1.5,
               ),
@@ -463,12 +462,12 @@ class _SecuritySetupScreenState extends State<SecuritySetupScreen> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         _sectionLabel('ZONA DE RIESGO', isDark: isDark),
-        const SizedBox(height: 4),
+        SizedBox(height: context.r.spaceXs),
         Padding(
           padding: const EdgeInsets.only(left: 4, bottom: 12),
           child: Text(
             'Requiere verificación de identidad',
-            style: AppTypography.bodySmall.copyWith(
+            style: context.texts.bodySmall.copyWith(
               color: AppColors.textTertiaryC(isDark),
             ),
           ),
@@ -478,12 +477,12 @@ class _SecuritySetupScreenState extends State<SecuritySetupScreen> {
           onPressed: _disableSecurity,
           child: Container(
             width: double.infinity,
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+            padding: EdgeInsets.symmetric(horizontal: context.r.paddingH, vertical: 16),
             decoration: BoxDecoration(
               color: isDark
                   ? AppColors.error.withValues(alpha: 0.08)
                   : AppColors.errorLight,
-              borderRadius: BorderRadius.circular(16),
+              borderRadius: BorderRadius.circular(context.r.buttonRadius),
               border: Border.all(
                 color: AppColors.error.withValues(alpha: 0.2),
               ),
@@ -495,22 +494,22 @@ class _SecuritySetupScreenState extends State<SecuritySetupScreen> {
                   color: AppColors.error,
                   size: 20,
                 ),
-                const SizedBox(width: 14),
+                SizedBox(width: context.r.spaceMd),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
                         'Desactivar protección local',
-                        style: AppTypography.bodyMedium.copyWith(
+                        style: context.texts.bodyMedium.copyWith(
                           color: AppColors.error,
                           fontWeight: FontWeight.w600,
                         ),
                       ),
-                      const SizedBox(height: 2),
+                      SizedBox(height: context.r.spaceXs),
                       Text(
                         'Requiere PIN o huella para confirmar',
-                        style: AppTypography.bodySmall.copyWith(
+                        style: context.texts.bodySmall.copyWith(
                           color: AppColors.error.withValues(alpha: 0.65),
                         ),
                       ),
@@ -537,7 +536,7 @@ class _SecuritySetupScreenState extends State<SecuritySetupScreen> {
       padding: const EdgeInsets.only(left: 4),
       child: Text(
         text,
-        style: AppTypography.labelMedium.copyWith(
+        style: context.texts.labelSmall.copyWith(
           letterSpacing: 1.2,
           color: AppColors.textSecondaryC(isDark),
         ),
@@ -556,10 +555,10 @@ class _SecuritySetupScreenState extends State<SecuritySetupScreen> {
     required Widget trailing,
   }) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
+      padding: EdgeInsets.symmetric(horizontal: context.r.paddingH, vertical: 18),
       decoration: BoxDecoration(
         color: AppColors.cardBg(isDark),
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(context.r.buttonRadius),
         boxShadow: isDark ? [] : AppColors.softShadow,
       ),
       child: Row(
@@ -573,29 +572,29 @@ class _SecuritySetupScreenState extends State<SecuritySetupScreen> {
             ),
             child: Icon(icon, size: 22, color: iconColor),
           ),
-          const SizedBox(width: 16),
+          SizedBox(width: context.r.spaceMd),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
                   title,
-                  style: AppTypography.titleSmall.copyWith(
+                  style: context.texts.titleMedium.copyWith(
                     fontWeight: FontWeight.w600,
                     color: AppColors.textPrimaryC(isDark),
                   ),
                 ),
-                const SizedBox(height: 2),
+                SizedBox(height: context.r.spaceXs),
                 Text(
                   subtitle,
-                  style: AppTypography.bodySmall.copyWith(
+                  style: context.texts.bodySmall.copyWith(
                     color: subtitleColor,
                   ),
                 ),
               ],
             ),
           ),
-          const SizedBox(width: 12),
+          SizedBox(width: context.r.spaceMd),
           trailing,
         ],
       ),
@@ -624,19 +623,18 @@ class _PillButton extends StatelessWidget {
       padding: EdgeInsets.zero,
       onPressed: onTap,
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        padding: EdgeInsets.symmetric(horizontal: context.r.tileHorizontalPad, vertical: 8),
         decoration: BoxDecoration(
           color: filled
               ? AppColors.accentForTheme(isDark)
               : (isDark
                   ? AppColors.cardBorder(isDark)
                   : AppColors.accentForTheme(isDark).withValues(alpha: 0.08)),
-          borderRadius: BorderRadius.circular(20),
+          borderRadius: BorderRadius.circular(context.r.chipRadius),
         ),
         child: Text(
           label,
           style: TextStyle(
-            fontSize: 13,
             fontWeight: FontWeight.w600,
             color: filled
                 ? AppColors.white

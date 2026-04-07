@@ -1,5 +1,6 @@
 import 'package:flutter/cupertino.dart';
 import '../constants/app_colors.dart';
+import '../extensions/responsive_extensions.dart';
 
 /// Tipo semántico de alerta para colorización automática.
 enum AlertType { success, error, warning, info }
@@ -41,7 +42,7 @@ class CossmilIosAlert {
           mainAxisSize: MainAxisSize.min,
           children: [
             Icon(icon, size: 18, color: iconColor),
-            const SizedBox(width: 8),
+            SizedBox(width: context.r.spaceSm),
             Flexible(
               child: Text(
                 title,

@@ -63,14 +63,14 @@ class _ModalContent extends StatelessWidget {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const SizedBox(height: 12),
+              SizedBox(height: context.r.spaceMd),
               // Handle bar
               Container(
                 width: 40,
                 height: 4,
                 decoration: BoxDecoration(
                   color: AppColors.border,
-                  borderRadius: BorderRadius.circular(2),
+                  borderRadius: BorderRadius.circular(context.r.spaceXs),
                 ),
               ),
               SizedBox(height: r.spaceLg),
@@ -117,7 +117,7 @@ class _ModalContent extends StatelessWidget {
               // List
               Flexible(
                 child: ListView.builder(
-                  padding: const EdgeInsets.symmetric(vertical: 8),
+                  padding: EdgeInsets.symmetric(vertical: context.r.spaceSm),
                   itemCount: beneficiaries.length,
                   itemBuilder: (context, index) {
                     final b = beneficiaries[index];
@@ -203,7 +203,7 @@ class _BeneficiaryTile extends StatelessWidget {
                       color: AppColors.textPrimaryC(isDark),
                     ),
                   ),
-                  const SizedBox(height: 4),
+                  SizedBox(height: context.r.spaceXs),
                   Container(
                     padding: const EdgeInsets.symmetric(
                         horizontal: 8, vertical: 3),
@@ -211,7 +211,7 @@ class _BeneficiaryTile extends StatelessWidget {
                       color: isTitular
                           ? AppColors.primary.withValues(alpha: 0.1)
                           : AppColors.accent.withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(6),
+                      borderRadius: BorderRadius.circular(context.r.badgeRadius),
                     ),
                     child: Text(
                       label,

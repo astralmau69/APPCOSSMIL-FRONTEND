@@ -2,7 +2,6 @@ import 'dart:convert';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import '../../../core/constants/app_colors.dart';
-import '../../../core/theme/app_theme.dart';
 import '../../../core/extensions/responsive_extensions.dart';
 import '../../../core/theme/app_constants.dart';
 import '../../../core/session/user_session.dart';
@@ -19,6 +18,7 @@ import '../../../core/services/location_service.dart';
 import '../../../core/helpers/distance_helper.dart';
 import '../../../core/widgets/skeleton_loading.dart';
 import '../../../core/widgets/booking_stepper.dart';
+import '../../../core/utils/error_mapper.dart';
 import 'specialty_screen.dart';
 
 class RegionalScreen extends StatefulWidget {
@@ -64,13 +64,13 @@ class _RegionalScreenState extends State<RegionalScreen> {
     });
     try {
       final data = await _service.getRegionalesPorDepartamento(1);
-      
+
       bool locationUsed = false;
       try {
         final locationService = LocationService();
         // Pedir permisos si es que no los tiene (útil si el usuario se saltó el login por token guardado)
         final position = await locationService.getCurrentLocation(requestIfNotGranted: true);
-        
+
         if (position != null) {
           locationUsed = true;
           for (var regional in data) {
@@ -88,14 +88,14 @@ class _RegionalScreenState extends State<RegionalScreen> {
               regional.distanceFromUser = minDistance;
             }
           }
-          
+
           // Ordenar departamentos por cercanía
           data.sort((a, b) {
             final dA = a.distanceFromUser ?? double.infinity;
             final dB = b.distanceFromUser ?? double.infinity;
             return dA.compareTo(dB);
           });
-          
+
           // Expandir por defecto el más cercano si tenemos datos
           if (data.isNotEmpty && data.first.distanceFromUser != null) {
             _expandedIndex = 0;
@@ -115,7 +115,7 @@ class _RegionalScreenState extends State<RegionalScreen> {
     } catch (e) {
       if (mounted) {
         setState(() {
-          _errorMessage = e.toString();
+          _errorMessage = ErrorMapper.message(e, context: ErrorContext.cargarRegionales);
           _isLoading = false;
         });
       }
@@ -127,13 +127,14 @@ class _RegionalScreenState extends State<RegionalScreen> {
     final bs = widget.tabShell.bookingState;
     final currentBeneficiary = bs.beneficiary;
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final r = context.r;
 
     return CupertinoPageScaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       navigationBar: CupertinoNavigationBar(
         middle: Text(
           'Establecimiento',
-          style: TextStyle(fontWeight: FontWeight.w700, fontSize: 17, color: AppColors.textPrimaryC(isDark)),
+          style: TextStyle(fontWeight: FontWeight.w700, fontSize: r.navTitleSize, color: AppColors.textPrimaryC(isDark)),
         ),
         backgroundColor: isDark
             ? AppColors.darkSurface.withValues(alpha: 0.92)
@@ -152,7 +153,7 @@ class _RegionalScreenState extends State<RegionalScreen> {
             Expanded(
               child: _isLoading
                   ? ListView(
-                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      padding: EdgeInsets.symmetric(vertical: r.spaceMd),
                       children: const [SkeletonRegionalList(count: 4)],
                     )
                   : _errorMessage != null
@@ -160,9 +161,9 @@ class _RegionalScreenState extends State<RegionalScreen> {
                           child: Column(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
-                              Text('Error: $_errorMessage',
+                              Text(_errorMessage!,
                                   textAlign: TextAlign.center),
-                              const SizedBox(height: 16),
+                              SizedBox(height: r.spaceMd),
                               CupertinoButton(
                                   onPressed: _fetchData, child: const Text('Reintentar')),
                             ],
@@ -171,35 +172,35 @@ class _RegionalScreenState extends State<RegionalScreen> {
                       : RefreshIndicator(
                           onRefresh: _fetchData,
                           child: ListView(
-                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      padding: EdgeInsets.symmetric(vertical: r.spaceMd),
                       children: [
                         // ── Active profile selector ─────────────────────────────────
                         FadeSlideIn(
                           offsetY: 30,
                           child: _buildActiveProfileCard(context, currentBeneficiary, isDark),
                         ),
-                        const SizedBox(height: 20),
+                        SizedBox(height: r.spaceXl),
                         Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 24),
+                          padding: EdgeInsets.symmetric(horizontal: r.paddingH),
                           child: Text(
                             '¿Qué establecimiento desea consultar?',
-                            style: AppTypography.headlineSmall.copyWith(
+                            style: context.texts.headlineMedium.copyWith(
                               color: AppColors.textPrimaryC(isDark),
                             ),
                           ),
                         ),
-                        const SizedBox(height: 10),
+                        SizedBox(height: r.spaceSm),
                         if (_locationApplied && _regionals.isNotEmpty && _regionals.first.distanceFromUser != null)
                           Padding(
-                            padding: const EdgeInsets.only(left: 24, right: 24, top: 0, bottom: 12),
+                            padding: EdgeInsets.only(left: r.paddingH, right: r.paddingH, top: 0, bottom: r.spaceMd),
                             child: Row(
                               children: [
-                                Icon(Icons.location_on, size: 16, color: AppColors.accentForTheme(isDark)),
-                                const SizedBox(width: 8),
+                                Icon(Icons.location_on, size: r.iconSm, color: AppColors.accentForTheme(isDark)),
+                                SizedBox(width: r.spaceSm),
                                 Expanded(
                                   child: Text(
                                     'Te mostramos primero el departamento más cercano a tu ubicación.',
-                                    style: AppTypography.bodySmall.copyWith(
+                                    style: context.texts.bodySmall.copyWith(
                                       color: AppColors.accentForTheme(isDark),
                                       fontWeight: FontWeight.w600,
                                     ),
@@ -215,9 +216,9 @@ class _RegionalScreenState extends State<RegionalScreen> {
                             child: _buildRegionalItem(context, _regionals[i], i, isDark),
                           ),
                         if (_regionals.isEmpty)
-                          const Padding(
-                            padding: EdgeInsets.all(40),
-                            child: Center(
+                          Padding(
+                            padding: EdgeInsets.all(r.spaceXxl),
+                            child: const Center(
                                 child: Text('No hay establecimientos disponibles.')),
                           ),
                       ],
@@ -235,16 +236,17 @@ class _RegionalScreenState extends State<RegionalScreen> {
   Widget _buildActiveProfileCard(BuildContext context, BeneficiaryModel? beneficiary, bool isDark) {
     if (beneficiary == null) return const SizedBox.shrink();
 
+    final r = context.r;
     final isTitular = beneficiary.isTitular;
     final avatarColor = isTitular ? AppColors.primary : AppColors.accent;
     final label = isTitular ? 'Titular' : beneficiary.relationship;
 
     return Container(
-      margin: EdgeInsets.symmetric(horizontal: context.r.paddingH),
-      padding: EdgeInsets.all(context.r.cardPadding),
+      margin: EdgeInsets.symmetric(horizontal: r.paddingH),
+      padding: EdgeInsets.all(r.cardPadding),
       decoration: BoxDecoration(
         color: AppColors.cardBg(isDark),
-        borderRadius: BorderRadius.circular(AppTheme.radiusXl),
+        borderRadius: BorderRadius.circular(r.cardRadius),
         boxShadow: AppColors.cardShadowFor(isDark),
         border: Border.all(
           color: isDark ? AppColors.cardBorder(isDark) : AppColors.primary.withValues(alpha: 0.15),
@@ -254,8 +256,8 @@ class _RegionalScreenState extends State<RegionalScreen> {
         children: [
           // Avatar
           Container(
-            width: 80,
-            height: 80,
+            width: r.avatarLg,
+            height: r.avatarLg,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
               color: avatarColor,
@@ -264,43 +266,42 @@ class _RegionalScreenState extends State<RegionalScreen> {
               child: _buildAvatarContent(beneficiary, isTitular),
             ),
           ),
-          const SizedBox(width: 14),
+          SizedBox(width: r.spaceMd),
           // Name + label
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
+                Text(
                   'Reserva para:',
-                  style: TextStyle(
-                    fontSize: 13,
+                  style: context.texts.bodySmall.copyWith(
                     fontWeight: FontWeight.w600,
                     color: AppColors.textSecondary,
                   ),
                 ),
-                const SizedBox(height: 4),
+                SizedBox(height: r.spaceXs),
                 Text(
                   beneficiary.fullName,
-                  style: AppTypography.headlineMedium.copyWith(
+                  style: context.texts.headlineMedium.copyWith(
                     color: AppColors.textPrimaryC(isDark),
+                    height: 1.2,
                   ),
-                  maxLines: 1,
+                  maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                 ),
-                const SizedBox(height: 6),
+                SizedBox(height: r.spaceSm),
                 Container(
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 10, vertical: 4),
+                  padding: EdgeInsets.symmetric(
+                      horizontal: r.chipPaddingH, vertical: r.chipPaddingV),
                   decoration: BoxDecoration(
                     color: isTitular
                         ? AppColors.primary.withValues(alpha: 0.1)
                         : AppColors.accent.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(8),
+                    borderRadius: BorderRadius.circular(r.radiusSm),
                   ),
                   child: Text(
                     label,
-                    style: TextStyle(
-                      fontSize: 13,
+                    style: context.texts.bodySmall.copyWith(
                       fontWeight: FontWeight.w700,
                       color: isTitular
                           ? AppColors.accentForTheme(isDark)
@@ -316,11 +317,11 @@ class _RegionalScreenState extends State<RegionalScreen> {
           AnimatedPressButton(
             onTap: _onChangeBeneficiary,
             child: Container(
-              padding: const EdgeInsets.symmetric(
-                  horizontal: 14, vertical: 8),
+              padding: EdgeInsets.symmetric(
+                  horizontal: r.chipPaddingH, vertical: r.spaceSm),
               decoration: BoxDecoration(
                 color: AppColors.accentForTheme(isDark).withValues(alpha: 0.08),
-                borderRadius: BorderRadius.circular(AppTheme.radiusFull),
+                borderRadius: BorderRadius.circular(r.chipRadius),
                 border: Border.all(
                   color: AppColors.accentForTheme(isDark).withValues(alpha: 0.2),
                 ),
@@ -329,12 +330,11 @@ class _RegionalScreenState extends State<RegionalScreen> {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Icon(Icons.swap_horiz,
-                      size: 14, color: AppColors.accentForTheme(isDark)),
-                  const SizedBox(width: 4),
+                      size: r.iconSm * 0.7, color: AppColors.accentForTheme(isDark)),
+                  SizedBox(width: r.spaceXs),
                   Text(
                     'Cambiar',
-                    style: TextStyle(
-                      fontSize: 13,
+                    style: context.texts.bodySmall.copyWith(
                       fontWeight: FontWeight.w700,
                       color: AppColors.accentForTheme(isDark),
                     ),
@@ -349,6 +349,7 @@ class _RegionalScreenState extends State<RegionalScreen> {
   }
 
   Widget _buildAvatarContent(BeneficiaryModel beneficiary, bool isTitular) {
+    final r = context.r;
     // Titular: prefer UserSession photo, fallback to beneficiary photo
     final photoB64 = isTitular
         ? (UserSession.currentUser.photoBase64.isNotEmpty
@@ -361,8 +362,8 @@ class _RegionalScreenState extends State<RegionalScreen> {
         return Image.memory(
           base64Decode(photoB64),
           fit: BoxFit.cover,
-          width: 80,
-          height: 80,
+          width: r.avatarLg,
+          height: r.avatarLg,
           errorBuilder: (_, __, ___) => _avatarInitial(beneficiary),
         );
       } catch (_) {
@@ -376,10 +377,9 @@ class _RegionalScreenState extends State<RegionalScreen> {
     return Center(
       child: Text(
         beneficiary.initial,
-        style: const TextStyle(
+        style: context.texts.headlineLarge.copyWith(
           color: AppColors.white,
           fontWeight: FontWeight.w800,
-          fontSize: 28,
         ),
       ),
     );
@@ -404,12 +404,13 @@ class _RegionalScreenState extends State<RegionalScreen> {
 
   Widget _buildRegionalItem(BuildContext context, RegionalModel regional, int index, bool isDark) {
     final isExpanded = _expandedIndex == index;
+    final r = context.r;
 
     return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
+      margin: EdgeInsets.symmetric(horizontal: r.paddingH, vertical: r.spaceXs),
       decoration: BoxDecoration(
         color: AppColors.cardBg(isDark),
-        borderRadius: BorderRadius.circular(AppTheme.radiusLg),
+        borderRadius: BorderRadius.circular(r.cardRadius),
         boxShadow: isDark ? [] : AppColors.softShadow,
         border: Border.all(color: AppColors.cardBorder(isDark), width: 0.5),
       ),
@@ -423,46 +424,42 @@ class _RegionalScreenState extends State<RegionalScreen> {
               });
             },
             child: Padding(
-              padding: const EdgeInsets.symmetric(
-                  horizontal: 16, vertical: 14),
+              padding: EdgeInsets.symmetric(
+                  horizontal: r.tileHorizontalPad, vertical: r.tileVerticalPad),
               child: Row(
                 children: [
                   Icon(
                     Icons.location_on,
-                    size: 18,
+                    size: r.iconMd,
                     color: AppColors.accentForTheme(isDark),
                   ),
-                  const SizedBox(width: 10),
+                  SizedBox(width: r.spaceSm),
                   Expanded(
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Flexible(
-                          child: FittedBox(
-                            fit: BoxFit.scaleDown,
-                            alignment: Alignment.centerLeft,
-                            child: Text(
-                              regional.name,
-                              style: AppTypography.titleMedium.copyWith(
-                                 color: AppColors.textPrimaryC(isDark),
-                              ),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
+                        Expanded(
+                          child: Text(
+                            regional.name,
+                            style: context.texts.titleLarge.copyWith( // Mejor jerarquía visual
+                               color: AppColors.textPrimaryC(isDark),
+                               fontWeight: FontWeight.w800,
                             ),
+                            maxLines: 2, // Permits wrapping
+                            overflow: TextOverflow.ellipsis,
                           ),
                         ),
                         if (index == 0 && _locationApplied && regional.distanceFromUser != null) ...[
-                          const SizedBox(width: 8),
+                          SizedBox(width: r.spaceSm),
                           Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+                            padding: EdgeInsets.symmetric(horizontal: r.chipPaddingH, vertical: r.chipPaddingV),
                             decoration: BoxDecoration(
                               color: AppColors.primary.withValues(alpha: 0.1),
-                              borderRadius: BorderRadius.circular(6),
+                              borderRadius: BorderRadius.circular(r.radiusSm),
                             ),
                             child: Text(
                               'Más cercano',
-                              style: TextStyle(
-                                fontSize: 11,
+                              style: context.texts.labelSmall.copyWith(
                                 fontWeight: FontWeight.bold,
                                 color: AppColors.accentForTheme(isDark),
                               ),
@@ -476,7 +473,7 @@ class _RegionalScreenState extends State<RegionalScreen> {
                     isExpanded
                         ? Icons.expand_less
                         : Icons.expand_more,
-                    size: 16,
+                    size: r.iconSm,
                     color: AppColors.textSecondary,
                   ),
                 ],
@@ -490,12 +487,13 @@ class _RegionalScreenState extends State<RegionalScreen> {
   }
 
   Widget _buildHospitalCards(BuildContext context, RegionalModel regional, bool isDark) {
+    final r = context.r;
     return Padding(
-      padding: EdgeInsets.fromLTRB(context.r.paddingH, 0, context.r.paddingH, context.r.paddingH),
+      padding: EdgeInsets.fromLTRB(r.paddingH, 0, r.paddingH, r.paddingH),
       child: Column(
         children: [
           for (int i = 0; i < regional.hospitals.length; i++) ...[
-            if (i > 0) const SizedBox(height: 12),
+            if (i > 0) SizedBox(height: r.listItemSpacing),
             _hospitalCard(context, regional, regional.hospitals[i], isDark),
           ],
         ],
@@ -516,13 +514,14 @@ class _RegionalScreenState extends State<RegionalScreen> {
   }
 
   Widget _hospitalCard(BuildContext context, RegionalModel regional, HospitalModel hospital, bool isDark) {
+    final r = context.r;
     return AnimatedPressButton(
       onTap: () => _onHospitalSelected(regional, hospital),
       child: Container(
         width: double.infinity,
-        padding: const EdgeInsets.all(16),
+        padding: EdgeInsets.all(r.spaceMd), // Standard spacing
         decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(AppTheme.radiusLg),
+          borderRadius: BorderRadius.circular(r.radiusLg), // Better corner radius
           color: isDark ? AppColors.primary.withValues(alpha: 0.15) : AppColors.primary.withValues(alpha: 0.05),
           border: Border.all(
               color: AppColors.primary.withValues(alpha: 0.15), width: 1.5),
@@ -530,43 +529,38 @@ class _RegionalScreenState extends State<RegionalScreen> {
         child: Row(
           children: [
             Container(
-              width: 56,
-              height: 56,
+              width: r.listAvatarSize,
+              height: r.listAvatarSize,
               decoration: BoxDecoration(
                 color: AppColors.primary.withValues(alpha: 0.1),
                 shape: BoxShape.circle,
               ),
               child: Icon(
                 Icons.apartment,
-                size: 28,
+                size: r.iconLg * 0.7,
                 color: isDark ? AppColors.white : AppColors.primary,
               ),
             ),
-            const SizedBox(width: 16),
+            SizedBox(width: r.spaceMd),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  FittedBox(
-                    fit: BoxFit.scaleDown,
-                    alignment: Alignment.centerLeft,
-                    child: Text(
-                      hospital.name,
-                      style: AppTypography.titleMedium.copyWith(
-                        fontWeight: FontWeight.w800,
-                        color: AppColors.textPrimaryC(isDark),
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
+                  Text(
+                    hospital.name,
+                    style: context.texts.titleMedium.copyWith(
+                      fontWeight: FontWeight.w800,
+                      color: AppColors.textPrimaryC(isDark),
+                      height: 1.2,
                     ),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
                   ),
-                  const SizedBox(height: 6),
+                  SizedBox(height: r.spaceSm),
                   Text(
                     hospital.address,
-                    style: AppTypography.bodySmall.copyWith(
-                      fontSize: 13,
-                    ),
+                    style: context.texts.bodySmall,
                   ),
                 ],
               ),

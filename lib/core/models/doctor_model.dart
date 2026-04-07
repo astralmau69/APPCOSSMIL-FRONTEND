@@ -1,3 +1,5 @@
+import '../extensions/string_extensions.dart';
+
 class DoctorModel {
   final String id;
   final String fullName;
@@ -18,12 +20,12 @@ class DoctorModel {
   factory DoctorModel.fromJson(Map<String, dynamic> json) {
     return DoctorModel(
       id: (json['idmed'] ?? json['id'] ?? '').toString(),
-      fullName: json['nombre_completo'] as String? ??
+      fullName: (json['nombre_completo'] as String? ??
           json['fullName'] as String? ??
-          '',
-      office: json['consultorio'] as String? ??
+          '').toDisplayCase,
+      office: (json['consultorio'] as String? ??
           json['office'] as String? ??
-          '',
+          '').toDisplayCase,
       fecha: json['fecha'] as String? ?? '',
       dia: json['dia'] as String? ?? '',
       foto: json['foto'] as String? ?? '',

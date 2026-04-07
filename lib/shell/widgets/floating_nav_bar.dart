@@ -21,7 +21,7 @@ class FloatingNavBar extends StatelessWidget {
     final r = context.r;
     // Responsive sizing via centralized tokens
     final barHeight = r.isSmallPhone ? 62.0 : (r.isMediumPhone ? 68.0 : 74.0);
-    final hPadding = r.isSmallPhone ? 10.0 : r.paddingH;
+    final hPadding = r.paddingH;
     final bottomPadding = r.isSmallPhone ? 16.0 : 24.0;
 
     final backgroundColor = isDark
@@ -59,7 +59,7 @@ class FloatingNavBar extends StatelessWidget {
           child: ClipRRect(
             borderRadius: BorderRadius.circular(35),
             child: BackdropFilter(
-              // Reduced from 35 → 12: same glass feel, ~8× cheaper on GPU.
+              // Reduced from 35 -> 12: same glass feel, ~8x cheaper on GPU.
               filter: ImageFilter.blur(sigmaX: 12.0, sigmaY: 12.0),
               child: Container(
                 decoration: BoxDecoration(
@@ -68,12 +68,11 @@ class FloatingNavBar extends StatelessWidget {
                   borderRadius: BorderRadius.circular(35),
                 ),
                 child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                   children: [
                     _NavBarItem(
                       icon: CupertinoIcons.house,
                       activeIcon: CupertinoIcons.house_fill,
-                      label: 'Menú',
+                      label: 'Menu',
                       isActive: currentIndex == 0,
                       onTap: () => onTap(0),
                       activeColor: activeColor,
@@ -157,12 +156,10 @@ class _NavBarItem extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final screenWidth = MediaQuery.of(context).size.width;
-    final isSmall = screenWidth < 375;
-    final iconSize = isSmall ? 22.0 : (screenWidth < 428 ? 25.0 : 28.0);
-    final labelSize = isSmall ? 9.0 : (screenWidth < 428 ? 10.5 : 11.5);
-    final activeWidth = isSmall ? 56.0 : (screenWidth < 428 ? 66.0 : 72.0);
-    final inactiveWidth = isSmall ? 48.0 : (screenWidth < 428 ? 56.0 : 62.0);
+    final r = context.r;
+    final iconSize = r.isSmallPhone ? 20.0 : r.iconMd;
+    final labelSize = r.isSmallPhone ? 9.0 : (r.isMediumPhone ? 10.0 : r.sectionLabelSize);
+    // Use Expanded instead of fixed widths — let each item take equal space
 
     final bgPillColor =
         isDark ? const Color(0xFF1A2E45) : Colors.black.withValues(alpha: 0.08);
@@ -181,21 +178,22 @@ class _NavBarItem extends StatelessWidget {
             color: isActive ? activeColor : inactiveColor,
           );
 
-    return GestureDetector(
-      onTap: onTap,
-      behavior: HitTestBehavior.opaque,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 220),
-        curve: Curves.easeOutCubic,
-        width: isActive ? activeWidth : inactiveWidth,
-        margin: const EdgeInsets.symmetric(vertical: 4),
-        decoration: BoxDecoration(
-          color: isActive ? bgPillColor : Colors.transparent,
-          borderRadius: BorderRadius.circular(24),
-        ),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
+    return Expanded(
+      child: GestureDetector(
+        onTap: onTap,
+        behavior: HitTestBehavior.opaque,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 220),
+          curve: Curves.easeOutCubic,
+          margin: EdgeInsets.symmetric(vertical: r.spaceXs, horizontal: 2),
+          padding: EdgeInsets.symmetric(horizontal: 2),
+          decoration: BoxDecoration(
+            color: isActive ? bgPillColor : Colors.transparent,
+            borderRadius: BorderRadius.circular(context.r.modalRadius),
+          ),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
             Stack(
               clipBehavior: Clip.none,
               children: [
@@ -210,7 +208,7 @@ class _NavBarItem extends StatelessWidget {
                     right: -6,
                     top: -4,
                     child: Container(
-                      padding: const EdgeInsets.all(4),
+                      padding: EdgeInsets.all(r.spaceXs),
                       decoration: BoxDecoration(
                         color: AppColors.warning,
                         shape: BoxShape.circle,
@@ -219,7 +217,6 @@ class _NavBarItem extends StatelessWidget {
                         badgeCount > 99 ? '99+' : badgeCount.toString(),
                         style: const TextStyle(
                           color: Colors.black,
-                          fontSize: 9,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
@@ -227,7 +224,7 @@ class _NavBarItem extends StatelessWidget {
                   ),
               ],
             ),
-            const SizedBox(height: 4),
+            SizedBox(height: r.spaceXs),
             AnimatedDefaultTextStyle(
               duration: const Duration(milliseconds: 130),
               style: TextStyle(
@@ -238,6 +235,7 @@ class _NavBarItem extends StatelessWidget {
               child: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis),
             ),
           ],
+          ),
         ),
       ),
     );

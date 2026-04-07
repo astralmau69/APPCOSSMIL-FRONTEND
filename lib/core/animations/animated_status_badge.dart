@@ -29,6 +29,18 @@ class AnimatedStatusBadge extends StatelessWidget {
           label: status,
           color: const Color(0xFF9333EA),
         );
+      case 'Pendiente':
+        return AnimatedStatusBadge(
+          label: status,
+          color: const Color(0xFF2563EB),
+          showDot: true,
+        );
+      case 'Cancelado':
+        return AnimatedStatusBadge(
+          label: status,
+          color: AppColors.textSecondary,
+          showDot: false,
+        );
       default:
         return AnimatedStatusBadge(
           label: status,

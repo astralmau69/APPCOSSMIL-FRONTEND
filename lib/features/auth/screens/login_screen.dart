@@ -7,7 +7,10 @@ import '../../../core/extensions/responsive_extensions.dart';
 import '../../../core/animations/optimized_animations.dart';
 import '../../../core/animations/animated_gradient_background.dart';
 import '../../../core/theme/theme_manager.dart';
+import '../../../core/storage/token_storage.dart';
 import '../../../core/services/auth_service.dart';
+import '../../../core/services/programacion_service.dart';
+import '../../../core/utils/error_mapper.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -132,6 +135,23 @@ class _LoginScreenState extends State<LoginScreen>
       case AuthSuccess(:final token):
         if (!mounted) return;
 
+        try {
+          final _progService = ProgramacionService();
+          await _progService.verificarVersion();
+        } catch (e) {
+          // Si es error de versión, mostrar el mensaje del backend (contiene instrucciones de actualización)
+          final raw = e.toString().replaceAll('Exception: ', '');
+          final isVersionMsg = raw.toLowerCase().contains('versión') || raw.toLowerCase().contains('actualizar');
+          setState(() {
+            _isLoading = false;
+            _errorMessage = isVersionMsg ? raw : ErrorMapper.message(e, context: ErrorContext.verificarVersion);
+          });
+          await TokenStorage.deleteToken();
+          return;
+        }
+
+        if (!mounted) return;
+
         // Primer ingreso: forzar cambio de contraseña
         // reqReset == false → no ha cambiado, debe cambiar
         if (!token.reqReset) {
@@ -151,6 +171,8 @@ class _LoginScreenState extends State<LoginScreen>
   Future<void> _showSecurityWarningModal() async {
     if (!mounted) return;
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final r = context.r;
+    final texts = context.texts;
 
     // Reproducir audio de advertencia de seguridad
     AudioPlayer? warningPlayer;
@@ -175,11 +197,11 @@ class _LoginScreenState extends State<LoginScreen>
         child: Material(
           color: Colors.transparent,
           child: Container(
-            width: MediaQuery.of(ctx).size.width * 0.88,
-            constraints: const BoxConstraints(maxWidth: 400),
+            width: MediaQuery.of(ctx).size.width * r.modalWidthFactor,
+            constraints: BoxConstraints(maxWidth: r.modalMaxWidth),
             decoration: BoxDecoration(
               color: AppColors.cardBg(isDark),
-              borderRadius: BorderRadius.circular(24),
+              borderRadius: BorderRadius.circular(r.modalRadius),
               boxShadow: [
                 BoxShadow(
                   color: Colors.black.withValues(alpha: 0.25),
@@ -191,7 +213,7 @@ class _LoginScreenState extends State<LoginScreen>
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const SizedBox(height: 28),
+                SizedBox(height: r.spaceXl),
                 // Warning icon
                 Container(
                   width: 72,
@@ -200,31 +222,29 @@ class _LoginScreenState extends State<LoginScreen>
                     color: AppColors.warning.withValues(alpha: 0.12),
                     shape: BoxShape.circle,
                   ),
-                  child: const Icon(
+                  child: Icon(
                     CupertinoIcons.shield_lefthalf_fill,
-                    size: 36,
+                    size: r.iconLg,
                     color: AppColors.warning,
                   ),
                 ),
-                const SizedBox(height: 20),
+                SizedBox(height: r.spaceMd),
                 // Title
                 Text(
                   'Advertencia de Seguridad',
-                  style: TextStyle(
+                  style: texts.titleLarge.copyWith(
                     fontWeight: FontWeight.w800,
-                    fontSize: 20,
                     color: AppColors.textPrimaryC(isDark),
                     decoration: TextDecoration.none,
                   ),
                 ),
-                const SizedBox(height: 12),
+                SizedBox(height: r.spaceSm),
                 // Message
                 Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 24),
+                  padding: EdgeInsets.symmetric(horizontal: r.modalPadding),
                   child: Text(
                     'Por seguridad y confidencialidad de su información deberá cambiar su contraseña.',
-                    style: TextStyle(
-                      fontSize: 14,
+                    style: texts.bodyMedium.copyWith(
                       height: 1.5,
                       color: AppColors.textSecondaryC(isDark),
                       fontWeight: FontWeight.w400,
@@ -233,13 +253,12 @@ class _LoginScreenState extends State<LoginScreen>
                     textAlign: TextAlign.center,
                   ),
                 ),
-                const SizedBox(height: 8),
+                SizedBox(height: r.spaceXs),
                 Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 24),
+                  padding: EdgeInsets.symmetric(horizontal: r.modalPadding),
                   child: Text(
                     'Esta acción es obligatoria y no puede omitirse.',
-                    style: TextStyle(
-                      fontSize: 13,
+                    style: texts.bodySmall.copyWith(
                       height: 1.4,
                       color: AppColors.warning,
                       fontWeight: FontWeight.w600,
@@ -248,26 +267,25 @@ class _LoginScreenState extends State<LoginScreen>
                     textAlign: TextAlign.center,
                   ),
                 ),
-                const SizedBox(height: 24),
+                SizedBox(height: r.spaceLg),
                 // Button
                 Padding(
-                  padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
+                  padding: EdgeInsets.fromLTRB(r.modalPadding, 0, r.modalPadding, r.modalPadding),
                   child: SizedBox(
                     width: double.infinity,
                     child: CupertinoButton(
-                      padding: const EdgeInsets.symmetric(vertical: 16),
-                      borderRadius: BorderRadius.circular(16),
+                      padding: EdgeInsets.symmetric(vertical: r.spaceMd),
+                      borderRadius: BorderRadius.circular(r.buttonRadius),
                       color: AppColors.primary,
                       onPressed: () {
                         warningPlayer?.stop();
                         warningPlayer?.dispose();
                         Navigator.of(ctx).pop();
                       },
-                      child: const Text(
+                      child: Text(
                         'Entendido, Continuar',
-                        style: TextStyle(
+                        style: texts.titleMedium.copyWith(
                           fontWeight: FontWeight.w700,
-                          fontSize: 16,
                           color: AppColors.white,
                         ),
                       ),
@@ -368,12 +386,7 @@ class _LoginScreenState extends State<LoginScreen>
 
                     SizedBox(height: r.spaceXl),
 
-                    // Forgot password
-                    FadeSlideIn(
-                      duration: AppDurations.normal,
-                      delay: const Duration(milliseconds: 300),
-                      child: _buildForgotPassword(),
-                    ),
+
 
                     SizedBox(height: r.spaceXxl),
 
@@ -386,7 +399,6 @@ class _LoginScreenState extends State<LoginScreen>
                           Text(
                             'Dirección Nacional de Sistemas',
                             style: TextStyle(
-                              fontSize: 11,
                               fontWeight: FontWeight.w500,
                               color: isDark
                                   ? AppColors.white.withValues(alpha: 0.35)
@@ -394,11 +406,10 @@ class _LoginScreenState extends State<LoginScreen>
                               letterSpacing: 1.2,
                             ),
                           ),
-                          const SizedBox(height: 2),
+                          SizedBox(height: context.r.spaceXs),
                           Text(
                             'COSSMIL',
                             style: TextStyle(
-                              fontSize: 12,
                               fontWeight: FontWeight.w700,
                               color: isDark
                                   ? AppColors.white.withValues(alpha: 0.4)
@@ -406,11 +417,10 @@ class _LoginScreenState extends State<LoginScreen>
                               letterSpacing: 1.5,
                             ),
                           ),
-                          const SizedBox(height: 4),
+                          SizedBox(height: context.r.spaceXs),
                           Text(
                             '2026',
                             style: TextStyle(
-                              fontSize: 10,
                               fontWeight: FontWeight.w500,
                               color: isDark
                                   ? AppColors.white.withValues(alpha: 0.25)
@@ -433,7 +443,7 @@ class _LoginScreenState extends State<LoginScreen>
               top: 8,
               right: 8,
               child: CupertinoButton(
-                padding: const EdgeInsets.all(10),
+                padding: EdgeInsets.all(context.r.spaceSm),
                 onPressed: () => ThemeManager.toggleTheme(),
                 child: Icon(
                   isDark ? CupertinoIcons.sun_max_fill : CupertinoIcons.moon_fill,
@@ -466,6 +476,7 @@ class _LoginScreenState extends State<LoginScreen>
   }
 
   Widget _buildHeader(bool isDark) {
+    final r = context.r;
     final texts = context.texts;
     return Column(
       children: [
@@ -476,7 +487,7 @@ class _LoginScreenState extends State<LoginScreen>
             color: AppColors.textPrimaryC(isDark),
           ),
         ),
-        const SizedBox(height: 8),
+        SizedBox(height: r.spaceXs),
         Text(
           'Ingrese su matrícula y el código ubicado en la parte posterior de su carnet de asegurado',
           style: texts.bodyMedium.copyWith(
@@ -489,6 +500,7 @@ class _LoginScreenState extends State<LoginScreen>
   }
 
   Widget _buildForm(bool isDark) {
+    final r = context.r;
     return Column(
       children: [
         _buildModernInputField(
@@ -507,7 +519,7 @@ class _LoginScreenState extends State<LoginScreen>
             }
           },
         ),
-        const SizedBox(height: 16),
+        SizedBox(height: r.spaceMd),
         _buildModernInputField(
           label: 'Contraseña',
           controller: _passwordController,
@@ -544,19 +556,21 @@ class _LoginScreenState extends State<LoginScreen>
     TextCapitalization textCapitalization = TextCapitalization.none,
     ValueChanged<String>? onChanged,
   }) {
+    final r = context.r;
+    final texts = context.texts;
     return Container(
       decoration: BoxDecoration(
         color: isDark ? AppColors.darkCard : const Color(0xFFF8F9FB),
-        borderRadius: BorderRadius.circular(18),
+        borderRadius: BorderRadius.circular(r.inputRadius),
         border: Border.all(
           color: AppColors.cardBorder(isDark),
         ),
       ),
-      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+      padding: EdgeInsets.symmetric(horizontal: r.cardPadding, vertical: r.spaceSm),
       child: Row(
         children: [
-          Icon(icon, size: 24, color: AppColors.accentForTheme(isDark)),
-          const SizedBox(width: 16),
+          Icon(icon, size: r.iconMd, color: AppColors.accentForTheme(isDark)),
+          SizedBox(width: r.spaceMd),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -564,12 +578,12 @@ class _LoginScreenState extends State<LoginScreen>
               children: [
                 Text(
                   label,
-                  style: context.texts.labelSmall.copyWith(
+                  style: texts.labelSmall.copyWith(
                     color: AppColors.textSecondary,
                     fontWeight: FontWeight.w600,
                   ),
                 ),
-                const SizedBox(height: 4),
+                SizedBox(height: r.spaceXs),
                 CupertinoTextField(
                   controller: controller,
                   obscureText: obscureText,
@@ -579,11 +593,10 @@ class _LoginScreenState extends State<LoginScreen>
                   padding: EdgeInsets.zero,
                   decoration: null,
                   placeholder: placeholder,
-                  placeholderStyle: TextStyle(
+                  placeholderStyle: texts.bodyLarge.copyWith(
                     color: AppColors.textTertiaryC(isDark).withValues(alpha: 0.6),
-                    fontSize: 16,
                   ),
-                  style: context.texts.bodyLarge.copyWith(
+                  style: texts.bodyLarge.copyWith(
                     color: AppColors.textPrimaryC(isDark),
                     fontWeight: FontWeight.w500,
                   ),
@@ -594,7 +607,7 @@ class _LoginScreenState extends State<LoginScreen>
             ),
           ),
           if (trailing != null) ...[
-            const SizedBox(width: 8),
+            SizedBox(width: r.spaceXs),
             trailing,
           ],
         ],
@@ -604,10 +617,10 @@ class _LoginScreenState extends State<LoginScreen>
 
   Widget _buildErrorBanner() {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      padding: EdgeInsets.symmetric(horizontal: context.r.tileHorizontalPad, vertical: context.r.tileVerticalPad),
       decoration: BoxDecoration(
         color: AppColors.errorLight,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(context.r.radiusMd),
         border: Border.all(color: AppColors.error.withValues(alpha: 0.3)),
       ),
       child: Row(
@@ -617,11 +630,11 @@ class _LoginScreenState extends State<LoginScreen>
             color: AppColors.error,
             size: 20,
           ),
-          const SizedBox(width: 12),
+          SizedBox(width: context.r.spaceMd),
           Expanded(
             child: Text(
               _errorMessage!,
-              style: AppTypography.bodyMedium.copyWith(
+              style: context.texts.bodyMedium.copyWith(
                 color: AppColors.error,
                 fontWeight: FontWeight.w500,
               ),
@@ -643,7 +656,7 @@ class _LoginScreenState extends State<LoginScreen>
         child: Container(
           decoration: BoxDecoration(
             color: _isLoading ? AppColors.textSecondary : AppColors.primary,
-            borderRadius: BorderRadius.circular(16),
+            borderRadius: BorderRadius.circular(context.r.buttonRadius),
             border: Border.all(
               color: isDark ? AppColors.darkBorder : const Color(0xFF191C1E).withValues(alpha: 0.15),
               width: 0.8,
@@ -673,20 +686,5 @@ class _LoginScreenState extends State<LoginScreen>
     );
   }
 
-  Widget _buildForgotPassword() {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    return Center(
-      child: CupertinoButton(
-        padding: EdgeInsets.zero,
-        onPressed: () {},
-        child: Text(
-          '¿Olvidó su contraseña?',
-          style: context.texts.bodyMedium.copyWith(
-            color: AppColors.accentForTheme(isDark),
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-      ),
-    );
-  }
+
 }

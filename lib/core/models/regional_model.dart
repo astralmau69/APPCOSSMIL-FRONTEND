@@ -1,3 +1,4 @@
+import '../extensions/string_extensions.dart';
 import 'hospital_model.dart';
 
 class RegionalModel {
@@ -19,7 +20,7 @@ class RegionalModel {
       final sucursales = json['sucursales'] as List<dynamic>;
       return RegionalModel(
         id: (json['iddepto'] ?? json['idreg'] ?? json['id'] ?? '').toString(),
-        name: json['departamento'] as String? ?? json['regional'] as String? ?? json['name'] as String? ?? '',
+        name: (json['departamento'] as String? ?? json['regional'] as String? ?? json['name'] as String? ?? '').toDisplayCase,
         hospitals: sucursales
             .map((s) => HospitalModel.fromJson(s as Map<String, dynamic>))
             .toList(),
@@ -38,7 +39,7 @@ class RegionalModel {
 
     return RegionalModel(
       id: (json['idreg'] ?? json['id'] ?? '').toString(),
-      name: json['regional'] as String? ?? json['name'] as String? ?? '',
+      name: (json['regional'] as String? ?? json['name'] as String? ?? '').toDisplayCase,
       hospitals: [],
     );
   }

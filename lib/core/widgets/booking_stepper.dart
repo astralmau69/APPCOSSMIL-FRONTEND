@@ -42,17 +42,37 @@ class BookingStepper extends StatelessWidget {
         children: [
           // COSSMIL logo prominente
           Padding(
-            padding: EdgeInsets.only(bottom: r.spaceSm),
-            child: Image.asset(
-              'assets/images/cossmil_logo.png',
-              width: r.stepperLogoSize,
-              height: r.stepperLogoSize,
-              fit: BoxFit.contain,
-              errorBuilder: (_, __, ___) => Icon(
-                CupertinoIcons.shield_fill,
-                size: r.stepperLogoSize * 0.65,
-                color: AppColors.accentForTheme(isDark),
-              ),
+            padding: EdgeInsets.only(bottom: r.spaceLg),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Container(
+                  decoration: BoxDecoration(
+                    color: isDark ? AppColors.white.withValues(alpha: 0.05) : Colors.transparent,
+                    borderRadius: BorderRadius.circular(r.radiusMd),
+                    boxShadow: isDark ? [] : [
+                      BoxShadow(
+                        color: AppColors.primary.withValues(alpha: 0.1),
+                        blurRadius: 12,
+                        offset: const Offset(0, 4),
+                      )
+                    ],
+                  ),
+                  padding: isDark ? EdgeInsets.all(r.spaceSm) : EdgeInsets.zero,
+                  child: Image.asset(
+                    'assets/images/cossmil_logo.png',
+                    width: r.stepperLogoSize * 1.5, // Mayor tamaño
+                    height: r.stepperLogoSize * 1.5,
+                    fit: BoxFit.contain,
+                    filterQuality: FilterQuality.high,
+                    errorBuilder: (_, __, ___) => Icon(
+                      CupertinoIcons.shield_fill,
+                      size: r.stepperLogoSize,
+                      color: AppColors.primary,
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
           // Steps
@@ -60,7 +80,7 @@ class BookingStepper extends StatelessWidget {
             children: List.generate(_steps.length * 2 - 1, (i) {
               if (i.isOdd) {
                 final stepBefore = i ~/ 2;
-                return Expanded(child: _buildConnector(stepBefore, isDark));
+                return Expanded(child: _buildConnector(stepBefore, isDark, r));
               }
               final stepIndex = i ~/ 2;
               return _buildStep(stepIndex, isDark, r);
@@ -142,7 +162,7 @@ class BookingStepper extends StatelessWidget {
     );
   }
 
-  Widget _buildConnector(int stepBefore, bool isDark) {
+  Widget _buildConnector(int stepBefore, bool isDark, AppResponsive r) {
     final isCompleted = stepBefore < currentStep;
     final activeColor = AppColors.accent;
     final inactiveColor = isDark
@@ -150,7 +170,7 @@ class BookingStepper extends StatelessWidget {
         : AppColors.surfaceVariant;
 
     return Padding(
-      padding: const EdgeInsets.only(bottom: 18),
+      padding: EdgeInsets.only(bottom: r.spaceMd),
       child: Stack(
         children: [
           // Background line
@@ -158,7 +178,7 @@ class BookingStepper extends StatelessWidget {
             height: 2.5,
             decoration: BoxDecoration(
               color: inactiveColor,
-              borderRadius: BorderRadius.circular(2),
+              borderRadius: BorderRadius.circular(r.spaceXs),
             ),
           ),
           // Animated progress overlay
@@ -170,7 +190,7 @@ class BookingStepper extends StatelessWidget {
               height: 2.5,
               decoration: BoxDecoration(
                 color: activeColor,
-                borderRadius: BorderRadius.circular(2),
+                borderRadius: BorderRadius.circular(r.spaceXs),
               ),
             ),
           ),

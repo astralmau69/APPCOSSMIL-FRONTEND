@@ -166,11 +166,10 @@ class ContactosScreen extends StatelessWidget {
                 // Subtitle
                 FadeSlideIn(
                   child: Padding(
-                    padding: const EdgeInsets.only(bottom: 20),
+                    padding: EdgeInsets.only(bottom: context.r.spaceLg),
                     child: Text(
                       'Líneas de atención, emergencias y contactos institucionales de COSSMIL.',
                       style: TextStyle(
-                        fontSize: 18,
                         color: AppColors.textSecondaryC(isDark),
                         height: 1.4,
                         fontWeight: FontWeight.w500,
@@ -185,7 +184,7 @@ class ContactosScreen extends StatelessWidget {
                     delay: const Duration(milliseconds: 80),
                     child: _EmergencyCard(contact: c),
                   ),
-                  const SizedBox(height: 20),
+                  SizedBox(height: context.r.spaceLg),
                 ],
 
                 // ── Líneas gratuitas ────────────────────────────
@@ -193,7 +192,7 @@ class ContactosScreen extends StatelessWidget {
                   delay: const Duration(milliseconds: 160),
                   child: _sectionHeader(context, 'LÍNEAS GRATUITAS'),
                 ),
-                const SizedBox(height: 10),
+                SizedBox(height: context.r.spaceSm),
                 for (int i = 0; i < _lineasGratuitas.length; i++) ...[
                   FadeSlideIn(
                     delay: Duration(milliseconds: 200 + i * 80),
@@ -202,10 +201,10 @@ class ContactosScreen extends StatelessWidget {
                       onCopy: () => _copyPhone(context, _lineasGratuitas[i].phone),
                     ),
                   ),
-                  const SizedBox(height: 10),
+                  SizedBox(height: context.r.spaceSm),
                 ],
 
-                const SizedBox(height: 20),
+                SizedBox(height: context.r.spaceLg),
 
                 // ── Institutional categories ────────────────────
                 for (int ci = 0; ci < _contactCategories.length; ci++) ...[
@@ -213,7 +212,7 @@ class ContactosScreen extends StatelessWidget {
                     delay: Duration(milliseconds: 360 + ci * 100),
                     child: _sectionHeader(context, _contactCategories[ci].title.toUpperCase()),
                   ),
-                  const SizedBox(height: 10),
+                  SizedBox(height: context.r.spaceSm),
                   for (int j = 0; j < _contactCategories[ci].items.length; j++) ...[
                     FadeSlideIn(
                       delay: Duration(milliseconds: 400 + ci * 100 + j * 50),
@@ -222,9 +221,9 @@ class ContactosScreen extends StatelessWidget {
                         onCopy: () => _copyPhone(context, _contactCategories[ci].items[j].phone),
                       ),
                     ),
-                    const SizedBox(height: 10),
+                    SizedBox(height: context.r.spaceSm),
                   ],
-                  const SizedBox(height: 20),
+                  SizedBox(height: context.r.spaceLg),
                 ],
               ]),
             ),
@@ -245,17 +244,16 @@ class ContactosScreen extends StatelessWidget {
             height: 14,
             decoration: BoxDecoration(
               color: isDark ? AppColors.white : AppColors.primary,
-              borderRadius: BorderRadius.circular(2),
+              borderRadius: BorderRadius.circular(context.r.spaceXs),
             ),
           ),
-          const SizedBox(width: 8),
+          SizedBox(width: context.r.spaceSm),
           Flexible(
             child: Text(
               text,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: TextStyle(
-                fontSize: 13,
                 fontWeight: FontWeight.w800,
                 color: AppColors.textSecondaryC(isDark),
                 letterSpacing: 1.5,
@@ -306,7 +304,7 @@ class _EmergencyCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(20),
+      padding: EdgeInsets.all(context.r.cardPadding),
       decoration: BoxDecoration(
         color: const Color(0xFFDC2626),
         borderRadius: BorderRadius.circular(AppTheme.radiusXl),
@@ -329,7 +327,7 @@ class _EmergencyCard extends StatelessWidget {
                 height: context.r.avatarMd,
                 decoration: BoxDecoration(
                   color: AppColors.white.withValues(alpha: 0.18),
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(context.r.radiusMd),
                 ),
                 child: const Icon(
                   CupertinoIcons.bell_fill,
@@ -337,7 +335,7 @@ class _EmergencyCard extends StatelessWidget {
                   size: 30,
                 ),
               ),
-              const SizedBox(width: 12),
+              SizedBox(width: context.r.spaceMd),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -347,26 +345,24 @@ class _EmergencyCard extends StatelessWidget {
                           horizontal: 8, vertical: 3),
                       decoration: BoxDecoration(
                         color: AppColors.white.withValues(alpha: 0.20),
-                        borderRadius: BorderRadius.circular(6),
+                        borderRadius: BorderRadius.circular(context.r.badgeRadius),
                       ),
                       child: const Text(
                         'EMERGENCIA',
                         style: TextStyle(
-                          fontSize: 15,
                           fontWeight: FontWeight.w900,
                           color: AppColors.white,
                           letterSpacing: 1.5,
                         ),
                       ),
                     ),
-                    const SizedBox(height: 4),
+                    SizedBox(height: context.r.spaceXs),
                     FittedBox(
                       fit: BoxFit.scaleDown,
                       alignment: Alignment.centerLeft,
                       child: Text(
                         contact.title,
                         style: TextStyle(
-                          fontSize: 18,
                           fontWeight: FontWeight.w700,
                           color: AppColors.white.withValues(alpha: 0.9),
                         ),
@@ -377,7 +373,7 @@ class _EmergencyCard extends StatelessWidget {
               ),
             ],
           ),
-          const SizedBox(height: 20),
+          SizedBox(height: context.r.spaceLg),
 
           // Phone number — BIG
           Center(
@@ -386,7 +382,6 @@ class _EmergencyCard extends StatelessWidget {
               child: Text(
                 contact.phone,
                 style: const TextStyle(
-                  fontSize: 60,
                   fontWeight: FontWeight.w900,
                   color: AppColors.white,
                   letterSpacing: 4,
@@ -394,12 +389,11 @@ class _EmergencyCard extends StatelessWidget {
               ),
             ),
           ),
-          const SizedBox(height: 6),
+          SizedBox(height: context.r.spaceSm),
           Center(
             child: Text(
               contact.subtitle ?? '',
               style: TextStyle(
-                fontSize: 16,
                 fontWeight: FontWeight.w600,
                 color: AppColors.white.withValues(alpha: 0.8),
               ),
@@ -411,9 +405,9 @@ class _EmergencyCard extends StatelessWidget {
           SizedBox(
             width: double.infinity,
             child: CupertinoButton(
-              padding: const EdgeInsets.symmetric(vertical: 12),
+              padding: EdgeInsets.symmetric(vertical: context.r.spaceMd),
               color: AppColors.white.withValues(alpha: 0.20),
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(context.r.radiusMd),
               onPressed: () {
                 ContactosScreen._makePhoneCall(contact.phone);
               },
@@ -426,7 +420,6 @@ class _EmergencyCard extends StatelessWidget {
                   Text(
                     'Llamar ahora',
                     style: TextStyle(
-                      fontSize: 20,
                       fontWeight: FontWeight.w800,
                       color: AppColors.white,
                     ),
@@ -455,7 +448,7 @@ class _ContactCard extends StatelessWidget {
         contact.isFreeCall ? AppColors.accent : (isDark ? AppColors.white : AppColors.primary);
 
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: EdgeInsets.all(context.r.cardPadding),
       decoration: BoxDecoration(
         color: AppColors.cardBg(isDark),
         borderRadius: BorderRadius.circular(AppTheme.radiusXl),
@@ -476,7 +469,7 @@ class _ContactCard extends StatelessWidget {
             ),
             child: Icon(contact.icon, size: 30, color: accentColor),
           ),
-          const SizedBox(width: 14),
+          SizedBox(width: context.r.spaceMd),
 
           // Text content
           Expanded(
@@ -491,12 +484,11 @@ class _ContactCard extends StatelessWidget {
                           horizontal: 6, vertical: 2),
                       decoration: BoxDecoration(
                         color: AppColors.accent.withValues(alpha: 0.10),
-                        borderRadius: BorderRadius.circular(4),
+                        borderRadius: BorderRadius.circular(context.r.spaceXs),
                       ),
                       child: const Text(
                         'LÍNEA GRATUITA',
                         style: TextStyle(
-                          fontSize: 13,
                           fontWeight: FontWeight.w900,
                           color: AppColors.accentDark,
                           letterSpacing: 0.8,
@@ -510,21 +502,19 @@ class _ContactCard extends StatelessWidget {
                   child: Text(
                     contact.title,
                     style: TextStyle(
-                      fontSize: 20,
                       fontWeight: FontWeight.w800,
                       color: AppColors.textPrimaryC(isDark),
                       letterSpacing: -0.5,
                     ),
                   ),
                 ),
-                const SizedBox(height: 4),
+                SizedBox(height: context.r.spaceXs),
                 FittedBox(
                   fit: BoxFit.scaleDown,
                   alignment: Alignment.centerLeft,
                   child: Text(
                     contact.phone,
                     style: TextStyle(
-                      fontSize: 26,
                       fontWeight: FontWeight.w900,
                       color: accentColor,
                       letterSpacing: 1.0,
@@ -532,14 +522,13 @@ class _ContactCard extends StatelessWidget {
                   ),
                 ),
                 if (contact.subtitle != null) ...[
-                  const SizedBox(height: 4),
+                  SizedBox(height: context.r.spaceXs),
                   FittedBox(
                     fit: BoxFit.scaleDown,
                     alignment: Alignment.centerLeft,
                     child: Text(
                       contact.subtitle!,
                       style: TextStyle(
-                        fontSize: 16,
                         fontWeight: FontWeight.w600,
                         color: AppColors.textSecondaryC(isDark),
                         height: 1.3,
@@ -566,13 +555,13 @@ class _ContactCard extends StatelessWidget {
                   height: context.r.avatarMd,
                   decoration: BoxDecoration(
                     color: accentColor.withValues(alpha: 0.10),
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: BorderRadius.circular(context.r.radiusMd),
                   ),
                   child: Icon(CupertinoIcons.phone_fill,
                       size: 24, color: accentColor),
                 ),
               ),
-              const SizedBox(height: 6),
+              SizedBox(height: context.r.spaceSm),
               // Copy
               CupertinoButton(
                 padding: EdgeInsets.zero,
@@ -583,7 +572,7 @@ class _ContactCard extends StatelessWidget {
                   height: context.r.avatarMd,
                   decoration: BoxDecoration(
                     color: AppColors.background,
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: BorderRadius.circular(context.r.radiusMd),
                   ),
                   child: Icon(CupertinoIcons.doc_on_clipboard,
                       size: 24, color: AppColors.textSecondaryC(isDark)),
