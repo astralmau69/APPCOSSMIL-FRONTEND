@@ -1,11 +1,10 @@
+import 'dart:convert';
 import 'dart:typed_data';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:printing/printing.dart';
 import '../../../core/constants/app_colors.dart';
-import '../../../core/theme/app_theme.dart';
-import '../../../core/theme/app_constants.dart';
 import '../../../core/models/detalle_cita_model.dart';
 import '../../../core/models/reserva_model.dart';
 import '../../../core/services/programacion_service.dart';
@@ -15,6 +14,9 @@ import '../../../core/widgets/skeleton_loading.dart';
 import '../../../core/widgets/cossmil_ios_alert.dart';
 import '../../../core/extensions/responsive_extensions.dart';
 import '../../../core/utils/error_mapper.dart';
+import '../../../core/session/user_session.dart';
+import '../../../core/services/notification_service.dart';
+import '../../../core/widgets/image_enlarged_modal.dart';
 
 class DetalleCitaScreen extends StatefulWidget {
   final ReservaModel reserva;
@@ -32,6 +34,7 @@ class _DetalleCitaScreenState extends State<DetalleCitaScreen> {
   bool _isLoading = true;
   String? _errorMessage;
   bool _isDownloadingPdf = false;
+  bool _isSharingPdf = false;
   bool _isCancelling = false;
   bool _wasCancelled = false;
 
@@ -39,6 +42,25 @@ class _DetalleCitaScreenState extends State<DetalleCitaScreen> {
   void initState() {
     super.initState();
     _fetchDetalle();
+  }
+
+  Widget _buildPhoto(String? base64, bool isDark, {required IconData icon}) {
+    if (base64 == null || base64.isEmpty) {
+      return Icon(icon, size: 28, color: AppColors.accentForTheme(isDark).withValues(alpha: 0.5));
+    }
+
+    try {
+      final cleanBase64 = base64.contains(',') ? base64.split(',').last : base64;
+      final bytes = const Base64Decoder().convert(cleanBase64.trim());
+      return Image.memory(
+        bytes,
+        fit: BoxFit.cover,
+        errorBuilder: (context, error, stackTrace) =>
+            Icon(icon, size: 28, color: AppColors.accentForTheme(isDark).withValues(alpha: 0.5)),
+      );
+    } catch (_) {
+      return Icon(icon, size: 28, color: AppColors.accentForTheme(isDark).withValues(alpha: 0.5));
+    }
   }
 
   Future<void> _fetchDetalle() async {
@@ -92,6 +114,19 @@ class _DetalleCitaScreenState extends State<DetalleCitaScreen> {
     }
   }
 
+  /// Busca el beneficiario en sesión por matrícula y retorna su displayTitle.
+  /// Si no lo encuentra, retorna el nombre crudo del API.
+  String _patientDisplayName(DetalleCitaModel d) {
+    final bens = UserSession.currentUser.beneficiaries;
+    final match = bens.where((b) => b.matricula == d.matricula);
+    if (match.isNotEmpty) return match.first.displayTitle;
+    // Titular directo
+    if (UserSession.currentUser.matricula == d.matricula) {
+      return UserSession.currentUser.displayName;
+    }
+    return d.paciente;
+  }
+
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
@@ -106,7 +141,7 @@ class _DetalleCitaScreenState extends State<DetalleCitaScreen> {
             color: AppColors.textPrimaryC(isDark),
           ),
         ),
-        backgroundColor: AppColors.scaffoldBg(isDark).withValues(alpha: 0.94),
+        backgroundColor: AppColors.navBarBg(isDark),
         border: null,
       ),
       child: SafeArea(
@@ -133,211 +168,221 @@ class _DetalleCitaScreenState extends State<DetalleCitaScreen> {
 
   Widget _buildContent(bool isDark) {
     final d = _detalle!;
+    final r = context.r;
+    final isCancelled = _wasCancelled || widget.reserva.status == 'Cancelado';
 
     return Center(
       child: ConstrainedBox(
-        constraints: BoxConstraints(maxWidth: context.r.maxContentWidth),
+        constraints: BoxConstraints(maxWidth: r.maxContentWidth),
         child: ListView(
           key: const ValueKey('content'),
-          padding: EdgeInsets.symmetric(horizontal: context.r.paddingH, vertical: 16),
-      children: [
-        // Header
-        FadeSlideIn(
-          delay: const Duration(milliseconds: 50),
-          child: _buildHeader(isDark, d),
-        ),
-        SizedBox(height: context.r.spaceLg),
+          padding: EdgeInsets.symmetric(horizontal: r.paddingH, vertical: 16),
+          children: [
+            FadeSlideIn(
+              delay: const Duration(milliseconds: 50),
+              child: _buildHeader(isDark, d),
+            ),
+            SizedBox(height: r.spaceLg),
 
-        // 1. ESTABLECIMIENTO
-        FadeSlideIn(
-          delay: const Duration(milliseconds: 100),
-          child: _sectionCard(
-            title: 'ESTABLECIMIENTO',
-            icon: Icons.business,
-            isDark: isDark,
-            children: [
-              _rowValue(d.sucursal, isBold: true),
+            // ── 1. Hospital ──
+            FadeSlideIn(
+              delay: const Duration(milliseconds: 80),
+              child: _infoRow(
+                isDark: isDark,
+                icon: CupertinoIcons.building_2_fill,
+                label: 'Hospital',
+                value: d.sucursal,
+              ),
+            ),
+            _divider(isDark),
+
+            // ── 2. Consultorio ──
+            FadeSlideIn(
+              delay: const Duration(milliseconds: 120),
+              child: _infoRow(
+                isDark: isDark,
+                icon: Icons.meeting_room,
+                label: 'Consultorio',
+                value: d.consultorio,
+              ),
+            ),
+            _divider(isDark),
+
+            // ── 3. Fecha ──
+            FadeSlideIn(
+              delay: const Duration(milliseconds: 160),
+              child: _infoRow(
+                isDark: isDark,
+                icon: CupertinoIcons.calendar,
+                label: 'Fecha',
+                value: _formatFechaLarga(d.fechaCita),
+              ),
+            ),
+            _divider(isDark),
+
+            // ── 4. Hora ──
+            FadeSlideIn(
+              delay: const Duration(milliseconds: 200),
+              child: _infoRow(
+                isDark: isDark,
+                icon: CupertinoIcons.clock,
+                label: 'Hora',
+                value: d.formattedTime12h,
+                secondaryValue: 'Ficha N° ${d.numero}',
+              ),
+            ),
+            _divider(isDark),
+
+            // ── 5. Especialidad ──
+            FadeSlideIn(
+              delay: const Duration(milliseconds: 230),
+              child: _infoRow(
+                isDark: isDark,
+                icon: Icons.medical_services_outlined,
+                label: 'Especialidad',
+                value: d.especialidad,
+                valueColor: AppColors.accentForTheme(isDark),
+                secondaryValue: (d.tipoConsulta != null && d.tipoConsulta!.isNotEmpty)
+                    ? d.tipoConsulta
+                    : null,
+              ),
+            ),
+            _divider(isDark),
+
+            // ── 6. Médico Asignado ──
+            FadeSlideIn(
+              delay: const Duration(milliseconds: 260),
+              child: _infoRow(
+                isDark: isDark,
+                icon: CupertinoIcons.person_fill,
+                label: 'Médico Asignado',
+                value: d.medico,
+                secondaryValue: d.consultorio.isNotEmpty ? d.consultorio : null,
+                photoBase64: d.fotoMedico,
+                onPhotoTap: (d.fotoMedico != null && d.fotoMedico!.isNotEmpty)
+                    ? () => ImageEnlargedModal.show(
+                          context: context,
+                          base64Photo: d.fotoMedico!,
+                          fallbackText: d.medico.isNotEmpty ? d.medico[0].toUpperCase() : 'M',
+                        )
+                    : null,
+              ),
+            ),
+            _divider(isDark),
+
+            // ── 7. Paciente ──
+            FadeSlideIn(
+              delay: const Duration(milliseconds: 290),
+              child: _infoRow(
+                isDark: isDark,
+                icon: CupertinoIcons.person_crop_circle_fill,
+                label: 'Paciente',
+                value: _patientDisplayName(d),
+                secondaryValue: 'Mat. ${d.matricula}${d.obs.isNotEmpty ? '  •  Obs: ${d.obs}' : ''}',
+                photoBase64: _patientPhoto(d),
+              ),
+            ),
+            _divider(isDark),
+
+            // ── 8. Estado ──
+            FadeSlideIn(
+              delay: const Duration(milliseconds: 320),
+              child: _infoRow(
+                isDark: isDark,
+                icon: CupertinoIcons.info_circle_fill,
+                label: 'Estado',
+                customValueWidget: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _buildStatusRow('Confirmación', isCancelled ? 'CANCELADO' : d.estadoConfirmacion, isDark),
+                    SizedBox(height: r.spaceSm),
+                    _buildStatusRow('Atención', isCancelled ? 'CANCELADO' : d.estadoAtencion, isDark),
+                  ],
+                ),
+              ),
+            ),
+            _divider(isDark),
+
+            // ── 9. Código / Registro ──
+            FadeSlideIn(
+              delay: const Duration(milliseconds: 350),
+              child: _infoRow(
+                isDark: isDark,
+                icon: CupertinoIcons.doc_text,
+                label: 'Información',
+                value: 'Código: ${d.codadm}',
+                secondaryValue: 'Registrado: ${d.formattedCreation}',
+              ),
+            ),
+
+            SizedBox(height: r.spaceXl),
+
+            // ── PDF ──
+            if (widget.reserva.canDownloadPdf && widget.reserva.status != 'Cancelado' && !_wasCancelled)
+              FadeSlideIn(
+                delay: const Duration(milliseconds: 400),
+                child: _buildPdfButton(isDark),
+              ),
+
+            // ── Cancelar ──
+            if (_isPendiente && widget.reserva.canCancel) ...[
+              SizedBox(height: r.spaceMd),
+              FadeSlideIn(
+                delay: const Duration(milliseconds: 430),
+                child: _buildCancelButton(isDark),
+              ),
             ],
-          ),
-        ),
-        SizedBox(height: context.r.spaceMd),
 
-        // 2. CONSULTORIO
-        FadeSlideIn(
-          delay: const Duration(milliseconds: 150),
-          child: _sectionCard(
-            title: 'UBICACIÓN EN CENTRO',
-            icon: Icons.meeting_room,
-            isDark: isDark,
-            children: [
-              _rowValue(d.consultorio, isBold: true),
-              if (d.abrcons.isNotEmpty) ...[
-                SizedBox(height: context.r.spaceXs),
-                _rowValue(d.abrcons, isSecondary: true),
-              ],
-            ],
-          ),
-        ),
-        SizedBox(height: context.r.spaceMd),
-
-        // 3. FECHA Y HORA
-        FadeSlideIn(
-          delay: const Duration(milliseconds: 200),
-          child: _sectionCard(
-            title: 'FECHA Y HORA',
-            icon: Icons.event_available,
-            isDark: isDark,
-            children: [
-              Row(
-                children: [
-                  Expanded(
-                    child: _rowValue(
-                      _formatFechaLarga(d.fechaCita),
-                      isBold: true,
+            // ── Aviso restricción 2h ──
+            if (_isPendiente &&
+                !widget.reserva.canCancel &&
+                widget.reserva.estadoCancelacion == '0' &&
+                widget.reserva.status != 'Cancelado' &&
+                widget.reserva.isWithinTwoHoursOfAppointment &&
+                !_wasCancelled) ...[
+              SizedBox(height: r.spaceMd),
+              FadeSlideIn(
+                delay: const Duration(milliseconds: 430),
+                child: Container(
+                  padding: EdgeInsets.symmetric(horizontal: r.spaceMd, vertical: r.spaceSm),
+                  decoration: BoxDecoration(
+                    color: isDark
+                        ? const Color(0xFF422006).withValues(alpha: 0.5)
+                        : const Color(0xFFFFFBEB),
+                    borderRadius: BorderRadius.circular(r.cardRadius),
+                    border: Border.all(
+                      color: const Color(0xFFF59E0B).withValues(alpha: 0.5),
+                      width: 0.8,
                     ),
                   ),
-                  SizedBox(width: context.r.spaceSm),
-                  Container(
-                    padding: EdgeInsets.symmetric(horizontal: context.r.spaceSm, vertical: 6),
-                    decoration: BoxDecoration(
-                      color: AppColors.accent.withValues(alpha: 0.15),
-                      borderRadius: BorderRadius.circular(context.r.radiusSm),
-                    ),
-                    child: Text(
-                      d.horaCita,
-                      style: TextStyle(
-                        color: AppColors.accentForTheme(isDark),
-                        fontWeight: FontWeight.w900,
+                  child: Row(
+                    children: [
+                      const Icon(CupertinoIcons.exclamationmark_circle_fill,
+                          size: 18, color: Color(0xFFB45309)),
+                      SizedBox(width: r.spaceSm),
+                      Expanded(
+                        child: Text(
+                          'No se puede cancelar una cita médica con menos de 2 horas de anticipación.',
+                          style: TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                            color: isDark
+                                ? const Color(0xFFFCD34D)
+                                : const Color(0xFF92400E),
+                            height: 1.3,
+                          ),
+                        ),
                       ),
-                    ),
+                    ],
                   ),
-                ],
-              ),
-              SizedBox(height: context.r.spaceSm),
-              _rowValue('Ficha N° ${d.numero}', isSecondary: true),
-            ],
-          ),
-        ),
-        SizedBox(height: context.r.spaceMd),
-
-        // 4. ESPECIALIDAD
-        FadeSlideIn(
-          delay: const Duration(milliseconds: 250),
-          child: _sectionCard(
-            title: 'ESPECIALIDAD',
-            icon: Icons.medical_services_outlined,
-            isDark: isDark,
-            children: [
-              _rowValue(
-                d.especialidad,
-                isBold: true,
-                color: AppColors.accentForTheme(isDark),
-              ),
-              if (d.tipoConsulta != null && d.tipoConsulta!.isNotEmpty) ...[
-                SizedBox(height: context.r.spaceXs),
-                _rowValue(d.tipoConsulta!, isSecondary: true),
-              ],
-            ],
-          ),
-        ),
-        SizedBox(height: context.r.spaceMd),
-
-        // 5. MÉDICO
-        FadeSlideIn(
-          delay: const Duration(milliseconds: 300),
-          child: _sectionCard(
-            title: 'MÉDICO ASIGNADO',
-            icon: Icons.person_search,
-            isDark: isDark,
-            children: [
-              Row(
-                children: [
-                  Container(
-                    width: context.r.listAvatarSize,
-                    height: context.r.listAvatarSize,
-                    decoration: BoxDecoration(
-                      color: AppColors.accentForTheme(isDark).withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(14),
-                      border: Border.all(
-                        color: AppColors.accentForTheme(isDark).withValues(alpha: 0.2),
-                      ),
-                    ),
-                    child: Icon(
-                      Icons.person,
-                      size: context.r.listAvatarSize * 0.58,
-                      color: AppColors.accentForTheme(isDark).withValues(alpha: 0.6),
-                    ),
-                  ),
-                  SizedBox(width: context.r.spaceMd),
-                  Expanded(
-                    child: _rowValue(d.medico, isBold: true, fontSize: 16),
-                  ),
-                ],
+                ),
               ),
             ],
-          ),
+
+            // Padding extra para que la barra flotante no tape el contenido (REPORTE 007)
+            SizedBox(height: r.spaceXxl + MediaQuery.of(context).viewPadding.bottom + 90),
+          ],
         ),
-        SizedBox(height: context.r.spaceMd),
-
-        // 6. PACIENTE
-        FadeSlideIn(
-          delay: const Duration(milliseconds: 350),
-          child: _sectionCard(
-            title: 'DATOS DEL PACIENTE',
-            icon: Icons.person_outline,
-            isDark: isDark,
-            children: [
-              _rowValue(d.paciente, isBold: true),
-              SizedBox(height: context.r.spaceXs),
-              _rowValue('Matrícula: ${d.matricula}', isSecondary: true),
-              if (d.obs.isNotEmpty) ...[
-                SizedBox(height: context.r.spaceXs),
-                _rowValue('Obs: ${d.obs}', isSecondary: true),
-              ],
-            ],
-          ),
-        ),
-        SizedBox(height: context.r.spaceMd),
-
-        // 7. ESTADO / INFO
-        FadeSlideIn(
-          delay: const Duration(milliseconds: 400),
-          child: _sectionCard(
-            title: 'INFORMACIÓN DE RESERVA',
-            icon: Icons.info_outline,
-            isDark: isDark,
-            children: [
-              _buildStatusRow('Confirmación', _wasCancelled || widget.reserva.status == 'Cancelado' ? 'CANCELADO' : d.estadoConfirmacion, isDark),
-              SizedBox(height: context.r.spaceSm),
-              _buildStatusRow('Atención', _wasCancelled || widget.reserva.status == 'Cancelado' ? 'CANCELADO' : d.estadoAtencion, isDark),
-              SizedBox(height: context.r.spaceSm),
-              _rowValue('Código: ${d.codadm}', isSecondary: true, fontSize: 13),
-              SizedBox(height: context.r.spaceXs),
-              _rowValue('Creado: ${d.formattedCreation}', isSecondary: true, fontSize: 13),
-            ],
-          ),
-        ),
-        SizedBox(height: context.r.spaceXl),
-
-        // Botón Descargar PDF (solo si no ha sido cancelada)
-        if (widget.reserva.canDownloadPdf && widget.reserva.status != 'Cancelado' && !_wasCancelled)
-          FadeSlideIn(
-            delay: const Duration(milliseconds: 450),
-            child: _buildPdfButton(isDark),
-          ),
-
-        // Botón Cancelar Cita (solo si estadoCancelacion == "0")
-        if (_isPendiente && widget.reserva.canCancel) ...[
-          SizedBox(height: context.r.spaceMd),
-          FadeSlideIn(
-            delay: const Duration(milliseconds: 500),
-            child: _buildCancelButton(isDark),
-          ),
-        ],
-
-        SizedBox(height: context.r.spaceXxl),
-      ],
-    ),
       ),
     );
   }
@@ -353,9 +398,11 @@ class _DetalleCitaScreenState extends State<DetalleCitaScreen> {
             color: AppColors.accentForTheme(isDark),
           ),
         ),
-        SizedBox(height: context.r.spaceSm),
+        SizedBox(height: r.spaceSm),
         Text(
-          _wasCancelled || widget.reserva.status == 'Cancelado' ? 'CANCELADO' : d.estadoAtencion.toUpperCase(),
+          _wasCancelled || widget.reserva.status == 'Cancelado'
+              ? 'CANCELADO'
+              : d.estadoAtencion.toUpperCase(),
           style: context.texts.labelSmall.copyWith(
             letterSpacing: 1.0,
             color: AppColors.textSecondaryC(isDark),
@@ -365,65 +412,120 @@ class _DetalleCitaScreenState extends State<DetalleCitaScreen> {
     );
   }
 
-  Widget _sectionCard({
-    required String title,
-    required IconData icon,
-    required List<Widget> children,
+  /// Foto del paciente desde la sesión (para la fila de paciente).
+  String? _patientPhoto(DetalleCitaModel d) {
+    final bens = UserSession.currentUser.beneficiaries;
+    final match = bens.where((b) => b.matricula == d.matricula);
+    if (match.isNotEmpty) return match.first.photoBase64.isNotEmpty ? match.first.photoBase64 : null;
+    if (UserSession.currentUser.matricula == d.matricula) {
+      final p = UserSession.currentUser.photoBase64;
+      return p.isNotEmpty ? p : null;
+    }
+    return null;
+  }
+
+  Widget _infoRow({
     required bool isDark,
+    required IconData icon,
+    required String label,
+    String? value,
+    String? secondaryValue,
+    Color? valueColor,
+    String? photoBase64,
+    Widget? customValueWidget,
+    VoidCallback? onPhotoTap,
   }) {
-    return Container(
-      padding: EdgeInsets.all(context.r.cardPadding),
-      decoration: BoxDecoration(
-        color: AppColors.cardBg(isDark),
-        borderRadius: BorderRadius.circular(AppTheme.radiusLg),
-        boxShadow: AppColors.cardShadowFor(isDark),
-        border: Border.all(color: AppColors.cardBorder(isDark), width: 0.5),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+    final r = context.r;
+
+    Widget leftWidget;
+    if (photoBase64 != null && photoBase64.isNotEmpty) {
+      Widget photoContent = ClipOval(
+        child: SizedBox(
+          width: 44,
+          height: 44,
+          child: _buildPhoto(photoBase64, isDark, icon: CupertinoIcons.person_fill),
+        ),
+      );
+      leftWidget = onPhotoTap != null
+          ? GestureDetector(onTap: onPhotoTap, child: photoContent)
+          : photoContent;
+    } else {
+      leftWidget = Container(
+        padding: EdgeInsets.all(r.spaceSm),
+        decoration: BoxDecoration(
+          color: AppColors.textTertiaryC(isDark).withValues(alpha: 0.08),
+          shape: BoxShape.circle,
+        ),
+        child: Icon(icon, size: 20, color: AppColors.textTertiaryC(isDark)),
+      );
+    }
+
+    return Padding(
+      padding: EdgeInsets.symmetric(vertical: r.chipPaddingV),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          Row(
-            children: [
-              Icon(icon, size: 16, color: AppColors.textTertiaryC(isDark)),
-              SizedBox(width: context.r.spaceSm),
-              Text(
-                title,
-                style: TextStyle(
-                  fontWeight: FontWeight.w800,
-                  color: AppColors.textTertiaryC(isDark),
-                  letterSpacing: 1.2,
+          leftWidget,
+          SizedBox(width: photoBase64 != null && photoBase64.isNotEmpty ? r.spaceSm : r.spaceMd),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  label.toUpperCase(),
+                  style: TextStyle(
+                    fontWeight: FontWeight.w800,
+                    color: AppColors.textSecondaryC(isDark),
+                    letterSpacing: 0.5,
+                    fontSize: 11,
+                  ),
                 ),
-              ),
-            ],
+                SizedBox(height: r.spaceXs),
+                if (customValueWidget != null)
+                  customValueWidget
+                else if (value != null)
+                  Text(
+                    value,
+                    style: TextStyle(
+                      fontWeight: FontWeight.w700,
+                      color: valueColor ?? AppColors.textPrimaryC(isDark),
+                      height: 1.2,
+                      fontSize: 15,
+                    ),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                if (secondaryValue != null && secondaryValue.isNotEmpty) ...[
+                  const SizedBox(height: 2),
+                  Text(
+                    secondaryValue,
+                    style: TextStyle(
+                      fontWeight: FontWeight.w500,
+                      color: AppColors.textSecondaryC(isDark),
+                      fontSize: 13,
+                    ),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
+              ],
+            ),
           ),
-          SizedBox(height: context.r.spaceMd),
-          ...children,
         ],
       ),
     );
   }
 
-  Widget _rowValue(
-    String text, {
-    bool isBold = false,
-    bool isSecondary = false,
-    double fontSize = 15,
-    Color? color,
-  }) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    return Text(
-      text,
-      style: TextStyle(
-        fontSize: fontSize,
-        fontWeight: isBold ? FontWeight.w700 : FontWeight.w500,
-        color: color ??
-            (isSecondary
-                ? AppColors.textSecondaryC(isDark)
-                : AppColors.textPrimaryC(isDark)),
-        height: 1.2,
+  Widget _divider(bool isDark) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 2, horizontal: 4),
+      child: Divider(
+        height: 1,
+        thickness: 0.5,
+        color: isDark
+            ? AppColors.darkDivider
+            : const Color(0xFF191C1E).withValues(alpha: 0.05),
       ),
-      maxLines: 2,
-      overflow: TextOverflow.ellipsis,
     );
   }
 
@@ -476,40 +578,113 @@ class _DetalleCitaScreenState extends State<DetalleCitaScreen> {
   }
 
   Widget _buildPdfButton(bool isDark) {
-    return SizedBox(
-      width: double.infinity,
-      child: Container(
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(context.r.cardRadius),
-          border: Border.all(
-            color: isDark
-                ? AppColors.darkBorder
-                : const Color(0xFF191C1E).withValues(alpha: 0.15),
-            width: 0.8,
+    return Row(
+      children: [
+        Expanded(
+          child: Container(
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(context.r.cardRadius),
+              border: Border.all(
+                color: isDark
+                    ? AppColors.darkBorder
+                    : const Color(0xFF191C1E).withValues(alpha: 0.15),
+                width: 0.8,
+              ),
+            ),
+            child: CupertinoButton.filled(
+              borderRadius: BorderRadius.circular(context.r.cardRadius),
+              onPressed: _isDownloadingPdf ? null : _openPdfPreview,
+              child: _isDownloadingPdf
+                  ? const CupertinoActivityIndicator(color: Colors.white)
+                  : Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Icon(CupertinoIcons.doc_text_search, size: 20),
+                        SizedBox(width: context.r.spaceSm),
+                        const Flexible(
+                          child: Text(
+                            'Ver Comprobante de Cita Médica',
+                            style: TextStyle(
+                              fontWeight: FontWeight.w800,
+                              letterSpacing: 0.3,
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ],
+                    ),
+            ),
           ),
         ),
-        child: CupertinoButton.filled(
-          borderRadius: BorderRadius.circular(context.r.cardRadius),
-          onPressed: _isDownloadingPdf ? null : _openPdfPreview,
-          child: _isDownloadingPdf
-              ? const CupertinoActivityIndicator(color: Colors.white)
-              : const Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(CupertinoIcons.doc_text_search, size: 20),
-                    SizedBox(width: 10),
-                    Text(
-                      'Ver Imagen de la Cita Médica',
-                      style: TextStyle(
-                        fontWeight: FontWeight.w800,
-                        letterSpacing: 0.3,
-                      ),
-                    ),
-                  ],
-                ),
+        SizedBox(width: context.r.spaceSm),
+        Container(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(context.r.cardRadius),
+            border: Border.all(
+              color: isDark
+                  ? AppColors.darkBorder
+                  : const Color(0xFF191C1E).withValues(alpha: 0.15),
+              width: 0.8,
+            ),
+          ),
+          child: CupertinoButton(
+            borderRadius: BorderRadius.circular(context.r.cardRadius),
+            color: isDark ? AppColors.darkElevated : const Color(0xFFF3F4F6),
+            onPressed: _isSharingPdf ? null : _sharePdfDirect,
+            child: _isSharingPdf
+                ? const CupertinoActivityIndicator()
+                : Icon(
+                    CupertinoIcons.share,
+                    size: 20,
+                    color: AppColors.accentForTheme(isDark),
+                  ),
+          ),
         ),
-      ),
+      ],
     );
+  }
+
+  Future<void> _sharePdfDirect() async {
+    final r = widget.reserva;
+    setState(() => _isSharingPdf = true);
+
+    try {
+      final pdfBytes = await _service.getCitaMedicaPdf(
+        gestion: r.gestion!,
+        idins: r.idins!,
+        idsuc: r.idsuc!,
+        idtran: r.idtran!,
+        dr: r.dr!,
+      );
+
+      if (!mounted) return;
+      setState(() => _isSharingPdf = false);
+
+      if (pdfBytes == null || pdfBytes.isEmpty) {
+        await CossmilIosAlert.show(
+          context: context,
+          title: 'Documento no disponible',
+          message: 'No se pudo obtener el documento. Intenta de nuevo más tarde.',
+          type: AlertType.warning,
+          confirmText: 'Aceptar',
+        );
+        return;
+      }
+
+      final fileName = 'Cita_Medica_${r.gestion}-${r.idtran}-${r.dr}.pdf';
+      await Printing.sharePdf(bytes: pdfBytes, filename: fileName);
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _isSharingPdf = false);
+
+      await CossmilIosAlert.show(
+        context: context,
+        title: 'Error al compartir',
+        message: ErrorMapper.message(e, context: ErrorContext.descargarPdf),
+        type: AlertType.error,
+        confirmText: 'Aceptar',
+      );
+    }
   }
 
   Future<void> _openPdfPreview() async {
@@ -570,39 +745,28 @@ class _DetalleCitaScreenState extends State<DetalleCitaScreen> {
   Widget _buildCancelButton(bool isDark) {
     return SizedBox(
       width: double.infinity,
-      child: Container(
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(context.r.cardRadius),
-          border: Border.all(
-            color: CupertinoColors.destructiveRed.withValues(alpha: 0.3),
-            width: 0.8,
-          ),
-        ),
-        child: CupertinoButton(
-          borderRadius: BorderRadius.circular(context.r.cardRadius),
-          color: isDark
-              ? CupertinoColors.destructiveRed.withValues(alpha: 0.15)
-              : CupertinoColors.destructiveRed.withValues(alpha: 0.08),
-          onPressed: _isCancelling ? null : _cancelCita,
-          child: _isCancelling
-              ? const CupertinoActivityIndicator()
-              : Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(CupertinoIcons.xmark_circle_fill,
-                        size: 20, color: CupertinoColors.destructiveRed),
-                    SizedBox(width: context.r.spaceSm),
-                    Text(
-                      'Cancelar Cita',
-                      style: TextStyle(
-                        fontWeight: FontWeight.w800,
-                        color: CupertinoColors.destructiveRed,
-                        letterSpacing: 0.3,
-                      ),
+      child: CupertinoButton(
+        borderRadius: BorderRadius.circular(context.r.cardRadius),
+        color: CupertinoColors.destructiveRed,
+        onPressed: _isCancelling ? null : _cancelCita,
+        child: _isCancelling
+            ? const CupertinoActivityIndicator(color: CupertinoColors.white)
+            : Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Icon(CupertinoIcons.xmark_circle_fill,
+                      size: 20, color: CupertinoColors.white),
+                  SizedBox(width: context.r.spaceSm),
+                  const Text(
+                    'Cancelar Cita',
+                    style: TextStyle(
+                      fontWeight: FontWeight.w800,
+                      color: CupertinoColors.white,
+                      letterSpacing: 0.3,
                     ),
-                  ],
-                ),
-        ),
+                  ),
+                ],
+              ),
       ),
     );
   }
@@ -643,6 +807,15 @@ class _DetalleCitaScreenState extends State<DetalleCitaScreen> {
         idtran: reserva.idtran!,
         dr: reserva.dr!,
       );
+
+      // Cancelar notificaciones programadas para esta cita
+      if (reserva.idtran != null) {
+        try {
+          await NotificationService.cancelAppointmentReminders(
+            reserva.idtran.toString(),
+          );
+        } catch (_) {}
+      }
 
       if (!mounted) return;
       setState(() {
@@ -699,7 +872,7 @@ class _PdfPreviewScreen extends StatelessWidget {
             color: AppColors.textPrimaryC(isDark),
           ),
         ),
-        backgroundColor: AppColors.scaffoldBg(isDark).withValues(alpha: 0.94),
+        backgroundColor: AppColors.navBarBg(isDark),
         border: null,
         trailing: Row(
           mainAxisSize: MainAxisSize.min,
@@ -778,23 +951,37 @@ class _PdfPreviewScreen extends StatelessWidget {
                   ),
                   SizedBox(width: context.r.spaceSm),
                   Expanded(
-                    child: CupertinoButton(
-                      padding: EdgeInsets.symmetric(vertical: context.r.spaceMd),
-                      color: isDark ? AppColors.darkElevated : AppColors.white,
-                      borderRadius: BorderRadius.circular(14),
-                      onPressed: () => _sharePdf(),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(CupertinoIcons.share, size: 18, color: AppColors.accentForTheme(isDark)),
-                          SizedBox(width: context.r.spaceSm),
-                          Text(
-                            'Compartir',
-                            style: context.texts.labelLarge.copyWith(
-                              color: AppColors.textPrimaryC(isDark),
+                    child: Container(
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(14),
+                        border: Border.all(
+                          color: isDark
+                              ? AppColors.darkBorder
+                              : AppColors.primary.withValues(alpha: 0.5),
+                          width: 1.5,
+                        ),
+                      ),
+                      child: CupertinoButton(
+                        padding: EdgeInsets.symmetric(vertical: context.r.spaceMd),
+                        color: isDark
+                            ? AppColors.darkElevated
+                            : const Color(0xFFEFF6FF),
+                        borderRadius: BorderRadius.circular(14),
+                        onPressed: () => _sharePdf(),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(CupertinoIcons.share, size: 18, color: AppColors.accentForTheme(isDark)),
+                            SizedBox(width: context.r.spaceSm),
+                            Text(
+                              'Compartir',
+                              style: context.texts.labelLarge.copyWith(
+                                color: AppColors.accentForTheme(isDark),
+                                fontWeight: FontWeight.w700,
+                              ),
                             ),
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
                     ),
                   ),

@@ -105,7 +105,6 @@ class ErrorMapper {
       case ErrorContext.cargarPerfil:
         return 'No pudimos cargar los datos de tu perfil completamente. Intenta nuevamente más tarde.';
       case ErrorContext.general:
-      default:
         return 'No pudimos completar esta acción. Intenta nuevamente en unos momentos.';
     }
   }

@@ -1,7 +1,6 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import '../../../core/constants/app_colors.dart';
-import '../../../core/theme/app_constants.dart';
 import '../../../core/extensions/responsive_extensions.dart';
 import '../../../core/models/news_item_model.dart';
 import '../../../core/services/cossmil_news_service.dart';
@@ -103,7 +102,7 @@ class _NoticiasScreenState extends State<NoticiasScreen> {
               'COSSMIL te informa',
               style: TextStyle(color: AppColors.textPrimaryC(isDark)),
             ),
-            backgroundColor: AppColors.scaffoldBg(isDark).withValues(alpha: 0.95),
+            backgroundColor: AppColors.navBarBg(isDark),
             border: Border(
               bottom: BorderSide(
                 color: AppColors.cardBorder(isDark).withValues(alpha: 0.5),
@@ -182,7 +181,7 @@ class _NoticiasScreenState extends State<NoticiasScreen> {
           mainAxisSize: MainAxisSize.min,
           children: [
             Icon(CupertinoIcons.wifi_slash,
-                size: 40, color: AppColors.textTertiaryC(isDark)),
+                size: context.r.iconLg, color: AppColors.textTertiaryC(isDark)),
             SizedBox(height: context.r.spaceMd),
             Text(
               'No se pudo cargar los comunicados',
@@ -208,13 +207,13 @@ class _NoticiasScreenState extends State<NoticiasScreen> {
 
   Widget _buildEmptyState(bool isDark) {
     return Padding(
-      padding: const EdgeInsets.all(40),
+      padding: EdgeInsets.all(context.r.spaceXl),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Icon(
             CupertinoIcons.news,
-            size: 60,
+            size: context.r.emptyIconSize,
             color: AppColors.textTertiaryC(isDark).withValues(alpha: 0.5),
           ),
           SizedBox(height: context.r.spaceLg),
@@ -251,13 +250,13 @@ class _NoticiasScreenState extends State<NoticiasScreen> {
         builder: (_, scrollController) => Container(
           decoration: BoxDecoration(
             color: AppColors.cardBg(isDark),
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+            borderRadius: BorderRadius.vertical(top: Radius.circular(context.r.modalRadius)),
           ),
           child: Column(
             children: [
               Container(
-                margin: const EdgeInsets.only(top: 12, bottom: 8),
-                width: 36,
+                margin: EdgeInsets.only(top: context.r.spaceMd, bottom: context.r.spaceSm),
+                width: context.r.handleBarWidth,
                 height: 4,
                 decoration: BoxDecoration(
                   color: isDark ? AppColors.darkBorder : const Color(0xFF191C1E).withValues(alpha: 0.15),

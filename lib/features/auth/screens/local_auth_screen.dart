@@ -6,12 +6,16 @@ import 'package:flutter/services.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/theme/app_constants.dart';
 import '../../../core/extensions/responsive_extensions.dart';
+import '../../../core/services/auth_service.dart';
 import '../../../core/services/security_service.dart';
 import '../../../core/services/session_restore_service.dart';
 import '../../../core/storage/token_storage.dart';
 import '../../../core/session/user_session.dart';
 import '../../../core/animations/optimized_animations.dart';
 import '../../../core/animations/animated_gradient_background.dart';
+import '../../../core/services/notification_service.dart';
+import '../../../core/services/programacion_service.dart';
+import '../../../core/widgets/cossmil_loader.dart';
 
 class LocalAuthScreen extends StatefulWidget {
   /// true  → fue pusheado por TabShell al volver al primer plano.
@@ -32,6 +36,7 @@ class _LocalAuthScreenState extends State<LocalAuthScreen>
   String? _errorMessage;
   bool _isBiometricEnabled = false;
   bool _isVerifying = false;
+  bool _isLoadingHome = false;
 
   // Nombre del usuario real desde SecurityService
   String _displayName = '';
@@ -119,9 +124,17 @@ class _LocalAuthScreenState extends State<LocalAuthScreen>
 
   bool get _isBlocked => _cooldownRemaining != null;
 
+  bool _biometricInProgress = false;
+
   Future<void> _tryBiometrics() async {
-    final authenticated = await SecurityService.authenticateWithBiometrics();
-    if (authenticated && mounted) _onSuccess();
+    if (_biometricInProgress) return; // guard against infinite loop
+    _biometricInProgress = true;
+    try {
+      final authenticated = await SecurityService.authenticateWithBiometrics();
+      if (authenticated && mounted) _onSuccess();
+    } finally {
+      _biometricInProgress = false;
+    }
   }
 
   void _onNumberPressed(int number) {
@@ -181,14 +194,62 @@ class _LocalAuthScreenState extends State<LocalAuthScreen>
     }
   }
 
-  void _onSuccess() {
-    if (widget.isOverlay) {
-      // Solo cerramos el overlay; el TabShell sigue vivo debajo.
-      Navigator.of(context).pop();
-    } else {
-      // Primera apertura desde Splash: navegar al shell principal.
-      Navigator.pushReplacementNamed(context, '/home');
+  /// Re-autentica silenciosamente con el servidor usando las credenciales
+  /// almacenadas. Retorna true si el login remoto fue exitoso.
+  /// En caso de fallo (sin red, credenciales no guardadas, etc.) retorna false
+  /// pero NO bloquea el flujo: la sesión en memoria y el token existente
+  /// actúan como fallback hasta que el usuario recupere conectividad.
+  Future<bool> _silentRelogin() async {
+    try {
+      final creds = await SessionRestoreService.loadCredentials();
+      if (creds == null) return false;
+      final result = await AuthService().login(
+        username: creds.username,
+        password: creds.password,
+      );
+      return result is AuthSuccess;
+    } catch (_) {
+      return false;
     }
+  }
+
+  Future<void> _onSuccess() async {
+    if (widget.isOverlay) {
+      // Overlay: mostrar loading, restaurar sesión completa y volver.
+      // Esto garantiza que el token y los datos del usuario estén frescos
+      // antes de que el TabShell vuelva a ser visible.
+      setState(() => _isLoadingHome = true);
+      await _silentRelogin();
+      if (!mounted) return;
+      try {
+        await SessionRestoreService.restoreUserSession();
+      } catch (_) {
+        // Si falla la restauración, el token existente actúa como fallback.
+      }
+      if (!mounted) return;
+      Navigator.of(context).pop();
+      return;
+    }
+
+    // Primera apertura (ruta nombrada desde SplashScreen).
+    setState(() => _isLoadingHome = true);
+
+    // Re-autenticar con el servidor; si falla (sin red) se usa el token
+    // existente (puede estar próximo a expirar pero el ApiClient maneja 401).
+    await _silentRelogin();
+
+    if (!mounted) return;
+
+    try {
+      await SessionRestoreService.restoreUserSession();
+      if (!mounted) return;
+      await ProgramacionService().verificarVersion();
+    } catch (_) {
+      // Si falla la verificación, navegar igual — el backend puede no estar disponible.
+    }
+
+    if (!mounted) return;
+    Navigator.pushReplacementNamed(context, '/home');
   }
 
   Future<void> _onLogoutPressed() async {
@@ -215,9 +276,11 @@ class _LocalAuthScreenState extends State<LocalAuthScreen>
 
     if (confirmed == true && mounted) {
       _cooldownTimer?.cancel();
-      await TokenStorage.deleteToken();
-      await SecurityService.clearSecurityData();
-      await SessionRestoreService.clearUserSession();
+      // Cancelar TODAS las notificaciones antes de limpiar datos
+      await NotificationService.cancelAllReminders();
+      // wipeAll borra tokens + PIN + sesión + todo el secure storage en un paso
+      await TokenStorage.wipeAll();
+      UserSession.clear();
       if (!mounted) return;
       Navigator.of(context, rootNavigator: true)
           .pushReplacementNamed('/login');
@@ -230,6 +293,19 @@ class _LocalAuthScreenState extends State<LocalAuthScreen>
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final r = context.r;
+
+    // ── Estado de carga al navegar a home ──────────────────────────────────
+    if (_isLoadingHome) {
+      return Scaffold(
+        backgroundColor: Colors.transparent,
+        body: AnimatedGradientBackground(
+          isDark: isDark,
+          child: const Center(
+            child: CossmilLoadingScreen(label: 'Iniciando sesión...'),
+          ),
+        ),
+      );
+    }
 
     return Scaffold(
       backgroundColor: Colors.transparent,
@@ -308,7 +384,7 @@ class _LocalAuthScreenState extends State<LocalAuthScreen>
                   : (_errorMessage != null
                       ? Padding(
                           key: ValueKey(_errorMessage),
-                          padding: const EdgeInsets.symmetric(horizontal: 32),
+                          padding: EdgeInsets.symmetric(horizontal: r.pinKeypadPadding),
                           child: Text(
                             _errorMessage!,
                             textAlign: TextAlign.center,
@@ -376,20 +452,21 @@ class _LocalAuthScreenState extends State<LocalAuthScreen>
 
   Widget _buildCooldownBadge() {
     final secs = _cooldownRemaining?.inSeconds ?? 0;
+    final r = context.r;
     return Container(
       key: const ValueKey('cooldown'),
-      margin: const EdgeInsets.symmetric(horizontal: 32),
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+      margin: EdgeInsets.symmetric(horizontal: r.pinKeypadPadding),
+      padding: EdgeInsets.symmetric(horizontal: r.chipPaddingH, vertical: r.chipPaddingV * 1.5),
       decoration: BoxDecoration(
         color: AppColors.warning.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(context.r.radiusMd),
+        borderRadius: BorderRadius.circular(r.radiusMd),
         border: Border.all(color: AppColors.warning.withValues(alpha: 0.3)),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          const Icon(CupertinoIcons.timer, size: 16, color: AppColors.warning),
+          Icon(CupertinoIcons.timer, size: r.iconSm, color: AppColors.warning),
           SizedBox(width: context.r.spaceSm),
           Text(
             'Demasiados intentos. Intenta en ${secs}s',
@@ -489,13 +566,15 @@ class _LocalAuthScreenState extends State<LocalAuthScreen>
   }
 
   Widget _buildPinIndicators(bool isDark, AppResponsive r) {
-    final dotSize = r.isSmallPhone ? 14.0 : 16.0;
-    final dotMargin = r.isSmallPhone ? 8.0 : 12.0;
+    final dotSize = r.pinDotSize;
+    final dotMargin = r.pinDotMargin;
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
       children: List.generate(4, (index) {
         final isActive = index < _currentPinInput.length;
         final isError = _errorMessage != null;
+        final activeColor = isDark ? Colors.white : const Color(0xFF0284C7);
+        
         return AnimatedContainer(
           duration: const Duration(milliseconds: 180),
           margin: EdgeInsets.symmetric(horizontal: dotMargin),
@@ -506,11 +585,11 @@ class _LocalAuthScreenState extends State<LocalAuthScreen>
             color: isError && isActive
                 ? AppColors.error
                 : isActive
-                    ? AppColors.primary
-                    : (isDark ? Colors.white12 : Colors.grey.shade200),
+                    ? activeColor
+                    : (isDark ? Colors.white12 : const Color(0xFFBAE6FD)),
             border: isActive
                 ? Border.all(
-                    color: isError ? AppColors.error : AppColors.primary,
+                    color: isError ? AppColors.error : activeColor,
                     width: 2,
                   )
                 : null,
@@ -521,7 +600,7 @@ class _LocalAuthScreenState extends State<LocalAuthScreen>
   }
 
   Widget _buildKeypad(bool isDark, AppResponsive r) {
-    final keyGap = r.isSmallPhone ? 10.0 : 16.0;
+    final keyGap = r.pinKeyGap;
     return Padding(
       padding: EdgeInsets.symmetric(horizontal: r.pinKeypadPadding),
       child: Column(
@@ -555,7 +634,7 @@ class _LocalAuthScreenState extends State<LocalAuthScreen>
   Widget _buildNumberKey(int number, bool isDark, AppResponsive r) {
     final blocked = _isBlocked;
     final keySize = r.pinKeySize;
-    final fontSize = r.isSmallPhone ? 24.0 : 32.0;
+    final fontSize = r.pinKeyFontSize;
     final bgColor = isDark 
         ? AppColors.darkSurface.withValues(alpha: 0.8) 
         : Colors.white.withValues(alpha: 0.9);

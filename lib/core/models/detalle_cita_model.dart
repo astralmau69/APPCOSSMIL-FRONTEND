@@ -25,6 +25,7 @@ class DetalleCitaModel {
   final String estadoConfirmacion;
   final String estadoAtencion;
   final String fechaCreacion;
+  final String? fotoMedico;
 
   const DetalleCitaModel({
     required this.gestion,
@@ -48,9 +49,11 @@ class DetalleCitaModel {
     required this.estadoConfirmacion,
     required this.estadoAtencion,
     required this.fechaCreacion,
+    this.fotoMedico,
   });
 
   factory DetalleCitaModel.fromJson(Map<String, dynamic> json) {
+    final rawSucursal = (json['sucursal'] as String? ?? '').toDisplayCase;
     return DetalleCitaModel(
       gestion: json['gestion'] as int? ?? 0,
       idins: json['idins'] as int? ?? 0,
@@ -66,14 +69,25 @@ class DetalleCitaModel {
       numero: json['numero'] as int? ?? 0,
       medico: (json['medico'] as String? ?? '').toDisplayCase,
       obs: json['obs'] as String? ?? '',
-      sucursal: (json['sucursal'] as String? ?? '').toDisplayCase,
+      sucursal: _normalizeHospital(rawSucursal),
       codadm: json['codadm'] as String? ?? '',
       paciente: (json['paciente'] as String? ?? '').toDisplayCase,
       tipoConsulta: json['tipoConsulta'] as String?,
       estadoConfirmacion: json['estadoConfirmacion'] as String? ?? '',
       estadoAtencion: json['estadoAtencion'] as String? ?? '',
       fechaCreacion: json['fechaCreacion'] as String? ?? '',
+      fotoMedico: json['fotoMedico'] as String? ?? json['foto'] as String? ?? json['base64'] as String?,
     );
+  }
+
+  static String _normalizeHospital(String name) {
+    if (name.isEmpty) return '';
+    final upper = name.toUpperCase();
+    if (upper.contains('HMC')) return name.replaceAll(RegExp(r'HMC', caseSensitive: false), 'Hospital Militar Central');
+    if (upper.contains('HMU')) return name.replaceAll(RegExp(r'HMU', caseSensitive: false), 'Hospital Militar Universitario');
+    if (upper.contains('HMA')) return name.replaceAll(RegExp(r'HMA', caseSensitive: false), 'Hospital Militar de Área');
+    if (upper.contains('HMB')) return name.replaceAll(RegExp(r'HMB', caseSensitive: false), 'Hospital Militar de Base');
+    return name;
   }
 
   /// Fecha formateada dd/MM/yyyy.
@@ -96,5 +110,19 @@ class DetalleCitaModel {
       return '${dt.day.toString().padLeft(2, '0')}/${dt.month.toString().padLeft(2, '0')}/${dt.year} ${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
     } catch (_) {}
     return fechaCreacion;
+  }
+
+  /// Hora en formato 24h con ceros (ej: 8:00 -> 08:00)
+  String get formattedTime12h {
+    if (horaCita.isEmpty) return '';
+    try {
+      final parts = horaCita.split(':');
+      if (parts.length >= 2) {
+        final h = parts[0].padLeft(2, '0');
+        final m = parts[1].padLeft(2, '0');
+        return '$h:$m';
+      }
+    } catch (_) {}
+    return horaCita;
   }
 }

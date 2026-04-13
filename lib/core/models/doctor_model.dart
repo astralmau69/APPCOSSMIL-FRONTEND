@@ -37,4 +37,17 @@ class DoctorModel {
         'fullName': fullName,
         'office': office,
       };
+
+  /// Returns "Dra." if the last word of fullName ends with 'A' and has ≥3 chars,
+  /// otherwise returns "Dr.".
+  String get prefix {
+    final trimmed = fullName.trim();
+    if (trimmed.isEmpty) return 'Dr.';
+    final lastWord = trimmed.split(RegExp(r'\s+')).last.toUpperCase();
+    if (lastWord.endsWith('A') && lastWord.length >= 3) return 'Dra.';
+    return 'Dr.';
+  }
+
+  /// Full display name with the appropriate gender prefix.
+  String get displayName => '$prefix $fullName';
 }

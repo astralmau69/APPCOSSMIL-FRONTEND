@@ -20,17 +20,18 @@ class FloatingNavBar extends StatelessWidget {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final r = context.r;
     // Responsive sizing via centralized tokens
-    final barHeight = r.isSmallPhone ? 62.0 : (r.isMediumPhone ? 68.0 : 74.0);
+    final barHeight = r.navBarHeight;
     final hPadding = r.paddingH;
-    final bottomPadding = r.isSmallPhone ? 16.0 : 24.0;
+    final bottomPadding = r.navBarBottomInset;
+    final navRadius = r.navBarRadius;
 
     final backgroundColor = isDark
         ? AppColors.darkCard.withValues(alpha: 0.75)
         : Colors.white.withValues(alpha: 0.70);
 
     final borderColor = isDark
-        ? AppColors.darkBorder.withValues(alpha: 0.7)
-        : Colors.white.withValues(alpha: 0.5);
+        ? AppColors.darkBorder.withValues(alpha: 0.9)
+        : Colors.black.withValues(alpha: 0.15);
 
     final inactiveColor =
         isDark ? AppColors.darkTextSecondary : Colors.black.withValues(alpha: 0.5);
@@ -47,7 +48,7 @@ class FloatingNavBar extends StatelessWidget {
         child: Container(
           height: barHeight,
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(35),
+            borderRadius: BorderRadius.circular(navRadius),
             boxShadow: [
               BoxShadow(
                 color: shadowColor,
@@ -57,15 +58,15 @@ class FloatingNavBar extends StatelessWidget {
             ],
           ),
           child: ClipRRect(
-            borderRadius: BorderRadius.circular(35),
+            borderRadius: BorderRadius.circular(navRadius),
             child: BackdropFilter(
               // Reduced from 35 -> 12: same glass feel, ~8x cheaper on GPU.
               filter: ImageFilter.blur(sigmaX: 12.0, sigmaY: 12.0),
               child: Container(
                 decoration: BoxDecoration(
                   color: backgroundColor,
-                  border: Border.all(color: borderColor, width: 0.5),
-                  borderRadius: BorderRadius.circular(35),
+                  border: Border.all(color: borderColor, width: 1.5),
+                  borderRadius: BorderRadius.circular(navRadius),
                 ),
                 child: Row(
                   children: [
@@ -182,59 +183,60 @@ class _NavBarItem extends StatelessWidget {
       child: GestureDetector(
         onTap: onTap,
         behavior: HitTestBehavior.opaque,
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 220),
-          curve: Curves.easeOutCubic,
-          margin: EdgeInsets.symmetric(vertical: r.spaceXs, horizontal: 2),
-          padding: EdgeInsets.symmetric(horizontal: 2),
-          decoration: BoxDecoration(
-            color: isActive ? bgPillColor : Colors.transparent,
-            borderRadius: BorderRadius.circular(context.r.modalRadius),
-          ),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-            Stack(
-              clipBehavior: Clip.none,
+        child: Center(
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 220),
+            curve: Curves.easeOutCubic,
+            padding: EdgeInsets.symmetric(horizontal: r.spaceSm, vertical: r.spaceSm),
+            decoration: BoxDecoration(
+              color: isActive ? bgPillColor : Colors.transparent,
+              borderRadius: BorderRadius.circular(r.navItemPillRadius),
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
               children: [
-                AnimatedSwitcher(
-                  duration: const Duration(milliseconds: 200),
-                  transitionBuilder: (child, animation) =>
-                      ScaleTransition(scale: animation, child: child),
-                  child: iconWidget,
-                ),
-                if (badgeCount > 0)
-                  Positioned(
-                    right: -6,
-                    top: -4,
-                    child: Container(
-                      padding: EdgeInsets.all(r.spaceXs),
-                      decoration: BoxDecoration(
-                        color: AppColors.warning,
-                        shape: BoxShape.circle,
-                      ),
-                      child: Text(
-                        badgeCount > 99 ? '99+' : badgeCount.toString(),
-                        style: const TextStyle(
-                          color: Colors.black,
-                          fontWeight: FontWeight.bold,
+                Stack(
+                  clipBehavior: Clip.none,
+                  children: [
+                    AnimatedSwitcher(
+                      duration: const Duration(milliseconds: 200),
+                      transitionBuilder: (child, animation) =>
+                          ScaleTransition(scale: animation, child: child),
+                      child: iconWidget,
+                    ),
+                    if (badgeCount > 0)
+                      Positioned(
+                        right: -6,
+                        top: -4,
+                        child: Container(
+                          padding: EdgeInsets.all(r.spaceXs),
+                          decoration: BoxDecoration(
+                            color: AppColors.warning,
+                            shape: BoxShape.circle,
+                          ),
+                          child: Text(
+                            badgeCount > 99 ? '99+' : badgeCount.toString(),
+                            style: const TextStyle(
+                              color: Colors.black,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
                         ),
                       ),
-                    ),
+                  ],
+                ),
+                SizedBox(height: r.spaceXs),
+                AnimatedDefaultTextStyle(
+                  duration: const Duration(milliseconds: 130),
+                  style: TextStyle(
+                    fontSize: labelSize,
+                    fontWeight: isActive ? FontWeight.w700 : FontWeight.w500,
+                    color: isActive ? activeColor : inactiveColor,
                   ),
+                  child: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis),
+                ),
               ],
             ),
-            SizedBox(height: r.spaceXs),
-            AnimatedDefaultTextStyle(
-              duration: const Duration(milliseconds: 130),
-              style: TextStyle(
-                fontSize: labelSize,
-                fontWeight: isActive ? FontWeight.w700 : FontWeight.w500,
-                color: isActive ? activeColor : inactiveColor,
-              ),
-              child: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis),
-            ),
-          ],
           ),
         ),
       ),

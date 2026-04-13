@@ -1,6 +1,12 @@
+import 'dart:convert';
 import 'package:flutter/foundation.dart';
+import 'package:http/http.dart' as http;
+import 'package:package_info_plus/package_info_plus.dart';
 import '../config/app_config.dart';
 import '../constants/api_constants.dart';
+import '../storage/token_storage.dart';
+import '../models/doctor_agenda_model.dart';
+import '../models/time_slot_model.dart';
 import '../models/beneficiary_model.dart';
 import '../models/regional_model.dart';
 import '../models/specialty_model.dart';
@@ -12,6 +18,16 @@ import '../mock/mock_regional_data.dart';
 import '../mock/mock_reservas_data.dart';
 import '../mock/mock_specialty_data.dart';
 import 'api_client.dart';
+
+/// Excepción lanzada cuando el backend rechaza explícitamente la versión de la app.
+/// Distingue el rechazo de versión de errores de red/timeout para evitar
+/// mostrar el diálogo de actualización cuando simplemente no hay conectividad.
+class VersionOutdatedException implements Exception {
+  final String message;
+  const VersionOutdatedException(this.message);
+  @override
+  String toString() => message;
+}
 
 /// Servicio para endpoints de programación médica.
 /// Respeta `AppConfig.useMockData` para desarrollo offline.
@@ -30,25 +46,92 @@ class ProgramacionService {
   // ── Verificar Versión ───────────────────────────────────────────────────
 
   /// Verifica si la versión de la app es válida según el backend.
-  /// Lanza excepción si la versión no es válida o hay un error.
+  /// Lanza [VersionOutdatedException] SOLO cuando el backend rechaza explícitamente
+  /// la versión (data.data == false). Errores de red/timeout retornan true para
+  /// no bloquear al usuario innecesariamente.
   Future<bool> verificarVersion() async {
     if (AppConfig.useMockData) return true;
 
-    final response = await _api.get(
-      ApiConstants.verificaVersion(ApiConstants.appVersion),
-    );
+    try {
+      final info = await PackageInfo.fromPlatform();
+      final version = info.version;
 
-    return switch (response) {
-      ApiSuccess(:final data) => () {
+      final url = Uri.parse(
+          '${ApiConstants.baseUrl}${ApiConstants.verificaVersion(version)}');
+
+      // Incluir Bearer si hay token disponible (usuario con sesión).
+      // Sin token, se intenta sin auth por si el endpoint es público.
+      final token = await TokenStorage.getToken();
+      final headers = (token != null && token.isNotEmpty)
+          ? {'Authorization': 'Bearer $token'}
+          : <String, String>{};
+
+      final response =
+          await http.get(url, headers: headers).timeout(const Duration(seconds: 10));
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(utf8.decode(response.bodyBytes));
         if (data is Map<String, dynamic>) {
-            final isOk = data['data'] == true;
-            if (!isOk) {
-                final msg = data['message'] ?? 'Es necesario actualizar la versión del aplicativo.';
-                throw Exception(msg);
-            }
-            return true;
+          final isOk = data['data'] == true;
+          if (!isOk) {
+            final msg = data['message'] as String? ??
+                'Es necesario actualizar la versión del aplicativo.';
+            throw VersionOutdatedException(msg);
+          }
         }
         return true;
+      }
+
+      // 401 sin token: endpoint protegido, no se puede verificar sin sesión → dejar pasar.
+      // El login verificará de nuevo después de autenticar.
+      return true;
+    } on VersionOutdatedException {
+      rethrow;
+    } catch (_) {
+      // Error de red / timeout: no bloquear.
+      return true;
+    }
+  }
+
+  // ── Médicos con agenda por especialidad (nuevo flujo CEX) ──────────────
+
+  /// Lista de médicos disponibles para una especialidad y fecha.
+  /// Endpoint: medico-agenda-especialidad-cex/{idins}/{idsuc}/{fecha}/{idesp}
+  Future<List<DoctorAgendaModel>> getMedicosAgenda({
+    required int idins,
+    required int idsuc,
+    required String fecha,
+    required int idesp,
+  }) async {
+    final response = await _api.get(
+      ApiConstants.medicoAgendaEspecialidadCex(idins, idsuc, fecha, idesp),
+    );
+    return switch (response) {
+      ApiSuccess(:final data) => () {
+        final list = data is List ? data : (data is Map ? data['data'] as List? ?? [] : []);
+        return list
+            .whereType<Map<String, dynamic>>()
+            .map(DoctorAgendaModel.fromJson)
+            .where((d) => d.ase > 0) // solo médicos con fichas ASE disponibles
+            .toList();
+      }(),
+      ApiError(:final message) => throw Exception(message),
+    };
+  }
+
+  /// Horas disponibles de una agenda específica.
+  /// Endpoint: medico-agenda-fecha-horas/{idagenda}
+  Future<List<TimeSlotModel>> getHorasAgenda(String idagenda) async {
+    final response = await _api.get(
+      ApiConstants.medicoAgendaFechaHoras(idagenda),
+    );
+    return switch (response) {
+      ApiSuccess(:final data) => () {
+        final list = data is List ? data : (data is Map ? data['data'] as List? ?? [] : []);
+        return list
+            .whereType<Map<String, dynamic>>()
+            .map(TimeSlotModel.fromAgendaHora)
+            .toList();
       }(),
       ApiError(:final message) => throw Exception(message),
     };
@@ -462,6 +545,55 @@ class ProgramacionService {
       ApiSuccess() => () {
         localCanceledIds.add('${idtran}_$dr');
         return true;
+      }(),
+      ApiError(:final message) => throw Exception(message),
+    };
+  }
+
+  /// Registra la calificación del médico.
+  ///
+  /// Retorna:
+  ///   - `null` si se registró exitosamente.
+  ///   - Un [String] con el mensaje si ya existía calificación (estado 100)
+  ///     u otro estado informativo del backend.
+  /// Lanza [Exception] si hay error de red o servidor.
+  Future<String?> calificarMedico({
+    required String idmed,
+    required int idesp,
+    required String codadm,
+    required int calificacion,
+    required String obs,
+    required String uc,
+  }) async {
+    if (AppConfig.useMockData) {
+      await Future.delayed(const Duration(milliseconds: 600));
+      return null;
+    }
+
+    final response = await _api.post(
+      ApiConstants.medicoCalificacion(),
+      body: {
+        'idmed': idmed,
+        'idesp': idesp,
+        'codadm': codadm,
+        'calificacion': calificacion,
+        'obs': obs.isNotEmpty ? obs : 'SIN OBS',
+        'uc': uc,
+      },
+    );
+
+    return switch (response) {
+      ApiSuccess(:final data) => () {
+        // estado 100 = ya calificado
+        if (data is Map<String, dynamic>) {
+          final estado = data['estado'] ?? data['status'];
+          if (estado == 100 || estado?.toString() == '100') {
+            return data['mensaje']?.toString() ??
+                data['message']?.toString() ??
+                'Ya existe una calificación registrada para esta atención.';
+          }
+        }
+        return null; // éxito
       }(),
       ApiError(:final message) => throw Exception(message),
     };

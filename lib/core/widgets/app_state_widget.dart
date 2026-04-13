@@ -2,7 +2,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import '../constants/app_colors.dart';
 import '../extensions/responsive_extensions.dart';
-import '../theme/app_constants.dart';
+import 'cossmil_loader.dart';
 
 /// Shared loading / empty / error states to ensure consistent UX across all screens.
 ///
@@ -57,35 +57,7 @@ class AppStateWidget extends StatelessWidget {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     if (type == AppStateType.loading) {
-      return Center(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 60),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              SizedBox(
-                width: 44,
-                height: 44,
-                child: CircularProgressIndicator(
-                  strokeWidth: 3,
-                  valueColor: AlwaysStoppedAnimation<Color>(
-                    AppColors.accentForTheme(isDark),
-                  ),
-                  backgroundColor: AppColors.accentForTheme(isDark).withValues(alpha: 0.12),
-                ),
-              ),
-              SizedBox(height: context.r.spaceLg),
-              Text(
-                'Cargando...',
-                style: context.texts.bodyMedium.copyWith(
-                  color: AppColors.textSecondaryC(isDark),
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-            ],
-          ),
-        ),
-      );
+      return const CossmilLoadingScreen();
     }
 
     final isError = type == AppStateType.error;
@@ -100,23 +72,24 @@ class AppStateWidget extends StatelessWidget {
             ? 'No se pudo cargar la información.'
             : 'No hay información disponible.');
 
+    final r = context.r;
     return Center(
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 60),
+        padding: EdgeInsets.symmetric(horizontal: r.paddingH * 2, vertical: r.spaceXxl),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             // Icon container with subtle gradient background
             Container(
-              width: 80,
-              height: 80,
+              width: r.emptyIconSize,
+              height: r.emptyIconSize,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
                 color: iconColor.withValues(alpha: 0.12),
               ),
-              child: Icon(iconData, size: 36, color: iconColor),
+              child: Icon(iconData, size: r.emptyIconSize * 0.50, color: iconColor),
             ),
-            SizedBox(height: context.r.spaceLg),
+            SizedBox(height: r.spaceLg),
             Text(
               titleText,
               style: context.texts.headlineMedium.copyWith(
@@ -124,43 +97,52 @@ class AppStateWidget extends StatelessWidget {
               ),
               textAlign: TextAlign.center,
             ),
-            SizedBox(height: context.r.spaceSm),
-            Text(
-              msgText,
-              style: context.texts.bodyMedium.copyWith(
-                color: AppColors.textSecondaryC(isDark),
-                height: 1.5,
-              ),
+            SizedBox(height: r.spaceSm),
+            RichText(
               textAlign: TextAlign.center,
+              text: TextSpan(
+                children: _parseMarkdown(
+                  msgText, 
+                  context.texts.bodyMedium.copyWith(
+                    color: AppColors.textSecondaryC(isDark),
+                    height: 1.5,
+                  ),
+                  context.texts.bodyMedium.copyWith(
+                    color: AppColors.textPrimaryC(isDark),
+                    fontWeight: FontWeight.w800,
+                    height: 1.5,
+                  ),
+                ),
+              ),
             ),
             if (onRetry != null) ...[
-              SizedBox(height: context.r.spaceXl),
+              SizedBox(height: r.spaceXl),
               Container(
-                height: 48,
+                height: r.buttonHeight,
                 decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(context.r.radiusMd),
+                  borderRadius: BorderRadius.circular(r.radiusMd),
                   border: Border.all(
                     color: isDark ? AppColors.darkBorder : const Color(0xFF191C1E).withValues(alpha: 0.15),
                     width: 0.8,
                   ),
                 ),
                 child: CupertinoButton(
-                  padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 0),
+                  padding: EdgeInsets.symmetric(horizontal: r.paddingH * 1.5, vertical: 0),
                   color: AppColors.accentForTheme(isDark),
-                  borderRadius: BorderRadius.circular(context.r.radiusMd),
+                  borderRadius: BorderRadius.circular(r.radiusMd),
                   onPressed: onRetry,
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       Icon(
                         CupertinoIcons.arrow_clockwise,
-                        size: 16,
+                        size: r.iconSm,
                         color: isDark ? Colors.black : AppColors.white,
                       ),
-                      SizedBox(width: context.r.spaceSm),
+                      SizedBox(width: r.spaceSm),
                       Text(
                         retryLabel ?? 'Reintentar',
-                        style: TextStyle(
+                        style: context.texts.labelLarge.copyWith(
                           fontWeight: FontWeight.w700,
                           color: isDark ? Colors.black : AppColors.white,
                         ),
@@ -174,6 +156,22 @@ class AppStateWidget extends StatelessWidget {
         ),
       ),
     );
+  }
+  List<TextSpan> _parseMarkdown(String text, TextStyle normalStyle, TextStyle boldStyle) {
+    if (!text.contains('**')) {
+      return [TextSpan(text: text, style: normalStyle)];
+    }
+    final spans = <TextSpan>[];
+    final parts = text.split('**');
+    for (int i = 0; i < parts.length; i++) {
+      if (parts[i].isEmpty) continue;
+      final isBold = i % 2 != 0; // Odd indices are inside **...**
+      spans.add(TextSpan(
+        text: parts[i],
+        style: isBold ? boldStyle : normalStyle,
+      ));
+    }
+    return spans;
   }
 }
 

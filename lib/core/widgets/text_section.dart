@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import '../theme/app_constants.dart';
 import '../extensions/responsive_extensions.dart';
 
 /// Widget reutilizable para bloques de texto con título y cuerpo.

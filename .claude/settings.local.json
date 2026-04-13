@@ -6,7 +6,30 @@
       "Bash(mv \"D:/app/Pre/temp-clone\"/* \"D:/app/Pre/temp-clone\"/.* \"D:/app/Pre/\")",
       "Bash(rm -rf \"D:/app/Pre/temp-clone\")",
       "Bash(grep -E \"\\\\.\\(dart\\)$\")",
-      "Bash(flutter analyze:*)"
+      "Bash(flutter analyze:*)",
+      "Bash(grep -v \"//\")",
+      "Bash(grep -v \"^$\")",
+      "Bash(find /d/app/Post/android/app/src/main/res/mipmap* -type f)",
+      "Bash(grep -r \"kDebugMode\\\\|kReleaseMode\\\\|debugMode\" /d/app/Post/lib/core/services/*.dart)",
+      "Bash(find:*)",
+      "Bash(grep -n \"routes\\\\|initialRoute\\\\|'/'\\\\\\\\|splash\\\\|local-auth\\\\|LocalAuth\" D:/app/Post/lib/app.dart)",
+      "Bash(grep:*)",
+      "Bash(flutter clean:*)",
+      "Bash(flutter pub:*)",
+      "Bash(taskkill /F /IM \"adb.exe\")",
+      "Bash(taskkill /F /IM \"java.exe\")",
+      "Bash(Remove-Item -Force \"D:\\\\app\\\\Post\\\\build\\\\app\\\\outputs\\\\apk\\\\debug\\\\app-debug.apk\" -ErrorAction SilentlyContinue)",
+      "Bash(cmd:*)",
+      "Bash(powershell -NoProfile -Command ':*)",
+      "Bash(powershell:*)",
+      "Bash(where handle64.exe handle.exe)",
+      "Read(//c/Windows/System32/**)",
+      "Read(//c//**)",
+      "Bash(dart:*)",
+      "Bash(node:*)",
+      "Bash(flutter --version)",
+      "Bash(git checkout:*)",
+      "Bash(git add:*)"
     ]
   }
 }

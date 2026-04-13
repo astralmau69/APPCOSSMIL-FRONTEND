@@ -1,4 +1,6 @@
 import 'dart:convert';
+import 'dart:async';
+import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import '../config/app_config.dart';
@@ -24,9 +26,12 @@ class AuthSuccess extends AuthResult {
   const AuthSuccess(this.token);
 }
 
+enum AuthErrorType { wrongPassword, notFound, disabled, network, server, unknown }
+
 class AuthError extends AuthResult {
   final String message;
-  const AuthError(this.message);
+  final AuthErrorType type;
+  const AuthError(this.message, [this.type = AuthErrorType.unknown]);
 }
 
 /// Servicio de autenticación.
@@ -107,6 +112,7 @@ class AuthService {
           age: tokenModel.edad,
           gender: tokenModel.genero,
           matricula: tokenModel.matricula.trim(),
+          grado: tokenModel.grado.isNotEmpty ? tokenModel.grado : 'Asegurado',
         );
 
         final loggedUser = UserModel(
@@ -134,8 +140,30 @@ class AuthService {
           loggedUser.beneficiaries.insert(0, selfAsFallback);
         }
 
+        // Forzar que el Beneficiario Titular tome el grado militar (rank) del modelo principal 
+        // si el endpoint de beneficiarios no lo trajo.
+        final enforcedBeneficiaries = loggedUser.beneficiaries.map((b) {
+          if (b.isTitular && b.grado.isEmpty) {
+            return BeneficiaryModel(
+              id: b.id,
+              fullName: b.fullName,
+              relationship: b.relationship,
+              age: b.age,
+              gender: b.gender,
+              matricula: b.matricula,
+              photoBase64: b.photoBase64,
+              grado: loggedUser.rank,
+              serviceStatus: b.serviceStatus,
+            );
+          }
+          return b;
+        }).toList();
+
         // Actualizar sesión global
-        UserSession.currentUser = loggedUser;
+        UserSession.currentUser = loggedUser.copyWith(beneficiaries: enforcedBeneficiaries);
+
+        // Fallback global para que displayTitle siempre encuentre el rango del titular
+        BeneficiaryModel.titularRankFallback = loggedUser.rank;
 
         debugPrint('✅ UserSession poblada: ${UserSession.currentUser.fullName}');
         debugPrint('👨‍👩‍👧‍👦 Beneficiarios en sesión: ${UserSession.currentUser.beneficiaries.length}');
@@ -152,17 +180,27 @@ class AuthService {
           if (extraData != null) {
             titularPhoto = cleanBase64(extraData['foto2'] as String? ?? '');
             
-            final eBloodType = (extraData['grupoSanguineo'] as String? ?? extraData['grupo_sanguineo'] as String? ?? '').trim();
-            final eAllergies = (extraData['alergias'] as String? ?? extraData['allergies'] as String? ?? '').trim();
+            final eBloodType = (extraData['gruposan'] as String? ?? extraData['grupoSanguineo'] as String? ?? extraData['grupo_sanguineo'] as String? ?? '').trim();
+            final eAllergies = (extraData['alergia'] as String? ?? extraData['alergias'] as String? ?? extraData['allergies'] as String? ?? '').trim();
+            final eGrado = (extraData['grado']?.toString() ?? 
+                            extraData['Grado']?.toString() ?? 
+                            extraData['rango']?.toString() ?? 
+                            extraData['Rango']?.toString() ?? '').trim();
+            final eRefe4 = (extraData['refe4']?.toString() ?? '').trim();
 
             UserSession.currentUser = UserSession.currentUser.copyWith(
               photoBase64: titularPhoto,
               birthDate: extraData['fecnac'] as String? ?? '',
               bloodType: eBloodType.isNotEmpty ? eBloodType : UserSession.currentUser.bloodType,
               allergies: eAllergies.isNotEmpty ? eAllergies : UserSession.currentUser.allergies,
+              rank: eGrado.isNotEmpty ? eGrado : UserSession.currentUser.rank,
+              serviceStatus: eRefe4.isNotEmpty ? eRefe4 : UserSession.currentUser.serviceStatus,
             );
 
-            // Actualizar la foto en la lista de beneficiarios para el titular
+            // Actualizar fallback con el grado real del endpoint de foto
+            BeneficiaryModel.titularRankFallback = UserSession.currentUser.rank;
+
+            // Actualizar la foto y datos extra en la lista de beneficiarios para el titular
             final updatedBeneficiaries = UserSession.currentUser.beneficiaries.map((b) {
               if (b.isTitular) {
                 return BeneficiaryModel(
@@ -173,6 +211,8 @@ class AuthService {
                   gender: b.gender.isNotEmpty ? b.gender : tokenModel.genero,
                   matricula: b.matricula,
                   photoBase64: titularPhoto ?? '',
+                  grado: eGrado.isNotEmpty ? eGrado : UserSession.currentUser.rank,
+                  serviceStatus: eRefe4.isNotEmpty ? eRefe4 : UserSession.currentUser.serviceStatus,
                 );
               }
               return b;
@@ -199,7 +239,10 @@ class AuthService {
             final finalBeneficiaries = UserSession.currentUser.beneficiaries.map((b) {
               final idx = otherBeneficiaries.indexWhere((ob) => ob.id == b.id);
               if (idx != -1 && results[idx] != null) {
-                final photo = cleanBase64(results[idx]!['foto2'] as String? ?? '');
+                final data = results[idx]!;
+                final photo = cleanBase64(data['foto2'] as String? ?? '');
+                final bGrado = (data['grado'] as String? ?? '').trim();
+                final bRefe4 = (data['refe4'] as String? ?? '').trim();
                 if (kDebugMode && photo.isNotEmpty) {
                   debugPrint('   ✅ Foto obtenida para: ${otherBeneficiaries[idx].fullName}');
                 }
@@ -211,6 +254,8 @@ class AuthService {
                   gender: b.gender,
                   matricula: b.matricula,
                   photoBase64: photo,
+                  grado: bGrado,
+                  serviceStatus: bRefe4,
                 );
               }
               return b;
@@ -222,17 +267,36 @@ class AuthService {
           debugPrint('❌ Error cargando fotos de familia: $e');
         }
 
+        // Re-guardar el displayName CON rango militar (el primer save fue antes de fetchProfileExtraData)
+        await SecurityService.saveDisplayName(UserSession.currentUser.displayName);
+
         // Persistir sesión completa (nombre, fotos, matrícula, etc.)
         await SessionRestoreService.saveUserSession(UserSession.currentUser);
 
         return AuthSuccess(tokenModel);
       }
 
-      if (response.statusCode == 401) {
-        return const AuthError('Usuario o contraseña incorrectos.');
+      if (response.statusCode >= 400 && response.statusCode < 500) {
+        try {
+          final errJson = jsonDecode(utf8.decode(response.bodyBytes)) as Map<String, dynamic>;
+          final desc = (errJson['error_description'] as String? ?? '').toLowerCase();
+          if (desc.contains('disabled') || desc.contains('bloqueado') || desc.contains('locked') || desc.contains('inact')) {
+            return const AuthError('Tu cuenta está inactiva o bloqueada. Comunícate con COSSMIL.', AuthErrorType.disabled);
+          }
+        } catch (_) {}
+        return const AuthError('Ingrese sus credenciales correctos.\nVerifique su matrícula y contraseña.', AuthErrorType.wrongPassword);
       }
 
-      return const AuthError('El servidor no está disponible en este momento. Intenta más tarde.');
+      if (response.statusCode >= 500) {
+        // El servidor COSSMIL frecuentemente retorna 500 frente a errores de autenticación
+        return const AuthError('Ingrese sus credenciales correctos.\nVerifique su matrícula y contraseña.', AuthErrorType.wrongPassword);
+      }
+
+      return const AuthError('Ingrese sus credenciales correctos.\nVerifique su matrícula y contraseña.', AuthErrorType.wrongPassword);
+    } on SocketException {
+      return const AuthError('Sin conexión a internet. Verifica tu red e inténtalo de nuevo.', AuthErrorType.network);
+    } on TimeoutException {
+      return const AuthError('La conexión tardó demasiado. Verifica tu red e inténtalo de nuevo.', AuthErrorType.network);
     } on Exception catch (e) {
       return AuthError(ErrorMapper.message(e, context: ErrorContext.login));
     }
@@ -316,6 +380,41 @@ class AuthService {
       ApiSuccess() => true,
       ApiError(:final message) => throw Exception(message),
     };
+  }
+
+  /// Cambia solo la contraseña del usuario.
+  Future<void> changePassword({
+    required int idper,
+    required String newPassword,
+  }) async {
+    final response = await _api.put(
+      ApiConstants.changePassword(idper),
+      body: {'pwd': newPassword},
+    );
+    switch (response) {
+      case ApiSuccess():
+        return;
+      case ApiError(:final message):
+        throw Exception(message);
+    }
+  }
+
+  /// Actualiza correo y/o teléfono del usuario.
+  Future<void> updateProfile({
+    required int idper,
+    required String mail,
+    required String fon,
+  }) async {
+    final response = await _api.put(
+      ApiConstants.updateProfile(idper),
+      body: {'mail': mail, 'fon': fon},
+    );
+    switch (response) {
+      case ApiSuccess():
+        return;
+      case ApiError(:final message):
+        throw Exception(message);
+    }
   }
 
   /// Limpia un string base64 que puede contener:

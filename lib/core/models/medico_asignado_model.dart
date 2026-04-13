@@ -68,19 +68,19 @@ class MedicoAsignadoModel {
       );
 
   /// Convierte horas a TimeSlotModel para compatibilidad con la UI.
-  /// Backend: `estado: true` = disponible, `estado: false` = ocupada.
+  /// Backend: `estado: false` = disponible, `estado: true` = ocupada.
   List<TimeSlotModel> toTimeSlots() => horas
       .map((h) => TimeSlotModel(
             time: h.hora,
-            isAvailable: h.estado,
-            statusLevel: h.estado ? 'high' : 'none',
+            isAvailable: !h.estado,
+            statusLevel: !h.estado ? 'high' : 'none',
             idhora: h.idhora,
             numero: h.numero,
           ))
       .toList();
 
-  /// Fichas disponibles (horas con estado true).
-  int get fichasDisponibles => horas.where((h) => h.estado).length;
+  /// Fichas disponibles (horas con estado false).
+  int get fichasDisponibles => horas.where((h) => !h.estado).length;
 }
 
 /// Hora individual de la agenda médica.

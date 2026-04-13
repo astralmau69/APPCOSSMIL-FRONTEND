@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import '../constants/app_colors.dart';
 import '../extensions/responsive_extensions.dart';
-import '../theme/app_constants.dart';
 
 /// Shimmer animation wrapper — children receive the animated [color] via builder.
 ///

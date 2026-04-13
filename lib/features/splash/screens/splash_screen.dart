@@ -4,10 +4,9 @@ import 'package:flutter/services.dart';
 
 import 'package:audioplayers/audioplayers.dart';
 
-import '../../../core/constants/app_colors.dart';
-import '../../../core/utils/error_mapper.dart';
+import '../../../core/theme/sound_manager.dart';
 
-import '../../../core/theme/app_constants.dart';
+import '../../../core/constants/app_colors.dart';
 
 import '../../../core/storage/token_storage.dart';
 
@@ -19,10 +18,11 @@ import '../../../core/services/location_service.dart';
 
 import '../../../core/services/notification_service.dart';
 
+import 'package:url_launcher/url_launcher.dart';
 import '../../../core/animations/animated_gradient_background.dart';
 import '../../../core/extensions/responsive_extensions.dart';
 import '../../../core/services/programacion_service.dart';
-import '../../../core/widgets/cossmil_ios_alert.dart';
+import '../../../core/storage/version_migration_service.dart';
 
 class SplashScreen extends StatefulWidget {
 
@@ -277,14 +277,20 @@ class _SplashScreenState extends State<SplashScreen>
 
 
   Future<void> _runSequence() async {
+    // Verificar si es una versión nueva y limpiar datos si es necesario
+    if (!widget.isOverlay) {
+      final wasWiped = await VersionMigrationService.runIfNeeded();
+      if (wasWiped) {
+        debugPrint('🚀 Versión actualizada detectada: Limpieza de datos ejecutada (borrón y cuenta nueva).');
+      }
+    }
 
     // Initial delay
-
     await Future.delayed(const Duration(milliseconds: 300));
 
 
 
-    if (!widget.isOverlay && mounted) {
+    if (!widget.isOverlay && mounted && SoundManager.isEnabled && !await SoundManager.isDeviceSilentOrVibrate()) {
 
       try {
 
@@ -294,12 +300,11 @@ class _SplashScreenState extends State<SplashScreen>
 
       } catch (_) {}
 
+    }
 
-
-      // Solicitar permisos de ubicación y notificaciones durante el splash
-
+    // Solicitar permisos de ubicación y notificaciones SIEMPRE durante el splash
+    if (!widget.isOverlay) {
       _requestPermissions();
-
     }
 
 
@@ -412,21 +417,23 @@ class _SplashScreenState extends State<SplashScreen>
           }
 
           // Verificación de Versión Obligatoria
+          // Solo VersionOutdatedException bloquea el acceso; errores de red son ignorados.
           try {
             await ProgramacionService().verificarVersion();
-          } catch (e) {
+          } on VersionOutdatedException catch (e) {
             if (!mounted) return;
-            final raw = e.toString().replaceAll('Exception: ', '');
-            final isVersionMsg = raw.toLowerCase().contains('versión') || raw.toLowerCase().contains('actualizar');
-            final msg = isVersionMsg ? raw : ErrorMapper.message(e, context: ErrorContext.verificarVersion);
-            await _showUpdateDialog(msg);
+            await _showUpdateDialog(e.message);
             return; // Bloquea la navegación permanentemente
+          } catch (_) {
+            // Error de red / timeout: no bloquear al usuario.
           }
 
+          if (!mounted) return;
           if (hasPin) {
             Navigator.pushReplacementNamed(context, '/local-auth');
           } else {
             // Sin PIN/biométrico → no mantener sesión, forzar re-login
+            await NotificationService.cancelAllReminders();
             await TokenStorage.deleteToken();
             await SessionRestoreService.clearUserSession();
             if (!mounted) return;
@@ -435,6 +442,18 @@ class _SplashScreenState extends State<SplashScreen>
 
         } else {
 
+          // Sin sesión: verificar versión antes de ir al login.
+          try {
+            await ProgramacionService().verificarVersion();
+          } on VersionOutdatedException catch (e) {
+            if (!mounted) return;
+            await _showUpdateDialog(e.message);
+            return; // Bloquea la navegación permanentemente
+          } catch (_) {
+            // Error de red / timeout: no bloquear.
+          }
+
+          if (!mounted) return;
           Navigator.pushReplacementNamed(context, '/login');
 
         }
@@ -466,7 +485,7 @@ class _SplashScreenState extends State<SplashScreen>
   Future<void> _showUpdateDialog(String message) async {
     return showDialog<void>(
       context: context,
-      barrierDismissible: false, // Bloquear salida
+      barrierDismissible: false,
       builder: (BuildContext ctx) {
         final isDark = Theme.of(ctx).brightness == Brightness.dark;
         return PopScope(
@@ -476,11 +495,11 @@ class _SplashScreenState extends State<SplashScreen>
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
             title: Row(
               children: [
-                const Icon(Icons.system_update, color: AppColors.warning, size: 28),
+                const Icon(Icons.system_update_rounded, color: AppColors.warning, size: 28),
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
-                    'Actualización Requerida',
+                    'Nueva versión disponible',
                     style: TextStyle(
                       fontWeight: FontWeight.w800,
                       color: AppColors.textPrimaryC(isDark),
@@ -490,10 +509,52 @@ class _SplashScreenState extends State<SplashScreen>
                 ),
               ],
             ),
-            content: Text(
-              message,
-              style: TextStyle(color: AppColors.textSecondaryC(isDark), height: 1.4),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Tu aplicación necesita actualizarse para continuar usando COSSMIL.',
+                  style: TextStyle(
+                    color: AppColors.textSecondaryC(isDark),
+                    height: 1.4,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Visita el sitio web oficial de COSSMIL y descarga la última versión desde ahí.',
+                  style: TextStyle(
+                    color: AppColors.textSecondaryC(isDark),
+                    height: 1.4,
+                  ),
+                ),
+              ],
             ),
+            actionsAlignment: MainAxisAlignment.center,
+            actions: [
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton.icon(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.warning,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                  ),
+                  icon: const Icon(Icons.language_rounded, size: 18),
+                  label: const Text(
+                    'Ir a cossmil.mil.bo para actualizar',
+                    style: TextStyle(fontWeight: FontWeight.w700),
+                  ),
+                  onPressed: () => launchUrl(
+                    Uri.parse('https://www.cossmil.mil.bo/#/'),
+                    mode: LaunchMode.externalApplication,
+                  ),
+                ),
+              ),
+            ],
           ),
         );
       },

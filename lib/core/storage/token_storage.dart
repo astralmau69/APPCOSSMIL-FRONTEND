@@ -35,6 +35,13 @@ class TokenStorage {
     await _storage.delete(key: _keyRefreshToken);
   }
 
+  /// Borra TODO el almacenamiento seguro de la app.
+  /// Usar al cerrar sesión para garantizar que no queden datos residuales.
+  /// Esto también evita que los datos persistan si el usuario desinstala y reinstala.
+  static Future<void> wipeAll() async {
+    await _storage.deleteAll();
+  }
+
   /// Verifica si el usuario tiene sesión activa.
   static Future<bool> hasToken() async {
     final token = await getToken();

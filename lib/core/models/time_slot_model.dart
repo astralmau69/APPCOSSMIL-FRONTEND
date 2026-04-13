@@ -13,20 +13,14 @@ class TimeSlotModel {
     this.numero,
   });
 
-  /// Convierte hora 24h "8:00" → "8:00 AM", "14:30" → "2:30 PM"
+  /// Hora en formato 24h con ceros → "08:00", "14:30"
   String get timeFormatted {
     try {
       final parts = time.split(':');
       if (parts.length < 2) return time;
-      int hour = int.parse(parts[0]);
-      final min = parts[1];
-      final period = hour >= 12 ? 'PM' : 'AM';
-      if (hour == 0) {
-        hour = 12;
-      } else if (hour > 12) {
-        hour -= 12;
-      }
-      return '$hour:$min $period';
+      final h = parts[0].padLeft(2, '0');
+      final m = parts[1].padLeft(2, '0');
+      return '$h:$m';
     } catch (_) {
       return time;
     }
@@ -40,6 +34,19 @@ class TimeSlotModel {
           false,
       statusLevel: json['nivel'] as String? ??
           json['statusLevel'] as String?,
+    );
+  }
+
+  /// Para el endpoint medico-agenda-fecha-horas:
+  /// estado: false = disponible, estado: true = ocupado.
+  factory TimeSlotModel.fromAgendaHora(Map<String, dynamic> json) {
+    final ocupado = json['estado'] as bool? ?? true;
+    return TimeSlotModel(
+      time:        json['hora'] as String? ?? '',
+      isAvailable: !ocupado,
+      statusLevel: ocupado ? 'none' : 'high',
+      idhora:      json['idhora'] as String?,
+      numero:      json['numero'] as int?,
     );
   }
 

@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:audioplayers/audioplayers.dart';
+import 'package:url_launcher/url_launcher.dart';
+import 'package:package_info_plus/package_info_plus.dart';
+import '../../../core/theme/sound_manager.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/theme/app_constants.dart';
 import '../../../core/extensions/responsive_extensions.dart';
@@ -10,7 +13,7 @@ import '../../../core/theme/theme_manager.dart';
 import '../../../core/storage/token_storage.dart';
 import '../../../core/services/auth_service.dart';
 import '../../../core/services/programacion_service.dart';
-import '../../../core/utils/error_mapper.dart';
+import '../../../core/services/session_restore_service.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -23,11 +26,17 @@ class _LoginScreenState extends State<LoginScreen>
     with TickerProviderStateMixin {
   final _usernameController = TextEditingController();
   final _passwordController = TextEditingController();
+  final _scrollController = ScrollController();
   final _authService = AuthService();
+  final _usernameFocus = FocusNode();
+  final _passwordFocus = FocusNode();
 
   bool _isLoading = false;
   bool _obscurePassword = true;
   String? _errorMessage;
+  bool _isVersionError = false;
+  AuthErrorType _errorType = AuthErrorType.unknown;
+  String _appVersion = '';
   AudioPlayer? _audioPlayer;
 
   late final AnimationController _logoCtrl;
@@ -90,9 +99,99 @@ class _LoginScreenState extends State<LoginScreen>
         _playLoginAudio();
       }
     });
+
+    PackageInfo.fromPlatform().then((info) {
+      if (mounted) setState(() => _appVersion = info.version);
+    });
+
+    // Verificar versión al cargar el login — muestra modal si está desactualizada.
+    WidgetsBinding.instance.addPostFrameCallback((_) => _checkVersionOnLoad());
+  }
+
+  Future<void> _checkVersionOnLoad() async {
+    try {
+      await ProgramacionService().verificarVersion();
+    } on VersionOutdatedException catch (e) {
+      if (!mounted) return;
+      _showVersionModal(e.message);
+    } catch (_) {
+      // Sin conexión / error de red: no bloquear.
+    }
+  }
+
+  void _showVersionModal(String message) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => PopScope(
+        canPop: false,
+        child: AlertDialog(
+          backgroundColor: AppColors.cardBg(isDark),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          title: Row(
+            children: [
+              const Icon(Icons.system_update_rounded, color: AppColors.warning, size: 28),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  'Nueva versión disponible',
+                  style: TextStyle(
+                    fontWeight: FontWeight.w800,
+                    color: AppColors.textPrimaryC(isDark),
+                    fontSize: 18,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Tu aplicación necesita actualizarse para continuar usando COSSMIL.',
+                style: TextStyle(color: AppColors.textSecondaryC(isDark), height: 1.4),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Visita el sitio web oficial de COSSMIL y descarga la última versión desde ahí.',
+                style: TextStyle(color: AppColors.textSecondaryC(isDark), height: 1.4),
+              ),
+            ],
+          ),
+          actionsAlignment: MainAxisAlignment.center,
+          actions: [
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.warning,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                ),
+                icon: const Icon(Icons.language_rounded, size: 18),
+                label: const Text(
+                  'Ir a cossmil.mil.bo para actualizar',
+                  style: TextStyle(fontWeight: FontWeight.w700),
+                ),
+                onPressed: () => launchUrl(
+                  Uri.parse('https://www.cossmil.mil.bo/#/'),
+                  mode: LaunchMode.externalApplication,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   Future<void> _playLoginAudio() async {
+    if (!SoundManager.isEnabled) return;
     try {
       _audioPlayer = AudioPlayer();
       await _audioPlayer!.play(AssetSource('vof/AUDIO 2. LOGIN.mp3'));
@@ -114,14 +213,24 @@ class _LoginScreenState extends State<LoginScreen>
     final username = _usernameController.text.trim();
     final password = _passwordController.text.trim();
 
-    if (username.isEmpty || password.isEmpty) {
-      setState(() => _errorMessage = 'Ingrese su matrícula y clave.');
+    if (username.isEmpty && password.isEmpty) {
+      setState(() { _errorMessage = 'Ingresa tu matrícula y contraseña para continuar.'; _errorType = AuthErrorType.unknown; });
+      return;
+    }
+    if (username.isEmpty) {
+      setState(() { _errorMessage = 'Ingresa tu matrícula.'; _errorType = AuthErrorType.unknown; });
+      return;
+    }
+    if (password.isEmpty) {
+      setState(() { _errorMessage = 'Ingresa tu contraseña.'; _errorType = AuthErrorType.unknown; });
       return;
     }
 
     setState(() {
       _isLoading = true;
       _errorMessage = null;
+      _isVersionError = false;
+      _errorType = AuthErrorType.unknown;
     });
 
     final result = await _authService.login(
@@ -135,19 +244,22 @@ class _LoginScreenState extends State<LoginScreen>
       case AuthSuccess(:final token):
         if (!mounted) return;
 
+        // Guardar credenciales cifradas para re-login silencioso en desbloqueo.
+        await SessionRestoreService.storeCredentials(username, password);
+
+        // Verificar versión con token ya disponible (chequeo definitivo).
         try {
-          final _progService = ProgramacionService();
-          await _progService.verificarVersion();
-        } catch (e) {
-          // Si es error de versión, mostrar el mensaje del backend (contiene instrucciones de actualización)
-          final raw = e.toString().replaceAll('Exception: ', '');
-          final isVersionMsg = raw.toLowerCase().contains('versión') || raw.toLowerCase().contains('actualizar');
-          setState(() {
-            _isLoading = false;
-            _errorMessage = isVersionMsg ? raw : ErrorMapper.message(e, context: ErrorContext.verificarVersion);
-          });
-          await TokenStorage.deleteToken();
+          await ProgramacionService().verificarVersion();
+        } on VersionOutdatedException catch (e) {
+          if (!mounted) return;
+          setState(() => _isLoading = false);
+          // Borrar token para que no quede sesión activa con versión inválida.
+          await TokenStorage.wipeAll();
+          if (!mounted) return;
+          _showVersionModal(e.message);
           return;
+        } catch (_) {
+          // Error de red: dejar pasar.
         }
 
         if (!mounted) return;
@@ -160,10 +272,11 @@ class _LoginScreenState extends State<LoginScreen>
           Navigator.pushReplacementNamed(context, '/home');
         }
 
-      case AuthError(:final message):
+      case AuthError(:final message, :final type):
         setState(() {
           _isLoading = false;
           _errorMessage = message;
+          _errorType = type;
         });
     }
   }
@@ -176,11 +289,14 @@ class _LoginScreenState extends State<LoginScreen>
 
     // Reproducir audio de advertencia de seguridad
     AudioPlayer? warningPlayer;
-    try {
-      warningPlayer = AudioPlayer();
-      await warningPlayer.play(AssetSource('vof/AUDIO 3. ADVERTENCIA DE SEGURIDAD.mp3'));
-    } catch (_) {}
+    if (SoundManager.isEnabled) {
+      try {
+        warningPlayer = AudioPlayer();
+        await warningPlayer.play(AssetSource('vof/AUDIO 3. ADVERTENCIA DE SEGURIDAD.mp3'));
+      } catch (_) {}
+    }
 
+    if (!mounted) return;
     await showGeneralDialog(
       context: context,
       barrierDismissible: false,
@@ -216,8 +332,8 @@ class _LoginScreenState extends State<LoginScreen>
                 SizedBox(height: r.spaceXl),
                 // Warning icon
                 Container(
-                  width: 72,
-                  height: 72,
+                  width: r.avatarMd,
+                  height: r.avatarMd,
                   decoration: BoxDecoration(
                     color: AppColors.warning.withValues(alpha: 0.12),
                     shape: BoxShape.circle,
@@ -306,26 +422,31 @@ class _LoginScreenState extends State<LoginScreen>
   @override
   Widget build(BuildContext context) {
     final r = context.r;
-    final logoSize = r.isSmallPhone ? 190.0
-        : r.isMediumPhone ? 220.0
-        : 250.0;
+    final logoSize = r.logoSize;
 
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
       backgroundColor: Colors.transparent,
+      resizeToAvoidBottomInset: true, // <-- permite que el teclado suba el contenido
       body: AnimatedGradientBackground(
         isDark: isDark,
         child: SafeArea(
-        child: Stack(
-          children: [
-            SingleChildScrollView(
-          physics: const BouncingScrollPhysics(),
-          padding: r.screenPadding,
-          child: ConstrainedBox(
-            constraints: BoxConstraints(
-              minHeight: r.screenHeight - MediaQuery.of(context).padding.vertical,
-            ),
+          child: Stack(
+            children: [
+              SingleChildScrollView(
+                controller: _scrollController,
+                physics: const BouncingScrollPhysics(),
+                padding: EdgeInsets.only(
+                  left: r.paddingH,
+                  right: r.paddingH,
+                  bottom: MediaQuery.of(context).viewInsets.bottom + 20,
+                  top: 20,
+                ),
+                child: ConstrainedBox(
+                  constraints: BoxConstraints(
+                    minHeight: r.screenHeight - MediaQuery.of(context).padding.vertical - 40,
+                  ),
             child: Center(
               child: ResponsiveContainer(
                 maxWidth: r.isTablet ? 450 : double.infinity,
@@ -399,10 +520,10 @@ class _LoginScreenState extends State<LoginScreen>
                           Text(
                             'Dirección Nacional de Sistemas',
                             style: TextStyle(
-                              fontWeight: FontWeight.w500,
+                              fontWeight: FontWeight.w700,
                               color: isDark
-                                  ? AppColors.white.withValues(alpha: 0.35)
-                                  : AppColors.textTertiary.withValues(alpha: 0.55),
+                                  ? Colors.white
+                                  : const Color(0xFF0284C7),
                               letterSpacing: 1.2,
                             ),
                           ),
@@ -410,10 +531,10 @@ class _LoginScreenState extends State<LoginScreen>
                           Text(
                             'COSSMIL',
                             style: TextStyle(
-                              fontWeight: FontWeight.w700,
+                              fontWeight: FontWeight.w800,
                               color: isDark
-                                  ? AppColors.white.withValues(alpha: 0.4)
-                                  : AppColors.textTertiary.withValues(alpha: 0.6),
+                                  ? Colors.white
+                                  : const Color(0xFF0284C7),
                               letterSpacing: 1.5,
                             ),
                           ),
@@ -421,13 +542,27 @@ class _LoginScreenState extends State<LoginScreen>
                           Text(
                             '2026',
                             style: TextStyle(
-                              fontWeight: FontWeight.w500,
+                              fontWeight: FontWeight.w700,
                               color: isDark
-                                  ? AppColors.white.withValues(alpha: 0.25)
-                                  : AppColors.textTertiary.withValues(alpha: 0.4),
+                                  ? Colors.white.withValues(alpha: 0.8)
+                                  : const Color(0xFF0284C7).withValues(alpha: 0.8),
                               letterSpacing: 2.0,
                             ),
                           ),
+                          if (_appVersion.isNotEmpty) ...[
+                            SizedBox(height: context.r.spaceXs),
+                            Text(
+                              'v$_appVersion',
+                              style: TextStyle(
+                                fontWeight: FontWeight.w500,
+                                fontSize: 11,
+                                color: isDark
+                                    ? Colors.white.withValues(alpha: 0.45)
+                                    : const Color(0xFF0284C7).withValues(alpha: 0.5),
+                                letterSpacing: 1.0,
+                              ),
+                            ),
+                          ],
                         ],
                       ),
                     ),
@@ -438,18 +573,35 @@ class _LoginScreenState extends State<LoginScreen>
             ),
           ),
         ),
-            // Theme toggle button — top left
+            // Sound & Theme toggle buttons — top right
             Positioned(
               top: 8,
-              right: 8,
-              child: CupertinoButton(
-                padding: EdgeInsets.all(context.r.spaceSm),
-                onPressed: () => ThemeManager.toggleTheme(),
-                child: Icon(
-                  isDark ? CupertinoIcons.sun_max_fill : CupertinoIcons.moon_fill,
-                  size: 34,
-                  color: AppColors.textSecondaryC(isDark),
-                ),
+              right: 0,
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  ValueListenableBuilder<bool>(
+                    valueListenable: SoundManager.soundEnabledNotifier,
+                    builder: (context, soundOn, _) => CupertinoButton(
+                      padding: EdgeInsets.all(context.r.spaceSm),
+                      onPressed: () => SoundManager.toggle(),
+                      child: Icon(
+                        soundOn ? CupertinoIcons.speaker_2_fill : CupertinoIcons.speaker_slash_fill,
+                        size: context.r.iconMd,
+                        color: AppColors.textSecondaryC(isDark),
+                      ),
+                    ),
+                  ),
+                  CupertinoButton(
+                    padding: EdgeInsets.all(context.r.spaceSm),
+                    onPressed: () => ThemeManager.toggleTheme(),
+                    child: Icon(
+                      isDark ? CupertinoIcons.sun_max_fill : CupertinoIcons.moon_fill,
+                      size: context.r.iconMd,
+                      color: AppColors.textSecondaryC(isDark),
+                    ),
+                  ),
+                ],
               ),
             ),
           ],
@@ -509,6 +661,7 @@ class _LoginScreenState extends State<LoginScreen>
           placeholder: 'Ej. 010325AQJ',
           icon: CupertinoIcons.person_crop_circle,
           isDark: isDark,
+          focusNode: _usernameFocus,
           textCapitalization: TextCapitalization.characters,
           onChanged: (val) {
             if (val != val.toUpperCase()) {
@@ -527,6 +680,7 @@ class _LoginScreenState extends State<LoginScreen>
           icon: CupertinoIcons.lock_fill,
           obscureText: _obscurePassword,
           isDark: isDark,
+          focusNode: _passwordFocus,
           isLast: true,
           trailing: CupertinoButton(
             padding: EdgeInsets.zero,
@@ -535,7 +689,7 @@ class _LoginScreenState extends State<LoginScreen>
                 setState(() => _obscurePassword = !_obscurePassword),
             child: Icon(
               _obscurePassword ? CupertinoIcons.eye_slash_fill : CupertinoIcons.eye_fill,
-              size: 20,
+              size: context.r.iconSm,
               color: AppColors.textTertiary,
             ),
           ),
@@ -553,6 +707,7 @@ class _LoginScreenState extends State<LoginScreen>
     bool isLast = false,
     bool isDark = false,
     Widget? trailing,
+    FocusNode? focusNode,
     TextCapitalization textCapitalization = TextCapitalization.none,
     ValueChanged<String>? onChanged,
   }) {
@@ -586,6 +741,7 @@ class _LoginScreenState extends State<LoginScreen>
                 SizedBox(height: r.spaceXs),
                 CupertinoTextField(
                   controller: controller,
+                  focusNode: focusNode,
                   obscureText: obscureText,
                   enabled: !_isLoading,
                   textCapitalization: textCapitalization,
@@ -616,28 +772,153 @@ class _LoginScreenState extends State<LoginScreen>
   }
 
   Widget _buildErrorBanner() {
+    final r = context.r;
+
+    // ── Banner especial de actualización ────────────────────────────────────
+    if (_isVersionError) {
+      return Container(
+        padding: EdgeInsets.all(r.cardPadding),
+        decoration: BoxDecoration(
+          color: const Color(0xFFFFF7ED),
+          borderRadius: BorderRadius.circular(r.radiusMd),
+          border: Border.all(color: const Color(0xFFF97316).withValues(alpha: 0.4)),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                const Icon(Icons.system_update_rounded,
+                    color: Color(0xFFF97316), size: 20),
+                SizedBox(width: r.spaceSm),
+                Text(
+                  'Actualización disponible',
+                  style: context.texts.bodyMedium.copyWith(
+                    color: const Color(0xFFEA580C),
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ],
+            ),
+            SizedBox(height: r.spaceSm),
+            Text(
+              'Tu aplicación necesita actualizarse para continuar. '
+              'Visita el sitio web oficial de COSSMIL y descarga la última versión.',
+              style: context.texts.bodySmall.copyWith(
+                color: const Color(0xFFEA580C).withValues(alpha: 0.85),
+                height: 1.4,
+              ),
+            ),
+            SizedBox(height: r.spaceMd),
+            SizedBox(
+              width: double.infinity,
+              child: CupertinoButton(
+                padding: EdgeInsets.symmetric(vertical: r.spaceSm),
+                color: const Color(0xFFF97316),
+                borderRadius: BorderRadius.circular(r.buttonRadius),
+                onPressed: () => launchUrl(
+                  Uri.parse('https://www.cossmil.mil.bo/#/'),
+                  mode: LaunchMode.externalApplication,
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(CupertinoIcons.globe, color: Colors.white, size: 16),
+                    SizedBox(width: r.spaceXs),
+                    Text(
+                      'Ir a cossmil.mil.bo para actualizar',
+                      style: context.texts.bodyMedium.copyWith(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    final bool isNetwork = _errorType == AuthErrorType.network;
+    final bool isDisabled = _errorType == AuthErrorType.disabled;
+    final bool isWrongPwd = _errorType == AuthErrorType.wrongPassword;
+    final bool isServer = _errorType == AuthErrorType.server;
+
+    final IconData icon;
+    final Color bannerColor;
+    final Color borderColor;
+    final String? title;
+
+    if (isNetwork) {
+      icon = CupertinoIcons.wifi_slash;
+      bannerColor = const Color(0xFFFFF7ED);
+      borderColor = const Color(0xFFF97316);
+      title = 'Sin conexión';
+    } else if (isDisabled) {
+      icon = CupertinoIcons.lock_slash_fill;
+      bannerColor = const Color(0xFFFFF7ED);
+      borderColor = const Color(0xFFF97316);
+      title = 'Cuenta inactiva';
+    } else if (isWrongPwd) {
+      icon = CupertinoIcons.lock_fill;
+      bannerColor = AppColors.errorLight;
+      borderColor = AppColors.error;
+      title = 'Credenciales incorrectas';
+    } else if (isServer) {
+      icon = CupertinoIcons.exclamationmark_circle_fill;
+      bannerColor = const Color(0xFFFFF7ED);
+      borderColor = const Color(0xFFF97316);
+      title = 'Servidor no disponible';
+    } else {
+      icon = CupertinoIcons.exclamationmark_triangle_fill;
+      bannerColor = AppColors.errorLight;
+      borderColor = AppColors.error;
+      title = null;
+    }
+
+    final iconColor = (isNetwork || isDisabled || isServer)
+        ? const Color(0xFFF97316)
+        : AppColors.error;
+
     return Container(
-      padding: EdgeInsets.symmetric(horizontal: context.r.tileHorizontalPad, vertical: context.r.tileVerticalPad),
+      padding: EdgeInsets.symmetric(horizontal: r.tileHorizontalPad, vertical: r.tileVerticalPad),
       decoration: BoxDecoration(
-        color: AppColors.errorLight,
-        borderRadius: BorderRadius.circular(context.r.radiusMd),
-        border: Border.all(color: AppColors.error.withValues(alpha: 0.3)),
+        color: bannerColor,
+        borderRadius: BorderRadius.circular(r.radiusMd),
+        border: Border.all(color: borderColor.withValues(alpha: 0.35)),
       ),
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Icon(
-            CupertinoIcons.exclamationmark_triangle_fill,
-            color: AppColors.error,
-            size: 20,
+          Padding(
+            padding: const EdgeInsets.only(top: 1),
+            child: Icon(icon, color: iconColor, size: r.iconSm),
           ),
-          SizedBox(width: context.r.spaceMd),
+          SizedBox(width: r.spaceMd),
           Expanded(
-            child: Text(
-              _errorMessage!,
-              style: context.texts.bodyMedium.copyWith(
-                color: AppColors.error,
-                fontWeight: FontWeight.w500,
-              ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                if (title != null)
+                  Text(
+                    title,
+                    style: context.texts.bodyMedium.copyWith(
+                      color: iconColor,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                if (title != null) const SizedBox(height: 2),
+                Text(
+                  _errorMessage!,
+                  style: context.texts.bodyMedium.copyWith(
+                    color: iconColor.withValues(alpha: 0.85),
+                    fontWeight: FontWeight.w500,
+                    height: 1.4,
+                  ),
+                ),
+              ],
             ),
           ),
         ],

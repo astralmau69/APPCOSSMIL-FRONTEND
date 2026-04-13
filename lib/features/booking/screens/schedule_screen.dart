@@ -1,18 +1,14 @@
 import 'dart:async';
-import 'dart:convert';
+import 'dart:typed_data';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import '../../../core/theme/app_constants.dart';
-import '../../../core/theme/app_theme.dart';
 import '../../../core/extensions/responsive_extensions.dart';
 import '../../../core/models/time_slot_model.dart';
-import '../../../core/models/medico_asignado_model.dart';
 import '../../../core/services/programacion_service.dart';
 import '../../../core/widgets/breadcrumb_chips.dart';
 import '../../../core/widgets/app_state_widget.dart';
 import '../../../core/widgets/skeleton_loading.dart';
-import '../../../core/widgets/booking_stepper.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/animations/optimized_animations.dart';
 import '../../../core/animations/app_page_route.dart';
@@ -22,8 +18,9 @@ import 'summary_screen.dart';
 
 class ScheduleScreen extends StatefulWidget {
   final TabShellState tabShell;
+  final VoidCallback? onNext;
 
-  const ScheduleScreen({super.key, required this.tabShell});
+  const ScheduleScreen({super.key, required this.tabShell, this.onNext});
 
   @override
   State<ScheduleScreen> createState() => _ScheduleScreenState();
@@ -33,11 +30,13 @@ class _ScheduleScreenState extends State<ScheduleScreen>
     with SingleTickerProviderStateMixin {
   final _service = ProgramacionService();
 
-  MedicoAsignadoModel? _medicoAsignado;
   List<TimeSlotModel> _slots = [];
   bool _isLoading = true;
   String? _errorMessage;
   String? _errorTitle;
+
+  final ScrollController _scrollController = ScrollController();
+  final GlobalKey _slotsSectionKey = GlobalKey();
 
   Timer? _refreshTimer;
   static const _refreshInterval = Duration(seconds: 15);
@@ -52,10 +51,9 @@ class _ScheduleScreenState extends State<ScheduleScreen>
   @override
   void dispose() {
     _refreshTimer?.cancel();
+    _scrollController.dispose();
     super.dispose();
   }
-
-  // Eliminamos _getFecha local porque ahora dependemos de getFechaServidor
 
   Future<void> _fetchData() async {
     if (!mounted) return;
@@ -66,121 +64,82 @@ class _ScheduleScreenState extends State<ScheduleScreen>
 
     try {
       final bs = widget.tabShell.bookingState;
-      final idsuc = int.tryParse(bs.hospital?.id ?? '') ?? 0;
-      final idesp = int.tryParse(bs.specialty?.id ?? '') ?? 0;
-      const modalidad = 'ASE';
+      final idagenda = bs.idagenda ?? '';
+      if (idagenda.isEmpty) throw Exception('Sin agenda seleccionada');
 
-      // 1. Obtener la fecha indicada por el servidor
-      final fechaData = await _service.getFechaServidor();
-      final fechaCitaMovil = fechaData['fechaCitaMovil'] ?? '';
-
-      if (fechaCitaMovil.isEmpty) {
-        throw Exception('No se pudo obtener la fecha de cita del servidor');
-      }
-
-      debugPrint('🌐 Consultando medico-asignado: idsuc=$idsuc, idesp=$idesp, fecha=$fechaCitaMovil, mod=$modalidad');
-
-      try {
-        _medicoAsignado = await _service.getMedicoAsignado(
-          1, idsuc, idesp, fechaCitaMovil, modalidad,
-        );
-        _slots = _medicoAsignado!.toTimeSlots();
-      } catch (e) {
-        debugPrint('⚠️ Falló consulta para la fecha del servidor: $e');
-        _medicoAsignado = null;
-        _slots = [];
-      }
+      final slots = await _service.getHorasAgenda(idagenda);
 
       if (!mounted) return;
-
-      debugPrint('📋 Medico asignado: ${_medicoAsignado?.medico}');
-      debugPrint('🕒 Slots procesados: ${_slots.length}');
-      
-      if (_medicoAsignado == null || _slots.isEmpty) {
-         throw Exception('Sin médico o sin fichas para esta fecha');
-      }
-
-      setState(() => _isLoading = false);
-    } catch (e) {
-      debugPrint('❌ Error en ScheduleScreen._fetchData: $e');
-      if (!mounted) return;
-      final msg = e.toString().toLowerCase();
-      String errorTitle;
-      String errorMsg;
-      if (msg.contains('401') || msg.contains('unauthorized')) {
-        errorTitle = 'Sesión expirada';
-        errorMsg = 'Tu sesión ha expirado. Por favor, vuelve a iniciar sesión.';
-      } else if (msg.contains('formato') || msg.contains('inválido') || msg.contains('sin médico') || msg.contains('sin fichas')) {
-        // El backend devolvió data vacía o error de negocio
-        errorTitle = 'Sin médico asignado';
-        errorMsg = 'Por el momento no hay un médico asignado o fichas disponibles para '
-            '${widget.tabShell.bookingState.specialty?.name ?? "esta especialidad"} '
-            'en los horarios habilitados.\n\n'
-            'Puedes intentar más tarde o seleccionar otra especialidad.';
-      } else {
-        errorTitle = 'No se pudo cargar la agenda';
-        errorMsg = ErrorMapper.message(e, context: ErrorContext.cargarAgenda);
-      }
       setState(() {
-        _errorMessage = errorMsg;
+        _slots = slots;
         _isLoading = false;
-        _errorTitle = errorTitle;
+      });
+
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        Future.delayed(const Duration(milliseconds: 300), () {
+          if (_slotsSectionKey.currentContext != null) {
+            Scrollable.ensureVisible(
+              _slotsSectionKey.currentContext!,
+              duration: const Duration(milliseconds: 600),
+              curve: Curves.easeOutCubic,
+              alignment: 0.1,
+            );
+          }
+        });
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _errorMessage = ErrorMapper.message(e, context: ErrorContext.cargarAgenda);
+        _errorTitle = 'No se pudo cargar la agenda';
+        _isLoading = false;
       });
     }
   }
 
-  /// Refresca los slots silenciosamente sin mostrar loading ni perder selección.
   Future<void> _silentRefresh() async {
-    if (!mounted || _isLoading || _medicoAsignado == null) return;
+    if (!mounted || _isLoading) return;
     try {
       final bs = widget.tabShell.bookingState;
-      final idsuc = int.tryParse(bs.hospital?.id ?? '') ?? 0;
-      final idesp = int.tryParse(bs.specialty?.id ?? '') ?? 0;
-      final fecha = _medicoAsignado!.fecha;
+      final idagenda = bs.idagenda ?? '';
+      if (idagenda.isEmpty) return;
 
-      final result = await _service.getMedicoAsignado(
-        1, idsuc, idesp, fecha, 'ASE',
-      );
+      final newSlots = await _service.getHorasAgenda(idagenda);
       if (!mounted) return;
-
-      final newSlots = result.toTimeSlots();
-
-      setState(() {
-        _medicoAsignado = result;
-        _slots = newSlots;
-      });
-    } catch (_) {
-      // Silencioso — no interrumpir al usuario
-    }
+      setState(() { _slots = newSlots; });
+    } catch (_) {}
   }
 
-  /// Solo los slots disponibles (filtra los ocupados).
   List<TimeSlotModel> get _availableSlots =>
       _slots.where((s) => s.isAvailable && s.statusLevel != 'none').toList();
 
-  /// Navega directamente al resumen al seleccionar una hora.
-  void _onSlotSelected(TimeSlotModel slot) {
-    if (_medicoAsignado != null) {
-      widget.tabShell.bookingState.doctor = _medicoAsignado!.toDoctorModel();
-      widget.tabShell.bookingState.idagenda = _medicoAsignado!.idagenda;
-      widget.tabShell.bookingState.idcontrol = _medicoAsignado!.idcontrol;
-      widget.tabShell.bookingState.idcon = _medicoAsignado!.idcon;
+  Future<void> _onSlotSelected(TimeSlotModel slot) async {
+    final bs = widget.tabShell.bookingState;
+    final fecha = bs.doctor?.fecha ?? '';
+    if (fecha.isNotEmpty) {
+      final hasConflict = await widget.tabShell.checkActiveCitaForDate(fecha);
+      if (hasConflict) return;
     }
-    widget.tabShell.bookingState.selectedTime = slot.time;
-    widget.tabShell.bookingState.idhora = slot.idhora;
-    widget.tabShell.bookingState.slotNumber = slot.numero;
-    Navigator.push(
-      context,
-      AppPageRoute(
-        builder: (_) => SummaryScreen(tabShell: widget.tabShell),
-      ),
-    );
+
+    if (!mounted) return;
+
+    bs.selectedTime = slot.time;
+    bs.idhora = slot.idhora;
+    bs.slotNumber = slot.numero;
+    if (widget.onNext != null) {
+      widget.onNext!();
+    } else {
+      Navigator.push(
+        context,
+        AppPageRoute(
+          builder: (_) => SummaryScreen(tabShell: widget.tabShell),
+        ),
+      );
+    }
   }
 
-  /// Fecha para mostrar en la UI (la que se cargó con éxito).
   String get _fechaReserva {
-    // Si _medicoAsignado tiene fecha, usar esa
-    final serverDate = _medicoAsignado?.fecha;
+    final serverDate = widget.tabShell.bookingState.doctor?.fecha;
     if (serverDate != null && serverDate.isNotEmpty) {
       try {
         final dt = DateFormat('yyyy-MM-dd').parse(serverDate);
@@ -196,8 +155,7 @@ class _ScheduleScreenState extends State<ScheduleScreen>
     return formatted[0].toUpperCase() + formatted.substring(1);
   }
 
-  @override
-  Widget build(BuildContext context) {
+  Widget _buildBody(BuildContext context) {
     final bs = widget.tabShell.bookingState;
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final breadcrumbs = [
@@ -205,7 +163,42 @@ class _ScheduleScreenState extends State<ScheduleScreen>
       bs.regional?.name ?? '',
       bs.hospital?.name ?? '',
       bs.specialty?.name ?? '',
+      bs.doctor?.fullName ?? '',
     ];
+
+    return AnimatedSwitcher(
+      duration: const Duration(milliseconds: 300),
+      child: _isLoading
+          ? ListView(
+              key: const ValueKey('skeleton'),
+              padding: EdgeInsets.only(
+                top: context.r.spaceMd,
+                bottom: context.r.navBarBottomSpace,
+              ),
+              children: [
+                BreadcrumbChips(labels: breadcrumbs),
+                SizedBox(height: context.r.spaceMd),
+                const SkeletonSchedule(),
+              ],
+            )
+          : _errorMessage != null
+              ? AppStateWidget.error(
+                  key: const ValueKey('error'),
+                  title: _errorTitle ?? 'No se pudo cargar la agenda',
+                  message: _errorMessage!,
+                  onRetry: _fetchData,
+                )
+              : _buildContent(context, isDark, breadcrumbs),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (widget.onNext != null) {
+      return _buildBody(context);
+    }
+
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return CupertinoPageScaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
@@ -227,33 +220,7 @@ class _ScheduleScreenState extends State<ScheduleScreen>
       child: SafeArea(
         child: Column(
           children: [
-            const BookingStepper(currentStep: 2),
-            Expanded(
-              child: AnimatedSwitcher(
-                duration: const Duration(milliseconds: 300),
-                child: _isLoading
-                    ? ListView(
-                        key: const ValueKey('skeleton'),
-                        padding: EdgeInsets.symmetric(vertical: context.r.spaceMd),
-                        children: [
-                          BreadcrumbChips(labels: breadcrumbs),
-                          SizedBox(height: context.r.spaceMd),
-                          const SkeletonSchedule(),
-                        ],
-                      )
-                    : _errorMessage != null
-                        ? AppStateWidget.error(
-                            key: const ValueKey('error'),
-                            title: _errorTitle ?? 'No se pudo cargar la agenda',
-                            message: _errorMessage!,
-                            onRetry: _fetchData,
-                            icon: (_errorTitle?.contains('médico') ?? false)
-                                ? CupertinoIcons.person_badge_minus
-                                : null,
-                          )
-                        : _buildContent(context, isDark, breadcrumbs),
-              ),
-            ),
+            Expanded(child: _buildBody(context)),
           ],
         ),
       ),
@@ -263,7 +230,11 @@ class _ScheduleScreenState extends State<ScheduleScreen>
   Widget _buildContent(BuildContext context, bool isDark, List<String> breadcrumbs) {
     return ListView(
       key: const ValueKey('data'),
-      padding: EdgeInsets.symmetric(vertical: context.r.spaceMd),
+      controller: _scrollController,
+      padding: EdgeInsets.only(
+        top: context.r.spaceMd,
+        bottom: context.r.navBarBottomSpace,
+      ),
       children: [
         BreadcrumbChips(labels: breadcrumbs),
         SizedBox(height: context.r.spaceMd),
@@ -272,53 +243,53 @@ class _ScheduleScreenState extends State<ScheduleScreen>
           offsetY: 10,
           child: _buildDateAndInfoHeader(context, isDark),
         ),
-        const SizedBox(height: 18),
-        if (_medicoAsignado != null)
-          FadeSlideIn(
-            delay: const Duration(milliseconds: 100),
-            offsetY: 15,
-            child: _buildDoctorCard(context, isDark),
-          ),
+        SizedBox(height: context.r.spaceMd),
+        FadeSlideIn(
+          delay: const Duration(milliseconds: 100),
+          offsetY: 15,
+          child: _buildDoctorCard(context, isDark),
+        ),
         SizedBox(height: context.r.spaceLg),
         FadeSlideIn(
           delay: const Duration(milliseconds: 150),
           offsetY: 10,
           child: Padding(
+            key: _slotsSectionKey,
             padding: EdgeInsets.symmetric(horizontal: context.r.paddingH),
-            child: Row(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Container(
-                  width: 3,
-                  height: 18,
-                  decoration: BoxDecoration(
-                    color: AppColors.accentForTheme(isDark),
-                    borderRadius: BorderRadius.circular(context.r.spaceXs),
-                  ),
-                ),
-                SizedBox(width: context.r.spaceSm),
                 Text(
-                  'Agenda médica',
+                  'Seleccione su horario de atención',
                   style: context.texts.titleMedium.copyWith(
                     color: AppColors.accentForTheme(isDark),
+                    fontWeight: FontWeight.w800,
                   ),
                 ),
-                if (_medicoAsignado != null) ...[
-                  const Spacer(),
-                  Container(
-                    padding: EdgeInsets.symmetric(horizontal: context.r.chipPaddingH, vertical: context.r.chipPaddingV),
-                    decoration: BoxDecoration(
-                      color: AppColors.success.withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(context.r.radiusSm),
-                    ),
-                    child: Text(
-                      '${_availableSlots.length} fichas disponibles',
-                      style: TextStyle(
-                        fontWeight: FontWeight.w700,
-                        color: isDark ? AppColors.successLight : AppColors.success,
-                      ),
+                const SizedBox(height: 4),
+                Text(
+                  'Horas disponibles',
+                  style: context.texts.titleMedium.copyWith(
+                    color: AppColors.textPrimaryC(isDark),
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 0.3,
+                  ),
+                ),
+                SizedBox(height: context.r.spaceSm),
+                Container(
+                  padding: EdgeInsets.symmetric(horizontal: context.r.chipPaddingH, vertical: context.r.chipPaddingV),
+                  decoration: BoxDecoration(
+                    color: AppColors.success.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(context.r.radiusSm),
+                  ),
+                  child: Text(
+                    '${_availableSlots.length} fichas disponibles',
+                    style: TextStyle(
+                      fontWeight: FontWeight.w700,
+                      color: isDark ? AppColors.successLight : AppColors.success,
                     ),
                   ),
-                ],
+                ),
               ],
             ),
           ),
@@ -331,15 +302,15 @@ class _ScheduleScreenState extends State<ScheduleScreen>
               child: Column(
                 children: [
                   Container(
-                    width: 64,
-                    height: 64,
+                    width: context.r.listAvatarSize,
+                    height: context.r.listAvatarSize,
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
                       color: AppColors.warning.withValues(alpha: 0.1),
                     ),
                     child: Icon(
                       CupertinoIcons.clock,
-                      size: 28,
+                      size: context.r.iconMd,
                       color: AppColors.warning,
                     ),
                   ),
@@ -369,7 +340,6 @@ class _ScheduleScreenState extends State<ScheduleScreen>
         else
           _buildTimeGrid(context, isDark),
         SizedBox(height: context.r.spaceMd),
-        // Hint de selección
         if (_availableSlots.isNotEmpty)
           Padding(
             padding: EdgeInsets.symmetric(horizontal: context.r.spaceXxl),
@@ -381,7 +351,7 @@ class _ScheduleScreenState extends State<ScheduleScreen>
                   Icon(CupertinoIcons.hand_draw, size: 16, color: AppColors.textSecondaryC(isDark)),
                   SizedBox(width: context.r.spaceSm),
                   Text(
-                    'Toque una hora disponible para reservar',
+                    'Seleccione un horario disponible',
                     style: TextStyle(
                       fontWeight: FontWeight.w500,
                       color: AppColors.textSecondaryC(isDark),
@@ -408,7 +378,6 @@ class _ScheduleScreenState extends State<ScheduleScreen>
       ),
       child: Column(
         children: [
-          // Fecha destacada
           Row(
             children: [
               Container(
@@ -430,17 +399,19 @@ class _ScheduleScreenState extends State<ScheduleScreen>
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      _fechaReserva,
-                      style: context.texts.headlineMedium.copyWith(
-                        color: AppColors.accentForTheme(isDark),
+                      'Fechas de Reserva',
+                      style: context.texts.titleLarge.copyWith(
+                        color: AppColors.textPrimaryC(isDark),
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: 0.3,
                       ),
                     ),
                     SizedBox(height: context.r.spaceXs),
                     Text(
-                      'Fecha disponible para reservas',
-                      style: TextStyle(
-                        color: AppColors.textSecondaryC(isDark),
-                        fontWeight: FontWeight.w500,
+                      _fechaReserva,
+                      style: context.texts.titleMedium.copyWith(
+                        color: AppColors.accentForTheme(isDark),
+                        fontWeight: FontWeight.w700,
                       ),
                     ),
                   ],
@@ -451,14 +422,9 @@ class _ScheduleScreenState extends State<ScheduleScreen>
           SizedBox(height: context.r.spaceMd),
           Container(height: 0.5, color: AppColors.dividerC(isDark)),
           SizedBox(height: context.r.spaceSm),
-          // Info nota
           Row(
             children: [
-              const Icon(
-                Icons.info,
-                size: 16,
-                color: AppColors.info,
-              ),
+              const Icon(Icons.info, size: 16, color: AppColors.info),
               SizedBox(width: context.r.spaceSm),
               Expanded(
                 child: Text(
@@ -478,29 +444,10 @@ class _ScheduleScreenState extends State<ScheduleScreen>
   }
 
   Widget _buildDoctorCard(BuildContext context, bool isDark) {
-    final doctor = _medicoAsignado!;
-    final initial = doctor.medico.isNotEmpty ? doctor.medico[0] : '?';
+    final doctor = widget.tabShell.bookingState.doctor;
+    if (doctor == null) return const SizedBox.shrink();
 
-    Widget doctorAvatar;
-    if (doctor.foto.isNotEmpty) {
-      try {
-        final photoBytes = base64Decode(doctor.foto);
-        doctorAvatar = ClipRRect(
-          borderRadius: BorderRadius.circular(14),
-          child: Image.memory(
-            photoBytes,
-            width: context.r.listAvatarSize,
-            height: context.r.listAvatarSize,
-            fit: BoxFit.cover,
-            errorBuilder: (_, __, ___) => _doctorInitial(initial, isDark),
-          ),
-        );
-      } catch (_) {
-        doctorAvatar = _doctorInitial(initial, isDark);
-      }
-    } else {
-      doctorAvatar = _doctorInitial(initial, isDark);
-    }
+    final initial = doctor.fullName.isNotEmpty ? doctor.fullName[0] : '?';
 
     return Container(
       margin: EdgeInsets.symmetric(horizontal: context.r.paddingH),
@@ -521,7 +468,7 @@ class _ScheduleScreenState extends State<ScheduleScreen>
               borderRadius: BorderRadius.circular(14),
             ),
             alignment: Alignment.center,
-            child: doctorAvatar,
+            child: _buildAvatarFromFoto(doctor.foto, initial, isDark),
           ),
           SizedBox(width: context.r.spaceMd),
           Expanded(
@@ -529,22 +476,43 @@ class _ScheduleScreenState extends State<ScheduleScreen>
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  doctor.medico,
+                  'Médico Seleccionado',
                   style: context.texts.headlineMedium.copyWith(
-                    color: AppColors.accentForTheme(isDark),
+                    color: AppColors.textPrimaryC(isDark),
+                    fontWeight: FontWeight.w800,
                   ),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                 ),
-                SizedBox(height: context.r.spaceXs),
+                const SizedBox(height: 2),
+                Text(
+                  widget.tabShell.bookingState.specialty?.name ?? '',
+                  style: TextStyle(
+                    color: AppColors.accentForTheme(isDark),
+                    fontWeight: FontWeight.w600,
+                    fontSize: 13,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                SizedBox(height: context.r.spaceMd),
+                Text(
+                  doctor.fullName,
+                  style: context.texts.bodyMedium.copyWith(
+                    color: AppColors.textSecondaryC(isDark),
+                    fontWeight: FontWeight.w600,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                SizedBox(height: context.r.spaceSm),
                 Row(
                   children: [
-                    Icon(Icons.location_on,
-                        size: 12, color: AppColors.textSecondaryC(isDark)),
+                    Icon(Icons.location_on, size: 12, color: AppColors.textSecondaryC(isDark)),
                     SizedBox(width: context.r.spaceXs),
                     Expanded(
                       child: Text(
-                        doctor.descripcionConsultorio,
+                        doctor.office,
                         style: TextStyle(
                           color: AppColors.textSecondaryC(isDark),
                           fontWeight: FontWeight.w500,
@@ -561,6 +529,30 @@ class _ScheduleScreenState extends State<ScheduleScreen>
         ],
       ),
     );
+  }
+
+  /// Renders avatar from the comma-separated signed-byte string stored in DoctorModel.foto.
+  Widget _buildAvatarFromFoto(String foto, String initial, bool isDark) {
+    if (foto.isNotEmpty) {
+      try {
+        final bytes = foto.split(',').map((s) {
+          final v = int.parse(s.trim());
+          return v < 0 ? v + 256 : v;
+        }).toList();
+        final photoBytes = Uint8List.fromList(bytes);
+        return ClipRRect(
+          borderRadius: BorderRadius.circular(14),
+          child: Image.memory(
+            photoBytes,
+            width: context.r.listAvatarSize,
+            height: context.r.listAvatarSize,
+            fit: BoxFit.cover,
+            errorBuilder: (_, __, ___) => _doctorInitial(initial, isDark),
+          ),
+        );
+      } catch (_) {}
+    }
+    return _doctorInitial(initial, isDark);
   }
 
   Widget _doctorInitial(String initial, bool isDark) {
@@ -580,22 +572,28 @@ class _ScheduleScreenState extends State<ScheduleScreen>
     final available = _availableSlots;
     return Padding(
       padding: EdgeInsets.symmetric(horizontal: context.r.paddingH),
-      child: Wrap(
-        spacing: 10,
-        runSpacing: 10,
-        children: List.generate(available.length, (i) {
+      child: GridView.builder(
+        shrinkWrap: true,
+        physics: const NeverScrollableScrollPhysics(),
+        gridDelegate: SliverGridDelegateWithMaxCrossAxisExtent(
+          maxCrossAxisExtent: context.r.isTablet ? 180 : (context.r.isSmallPhone ? 110 : 140),
+          crossAxisSpacing: context.r.gridSpacing,
+          mainAxisSpacing: context.r.gridSpacing,
+          childAspectRatio: 1.3,
+        ),
+        itemCount: available.length,
+        itemBuilder: (context, i) {
           return FadeSlideIn(
-            delay: Duration(milliseconds: 400 + (i * 50)),
+            delay: Duration(milliseconds: 300 + (i * 15)),
             offsetY: 10,
             child: _timeChip(context, available[i], isDark),
           );
-        }),
+        },
       ),
     );
   }
 
   Widget _timeChip(BuildContext context, TimeSlotModel slot, bool isDark) {
-    // Solo slots disponibles llegan aquí
     final Color bgColor = isDark ? const Color(0xFF064E3B) : const Color(0xFF86EFAC);
     final Color textColor = isDark ? const Color(0xFF6EE7B7) : const Color(0xFF14532D);
     final Color borderColor = isDark ? const Color(0xFF059669) : const Color(0xFF16A34A);
@@ -603,7 +601,6 @@ class _ScheduleScreenState extends State<ScheduleScreen>
     return GestureDetector(
       onTap: () => _onSlotSelected(slot),
       child: Container(
-        padding: EdgeInsets.symmetric(horizontal: context.r.spaceLg, vertical: context.r.spaceMd),
         decoration: BoxDecoration(
           color: bgColor,
           borderRadius: BorderRadius.circular(context.r.radiusMd),
@@ -611,13 +608,14 @@ class _ScheduleScreenState extends State<ScheduleScreen>
           boxShadow: [
             BoxShadow(
               color: AppColors.success.withValues(alpha: isDark ? 0.18 : 0.30),
-              blurRadius: 10,
+              blurRadius: 8,
               spreadRadius: isDark ? 0 : 1,
-              offset: const Offset(0, 3),
+              offset: const Offset(0, 2),
             ),
           ],
         ),
         child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
           mainAxisSize: MainAxisSize.min,
           children: [
             Text(
@@ -625,12 +623,14 @@ class _ScheduleScreenState extends State<ScheduleScreen>
               style: context.texts.titleMedium.copyWith(
                 fontWeight: FontWeight.w800,
                 color: textColor,
-                fontSize: 18,
+                fontSize: 17,
               ),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
             ),
             SizedBox(height: context.r.spaceXs),
             Container(
-              padding: EdgeInsets.symmetric(horizontal: context.r.spaceSm, vertical: 4),
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
               decoration: BoxDecoration(
                 color: isDark
                     ? const Color(0xFF059669).withValues(alpha: 0.3)
@@ -643,7 +643,10 @@ class _ScheduleScreenState extends State<ScheduleScreen>
                   fontWeight: FontWeight.w800,
                   color: isDark ? const Color(0xFF6EE7B7) : const Color(0xFF059669),
                   letterSpacing: 0.3,
+                  fontSize: 10,
                 ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
               ),
             ),
           ],

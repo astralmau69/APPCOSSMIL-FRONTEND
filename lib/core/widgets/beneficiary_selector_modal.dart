@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../constants/app_colors.dart';
 import '../extensions/responsive_extensions.dart';
 import '../models/beneficiary_model.dart';
+import '../session/user_session.dart';
 
 
 /// Modal reutilizable para seleccionar un miembro del grupo familiar.
@@ -58,7 +59,7 @@ class _ModalContent extends StatelessWidget {
           ),
           decoration: BoxDecoration(
             color: AppColors.cardBg(isDark),
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+            borderRadius: BorderRadius.vertical(top: Radius.circular(context.r.modalRadius)),
           ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -66,7 +67,7 @@ class _ModalContent extends StatelessWidget {
               SizedBox(height: context.r.spaceMd),
               // Handle bar
               Container(
-                width: 40,
+                width: context.r.handleBarWidth,
                 height: 4,
                 decoration: BoxDecoration(
                   color: AppColors.border,
@@ -156,7 +157,7 @@ class _BeneficiaryTile extends StatelessWidget {
     final r = context.r;
     final isTitular = beneficiary.isTitular;
     final avatarColor = isTitular ? AppColors.primary : AppColors.accent;
-    final label = isTitular ? 'Yo (Titular)' : beneficiary.relationship;
+    final label = isTitular ? 'Titular' : beneficiary.relationship;
     final avatarSize = r.avatarMd;
 
     return GestureDetector(
@@ -194,7 +195,9 @@ class _BeneficiaryTile extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    beneficiary.fullName,
+                    (beneficiary.isTitular && beneficiary.grado.isEmpty)
+                        ? UserSession.currentUser.displayName
+                        : beneficiary.displayTitle,
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(
@@ -205,8 +208,8 @@ class _BeneficiaryTile extends StatelessWidget {
                   ),
                   SizedBox(height: context.r.spaceXs),
                   Container(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 8, vertical: 3),
+                    padding: EdgeInsets.symmetric(
+                        horizontal: context.r.chipPaddingH, vertical: context.r.chipPaddingV),
                     decoration: BoxDecoration(
                       color: isTitular
                           ? AppColors.primary.withValues(alpha: 0.1)

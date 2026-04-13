@@ -6,35 +6,42 @@ import 'package:intl/intl.dart';
 import 'package:audioplayers/audioplayers.dart';
 import 'package:printing/printing.dart';
 import '../../../core/constants/app_colors.dart';
-import '../../../core/theme/app_theme.dart';
-import '../../../core/theme/app_constants.dart';
 import '../../../core/extensions/responsive_extensions.dart';
 import '../../../core/session/user_session.dart';
 import '../../../core/services/programacion_service.dart';
 import '../../../core/utils/error_mapper.dart';
 
-import '../../../core/animations/optimized_animations.dart';
 import '../../../core/animations/success_check_animation.dart';
-import '../../../core/widgets/booking_stepper.dart';
 import '../../../shell/tab_shell.dart';
 import '../../../core/widgets/cossmil_ios_alert.dart';
 import '../../../core/services/notification_service.dart';
+import '../../../core/theme/sound_manager.dart';
 
 class SummaryScreen extends StatefulWidget {
   final TabShellState tabShell;
+  final VoidCallback? onBack;
+  final VoidCallback? onConfirmed;
 
-  const SummaryScreen({super.key, required this.tabShell});
+  const SummaryScreen({
+    super.key,
+    required this.tabShell,
+    this.onBack,
+    this.onConfirmed,
+  });
 
   @override
   State<SummaryScreen> createState() => _SummaryScreenState();
 }
 
-class _SummaryScreenState extends State<SummaryScreen> {
+class _SummaryScreenState extends State<SummaryScreen>
+    with SingleTickerProviderStateMixin {
   bool _isConfirming = false;
   bool _isConfirmed = false;
   bool _showSuccessSplash = false;
   bool _isDownloadingPdf = false;
   AudioPlayer? _successPlayer;
+
+  final ScrollController _scrollController = ScrollController();
 
   // Datos de la respuesta de crea-cita, necesarios para el PDF del backend.
   int? _gestion;
@@ -71,28 +78,54 @@ class _SummaryScreenState extends State<SummaryScreen> {
     return hora;
   }
 
-  /// Convierte hora 24h "8:00" → "8:00 AM", "14:30" → "2:30 PM"
+  /// Hora en formato 24h con ceros → "08:00", "14:30"
   String _formatTimeAmPm(String? rawTime) {
     if (rawTime == null || rawTime.isEmpty) return '--:--';
     try {
       final parts = rawTime.split(':');
       if (parts.length < 2) return rawTime;
-      int hour = int.parse(parts[0]);
-      final min = parts[1];
-      final period = hour >= 12 ? 'PM' : 'AM';
-      if (hour == 0) {
-        hour = 12;
-      } else if (hour > 12) {
-        hour -= 12;
-      }
-      return '$hour:$min $period';
+      final h = parts[0].padLeft(2, '0');
+      final m = parts[1].padLeft(2, '0');
+      return '$h:$m';
     } catch (_) {
       return rawTime;
     }
   }
 
+  late final AnimationController _pulseCtrl;
+  late final Animation<double> _pulseScale;
+
+  @override
+  void initState() {
+    super.initState();
+    _pulseCtrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 900),
+    )..repeat(reverse: true);
+    _pulseScale = Tween<double>(begin: 1.0, end: 1.04).animate(
+      CurvedAnimation(parent: _pulseCtrl, curve: Curves.easeInOut),
+    );
+
+    // Auto-scroll al botón de confirmación después de que el layout esté completamente medido.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      Future.delayed(const Duration(milliseconds: 450), _scrollToBottom);
+    });
+  }
+
+  void _scrollToBottom() {
+    if (_scrollController.hasClients) {
+      _scrollController.animateTo(
+        _scrollController.position.maxScrollExtent,
+        duration: const Duration(milliseconds: 700),
+        curve: Curves.easeOutCubic,
+      );
+    }
+  }
+
   @override
   void dispose() {
+    _scrollController.dispose();
+    _pulseCtrl.dispose();
     _successPlayer?.stop();
     _successPlayer?.dispose();
     super.dispose();
@@ -104,18 +137,10 @@ class _SummaryScreenState extends State<SummaryScreen> {
     final user = UserSession.currentUser;
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    return CupertinoPageScaffold(
-      backgroundColor: AppColors.scaffoldBg(isDark),
-      navigationBar: CupertinoNavigationBar(
-        middle: Text(
-          'Confirmar Reserva',
-          style: context.texts.headlineMedium.copyWith(fontWeight: FontWeight.w800, color: AppColors.textPrimaryC(isDark)),
-        ),
-        backgroundColor: AppColors.scaffoldBg(isDark).withValues(alpha: 0.94),
-        border: null,
-      ),
-      child: SafeArea(
-        child: AnimatedSwitcher(
+    // SummaryScreen is embedded inside BookingFlowScreen which already provides
+    // its own CupertinoPageScaffold + NavigationBar + BookingStepper.
+    // We return only the content to avoid double navigation bars.
+    return AnimatedSwitcher(
           duration: const Duration(milliseconds: 600),
           switchInCurve: Curves.easeOutCubic,
           switchOutCurve: Curves.easeInCubic,
@@ -125,7 +150,7 @@ class _SummaryScreenState extends State<SummaryScreen> {
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      const SuccessCheckAnimation(size: 140),
+                      SuccessCheckAnimation(size: context.r.isTablet ? 180 : (context.r.isSmallPhone ? 110 : 140)),
                       SizedBox(height: context.r.spaceXl),
                       Text(
                         '¡Reserva Exitosa!',
@@ -144,13 +169,15 @@ class _SummaryScreenState extends State<SummaryScreen> {
                     ],
                   ),
                 )
-              : Column(
+              : ListView(
                   key: const ValueKey('content'),
-                  children: [
-                    const BookingStepper(currentStep: 3),
-                    Expanded(
-                      child: ListView(
-                        padding: EdgeInsets.symmetric(horizontal: context.r.paddingH, vertical: 8),
+                  controller: _scrollController,
+                  padding: EdgeInsets.only(
+                    left: context.r.paddingH,
+                    right: context.r.paddingH,
+                    top: 8,
+                    bottom: context.r.navBarBottomSpace + 16,
+                  ),
                         children: [
                           _buildHeader(),
                           SizedBox(height: context.r.spaceMd),
@@ -197,7 +224,7 @@ class _SummaryScreenState extends State<SummaryScreen> {
                                   ),
                                 ),
                                 Container(
-                                  padding: EdgeInsets.symmetric(horizontal: context.r.spaceSm, vertical: 5),
+                                  padding: EdgeInsets.symmetric(horizontal: context.r.spaceSm, vertical: context.r.chipPaddingV),
                                   decoration: BoxDecoration(
                                     color: AppColors.accentForTheme(isDark).withValues(alpha: 0.12),
                                     borderRadius: BorderRadius.circular(context.r.radiusSm),
@@ -325,12 +352,7 @@ class _SummaryScreenState extends State<SummaryScreen> {
                           _buildActionButtons(isDark),
                           SizedBox(height: context.r.spaceLg),
                         ],
-                      ),
-                    ),
-                  ],
                 ),
-        ),
-      ),
     );
   }
 
@@ -405,12 +427,12 @@ class _SummaryScreenState extends State<SummaryScreen> {
           width: double.infinity,
           height: double.infinity,
           fit: BoxFit.cover,
-          errorBuilder: (_, __, ___) => Icon(icon, size: 28,
+          errorBuilder: (_, __, ___) => Icon(icon, size: context.r.iconMd,
               color: AppColors.accentForTheme(isDark).withValues(alpha: 0.6)),
         );
       } catch (_) {}
     }
-    return Icon(icon, size: 28,
+    return Icon(icon, size: context.r.iconMd,
         color: AppColors.accentForTheme(isDark).withValues(alpha: 0.6));
   }
 
@@ -434,7 +456,13 @@ class _SummaryScreenState extends State<SummaryScreen> {
             child: CupertinoButton(
               padding: EdgeInsets.symmetric(vertical: context.r.spaceMd),
               borderRadius: BorderRadius.circular(context.r.cardRadius),
-              onPressed: () => Navigator.pop(context),
+              onPressed: () {
+                if (widget.onBack != null) {
+                  widget.onBack!();
+                } else {
+                  Navigator.pop(context);
+                }
+              },
               child: Text(
                 'Modificar',
                 style: TextStyle(
@@ -448,23 +476,26 @@ class _SummaryScreenState extends State<SummaryScreen> {
         SizedBox(width: context.r.spaceMd),
         Expanded(
           flex: 2,
-          child: Container(
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(context.r.cardRadius),
-              border: Border.all(
-                color: isDark ? AppColors.darkBorder : const Color(0xFF191C1E).withValues(alpha: 0.15),
-                width: 0.8,
+          child: ScaleTransition(
+            scale: _isConfirming ? const AlwaysStoppedAnimation(1.0) : _pulseScale,
+            child: Container(
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(context.r.cardRadius),
+                border: Border.all(
+                  color: isDark ? AppColors.darkBorder : const Color(0xFF191C1E).withValues(alpha: 0.15),
+                  width: 0.8,
+                ),
               ),
-            ),
-            child: CupertinoButton.filled(
-              borderRadius: BorderRadius.circular(context.r.cardRadius),
-              onPressed: _isConfirming ? null : () => _confirmBooking(),
-              child: _isConfirming
-                  ? const CupertinoActivityIndicator(color: Colors.white)
-                  : const Text(
-                      'Confirmar Reserva',
-                      style: TextStyle(fontWeight: FontWeight.w800, letterSpacing: 0.5),
-                    ),
+              child: CupertinoButton.filled(
+                borderRadius: BorderRadius.circular(context.r.cardRadius),
+                onPressed: _isConfirming ? null : () => _confirmBooking(),
+                child: _isConfirming
+                    ? const CupertinoActivityIndicator(color: Colors.white)
+                    : const Text(
+                        'Confirmar Reserva',
+                        style: TextStyle(fontWeight: FontWeight.w800, letterSpacing: 0.5),
+                      ),
+              ),
             ),
           ),
         ),
@@ -475,56 +506,36 @@ class _SummaryScreenState extends State<SummaryScreen> {
   Widget _buildPostConfirmButtons(bool isDark) {
     return Column(
       children: [
-        TweenAnimationBuilder<double>(
-          duration: const Duration(milliseconds: 500),
-          curve: Curves.elasticOut,
-          tween: Tween(begin: 0.0, end: 1.0),
-          builder: (context, value, child) {
-            return Transform.scale(
-              scale: value,
-              child: Icon(Icons.check_circle, size: 80, color: AppColors.accentForTheme(isDark)),
-            );
-          },
-        ),
-        SizedBox(height: context.r.spaceMd),
-        Text(
-          'Su Cita Médica se ha creado exitosamente.',
-          textAlign: TextAlign.center,
-          style: TextStyle(
-            fontWeight: FontWeight.w700,
-            color: AppColors.accentForTheme(isDark),
-            height: 1.3,
-          ),
-        ),
-        SizedBox(height: context.r.spaceXl),
-
         // Botón Ver Imagen de la Cita Médica (abre previsualizador)
-        SizedBox(
-          width: double.infinity,
-          child: Container(
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(context.r.cardRadius),
-              border: Border.all(
-                color: isDark ? AppColors.darkBorder : const Color(0xFF191C1E).withValues(alpha: 0.15),
-                width: 0.8,
+        ScaleTransition(
+          scale: _pulseScale,
+          child: SizedBox(
+            width: double.infinity,
+            child: Container(
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(context.r.cardRadius),
+                border: Border.all(
+                  color: isDark ? AppColors.darkBorder : const Color(0xFF191C1E).withValues(alpha: 0.15),
+                  width: 0.8,
+                ),
               ),
-            ),
-            child: CupertinoButton.filled(
-              borderRadius: BorderRadius.circular(context.r.cardRadius),
-              onPressed: _isDownloadingPdf ? null : _openPdfPreview,
-              child: _isDownloadingPdf
-                  ? const CupertinoActivityIndicator(color: Colors.white)
-                  : Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(CupertinoIcons.doc_text_search, size: 20),
-                        SizedBox(width: 10),
-                        Text(
-                          'Ver Imagen de la Cita Médica',
-                          style: context.texts.bodyMedium.copyWith(fontWeight: FontWeight.w800, letterSpacing: 0.3),
-                        ),
-                      ],
-                    ),
+              child: CupertinoButton.filled(
+                borderRadius: BorderRadius.circular(context.r.cardRadius),
+                onPressed: _isDownloadingPdf ? null : _openPdfPreview,
+                child: _isDownloadingPdf
+                    ? const CupertinoActivityIndicator(color: Colors.white)
+                    : Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(CupertinoIcons.doc_text_search, size: 20),
+                          SizedBox(width: 10),
+                          Text(
+                            'Ver Imagen de la Cita Médica',
+                            style: context.texts.bodyMedium.copyWith(fontWeight: FontWeight.w800, letterSpacing: 0.3),
+                          ),
+                        ],
+                      ),
+              ),
             ),
           ),
         ),
@@ -677,10 +688,15 @@ class _SummaryScreenState extends State<SummaryScreen> {
         _dr = responseData?['dr'] as int?;
       });
 
-      // Reproducir audio de cita registrada exitosamente
+      // Notificar al flujo que la reserva fue confirmada (oculta botón atrás).
+      widget.onConfirmed?.call();
+
+      // Reproducir audio de cita registrada exitosamente (respeta modo silencio/vibración)
       try {
-        _successPlayer = AudioPlayer();
-        await _successPlayer!.play(AssetSource('vof/AUDIO 5. FINAL CITA MEDICA REGISTRADA.mp3'));
+        if (SoundManager.isEnabled && !await SoundManager.isDeviceSilentOrVibrate()) {
+          _successPlayer = AudioPlayer();
+          await _successPlayer!.play(AssetSource('vof/AUDIO 5. FINAL CITA MEDICA REGISTRADA.mp3'));
+        }
       } catch (_) {}
 
       // Programar notificaciones de recordatorio
@@ -738,6 +754,18 @@ class _SummaryScreenState extends State<SummaryScreen> {
         if (mounted) {
           setState(() {
             _showSuccessSplash = false;
+          });
+          // Hacer scroll al botón "Ver imagen de la Cita Médica" tras la transición.
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            Future.delayed(const Duration(milliseconds: 450), () {
+              if (_scrollController.hasClients) {
+                _scrollController.animateTo(
+                  _scrollController.position.maxScrollExtent,
+                  duration: const Duration(milliseconds: 600),
+                  curve: Curves.easeOutCubic,
+                );
+              }
+            });
           });
         }
       });

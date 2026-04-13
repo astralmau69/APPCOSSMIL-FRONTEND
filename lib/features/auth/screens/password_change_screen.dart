@@ -1,7 +1,6 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import '../../../core/constants/app_colors.dart';
-import '../../../core/theme/app_constants.dart';
 import '../../../core/extensions/responsive_extensions.dart';
 import '../../../core/services/auth_service.dart';
 import '../../../core/session/user_session.dart';

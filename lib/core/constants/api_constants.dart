@@ -2,9 +2,7 @@ import 'dart:convert';
 
 class ApiConstants {
   // ─── Servidor ──────────────────────────────────────────────────────────────
-  static const String baseUrl = 'http://10.150.10.13:9999';
-
-  static const String appVersion = '1.0.0';
+  static const String baseUrl = 'https://api.cossmil.mil.bo';
 
   // ─── Endpoints ─────────────────────────────────────────────────────────────
   static const String tokenEndpoint = '/api/security/oauth/token';
@@ -57,10 +55,17 @@ class ApiConstants {
   static String horariosAtencion(int idins, int idsuc) =>
       '/api/programacion/horarios-atencion/$idins/$idsuc';
 
-  /// Médico asignado con agenda y horas disponibles.
-  /// [fecha] obtenida de fecha-servidor (fechaCitaMovil).
+  /// Médico asignado con agenda y horas disponibles (flujo legacy).
   static String medicoAsignado(int idins, int idsuc, int idesp, String fecha, String modalidad) =>
       '/api/programacion/medico-asignado/$idins/$idsuc/$idesp/$fecha/$modalidad';
+
+  /// Lista de médicos con agendas para una especialidad y fecha (nuevo flujo CEX).
+  static String medicoAgendaEspecialidadCex(int idins, int idsuc, String fecha, int idesp) =>
+      '/api/programacion/medico-agenda-especialidad-cex/$idins/$idsuc/$fecha/$idesp';
+
+  /// Horas disponibles de una agenda específica por idagenda (nuevo flujo CEX).
+  static String medicoAgendaFechaHoras(String idagenda) =>
+      '/api/programacion/medico-agenda-fecha-horas/$idagenda';
 
   /// Crear cita médica (POST).
   static String crearCita() => '/api/programacion/crea-cita';
@@ -92,5 +97,16 @@ class ApiConstants {
   /// Actualizar datos de usuario (contraseña, correo, teléfono).
   static String updateUsuarioWeb(int idper) =>
       '/api/usuarioweb/update/$idper';
+
+  /// Cambiar solo la contraseña del usuario (PUT).
+  static String changePassword(int idper) =>
+      '/api/usuarioweb/change-password/$idper';
+
+  /// Actualizar correo y teléfono del usuario (PUT).
+  static String updateProfile(int idper) =>
+      '/api/usuarioweb/update-profile/$idper';
+
+  /// Registrar calificación del médico (POST).
+  static String medicoCalificacion() => '/api/programacion/medico-calificacion';
 }
 

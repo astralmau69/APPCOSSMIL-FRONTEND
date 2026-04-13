@@ -25,6 +25,12 @@ class ReservaModel {
   final int? idtran;
   final int? dr;
 
+  /// ID del médico (para calificación). Viene como `idmed` en el historial.
+  final String? idmed;
+
+  /// ID de la especialidad (para calificación). Viene como `idesp` en el historial.
+  final int? idesp;
+
   /// Estado de cancelación del backend: "0" = no cancelada, "1" = cancelada.
   final String estadoCancelacion;
 
@@ -46,6 +52,8 @@ class ReservaModel {
     this.idsuc,
     this.idtran,
     this.dr,
+    this.idmed,
+    this.idesp,
     this.estadoCancelacion = '0',
   });
 
@@ -75,6 +83,9 @@ class ReservaModel {
     final estadoCancelacionVal = (json['estadoCancelacion'] ?? json['cancelado'] ?? '0').toString();
     final bool isCancelado = estadoCancelacionVal == '1';
 
+    final rawHospital = (json['sucursal'] as String? ?? json['regional'] as String? ?? '').toDisplayCase;
+    final normalizedHospital = _normalizeHospital(rawHospital);
+
     return ReservaModel(
       id: (json['codadm'] ?? json['idreserva'] ?? json['id'] ?? '').toString(),
       patientName: (json['paciente'] as String? ??
@@ -83,26 +94,37 @@ class ReservaModel {
       relationship: (json['parentesco'] as String? ?? 'Titular').toDisplayCase,
       specialty: (json['especialidad'] as String? ?? '').toDisplayCase,
       doctorName: (json['medico'] as String? ?? '').toDisplayCase,
-      hospital: (json['regional'] as String? ??
-          json['sucursal'] as String? ??
-          '').toDisplayCase,
+      hospital: normalizedHospital,
       city: (json['ciudad'] as String? ?? '').toDisplayCase,
       date: json['fechaCita'] as String? ??
           json['fecha'] as String? ??
           '',
-      time: json['hora'] as String? ?? '',
+      time: json['hora'] as String? ?? json['horaCita'] as String? ?? json['time'] as String? ?? '',
       status: isCancelado
           ? 'Cancelado'
           : _parseStatus(json['estado'], json['fechaCita']?.toString() ?? json['fecha']?.toString() ?? ''),
-      consultorio: json['consultorio'] as String?,
+      consultorio: (json['consultorio'] ?? json['des_con'] ?? json['office'])?.toString(),
       codigoReserva: (json['codadm'] ?? json['codigo_reserva'] ?? json['ticket']).toString(),
       gestion: gestion,
       idins: idins,
       idsuc: idsuc,
       idtran: idtran,
       dr: dr,
+      idmed: (json['idmed'] ?? json['idMed'] ?? json['id_medico'])?.toString(),
+      idesp: json['idesp'] as int? ?? json['idEsp'] as int?,
       estadoCancelacion: estadoCancelacionVal,
     );
+  }
+
+  /// Expande abreviaciones de hospitales militares al nombre completo.
+  static String _normalizeHospital(String name) {
+    if (name.isEmpty) return '';
+    final upper = name.toUpperCase();
+    if (upper.contains('HMC')) return name.replaceAll(RegExp(r'HMC', caseSensitive: false), 'Hospital Militar Central');
+    if (upper.contains('HMU')) return name.replaceAll(RegExp(r'HMU', caseSensitive: false), 'Hospital Militar Universitario');
+    if (upper.contains('HMA')) return name.replaceAll(RegExp(r'HMA', caseSensitive: false), 'Hospital Militar de Área');
+    if (upper.contains('HMB')) return name.replaceAll(RegExp(r'HMB', caseSensitive: false), 'Hospital Militar de Base');
+    return name;
   }
 
   /// El backend usa "S" = atendido/completado, "N" = no atendido (falta o pendiente).
@@ -165,9 +187,84 @@ class ReservaModel {
   bool get canDownloadPdf =>
       gestion != null && idins != null && idsuc != null && idtran != null && dr != null;
 
-  /// Si se puede cancelar: estadoCancelacion == "0" y tiene los IDs necesarios.
-  bool get canCancel =>
-      estadoCancelacion == '0' && canDownloadPdf && status != 'Cancelado';
+  /// Si se puede cancelar: estadoCancelacion == "0", tiene los IDs necesarios,
+  /// y faltan más de 2 horas para la cita.
+  bool get canCancel {
+    if (estadoCancelacion != '0') return false;
+    if (!canDownloadPdf) return false;
+    if (status == 'Cancelado') return false;
+    return !isWithinTwoHoursOfAppointment;
+  }
+
+  /// True si la cita empieza en menos de 2 horas desde ahora.
+  bool get isWithinTwoHoursOfAppointment {
+    try {
+      if (date.isEmpty) return false;
+      final dateParts = date.split('-');
+      if (dateParts.length < 3) return false;
+      final year = int.parse(dateParts[0]);
+      final month = int.parse(dateParts[1]);
+      final day = int.parse(dateParts[2]);
+      int hour = 0, minute = 0;
+      if (time.isNotEmpty) {
+        final tp = time.split(':');
+        hour = int.tryParse(tp[0]) ?? 0;
+        minute = int.tryParse(tp.length > 1 ? tp[1] : '0') ?? 0;
+      }
+      final dt = DateTime(year, month, day, hour, minute);
+      return dt.difference(DateTime.now()).inMinutes < 120;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  /// Fecha de la cita como [DateTime] (solo año/mes/día, sin hora).
+  /// Retorna null si la fecha no es parseable.
+  DateTime? get appointmentDate {
+    try {
+      if (date.isEmpty) return null;
+      final parts = date.split('-');
+      if (parts.length < 3) return null;
+      return DateTime(int.parse(parts[0]), int.parse(parts[1]), int.parse(parts[2]));
+    } catch (_) {
+      return null;
+    }
+  }
+
+  /// True si la cita+hora de la cita ya pasó completamente.
+  bool get isAppointmentPast {
+    try {
+      if (date.isEmpty) return false;
+      final dateParts = date.split('-');
+      if (dateParts.length < 3) return false;
+      final year = int.parse(dateParts[0]);
+      final month = int.parse(dateParts[1]);
+      final day = int.parse(dateParts[2]);
+      int hour = 23, minute = 59;
+      if (time.isNotEmpty) {
+        final tp = time.split(':');
+        hour = int.tryParse(tp[0]) ?? 23;
+        minute = int.tryParse(tp.length > 1 ? tp[1] : '59') ?? 59;
+      }
+      return DateTime.now().isAfter(DateTime(year, month, day, hour, minute));
+    } catch (_) {
+      return false;
+    }
+  }
+
+  /// Hora en formato 24h con ceros (ej: 8:00 -> 08:00)
+  String get formattedTime12h {
+    if (time.isEmpty) return '';
+    try {
+      final parts = time.split(':');
+      if (parts.length >= 2) {
+        final h = parts[0].padLeft(2, '0');
+        final m = parts[1].padLeft(2, '0');
+        return '$h:$m';
+      }
+    } catch (_) {}
+    return time;
+  }
 
   ReservaModel copyWith({
     String? status,
@@ -191,6 +288,8 @@ class ReservaModel {
       idsuc: idsuc,
       idtran: idtran,
       dr: dr,
+      idmed: idmed,
+      idesp: idesp,
       estadoCancelacion: estadoCancelacion ?? this.estadoCancelacion,
     );
   }

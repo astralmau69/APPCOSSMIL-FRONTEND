@@ -3,6 +3,7 @@ import '../../features/splash/screens/splash_screen.dart';
 import '../storage/token_storage.dart';
 import '../services/security_service.dart';
 import '../services/session_restore_service.dart';
+import '../services/notification_service.dart';
 import '../constants/app_colors.dart';
 
 /// Decides the startup route based on persisted session state.
@@ -50,11 +51,12 @@ class _StartupRouterState extends State<StartupRouter> {
         return;
       }
 
-      // Returning user
+      // Returning user: mostrar splash de bienvenida → el splash navega a /local-auth
       if (hasPin) {
-        Navigator.pushReplacementNamed(context, '/local-auth');
+        _goSplash();
       } else {
         // Sin PIN/biométrico configurado → no mantener sesión abierta
+        await NotificationService.cancelAllReminders();
         await TokenStorage.deleteToken();
         await SessionRestoreService.clearUserSession();
         _goSplash();

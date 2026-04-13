@@ -33,22 +33,26 @@ class AppResponsive {
   final double screenHeight;
   final DeviceType deviceType;
   final Orientation orientation;
+  final double viewPaddingBottom;
 
   const AppResponsive._({
     required this.screenWidth,
     required this.screenHeight,
     required this.deviceType,
     required this.orientation,
+    required this.viewPaddingBottom,
   });
 
   factory AppResponsive.of(BuildContext context) {
-    final size = MediaQuery.of(context).size;
-    final orientation = MediaQuery.of(context).orientation;
+    final mq = MediaQuery.of(context);
+    final size = mq.size;
+    final orientation = mq.orientation;
     return AppResponsive._(
       screenWidth: size.width,
       screenHeight: size.height,
       deviceType: _getDeviceType(size.width),
       orientation: orientation,
+      viewPaddingBottom: mq.viewPadding.bottom,
     );
   }
 
@@ -132,12 +136,10 @@ class AppResponsive {
   double get buttonHeight => _select(phoneSmall: 48, phoneMedium: 52, phoneLarge: 56, tablet: 56);
 
   // ── BOTTOM NAV PADDING (espacio para el floating nav bar) ─────────────────
-  double get navBarBottomSpace => _select(
-    phoneSmall: 100,
-    phoneMedium: 110,
-    phoneLarge: 120,
-    tablet: 120,
-  );
+  // Incluye el viewPadding.bottom para adaptarse a gestos vs botones de navegación.
+  double get navBarBottomSpace =>
+      _select(phoneSmall: 95, phoneMedium: 100, phoneLarge: 105, tablet: 112)
+      + viewPaddingBottom;
 
   // ── PIN KEY SIZE ──────────────────────────────────────────────────────────
   double get pinKeySize => _select(phoneSmall: 64, phoneMedium: 72, phoneLarge: 82, tablet: 82);
@@ -208,6 +210,27 @@ class AppResponsive {
   double get filterChipHeight => _select(phoneSmall: 36, phoneMedium: 40, phoneLarge: 44, tablet: 48);
   double get filterChipPadH => _select(phoneSmall: 12, phoneMedium: 14, phoneLarge: 16, tablet: 18);
   double get filterChipPadV => _select(phoneSmall: 6, phoneMedium: 8, phoneLarge: 8, tablet: 10);
+
+  // ── PIN KEYPAD ────────────────────────────────────────────────────────────
+  double get pinDotSize => _select(phoneSmall: 14, phoneMedium: 16, phoneLarge: 16, tablet: 20);
+  double get pinDotMargin => _select(phoneSmall: 8, phoneMedium: 12, phoneLarge: 12, tablet: 16);
+  double get pinKeyFontSize => _select(phoneSmall: 24, phoneMedium: 28, phoneLarge: 32, tablet: 36);
+  double get pinKeyGap => _select(phoneSmall: 10, phoneMedium: 14, phoneLarge: 16, tablet: 20);
+
+  // ── LARGE DISPLAY (teléfonos de emergencia, displays grandes) ─────────────
+  double get displayXl => _select(phoneSmall: 36, phoneMedium: 42, phoneLarge: 48, tablet: 56);
+
+  // ── FLOATING NAV BAR ─────────────────────────────────────────────────────
+  double get navBarRadius => _select(phoneSmall: 28, phoneMedium: 32, phoneLarge: 35, tablet: 40);
+  double get navBarHeight => _select(phoneSmall: 62, phoneMedium: 68, phoneLarge: 74, tablet: 80);
+  double get navBarBottomInset => _select(phoneSmall: 14, phoneMedium: 18, phoneLarge: 24, tablet: 28);
+  double get navItemPillRadius => _select(phoneSmall: 12, phoneMedium: 14, phoneLarge: 16, tablet: 18);
+
+  // ── SMALL CONTACT ICON (inside contact rows) ──────────────────────────────
+  double get contactRowIconSize => _select(phoneSmall: 36, phoneMedium: 40, phoneLarge: 44, tablet: 48);
+
+  // ── HANDLE BAR (bottom sheets) ────────────────────────────────────────────
+  double get handleBarWidth => _select(phoneSmall: 32, phoneMedium: 36, phoneLarge: 40, tablet: 48);
 
   // ── EDGE INSETS HELPERS ───────────────────────────────────────────────────
   EdgeInsets get screenPadding => EdgeInsets.symmetric(horizontal: paddingH);

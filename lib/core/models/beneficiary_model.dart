@@ -1,6 +1,13 @@
 import '../extensions/string_extensions.dart';
+import '../utils/rank_utils.dart';
+
+/// Rango del titular actual, seteado externamente por AuthService/SessionRestore.
+/// Usado como fallback cuando el beneficiario titular no tiene su propio grado.
+String _titularRankFallback = '';
 
 class BeneficiaryModel {
+  /// Permite a auth_service/session_restore setear el rango del titular como fallback.
+  static set titularRankFallback(String rank) => _titularRankFallback = rank;
   final String id;
   final String fullName;
   final String relationship;
@@ -8,6 +15,10 @@ class BeneficiaryModel {
   final String photoBase64;
   final int? age;
   final String gender;
+  /// Rango militar (solo relevante para titulares). Ej: "CORONEL"
+  final String grado;
+  /// Estado de servicio del endpoint de foto (refe4). Ej: "ACTIVO"
+  final String serviceStatus;
 
   const BeneficiaryModel({
     required this.id,
@@ -17,6 +28,8 @@ class BeneficiaryModel {
     this.photoBase64 = '',
     this.age,
     this.gender = '',
+    this.grado = '',
+    this.serviceStatus = '',
   });
 
   factory BeneficiaryModel.fromJson(Map<String, dynamic> json) {
@@ -54,6 +67,8 @@ class BeneficiaryModel {
               json['genero'] as String? ??
               json['gender'] as String? ??
               '').trim(),
+      grado: (json['grado'] as String? ?? '').trim(),
+      serviceStatus: json['serviceStatus'] as String? ?? json['refe4'] as String? ?? '',
     );
   }
 
@@ -65,6 +80,8 @@ class BeneficiaryModel {
         'photoBase64': photoBase64,
         'age': age,
         'gender': gender,
+        'grado': grado,
+        'serviceStatus': serviceStatus,
       };
 
   /// First letter of name for avatar display.
@@ -72,6 +89,28 @@ class BeneficiaryModel {
 
   /// Whether this beneficiary is the account holder.
   bool get isTitular => relationship.toUpperCase() == 'TITULAR';
+
+  /// Nombre con prefijo de rango (titular) o tratamiento (beneficiario).
+  String get displayTitle {
+    // Para titulares, si grado está vacío, usar el fallback global
+    String effectiveGrado = grado;
+    if (isTitular && effectiveGrado.isEmpty && _titularRankFallback.isNotEmpty) {
+      effectiveGrado = _titularRankFallback;
+    }
+    return RankUtils.displayNameWithPrefix(
+      fullName: fullName,
+      isTitular: isTitular,
+      grado: effectiveGrado,
+      age: age,
+      gender: effectiveGender,
+    );
+  }
+
+  /// Etiqueta de estado de servicio.
+  String get serviceLabel => RankUtils.serviceStatusLabel(serviceStatus);
+
+  /// `true` si el servicio es activo.
+  bool get isServiceActive => RankUtils.isServiceActive(serviceStatus);
 
   /// Infiere género a partir del parentesco si no viene explícito del backend.
   ///

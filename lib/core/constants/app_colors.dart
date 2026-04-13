@@ -85,7 +85,14 @@ class AppColors {
   static Color cardBg(bool isDark) => isDark ? darkCard : white;
 
   /// Scaffold/page background.
-  static Color scaffoldBg(bool isDark) => isDark ? darkBackground : background;
+  /// Dark: transparente para mostrar AppBackground. Light: color original.
+  static Color scaffoldBg(bool isDark) =>
+      isDark ? Colors.transparent : background;
+
+  /// Nav bar background con efecto glass (semi-transparente + blur nativo).
+  static Color navBarBg(bool isDark) => isDark
+      ? const Color(0xFF080E1A).withValues(alpha: 0.82)
+      : Colors.white.withValues(alpha: 0.88);
 
   /// Elevated surface (modals, sheets).
   static Color elevatedBg(bool isDark) => isDark ? darkElevated : white;

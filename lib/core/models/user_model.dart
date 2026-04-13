@@ -1,4 +1,5 @@
 import '../extensions/string_extensions.dart';
+import '../utils/rank_utils.dart';
 import 'beneficiary_model.dart';
 
 class UserModel {
@@ -20,6 +21,8 @@ class UserModel {
   final int? idseg;
   final String? uc;
   final String allergies;
+  /// Estado de servicio del endpoint de foto (refe4). Ej: "ACTIVO", "PASIVO".
+  final String serviceStatus;
   final List<BeneficiaryModel> beneficiaries;
 
   const UserModel({
@@ -41,6 +44,7 @@ class UserModel {
     this.idseg,
     this.uc,
     this.allergies = '',
+    this.serviceStatus = '',
     required this.beneficiaries,
   });
 
@@ -63,6 +67,7 @@ class UserModel {
     int? idseg,
     String? uc,
     String? allergies,
+    String? serviceStatus,
     List<BeneficiaryModel>? beneficiaries,
   }) {
     return UserModel(
@@ -85,6 +90,7 @@ class UserModel {
       idseg: idseg ?? this.idseg,
       uc: uc ?? this.uc,
       allergies: allergies ?? this.allergies,
+      serviceStatus: serviceStatus ?? this.serviceStatus,
       beneficiaries: beneficiaries ?? this.beneficiaries,
     );
   }
@@ -95,7 +101,10 @@ class UserModel {
       fullName: (json['nombre_completo'] as String? ??
           json['fullName'] as String? ??
           '').toDisplayCase,
-      rank: (json['grado'] as String? ?? json['rank'] as String? ?? '').toDisplayCase,
+      rank: () {
+        final r = (json['grado'] as String? ?? json['rank'] as String? ?? '').toDisplayCase.trim();
+        return r.isNotEmpty ? r : 'Asegurado';
+      }(),
       matricula: json['matricula'] as String? ?? '',
       bloodType: json['tipo_sangre'] as String? ??
           json['bloodType'] as String? ??
@@ -129,6 +138,7 @@ class UserModel {
       allergies: (json['alergias'] as String? ??
           json['allergies'] as String? ??
           '').toDisplayCase,
+      serviceStatus: json['serviceStatus'] as String? ?? json['refe4'] as String? ?? '',
     );
   }
 
@@ -149,12 +159,18 @@ class UserModel {
         'photoBase64': photoBase64,
         'birthDate': birthDate,
         'allergies': allergies,
+        'serviceStatus': serviceStatus,
         'beneficiaries': beneficiaries.map((b) => b.toJson()).toList(),
       };
 
-  /// Nombre con rango para mostrar en UI.
-  String get displayName =>
-      rank.isEmpty ? fullName : '$rank $fullName';
+  /// Nombre con rango abreviado (titular) o tratamiento (beneficiario) para UI.
+  String get displayName => RankUtils.displayNameWithPrefix(
+    fullName: fullName,
+    isTitular: isTitular,
+    grado: rank,
+    age: age,
+    gender: gender,
+  );
 
   /// Shortcut para verificar si el rol es Titular
   bool get isTitular => role == 'Titular';

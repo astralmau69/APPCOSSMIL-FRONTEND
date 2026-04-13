@@ -48,10 +48,14 @@ class SecurityService {
 
   /// Ventana de gracia al volver desde background: si la app vuelve
   /// en menos de este tiempo, NO se pide desbloqueo.
-  static const graceWindowDuration = Duration(seconds: 15);
+  static const graceWindowDuration = Duration.zero;
 
-  /// Tiempo de inactividad del usuario antes de bloquear la app.
+  /// Tiempo de inactividad del usuario antes de bloquear la app (usuarios con PIN).
   static const inactivityTimeout = Duration(minutes: 2);
+
+  /// Tiempo de inactividad antes de cerrar la sesión completamente
+  /// cuando el usuario NO tiene PIN/biométrica configurado.
+  static const sessionTimeoutNoPinDuration = Duration(minutes: 10);
 
   // ─── PIN ───────────────────────────────────────────────────────────────────
 
@@ -204,7 +208,7 @@ class SecurityService {
         localizedReason: reason,
         options: const AuthenticationOptions(
           stickyAuth: true,
-          biometricOnly: true,
+          biometricOnly: false,
         ),
       );
     } on PlatformException {
@@ -245,6 +249,13 @@ class SecurityService {
     return elapsed > graceWindowDuration;
   }
 
+  /// Borra el timestamp de background después de que el usuario se autenticó
+  /// correctamente, evitando que futuras transiciones `resumed` vuelvan a
+  /// disparar el bloqueo dentro de la misma sesión activa.
+  static Future<void> clearBackground() async {
+    await _storage.delete(key: _keyLastBackground);
+  }
+
   // ─── Bloqueo por inactividad ───────────────────────────────────────────────
 
   /// Actualiza el timestamp de última actividad real del usuario.
@@ -254,6 +265,7 @@ class SecurityService {
   }
 
   /// Retorna true si el usuario lleva más de [inactivityTimeout] sin interactuar.
+  /// Solo aplica cuando hay PIN/biométrica configurada (bloqueo local).
   static Future<bool> shouldLockOnInactivity() async {
     final hasPin = await SecurityService.hasPin();
     if (!hasPin) return false;
@@ -262,6 +274,18 @@ class SecurityService {
     final lastActivity = DateTime.fromMillisecondsSinceEpoch(int.parse(v));
     final elapsed = DateTime.now().difference(lastActivity);
     return elapsed > inactivityTimeout;
+  }
+
+  /// Retorna true si el usuario SIN PIN lleva más de [sessionTimeoutNoPinDuration]
+  /// sin interactuar. En ese caso, la sesión debe cerrarse completamente (logout).
+  static Future<bool> shouldLogoutOnInactivity() async {
+    final hasPin = await SecurityService.hasPin();
+    if (hasPin) return false; // Con PIN → se usa shouldLockOnInactivity()
+    final v = await _storage.read(key: _keyLastActivity);
+    if (v == null) return false;
+    final lastActivity = DateTime.fromMillisecondsSinceEpoch(int.parse(v));
+    final elapsed = DateTime.now().difference(lastActivity);
+    return elapsed > sessionTimeoutNoPinDuration;
   }
 
   // ─── Limpieza total ────────────────────────────────────────────────────────

@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import '../constants/app_colors.dart';
-import '../theme/app_constants.dart';
 import '../extensions/responsive_extensions.dart';
 import '../animations/optimized_animations.dart';
 import '../models/reserva_model.dart';

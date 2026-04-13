@@ -7,8 +7,10 @@ import '../../../core/constants/app_colors.dart';
 import '../../../core/models/beneficiary_model.dart';
 import '../../../core/services/programacion_service.dart';
 import '../../../core/session/user_session.dart';
-import '../../../core/theme/app_constants.dart';
 import '../../../core/extensions/responsive_extensions.dart';
+import '../../../core/widgets/beneficiary_details_modal.dart';
+import '../../../core/widgets/cossmil_loader.dart';
+import '../../../core/widgets/image_enlarged_modal.dart';
 
 class FamiliaScreen extends StatefulWidget {
   const FamiliaScreen({super.key});
@@ -108,6 +110,7 @@ class _FamiliaScreenState extends State<FamiliaScreen> {
       gender: user.gender,
       matricula: user.matricula,
       photoBase64: user.photoBase64,
+      grado: user.rank,
     );
   }
 
@@ -136,7 +139,10 @@ class _FamiliaScreenState extends State<FamiliaScreen> {
 
     return CupertinoPageScaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-      child: CustomScrollView(
+      child: Center(
+        child: ConstrainedBox(
+          constraints: BoxConstraints(maxWidth: context.r.maxContentWidth),
+          child: CustomScrollView(
         physics: const BouncingScrollPhysics(
           parent: AlwaysScrollableScrollPhysics(),
         ),
@@ -165,7 +171,7 @@ class _FamiliaScreenState extends State<FamiliaScreen> {
           if (_isLoading)
             const SliverFillRemaining(
               hasScrollBody: false,
-              child: Center(child: CupertinoActivityIndicator(radius: 14)),
+              child: CossmilLoadingScreen(),
             )
           else if (_error != null)
             SliverFillRemaining(
@@ -303,6 +309,8 @@ class _FamiliaScreenState extends State<FamiliaScreen> {
           ],
         ],
       ),
+        ),
+      ),
     );
   }
 }
@@ -327,16 +335,18 @@ class _BeneficiaryCard extends StatelessWidget {
         ? AppColors.accentForTheme(isDark)
         : AppColors.accent;
 
-    return Container(
-      padding: EdgeInsets.all(context.r.spaceMd), // Usar space en vez de hardcard bounds
+    return GestureDetector(
+      onTap: () => BeneficiaryDetailsModal.show(context: context, beneficiary: b),
+      child: Container(
+      padding: EdgeInsets.all(context.r.spaceMd),
       decoration: BoxDecoration(
         color: AppColors.cardBg(isDark),
-        borderRadius: BorderRadius.circular(context.r.radiusLg), // radio más grande y consistente
+        borderRadius: BorderRadius.circular(context.r.radiusLg),
         border: Border.all(
           color: isTitular
               ? accentColor.withValues(alpha: isDark ? 0.35 : 0.2)
               : AppColors.cardBorder(isDark),
-          width: isTitular ? 1.5 : 0.8, // Borde más presente
+          width: isTitular ? 1.5 : 0.8,
         ),
         boxShadow: isDark ? [] : AppColors.softShadow,
       ),
@@ -354,7 +364,7 @@ class _BeneficiaryCard extends StatelessWidget {
                   children: [
                     Expanded(
                       child: Text(
-                        b.fullName,
+                        b.displayTitle,
                         style: context.texts.titleMedium.copyWith(
                           fontWeight: FontWeight.w800,
                           color: AppColors.textPrimaryC(isDark),
@@ -386,7 +396,9 @@ class _BeneficiaryCard extends StatelessWidget {
                 ),
                 SizedBox(height: context.r.spaceXs),
                 Text(
-                  isTitular ? 'Titular de la cuenta' : b.relationship.toUpperCase(),
+                  isTitular
+                      ? (b.grado.isNotEmpty ? b.grado.toUpperCase() : 'Titular de la cuenta')
+                      : b.relationship.toUpperCase(),
                   style: context.texts.bodySmall.copyWith(
                     fontWeight: FontWeight.w700,
                     letterSpacing: 0.5,
@@ -438,12 +450,13 @@ class _BeneficiaryCard extends StatelessWidget {
           ),
         ],
       ),
+    ),
     );
   }
 
   Widget _buildAvatar(BuildContext context, Color accentColor) {
-    final avatarSize = context.r.listAvatarSize * 1.25; // Responsive con token real
-    return Container(
+    final avatarSize = context.r.listAvatarSize * 1.25;
+    final avatar = Container(
       width: avatarSize,
       height: avatarSize,
       decoration: BoxDecoration(
@@ -462,6 +475,18 @@ class _BeneficiaryCard extends StatelessWidget {
             : _initial(context),
       ),
     );
+
+    if (beneficiary.photoBase64.isNotEmpty) {
+      return GestureDetector(
+        onTap: () => ImageEnlargedModal.show(
+          context: context,
+          base64Photo: beneficiary.photoBase64,
+          fallbackText: beneficiary.initial,
+        ),
+        child: avatar,
+      );
+    }
+    return avatar;
   }
 
   Widget _initial(BuildContext context) {

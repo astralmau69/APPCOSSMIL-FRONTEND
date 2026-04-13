@@ -27,10 +27,6 @@ class NewsItemModel {
     this.clase = 'A',
   });
 
-  /// Base URL para las imágenes de noticias.
-  static const String _imageBaseUrl =
-      'https://www.cossmil.mil.bo/assets/images/publicaciones/';
-
   factory NewsItemModel.fromJson(Map<String, dynamic> json) {
     // Parse fecha ISO 8601
     DateTime? parsedDate;

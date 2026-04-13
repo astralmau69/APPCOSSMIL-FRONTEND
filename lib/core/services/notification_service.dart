@@ -3,12 +3,15 @@ import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart' show Color, Colors, Material, MediaQuery, Theme, Brightness;
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:timezone/timezone.dart' as tz;
 import 'package:timezone/data/latest_all.dart' as tz_data;
 import '../../app.dart';
 import '../constants/app_colors.dart';
 import '../services/programacion_service.dart';
+import '../session/user_session.dart';
 import '../utils/app_logger.dart';
+import '../theme/sound_manager.dart';
 
 /// Servicio de notificaciones locales para citas médicas.
 ///
@@ -23,6 +26,26 @@ class NotificationService {
   static const _tag = 'NotificationService';
   static final _plugin = FlutterLocalNotificationsPlugin();
   static bool _initialized = false;
+
+  /// Almacenamiento para el mapeo idtran → ticketNumber.
+  /// Necesario cuando el backend no devuelve idtran al confirmar reserva
+  /// y se usa slotNumber como ticketNumber al programar notificaciones.
+  static const _ticketStorage = FlutterSecureStorage(
+    aOptions: AndroidOptions(encryptedSharedPreferences: true),
+  );
+  static const _ticketMapKey = 'notif_ticket_map';
+
+  /// Callback registrado por TabShell para cambiar de pestaña desde una notificación.
+  static void Function(int tab)? _onSwitchTab;
+
+  /// TabShell llama esto en initState para permitir que las notificaciones
+  /// de calificación abran la pestaña Mis Reservas automáticamente.
+  static void registerTabSwitcher(void Function(int tab) fn) {
+    _onSwitchTab = fn;
+  }
+
+  /// Cambia al tab indicado (usado desde cualquier parte de la app).
+  static void switchTab(int tab) => _onSwitchTab?.call(tab);
 
   // ── Inicialización ──────────────────────────────────────────────────────
 
@@ -65,8 +88,31 @@ class NotificationService {
     final payload = response.payload;
     if (payload == null || payload.isEmpty) return;
 
+    // No procesar si no hay sesión activa — el usuario está deslogueado.
+    if (!UserSession.isLoggedIn) {
+      AppLogger.debug(_tag, 'Notification tapped but no active session — ignoring');
+      return;
+    }
+
     try {
       final data = jsonDecode(payload) as Map<String, dynamic>;
+
+      // Verificar que la notificación pertenece al usuario actual.
+      // Si el payload tiene un userId distinto al actual, ignorar.
+      final notifUserId = data['userId'] as String?;
+      if (notifUserId != null &&
+          notifUserId.isNotEmpty &&
+          notifUserId != UserSession.currentUser.id) {
+        AppLogger.warn(_tag,
+            'Notification userId=$notifUserId ≠ session userId=${UserSession.currentUser.id} — ignoring');
+        return;
+      }
+
+      // Notificación de calificación → abrir Mis Reservas (tab 1)
+      if (data['type'] == 'rating') {
+        _onSwitchTab?.call(1);
+        return;
+      }
       _showAppointmentModal(data);
     } catch (e, st) {
       AppLogger.error(_tag, 'Failed to parse notification payload', e, st);
@@ -74,16 +120,27 @@ class NotificationService {
   }
 
   static void _showAppointmentModal(Map<String, dynamic> data) {
+    // Guardia defensiva: no mostrar modal si el usuario cerró sesión
+    // entre el momento en que llegó la notificación y el tap.
+    if (!UserSession.isLoggedIn) return;
+
     final ctx = CossmilApp.navigatorKey.currentContext;
     if (ctx == null) return;
 
     final isDark = Theme.of(ctx).brightness == Brightness.dark;
     AudioPlayer? audioPlayer;
 
-    audioPlayer = AudioPlayer();
-    audioPlayer.play(AssetSource('vof/AUDIO 7. NOTIFICACION CITA MEDICA.mp3')).catchError((e) {
-      AppLogger.error(_tag, 'Failed to play AUDIO 7', e);
-    });
+    // Play sound respecting in-app toggle; Android ringer check is async so fire-and-forget.
+    if (SoundManager.isEnabled) {
+      SoundManager.isDeviceSilentOrVibrate().then((silent) {
+        if (!silent) {
+          audioPlayer = AudioPlayer();
+          audioPlayer!.play(AssetSource('vof/AUDIO 7. NOTIFICACION CITA MEDICA.mp3')).catchError((e) {
+            AppLogger.error(_tag, 'Failed to play AUDIO 7', e);
+          });
+        }
+      });
+    }
 
     final hasCancelData = data['gestion'] != null &&
         data['idins'] != null &&
@@ -365,10 +422,11 @@ class NotificationService {
 
       final navCtx = CossmilApp.navigatorKey.currentContext;
       if (navCtx == null) return;
+      // ignore: use_build_context_synchronously
       Navigator.of(navCtx).pop(); // Quitar loader
 
       showCupertinoDialog(
-        context: navCtx,
+        context: navCtx, // ignore: use_build_context_synchronously
         builder: (dCtx) => CupertinoAlertDialog(
           title: const Text('Cita Cancelada'),
           content: const Text('Su cita médica ha sido cancelada exitosamente.'),
@@ -383,10 +441,11 @@ class NotificationService {
     } catch (e) {
       final navCtx = CossmilApp.navigatorKey.currentContext;
       if (navCtx == null) return;
+      // ignore: use_build_context_synchronously
       Navigator.of(navCtx).pop(); // Quitar loader
 
       showCupertinoDialog(
-        context: navCtx,
+        context: navCtx, // ignore: use_build_context_synchronously
         builder: (dCtx) => CupertinoAlertDialog(
           title: const Text('Error'),
           content: Text('No se pudo cancelar la cita: $e'),
@@ -480,12 +539,14 @@ class NotificationService {
 
   // ── Recordatorios programados ───────────────────────────────────────────
 
-  /// Programa 2 recordatorios basados en la hora de la cita médica:
-  ///   - 2 horas antes de la cita médica
+  /// Programa 3 recordatorios basados en la hora de la cita médica:
+  ///   - 8:00 AM del día de la cita (recordatorio matutino)
+  ///   - 2 horas y 10 minutos antes de la cita médica
   ///   - 30 minutos antes de la cita médica
   /// Solo programa los que sean en el futuro.
   ///
   /// IDs usados:
+  ///   ticketBase * 10 + 0  → 8 AM día de la cita
   ///   ticketBase * 10 + 1  → 2 horas antes
   ///   ticketBase * 10 + 3  → 30 minutos antes
   static Future<void> scheduleAppointmentReminders({
@@ -506,11 +567,17 @@ class NotificationService {
       await initialize();
 
       final appt = appointmentDateTime;
-      final now = DateTime.now();
+      // Usar la hora de La Paz (America/La_Paz) como referencia para no
+      // programar recordatorios pasados aunque el dispositivo tenga otra zona.
+      final now = tz.TZDateTime.now(tz.local);
       final fechaStr = fecha ?? '${appt.day}/${appt.month}/${appt.year}';
       final horaStr = hora ?? _hhmm(appt);
 
+      final userId = UserSession.currentUser.id;
+
+      // Payload completo (con datos de cancelación) — para 8 AM y 2 h antes.
       final payload = jsonEncode({
+        'userId': userId,
         'especialidad': especialidad,
         'medico': medico,
         'fecha': fechaStr,
@@ -524,10 +591,30 @@ class NotificationService {
         if (dr != null) 'dr': dr,
       });
 
+      // Payload sin datos de cancelación — para el recordatorio de 30 min.
+      final payloadNoCancel = jsonEncode({
+        'userId': userId,
+        'especialidad': especialidad,
+        'medico': medico,
+        'fecha': fechaStr,
+        'hora': horaStr,
+        'paciente': paciente,
+        'ticket': ticketNumber,
+      });
+
+      final appt8am = DateTime(appt.year, appt.month, appt.day, 8, 0);
+
       final List<_Reminder> reminders = [
         _Reminder(
+          id: _idFromTicket(ticketNumber, 0),
+          time: appt8am,
+          title: 'Recordatorio de cita hoy — $paciente',
+          body: 'Hoy a las $horaStr tiene una cita médica de $especialidad con Dr. $medico. '
+              'Recuerde asistir puntualmente. Ficha $ticketNumber.',
+        ),
+        _Reminder(
           id: _idFromTicket(ticketNumber, 1),
-          time: appt.subtract(const Duration(hours: 2)),
+          time: appt.subtract(const Duration(hours: 2, minutes: 10)),
           title: 'Cita Médica en 2 horas — $paciente',
           body: 'Tiene una cita médica de $especialidad con Dr. $medico programada a las $horaStr. '
               'Recuerde prepararse con anticipación. Puede cancelar desde la app si no podrá asistir.',
@@ -538,6 +625,7 @@ class NotificationService {
           title: 'Cita Médica en 30 minutos — $paciente',
           body: 'Su cita médica de $especialidad con Dr. $medico es a las $horaStr. '
               'Diríjase al centro médico y ubique su consultorio. Ficha $ticketNumber.',
+          payload: payloadNoCancel,
         ),
       ];
 
@@ -570,7 +658,7 @@ class NotificationService {
             r.body,
             tz.TZDateTime.from(r.time, tz.local),
             details,
-            payload: payload,
+            payload: r.payload ?? payload,
             androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
             uiLocalNotificationDateInterpretation:
                 UILocalNotificationDateInterpretation.absoluteTime,
@@ -582,20 +670,91 @@ class NotificationService {
         }
       }
       AppLogger.info(_tag, '$scheduled/${reminders.length} reminders scheduled for $ticketNumber');
+
+      // Guardar mapeo idtran → ticketNumber si son distintos.
+      // Permite cancelar correctamente aunque el backend no haya devuelto idtran.
+      if (idtran != null) {
+        await _saveTicketMapping(idtran, ticketNumber);
+      }
     } catch (e, st) {
       AppLogger.error(_tag, 'scheduleAppointmentReminders failed', e, st);
     }
   }
 
-  /// Cancela todos los recordatorios y la confirmación de una ficha.
-  static Future<void> cancelAppointmentReminders(String ticketNumber) async {
+  /// Cancela TODAS las notificaciones pendientes y limpia el mapeo (logout).
+  static Future<void> cancelAllReminders() async {
     try {
       await initialize();
-      // IDs: 1 (2h antes), 3 (30min antes), 9 (confirmación 5min)
-      for (final suffix in [1, 3, 9]) {
+      await _plugin.cancelAll();
+      await _ticketStorage.delete(key: _ticketMapKey);
+      AppLogger.info(_tag, 'All pending notifications cancelled (logout)');
+    } catch (e, st) {
+      AppLogger.error(_tag, 'cancelAllReminders failed', e, st);
+    }
+  }
+
+  // ── Ticket mapping ─────────────────────────────────────────────────────────
+
+  /// Guarda el mapeo [idtran] → [ticketNumber] cuando son distintos.
+  /// Se necesita cuando el backend no devuelve idtran al confirmar y se usa
+  /// slotNumber como ticketNumber para las notificaciones.
+  static Future<void> _saveTicketMapping(int idtran, String ticketNumber) async {
+    final key = idtran.toString();
+    if (key == ticketNumber) return; // ya coinciden, no hace falta guardar
+    try {
+      final raw = await _ticketStorage.read(key: _ticketMapKey) ?? '{}';
+      final map = Map<String, String>.from(jsonDecode(raw) as Map);
+      map[key] = ticketNumber;
+      await _ticketStorage.write(key: _ticketMapKey, value: jsonEncode(map));
+      AppLogger.debug(_tag, 'Ticket mapping saved: $key → $ticketNumber');
+    } catch (e) {
+      AppLogger.error(_tag, '_saveTicketMapping failed', e, null);
+    }
+  }
+
+  /// Devuelve el ticketNumber real usado al programar las notificaciones.
+  /// Si no hay mapeo guardado, devuelve [idtran] sin cambios.
+  static Future<String> _resolveTicketNum(String idtran) async {
+    try {
+      final raw = await _ticketStorage.read(key: _ticketMapKey) ?? '{}';
+      final map = Map<String, String>.from(jsonDecode(raw) as Map);
+      final resolved = map[idtran] ?? idtran;
+      if (resolved != idtran) {
+        AppLogger.debug(_tag, 'Ticket resolved: $idtran → $resolved');
+      }
+      return resolved;
+    } catch (_) {
+      return idtran;
+    }
+  }
+
+  /// Elimina el mapeo de un idtran tras cancelar exitosamente.
+  static Future<void> _removeTicketMapping(String idtran) async {
+    try {
+      final raw = await _ticketStorage.read(key: _ticketMapKey) ?? '{}';
+      final map = Map<String, String>.from(jsonDecode(raw) as Map);
+      if (map.remove(idtran) != null) {
+        await _ticketStorage.write(key: _ticketMapKey, value: jsonEncode(map));
+      }
+    } catch (_) {}
+  }
+
+  // ── Cancelación ────────────────────────────────────────────────────────────
+
+  /// Cancela todos los recordatorios y la confirmación de una ficha.
+  /// Acepta el [idtran] de la reserva — resuelve automáticamente el ticketNumber
+  /// real aunque durante la confirmación se haya usado slotNumber como fallback.
+  static Future<void> cancelAppointmentReminders(String idtran) async {
+    try {
+      await initialize();
+      // Resolver el ticketNumber real que se usó al programar
+      final ticketNumber = await _resolveTicketNum(idtran);
+      // IDs: 0 (8 AM día cita), 1 (2h antes), 3 (30min antes), 6 (calificación), 9 (confirmación 5min)
+      for (final suffix in [0, 1, 3, 6, 9]) {
         await _plugin.cancel(_idFromTicket(ticketNumber, suffix));
       }
-      AppLogger.info(_tag, 'Cancelled reminders for $ticketNumber');
+      await _removeTicketMapping(idtran);
+      AppLogger.info(_tag, 'Cancelled reminders for idtran=$idtran (ticket=$ticketNumber)');
     } catch (e, st) {
       AppLogger.error(_tag, 'cancelAppointmentReminders failed', e, st);
     }
@@ -619,10 +778,13 @@ class _Reminder {
   final DateTime time;
   final String title;
   final String body;
+  /// Payload propio. Si es null se usa el payload compartido del lote.
+  final String? payload;
   const _Reminder({
     required this.id,
     required this.time,
     required this.title,
     required this.body,
+    this.payload,
   });
 }

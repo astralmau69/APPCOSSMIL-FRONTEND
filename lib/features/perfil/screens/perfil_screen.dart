@@ -3,16 +3,19 @@ import 'dart:typed_data';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import '../../../core/constants/app_colors.dart';
-import '../../../core/theme/app_constants.dart';
 import '../../../core/extensions/responsive_extensions.dart';
 import '../../../core/session/user_session.dart';
 import '../../../core/models/user_model.dart';
 import '../../../core/storage/token_storage.dart';
 import '../../../core/services/security_service.dart';
-import '../../../core/services/session_restore_service.dart';
-import '../../../core/widgets/profile_qr_modal.dart';
+import '../../../core/services/notification_service.dart';
 import '../../../core/animations/optimized_animations.dart';
 import '../../../core/theme/theme_manager.dart';
+import '../../../core/services/auth_service.dart';
+import '../../../core/widgets/cossmil_ios_alert.dart';
+import '../../../core/theme/sound_manager.dart';
+import '../../../core/utils/rank_utils.dart';
+import '../../../core/widgets/image_enlarged_modal.dart';
 
 class PerfilScreen extends StatefulWidget {
   const PerfilScreen({super.key});
@@ -22,18 +25,18 @@ class PerfilScreen extends StatefulWidget {
 }
 
 class _PerfilScreenState extends State<PerfilScreen> {
-  // Mutable copies for inline editing
   late String _email;
   late String _phone;
   bool _isEditingEmail = false;
   bool _isEditingPhone = false;
+  bool _isSavingEmail = false;
+  bool _isSavingPhone = false;
 
   bool _hasPin = false;
   bool _isBiometricEnabled = false;
   DeviceBiometricStatus _bioStatus = DeviceBiometricStatus.unavailable;
   String _bioLabel = 'Biometría';
 
-  // Decoded once — avoids re-decoding on every email/phone setState.
   Uint8List? _cachedUserPhoto;
 
   late final TextEditingController _emailCtrl;
@@ -71,7 +74,944 @@ class _PerfilScreenState extends State<PerfilScreen> {
     }
   }
 
-  String get _securitySummary {
+  @override
+  void dispose() {
+    _emailCtrl.dispose();
+    _phoneCtrl.dispose();
+    super.dispose();
+  }
+
+  // ──────────────────────────────────────────────────────────────────────────
+  //  BUILD
+  // ──────────────────────────────────────────────────────────────────────────
+
+  @override
+  Widget build(BuildContext context) {
+    final user = UserSession.currentUser;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final r = context.r;
+
+    return CupertinoPageScaffold(
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+      child: CustomScrollView(
+        physics: const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
+        slivers: [
+          // ── Navigation Bar ──────────────────────────────────────────────
+          CupertinoSliverNavigationBar(
+            largeTitle: Text('Mi Perfil', style: TextStyle(color: AppColors.textPrimaryC(isDark))),
+            backgroundColor: isDark
+                ? AppColors.darkSurface.withValues(alpha: 0.92)
+                : AppColors.white.withValues(alpha: 0.92),
+            border: Border(
+              bottom: BorderSide(color: AppColors.cardBorder(isDark).withValues(alpha: 0.5), width: 0.5),
+            ),
+          ),
+
+          // ── Hero Header ─────────────────────────────────────────────────
+          SliverToBoxAdapter(
+            child: Center(
+              child: ConstrainedBox(
+                constraints: BoxConstraints(maxWidth: r.maxContentWidth),
+                child: FadeSlideIn(
+                  offsetY: 20,
+                  delay: const Duration(milliseconds: 80),
+                  child: _buildHeroHeader(user, isDark, r),
+                ),
+              ),
+            ),
+          ),
+
+          // ── Sections ────────────────────────────────────────────────────
+          SliverPadding(
+            padding: EdgeInsets.fromLTRB(r.paddingH, r.spaceLg, r.paddingH, r.navBarBottomSpace),
+            sliver: SliverToBoxAdapter(
+              child: Center(
+                child: ConstrainedBox(
+                  constraints: BoxConstraints(maxWidth: r.maxContentWidth),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      // Información personal
+                      FadeSlideIn(delay: const Duration(milliseconds: 120), offsetY: 12,
+                        child: _buildSection(
+                          isDark: isDark,
+                          header: 'INFORMACIÓN PERSONAL',
+                          manualDividers: true,
+                          children: _buildInfoTiles(user, isDark),
+                        ),
+                      ),
+                      SizedBox(height: r.spaceLg),
+
+                      // Datos de contacto
+                      FadeSlideIn(delay: const Duration(milliseconds: 160), offsetY: 12,
+                        child: _buildSection(
+                          isDark: isDark,
+                          header: 'DATOS DE CONTACTO',
+                          children: [
+                            _buildContactTile(
+                              isDark: isDark, icon: CupertinoIcons.mail_solid,
+                              iconColor: const Color(0xFF3B82F6),
+                              label: 'Correo electrónico', value: _email,
+                              isEditing: _isEditingEmail, isSaving: _isSavingEmail,
+                              controller: _emailCtrl, keyboardType: TextInputType.emailAddress,
+                              onEdit: () => setState(() { _emailCtrl.text = _email; _isEditingEmail = true; }),
+                              onSave: _saveEmail,
+                              onCancel: () => setState(() { _emailCtrl.text = _email; _isEditingEmail = false; }),
+                            ),
+                            _buildContactTile(
+                              isDark: isDark, icon: CupertinoIcons.phone_fill,
+                              iconColor: const Color(0xFF10B981),
+                              label: 'Celular (Bolivia)', value: _phone,
+                              isEditing: _isEditingPhone, isSaving: _isSavingPhone,
+                              controller: _phoneCtrl, keyboardType: TextInputType.phone,
+                              hint: 'XXXXXXXX', prefix: '+591 ',
+                              onEdit: () => setState(() { _phoneCtrl.text = _phone; _isEditingPhone = true; }),
+                              onSave: _savePhone,
+                              onCancel: () => setState(() { _phoneCtrl.text = _phone; _isEditingPhone = false; }),
+                            ),
+                          ],
+                        ),
+                      ),
+                      SizedBox(height: r.spaceLg),
+
+                      // Seguridad y acceso
+                      FadeSlideIn(delay: const Duration(milliseconds: 200), offsetY: 12,
+                        child: _buildSection(
+                          isDark: isDark,
+                          header: 'SEGURIDAD Y ACCESO',
+                          children: [
+                            _buildNavTile(
+                              isDark: isDark,
+                              icon: CupertinoIcons.lock_shield_fill,
+                              iconColor: _hasPin ? AppColors.success : AppColors.textTertiary,
+                              title: _hasPin ? 'Seguridad configurada' : 'Configurar seguridad',
+                              subtitle: _buildSecuritySummary(),
+                              onTap: () async {
+                                await Navigator.of(context, rootNavigator: true).pushNamed('/security-setup');
+                                await _loadSecurityStatus();
+                              },
+                            ),
+                            _buildNavTile(
+                              isDark: isDark,
+                              icon: CupertinoIcons.lock_rotation,
+                              iconColor: const Color(0xFFF59E0B),
+                              title: 'Cambiar Contraseña',
+                              subtitle: 'Actualiza tu contraseña de acceso al sistema',
+                              onTap: _showChangePasswordDialog,
+                            ),
+                          ],
+                        ),
+                      ),
+                      // Identificación (Temporalmente deshabilitado)
+                      /*
+                      FadeSlideIn(delay: const Duration(milliseconds: 240), offsetY: 12,
+                        child: _buildSection(
+                          isDark: isDark,
+                          header: 'IDENTIFICACIÓN',
+                          children: [
+                            _buildNavTile(
+                              isDark: isDark,
+                              icon: CupertinoIcons.qrcode,
+                              iconColor: AppColors.accentForTheme(isDark),
+                              title: 'Mi Código QR',
+                              subtitle: 'Identificación rápida en ventanilla',
+                              onTap: () => ProfileQrModal.show(context: context, user: user),
+                            ),
+                          ],
+                        ),
+                      ),
+                      SizedBox(height: r.spaceLg),
+                      */
+
+                      // Apariencia
+                      FadeSlideIn(delay: const Duration(milliseconds: 280), offsetY: 12,
+                        child: _buildSection(
+                          isDark: isDark,
+                          header: 'APARIENCIA',
+                          children: [
+                            _buildThemeTile(isDark),
+                            _buildSoundTile(isDark),
+                          ],
+                        ),
+                      ),
+                      SizedBox(height: r.spaceLg),
+
+                      // Cerrar sesión
+                      FadeSlideIn(delay: const Duration(milliseconds: 320), offsetY: 12,
+                        child: _buildLogoutTile(isDark, r),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ──────────────────────────────────────────────────────────────────────────
+  //  HERO HEADER
+  // ──────────────────────────────────────────────────────────────────────────
+
+  Widget _buildHeroHeader(UserModel user, bool isDark, AppResponsive r) {
+    final avatarSize = r.profileAvatarSize;
+
+    return Container(
+      width: double.infinity,
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: isDark
+              ? [AppColors.primary.withValues(alpha: 0.18), Colors.transparent]
+              : [AppColors.primary.withValues(alpha: 0.07), Colors.transparent],
+        ),
+      ),
+      child: Center(
+        child: ConstrainedBox(
+          constraints: BoxConstraints(maxWidth: r.maxContentWidth),
+          child: Padding(
+            padding: EdgeInsets.fromLTRB(r.paddingH, 36, r.paddingH, 8),
+            child: Column(
+              children: [
+                // ── Avatar ──────────────────────────────────────────────
+                GestureDetector(
+                  onTap: () {
+                    if (user.photoBase64.isNotEmpty) {
+                      ImageEnlargedModal.show(
+                        context: context,
+                        base64Photo: user.photoBase64,
+                        fallbackText: user.fullName.isNotEmpty ? user.fullName[0].toUpperCase() : 'U',
+                      );
+                    }
+                  },
+                  child: Hero(
+                    tag: 'enlarged-image',
+                    child: Container(
+                      width: avatarSize,
+                      height: avatarSize,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: AppColors.cardBg(isDark),
+                        border: Border.all(
+                          color: AppColors.accentForTheme(isDark).withValues(alpha: 0.35),
+                          width: 3.5,
+                        ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: AppColors.accentForTheme(isDark).withValues(alpha: 0.18),
+                            blurRadius: 24,
+                            spreadRadius: 2,
+                            offset: const Offset(0, 8),
+                          ),
+                        ],
+                      ),
+                      child: Padding(
+                        padding: EdgeInsets.all(r.spaceXs),
+                        child: ClipOval(
+                          child: _cachedUserPhoto != null
+                              ? Image.memory(_cachedUserPhoto!, fit: BoxFit.cover,
+                                  errorBuilder: (_, __, ___) => _avatarFallback(user, avatarSize))
+                              : _avatarFallback(user, avatarSize),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+
+                SizedBox(height: r.spaceLg),
+
+                // ── Name with rank prefix ────────────────────────────────
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Flexible(
+                      child: Text(
+                        user.displayName,
+                        textAlign: TextAlign.center,
+                        style: context.texts.headlineLarge.copyWith(
+                          color: AppColors.textPrimaryC(isDark),
+                          fontWeight: FontWeight.w900,
+                          letterSpacing: -0.5,
+                          height: 1.15,
+                        ),
+                      ),
+                    ),
+                    SizedBox(width: r.spaceSm),
+                    Icon(CupertinoIcons.checkmark_seal_fill,
+                        color: AppColors.accentForTheme(isDark), size: 22),
+                  ],
+                ),
+
+                SizedBox(height: r.spaceSm),
+
+                // ── Rank label (full) for titulares ─────────────────────
+                if (user.isTitular && user.rank.isNotEmpty)
+                  Padding(
+                    padding: EdgeInsets.only(bottom: r.spaceXs),
+                    child: Text(
+                      user.rank.toUpperCase(),
+                      style: TextStyle(
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: 1.5,
+                        fontSize: 11,
+                        color: AppColors.accentForTheme(isDark).withValues(alpha: 0.75),
+                      ),
+                    ),
+                  ),
+
+                SizedBox(height: r.spaceSm),
+
+                // ── Chips row: matricula + service status ────────────────
+                Wrap(
+                  alignment: WrapAlignment.center,
+                  spacing: r.spaceSm,
+                  runSpacing: r.spaceXs,
+                  children: [
+                    _headerChip(
+                      isDark: isDark,
+                      icon: CupertinoIcons.number,
+                      label: 'Mat. ${user.matricula}',
+                      color: AppColors.accentForTheme(isDark),
+                    ),
+                    _headerChip(
+                      isDark: isDark,
+                      icon: user.isTitular ? CupertinoIcons.star_fill : CupertinoIcons.person_fill,
+                      label: user.isTitular ? 'Titular' : 'Beneficiario',
+                      color: AppColors.primary,
+                    ),
+                    if (user.isTitular && user.serviceStatus.isNotEmpty)
+                      _headerChip(
+                        isDark: isDark,
+                        icon: CupertinoIcons.checkmark_shield_fill,
+                        label: RankUtils.serviceStatusLabel(user.serviceStatus),
+                        color: RankUtils.isServiceActive(user.serviceStatus)
+                            ? AppColors.success
+                            : const Color(0xFFF59E0B),
+                      ),
+                  ],
+                ),
+
+                SizedBox(height: r.spaceXl),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _avatarFallback(UserModel user, double size) {
+    return Container(
+      color: AppColors.primary,
+      alignment: Alignment.center,
+      child: Text(
+        user.fullName.isNotEmpty ? user.fullName[0].toUpperCase() : 'U',
+        style: TextStyle(fontSize: size * 0.38, fontWeight: FontWeight.w900, color: Colors.white),
+      ),
+    );
+  }
+
+  Widget _headerChip({
+    required bool isDark,
+    required IconData icon,
+    required String label,
+    required Color color,
+  }) {
+    final r = context.r;
+    return Container(
+      padding: EdgeInsets.symmetric(horizontal: r.chipPaddingH + 2, vertical: r.chipPaddingV + 1),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: isDark ? 0.15 : 0.09),
+        borderRadius: BorderRadius.circular(r.chipRadius + 2),
+        border: Border.all(color: color.withValues(alpha: 0.25), width: 0.8),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 12, color: color),
+          SizedBox(width: r.spaceXs),
+          Text(
+            label,
+            style: TextStyle(
+              fontWeight: FontWeight.w700,
+              fontSize: 12,
+              letterSpacing: 0.3,
+              color: isDark ? color.withValues(alpha: 0.9) : color,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ──────────────────────────────────────────────────────────────────────────
+  //  SECTION BUILDER (uniforme para todas las secciones)
+  // ──────────────────────────────────────────────────────────────────────────
+
+  Widget _buildSection({
+    required bool isDark,
+    required String header,
+    required List<Widget> children,
+    bool manualDividers = false,  // si true: no se insertan separadores automáticos
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: EdgeInsets.only(left: 4, bottom: context.r.spaceSm),
+          child: Text(
+            header,
+            style: TextStyle(
+              fontWeight: FontWeight.w800,
+              fontSize: 11,
+              letterSpacing: 1.4,
+              color: AppColors.textSecondaryC(isDark),
+            ),
+          ),
+        ),
+        Container(
+          decoration: BoxDecoration(
+            color: AppColors.cardBg(isDark),
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: AppColors.cardBorder(isDark), width: 0.5),
+            boxShadow: AppColors.cardShadowFor(isDark),
+          ),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(14),
+            child: Column(children: manualDividers ? children : _separatedWith(children, isDark)),
+          ),
+        ),
+      ],
+    );
+  }
+
+  /// Inserta separadores entre tiles de manera uniforme.
+  List<Widget> _separatedWith(List<Widget> tiles, bool isDark) {
+    final result = <Widget>[];
+    for (int i = 0; i < tiles.length; i++) {
+      result.add(tiles[i]);
+      if (i < tiles.length - 1) {
+        result.add(Padding(
+          padding: const EdgeInsets.only(left: 56),
+          child: Container(height: 0.5, color: AppColors.cardBorder(isDark)),
+        ));
+      }
+    }
+    return result;
+  }
+
+  // ──────────────────────────────────────────────────────────────────────────
+  //  INFO TILES (Información personal)
+  // ──────────────────────────────────────────────────────────────────────────
+
+  List<Widget> _buildInfoTiles(UserModel user, bool isDark) {
+    // Estado de servicio (solo titulares con serviceStatus poblado)
+    final serviceLabel = user.isTitular && user.serviceStatus.isNotEmpty
+        ? RankUtils.serviceStatusLabel(user.serviceStatus)
+        : null;
+    final isActive = user.isTitular && RankUtils.isServiceActive(user.serviceStatus);
+
+    return [
+      // Estado habilitado + servicio — sin caja, solo un indicador visual
+      _buildStatusRow(user, isDark, serviceLabel, isActive),
+      _divider(isDark),
+      _buildDetailTile(
+        icon: CupertinoIcons.drop_fill,
+        color: const Color(0xFFEF4444),
+        label: 'Tipo de Sangre',
+        value: user.bloodType.isNotEmpty ? user.bloodType : 'Sin registrar',
+        isDark: isDark,
+      ),
+      _divider(isDark),
+      _buildDetailTile(
+        icon: CupertinoIcons.exclamationmark_triangle_fill,
+        color: const Color(0xFFF59E0B),
+        label: 'Alergias',
+        value: user.allergies.isNotEmpty ? user.allergies : 'Sin registrar',
+        isDark: isDark,
+        multiLine: true,
+      ),
+      _divider(isDark),
+      _buildDetailTile(
+        icon: CupertinoIcons.gift_fill,
+        color: const Color(0xFF8B5CF6),
+        label: 'Edad',
+        value: '${user.age} años',
+        isDark: isDark,
+      ),
+      _divider(isDark),
+      _buildDetailTile(
+        icon: CupertinoIcons.creditcard_fill,
+        color: const Color(0xFF3B82F6),
+        label: 'Documento C.I.',
+        value: user.ci.isNotEmpty ? user.ci : 'No registrado',
+        isDark: isDark,
+      ),
+      _divider(isDark),
+      _buildDetailTile(
+        icon: CupertinoIcons.calendar,
+        color: const Color(0xFFE91E63),
+        label: 'Fecha de Nacimiento',
+        value: user.birthDate.isNotEmpty ? user.birthDate.split(' ')[0] : 'No registrado',
+        isDark: isDark,
+      ),
+    ];
+  }
+
+  Widget _divider(bool isDark) => Padding(
+    padding: const EdgeInsets.only(left: 52),
+    child: Container(height: 0.4, color: AppColors.cardBorder(isDark)),
+  );
+
+  /// Fila de estado: habilitado + situación de servicio.
+  /// Diseño: ícono a la izquierda, luego label+valor en vertical, badge de estado al costado.
+  Widget _buildStatusRow(UserModel user, bool isDark, String? serviceLabel, bool isActive) {
+    final r = context.r;
+    final accountColor = user.isEnabled ? const Color(0xFF10B981) : AppColors.error;
+    final serviceColor = isActive ? const Color(0xFF10B981) : const Color(0xFFF59E0B);
+
+    return Padding(
+      padding: EdgeInsets.symmetric(horizontal: r.tileHorizontalPad, vertical: 14),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          Container(
+            width: 36, height: 36,
+            decoration: BoxDecoration(
+              color: accountColor.withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Icon(CupertinoIcons.checkmark_shield_fill, size: 18, color: accountColor),
+          ),
+          SizedBox(width: r.spaceMd),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Estado de Cuenta',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w500,
+                    color: AppColors.textTertiaryC(isDark),
+                    letterSpacing: 0.2,
+                  ),
+                ),
+                const SizedBox(height: 3),
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: accountColor.withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: Text(
+                        user.isEnabled ? 'Habilitado' : 'Inactivo',
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w700,
+                          color: accountColor,
+                        ),
+                      ),
+                    ),
+                    if (serviceLabel != null) ...[
+                      const SizedBox(width: 6),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: serviceColor.withValues(alpha: 0.10),
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        child: Text(
+                          serviceLabel,
+                          style: TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w700,
+                            color: serviceColor,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDetailTile({
+    required IconData icon,
+    required Color color,
+    required String label,
+    required String value,
+    required bool isDark,
+    bool multiLine = false,
+  }) {
+    final r = context.r;
+    return Padding(
+      padding: EdgeInsets.symmetric(horizontal: r.tileHorizontalPad, vertical: 14),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: 36, height: 36,
+            decoration: BoxDecoration(
+              color: color.withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Icon(icon, size: 18, color: color),
+          ),
+          SizedBox(width: r.spaceMd),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  label,
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w500,
+                    color: AppColors.textTertiaryC(isDark),
+                    letterSpacing: 0.2,
+                  ),
+                ),
+                const SizedBox(height: 3),
+                Text(
+                  value,
+                  maxLines: multiLine ? 3 : 1,
+                  overflow: multiLine ? TextOverflow.visible : TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.textPrimaryC(isDark),
+                    height: 1.35,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ──────────────────────────────────────────────────────────────────────────
+  //  CONTACT TILE
+  // ──────────────────────────────────────────────────────────────────────────
+
+  Widget _buildContactTile({
+    required bool isDark,
+    required IconData icon,
+    required Color iconColor,
+    required String label,
+    required String value,
+    required bool isEditing,
+    required bool isSaving,
+    required TextEditingController controller,
+    required TextInputType keyboardType,
+    required VoidCallback onEdit,
+    required VoidCallback onSave,
+    required VoidCallback onCancel,
+    String? hint,
+    String? prefix,
+  }) {
+    final r = context.r;
+    return Padding(
+      padding: EdgeInsets.symmetric(horizontal: r.tileHorizontalPad, vertical: r.tileVerticalPad),
+      child: Row(
+        crossAxisAlignment: isEditing ? CrossAxisAlignment.start : CrossAxisAlignment.center,
+        children: [
+          Container(
+            width: 32, height: 32,
+            decoration: BoxDecoration(
+              color: iconColor.withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Icon(icon, size: 16, color: iconColor),
+          ),
+          SizedBox(width: r.spaceMd),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(label,
+                  style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600,
+                    color: AppColors.textSecondaryC(isDark), letterSpacing: 0.2)),
+                SizedBox(height: 3),
+                if (isEditing)
+                  CupertinoTextField(
+                    controller: controller,
+                    keyboardType: keyboardType,
+                    autofocus: true,
+                    placeholder: hint,
+                    prefix: prefix != null
+                        ? Padding(
+                            padding: const EdgeInsets.only(left: 6),
+                            child: Text(prefix,
+                              style: TextStyle(fontWeight: FontWeight.w700,
+                                color: AppColors.textSecondaryC(isDark))),
+                          )
+                        : null,
+                    padding: EdgeInsets.symmetric(vertical: r.spaceSm, horizontal: prefix != null ? 2 : 6),
+                    decoration: BoxDecoration(
+                      border: Border(bottom: BorderSide(
+                        color: AppColors.accentForTheme(isDark).withValues(alpha: 0.6),
+                        width: 1.2,
+                      )),
+                    ),
+                    style: context.texts.titleMedium.copyWith(
+                      fontWeight: FontWeight.w700, color: AppColors.textPrimaryC(isDark)),
+                    onSubmitted: (_) => onSave(),
+                  )
+                else
+                  Text(
+                    value.isNotEmpty ? value : 'Sin registrar',
+                    style: TextStyle(
+                      fontWeight: FontWeight.w600,
+                      color: value.isNotEmpty
+                          ? AppColors.textPrimaryC(isDark)
+                          : AppColors.textTertiaryC(isDark),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+          SizedBox(width: r.spaceSm),
+          if (isSaving)
+            const CupertinoActivityIndicator()
+          else if (isEditing)
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                CupertinoButton(
+                  padding: EdgeInsets.zero, minimumSize: const Size(32, 32),
+                  onPressed: onCancel,
+                  child: Icon(CupertinoIcons.xmark_circle_fill,
+                    color: CupertinoColors.destructiveRed, size: 24),
+                ),
+                CupertinoButton(
+                  padding: EdgeInsets.zero, minimumSize: const Size(32, 32),
+                  onPressed: onSave,
+                  child: Icon(CupertinoIcons.checkmark_alt_circle_fill,
+                    color: CupertinoColors.activeGreen, size: 24),
+                ),
+              ],
+            )
+          else
+            CupertinoButton(
+              padding: const EdgeInsets.symmetric(horizontal: 4),
+              minimumSize: const Size(28, 28),
+              onPressed: onEdit,
+              child: Text('Editar',
+                style: TextStyle(
+                  color: AppColors.accentForTheme(isDark),
+                  fontWeight: FontWeight.w700,
+                  fontSize: 13,
+                )),
+            ),
+        ],
+      ),
+    );
+  }
+
+  // ──────────────────────────────────────────────────────────────────────────
+  //  NAV TILE (fila con chevron que navega a otra pantalla)
+  // ──────────────────────────────────────────────────────────────────────────
+
+  Widget _buildNavTile({
+    required bool isDark,
+    required IconData icon,
+    required Color iconColor,
+    required String title,
+    required String subtitle,
+    required VoidCallback onTap,
+  }) {
+    final r = context.r;
+    return CupertinoButton(
+      padding: EdgeInsets.zero,
+      onPressed: onTap,
+      child: Padding(
+        padding: EdgeInsets.symmetric(horizontal: r.tileHorizontalPad, vertical: r.tileVerticalPad),
+        child: Row(
+          children: [
+            Container(
+              width: 32, height: 32,
+              decoration: BoxDecoration(
+                color: iconColor.withValues(alpha: 0.13),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Icon(icon, size: 16, color: iconColor),
+            ),
+            SizedBox(width: r.spaceMd),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(title,
+                    style: TextStyle(fontWeight: FontWeight.w600,
+                      color: AppColors.textPrimaryC(isDark), fontSize: 14)),
+                  SizedBox(height: 2),
+                  Text(subtitle,
+                    maxLines: 2,
+                    style: TextStyle(fontWeight: FontWeight.w500, fontSize: 12,
+                      color: AppColors.textSecondaryC(isDark))),
+                ],
+              ),
+            ),
+            Icon(CupertinoIcons.chevron_right,
+              size: 14, color: AppColors.textTertiaryC(isDark)),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // ──────────────────────────────────────────────────────────────────────────
+  //  THEME & SOUND TOGGLES
+  // ──────────────────────────────────────────────────────────────────────────
+
+  Widget _buildThemeTile(bool isDark) {
+    final r = context.r;
+    return ValueListenableBuilder<ThemeMode>(
+      valueListenable: ThemeManager.themeNotifier,
+      builder: (context, _, __) {
+        final active = Theme.of(context).brightness == Brightness.dark;
+        return Padding(
+          padding: EdgeInsets.symmetric(horizontal: r.tileHorizontalPad, vertical: r.tileVerticalPad),
+          child: Row(
+            children: [
+              Container(
+                width: 32, height: 32,
+                decoration: BoxDecoration(
+                  color: AppColors.accentForTheme(isDark).withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Icon(active ? CupertinoIcons.moon_fill : CupertinoIcons.sun_max_fill,
+                  size: 16, color: AppColors.accentForTheme(isDark)),
+              ),
+              SizedBox(width: r.spaceMd),
+              Expanded(
+                child: Text('Modo Oscuro',
+                  style: TextStyle(fontWeight: FontWeight.w600,
+                    color: AppColors.textPrimaryC(isDark), fontSize: 14)),
+              ),
+              CupertinoSwitch(
+                value: active,
+                activeTrackColor: AppColors.primary,
+                onChanged: (val) =>
+                    ThemeManager.setThemeMode(val ? ThemeMode.dark : ThemeMode.light),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildSoundTile(bool isDark) {
+    final r = context.r;
+    return ValueListenableBuilder<bool>(
+      valueListenable: SoundManager.soundEnabledNotifier,
+      builder: (context, soundEnabled, __) {
+        final tileColor = soundEnabled ? AppColors.accent : AppColors.textTertiary;
+        return Padding(
+          padding: EdgeInsets.symmetric(horizontal: r.tileHorizontalPad, vertical: r.tileVerticalPad),
+          child: Row(
+            children: [
+              Container(
+                width: 32, height: 32,
+                decoration: BoxDecoration(
+                  color: tileColor.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Icon(
+                  soundEnabled ? CupertinoIcons.speaker_2_fill : CupertinoIcons.speaker_slash_fill,
+                  size: 16, color: tileColor),
+              ),
+              SizedBox(width: r.spaceMd),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('Sonidos de la App',
+                      style: TextStyle(fontWeight: FontWeight.w600,
+                        color: AppColors.textPrimaryC(isDark), fontSize: 14)),
+                    SizedBox(height: 2),
+                    Text(soundEnabled ? 'Activados' : 'Desactivados',
+                      style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500,
+                        color: soundEnabled ? AppColors.accent : AppColors.textTertiaryC(isDark))),
+                  ],
+                ),
+              ),
+              CupertinoSwitch(
+                value: soundEnabled,
+                activeTrackColor: AppColors.accent,
+                onChanged: (val) => SoundManager.setEnabled(val),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  // ──────────────────────────────────────────────────────────────────────────
+  //  LOGOUT TILE
+  // ──────────────────────────────────────────────────────────────────────────
+
+  Widget _buildLogoutTile(bool isDark, AppResponsive r) {
+    return Container(
+      decoration: BoxDecoration(
+        color: AppColors.cardBg(isDark),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(
+          color: CupertinoColors.destructiveRed.withValues(alpha: 0.25),
+          width: 0.8,
+        ),
+        boxShadow: AppColors.cardShadowFor(isDark),
+      ),
+      child: CupertinoButton(
+        padding: EdgeInsets.zero,
+        onPressed: () => _confirmLogout(),
+        child: Padding(
+          padding: EdgeInsets.symmetric(horizontal: r.tileHorizontalPad, vertical: r.tileVerticalPad),
+          child: Row(
+            children: [
+              Container(
+                width: 32, height: 32,
+                decoration: BoxDecoration(
+                  color: CupertinoColors.destructiveRed.withValues(alpha: 0.10),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: const Icon(CupertinoIcons.square_arrow_left,
+                  size: 16, color: CupertinoColors.destructiveRed),
+              ),
+              SizedBox(width: r.spaceMd),
+              Text('Cerrar Sesión',
+                style: const TextStyle(
+                  color: CupertinoColors.destructiveRed,
+                  fontWeight: FontWeight.w700,
+                  fontSize: 14,
+                )),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  // ──────────────────────────────────────────────────────────────────────────
+  //  SECURITY SUMMARY STRING
+  // ──────────────────────────────────────────────────────────────────────────
+
+  String _buildSecuritySummary() {
     if (!_hasPin) return 'Protege tu app con PIN y $_bioLabel';
     if (_bioStatus == DeviceBiometricStatus.available && _isBiometricEnabled) {
       return 'PIN activo · $_bioLabel activada';
@@ -80,587 +1020,190 @@ class _PerfilScreenState extends State<PerfilScreen> {
     return 'PIN activo · Sin $_bioLabel';
   }
 
-  @override
-  void dispose() {
-    _emailCtrl.dispose();
-    _phoneCtrl.dispose();
-    super.dispose();
-  }
+  // ──────────────────────────────────────────────────────────────────────────
+  //  ACTIONS
+  // ──────────────────────────────────────────────────────────────────────────
 
-  Widget _fallbackAvatar(UserModel user) {
-    final avatarSize = context.r.profileAvatarSize;
-    return Container(
-      decoration: BoxDecoration(
-        color: AppColors.primary,
-      ),
-      alignment: Alignment.center,
-      child: Text(
-        user.fullName.isNotEmpty ? user.fullName[0] : 'U',
-        style: TextStyle(
-          fontSize: avatarSize * 0.4,
-          fontWeight: FontWeight.w800,
-          color: AppColors.white,
-        ),
+  Future<void> _confirmLogout() async {
+    final confirmed = await showCupertinoDialog<bool>(
+      context: context,
+      builder: (ctx) => CupertinoAlertDialog(
+        title: const Text('Cerrar Sesión'),
+        content: const Text('¿Está seguro que desea cerrar sesión? '
+            'Se borrará su configuración de PIN y huella.'),
+        actions: [
+          CupertinoDialogAction(
+            child: const Text('Cancelar'),
+            onPressed: () => Navigator.pop(ctx, false),
+          ),
+          CupertinoDialogAction(
+            isDestructiveAction: true,
+            child: const Text('Cerrar Sesión'),
+            onPressed: () => Navigator.pop(ctx, true),
+          ),
+        ],
       ),
     );
+
+    if (confirmed == true && mounted) {
+      await NotificationService.cancelAllReminders();
+      // wipeAll borra tokens + PIN + sesión + todo en un solo paso
+      await TokenStorage.wipeAll();
+      UserSession.clear();
+      if (!mounted) return;
+      Navigator.of(context, rootNavigator: true).pushReplacementNamed('/login');
+    }
   }
 
-  @override
-  Widget build(BuildContext context) {
-    final user = UserSession.currentUser;
-    final isDark = Theme.of(context).brightness == Brightness.dark;
+  Future<void> _saveEmail() async {
+    final newEmail = _emailCtrl.text.trim();
+    if (newEmail.isEmpty || newEmail == _email) {
+      setState(() => _isEditingEmail = false);
+      return;
+    }
+    setState(() => _isSavingEmail = true);
+    try {
+      final idper = int.tryParse(UserSession.currentUser.id) ?? 0;
+      await AuthService().updateProfile(idper: idper, mail: newEmail, fon: _phone);
+      if (!mounted) return;
+      setState(() { _email = newEmail; _isEditingEmail = false; _isSavingEmail = false; });
+      await CossmilIosAlert.show(
+        context: context, title: 'Correo actualizado',
+        message: 'Tu correo electrónico fue actualizado exitosamente.',
+        type: AlertType.success, confirmText: 'Aceptar',
+      );
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _isSavingEmail = false);
+      await CossmilIosAlert.show(
+        context: context, title: 'Error',
+        message: 'No se pudo actualizar el correo: $e',
+        type: AlertType.error, confirmText: 'Aceptar',
+      );
+    }
+  }
 
-    return CupertinoPageScaffold(
-      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-      child: CustomScrollView(
-        physics: const BouncingScrollPhysics(
-          parent: AlwaysScrollableScrollPhysics(),
-        ),
-        slivers: [
-          CupertinoSliverNavigationBar(
-            largeTitle: Text('Mi Perfil', style: TextStyle(color: AppColors.textPrimaryC(isDark))),
-            backgroundColor: isDark
-                ? AppColors.darkSurface.withValues(alpha: 0.92)
-                : AppColors.white.withValues(alpha: 0.92),
-            border: Border(
-              bottom: BorderSide(
-                color: AppColors.cardBorder(isDark).withValues(alpha: 0.5),
-                width: 0.5,
-              ),
-            ),
-          ),
-          // ── Header & Profile Info ───────────────────────────
-          SliverToBoxAdapter(
-            child: FadeSlideIn(
-              offsetY: 20,
-              delay: const Duration(milliseconds: 100),
-              child: Stack(
-                children: [
-                  // Decorative Background Gradient
-                  Container(
-                    height: context.r.profileAvatarSize,
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        begin: Alignment.topCenter,
-                        end: Alignment.bottomCenter,
-                        colors: isDark 
-                          ? [AppColors.accent.withValues(alpha: 0.15), Colors.transparent]
-                          : [AppColors.primary.withValues(alpha: 0.08), Colors.transparent],
-                      ),
-                    ),
-                  ),
-                  Center(
-                    child: ConstrainedBox(
-                      constraints: BoxConstraints(maxWidth: context.r.maxContentWidth),
-                      child: Padding(
-                        padding: EdgeInsets.fromLTRB(context.r.paddingH, 40, context.r.paddingH, 0),
-                        child: Column(
-                          children: [
-                            // Avatar with Premium Border
-                            _buildPremiumAvatar(user, isDark),
-                            
-                            SizedBox(height: context.r.spaceLg),
-                            
-                            // Name & Verification
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Flexible(
-                                  child: Text(
-                                    user.fullName,
-                                    textAlign: TextAlign.center,
-                                    style: context.texts.headlineLarge.copyWith(
-                                      color: AppColors.textPrimaryC(isDark),
-                                      fontWeight: FontWeight.w900,
-                                      letterSpacing: -0.8,
-                                    ),
-                                  ),
-                                ),
-                                SizedBox(width: context.r.spaceSm),
-                                Icon(
-                                  CupertinoIcons.checkmark_seal_fill,
-                                  color: AppColors.accentForTheme(isDark),
-                                  size: 24,
-                                ),
-                              ],
-                            ),
-                            
-                            SizedBox(height: context.r.spaceSm),
-                            
-                            // Badge Matrícula
-                            Container(
-                              padding: EdgeInsets.symmetric(horizontal: context.r.tileHorizontalPad, vertical: context.r.chipPaddingV),
-                              decoration: BoxDecoration(
-                                color: AppColors.accentForTheme(isDark).withValues(alpha: 0.1),
-                                borderRadius: BorderRadius.circular(context.r.chipRadius),
-                                border: Border.all(
-                                  color: AppColors.accentForTheme(isDark).withValues(alpha: 0.2),
-                                ),
-                              ),
-                              child: FittedBox(
-                                fit: BoxFit.scaleDown,
-                                child: Text(
-                                  'MATRÍCULA: ${user.matricula}',
-                                  style: TextStyle(
-                                    fontWeight: FontWeight.w800,
-                                    letterSpacing: 1.2,
-                                    color: AppColors.accentForTheme(isDark),
-                                  ),
-                                ),
-                              ),
-                            ),
-                            SizedBox(height: context.r.spaceXl),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
+  Future<void> _savePhone() async {
+    final newPhone = _phoneCtrl.text.trim();
+    if (newPhone.isEmpty || newPhone == _phone) {
+      setState(() => _isEditingPhone = false);
+      return;
+    }
+    setState(() => _isSavingPhone = true);
+    try {
+      final idper = int.tryParse(UserSession.currentUser.id) ?? 0;
+      await AuthService().updateProfile(idper: idper, mail: _email, fon: newPhone);
+      if (!mounted) return;
+      setState(() { _phone = newPhone; _isEditingPhone = false; _isSavingPhone = false; });
+      await CossmilIosAlert.show(
+        context: context, title: 'Celular actualizado',
+        message: 'Tu número de celular fue actualizado exitosamente.',
+        type: AlertType.success, confirmText: 'Aceptar',
+      );
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _isSavingPhone = false);
+      await CossmilIosAlert.show(
+        context: context, title: 'Error',
+        message: 'No se pudo actualizar el celular: $e',
+        type: AlertType.error, confirmText: 'Aceptar',
+      );
+    }
+  }
 
-          // ── Quick Info Grid ───────────────────────────
-          SliverPadding(
-            padding: EdgeInsets.symmetric(horizontal: context.r.paddingH),
-            sliver: SliverToBoxAdapter(
-              child: Center(
-                child: ConstrainedBox(
-                  constraints: BoxConstraints(maxWidth: context.r.maxContentWidth),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Padding(
-                        padding: EdgeInsets.only(left: context.r.spaceXs, bottom: context.r.spaceMd),
-                        child: Text(
-                          'INFORMACIÓN PERSONAL',
-                          style: context.texts.labelSmall.copyWith(
-                            color: AppColors.textSecondaryC(isDark),
-                            fontWeight: FontWeight.w800,
-                            letterSpacing: 1.5,
-                          ),
-                        ),
-                      ),
-                      _buildInfoGrid(user, isDark),
-                    ],
+  Future<void> _showChangePasswordDialog() async {
+    final newPwdCtrl = TextEditingController();
+    final confirmPwdCtrl = TextEditingController();
+    bool obscure1 = true;
+    bool obscure2 = true;
+    bool isSaving = false;
+
+    await showCupertinoDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDialogState) => CupertinoAlertDialog(
+          title: const Text('Cambiar Contraseña'),
+          content: Padding(
+            padding: const EdgeInsets.only(top: 12),
+            child: Column(
+              children: [
+                CupertinoTextField(
+                  controller: newPwdCtrl,
+                  placeholder: 'Nueva contraseña',
+                  obscureText: obscure1,
+                  autofocus: true,
+                  suffix: CupertinoButton(
+                    padding: const EdgeInsets.only(right: 4),
+                    onPressed: () => setDialogState(() => obscure1 = !obscure1),
+                    child: Icon(obscure1 ? CupertinoIcons.eye : CupertinoIcons.eye_slash, size: 18),
                   ),
                 ),
-              ),
-            ),
-          ),
-
-        SliverToBoxAdapter(
-            child: Center(
-              child: ConstrainedBox(
-                constraints: BoxConstraints(maxWidth: context.r.maxContentWidth),
-                child: Padding(
-                  padding: EdgeInsets.only(bottom: context.r.navBarBottomSpace, top: context.r.paddingH),
-                  child: Column(
-                    children: [
-                      CupertinoListSection.insetGrouped(
-                    backgroundColor: const Color(0x00000000),
-                    decoration: BoxDecoration(
-                      color: AppColors.cardBg(isDark),
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(
-                        color: AppColors.cardBorder(isDark),
-                        width: 0.5,
-                      ),
-                    ),
-                    header: Text('DATOS DE CONTACTO', style: TextStyle(fontWeight: FontWeight.w700, letterSpacing: 1.2, color: AppColors.textSecondaryC(isDark))),
-                    children: [
-                      _buildEditableTile(
-                        isDark: isDark,
-                        icon: CupertinoIcons.mail,
-                        label: 'Correo electrónico',
-                        value: _email,
-                        isEditing: _isEditingEmail,
-                        controller: _emailCtrl,
-                        keyboardType: TextInputType.emailAddress,
-                        onEdit: () => setState(() => _isEditingEmail = true),
-                        onSave: () => setState(() { _email = _emailCtrl.text.trim(); _isEditingEmail = false; }),
-                        onCancel: () => setState(() { _emailCtrl.text = _email; _isEditingEmail = false; }),
-                      ),
-                      _buildEditableTile(
-                        isDark: isDark,
-                        icon: CupertinoIcons.phone,
-                        label: 'Teléfono / Celular',
-                        value: _phone,
-                        isEditing: _isEditingPhone,
-                        controller: _phoneCtrl,
-                        keyboardType: TextInputType.phone,
-                        onEdit: () => setState(() => _isEditingPhone = true),
-                        onSave: () => setState(() { _phone = _phoneCtrl.text.trim(); _isEditingPhone = false; }),
-                        onCancel: () => setState(() { _phoneCtrl.text = _phone; _isEditingPhone = false; }),
-                      ),
-                    ],
+                const SizedBox(height: 8),
+                CupertinoTextField(
+                  controller: confirmPwdCtrl,
+                  placeholder: 'Confirmar contraseña',
+                  obscureText: obscure2,
+                  suffix: CupertinoButton(
+                    padding: const EdgeInsets.only(right: 4),
+                    onPressed: () => setDialogState(() => obscure2 = !obscure2),
+                    child: Icon(obscure2 ? CupertinoIcons.eye : CupertinoIcons.eye_slash, size: 18),
                   ),
-                  CupertinoListSection.insetGrouped(
-                    backgroundColor: const Color(0x00000000),
-                    decoration: BoxDecoration(
-                      color: AppColors.cardBg(isDark),
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(
-                        color: AppColors.cardBorder(isDark),
-                        width: 0.5,
-                      ),
-                    ),
-                    header: Text('SEGURIDAD Y ACCESO', style: TextStyle(fontWeight: FontWeight.w700, letterSpacing: 1.2, color: AppColors.textSecondaryC(isDark))),
-                    children: [
-                      CupertinoListTile.notched(
-                        leading: Container(
-                          padding: EdgeInsets.all(context.r.spaceXs),
-                          decoration: BoxDecoration(
-                            color: _hasPin ? AppColors.success : AppColors.textTertiary,
-                            borderRadius: BorderRadius.circular(context.r.badgeRadius),
-                          ),
-                          child: const Icon(CupertinoIcons.lock_shield_fill, color: AppColors.white, size: 20),
-                        ),
-                        title: Text(
-                          _hasPin ? 'Seguridad configurada' : 'Configurar seguridad',
-                          style: const TextStyle(fontWeight: FontWeight.w600),
-                        ),
-                        subtitle: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(_securitySummary),
-                            if (_hasPin) ...
-                              [
-                                SizedBox(height: context.r.spaceSm),
-                                Row(
-                                  children: [
-                                    _miniChip(
-                                      isDark: isDark,
-                                      label: 'PIN',
-                                      active: _hasPin,
-                                    ),
-                                    SizedBox(width: context.r.spaceSm),
-                                    if (_bioStatus != DeviceBiometricStatus.unavailable)
-                                      _miniChip(
-                                        isDark: isDark,
-                                        label: _bioLabel,
-                                        active: _isBiometricEnabled && _hasPin,
-                                      ),
-                                  ],
-                                ),
-                              ],
-                          ],
-                        ),
-                        trailing: const CupertinoListTileChevron(),
-                        onTap: () async {
-                          await Navigator.of(context, rootNavigator: true)
-                              .pushNamed('/security-setup');
-                          await _loadSecurityStatus();
-                        },
-                      ),
-                    ],
-                  ),
-                  CupertinoListSection.insetGrouped(
-                    backgroundColor: const Color(0x00000000),
-                    decoration: BoxDecoration(
-                      color: AppColors.cardBg(isDark),
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(
-                        color: AppColors.cardBorder(isDark),
-                        width: 0.5,
-                      ),
-                    ),
-                    header: Text('IDENTIFICACIÓN', style: TextStyle(fontWeight: FontWeight.w700, letterSpacing: 1.2, color: AppColors.textSecondaryC(isDark))),
-                    children: [
-                      CupertinoListTile.notched(
-                        leading: Container(
-                          padding: EdgeInsets.all(context.r.spaceXs),
-                          decoration: BoxDecoration(color: AppColors.accentForTheme(isDark), borderRadius: BorderRadius.circular(context.r.badgeRadius)),
-                          child: const Icon(CupertinoIcons.qrcode, color: AppColors.white, size: 20),
-                        ),
-                        title: const Text('Mi Código QR', style: TextStyle(fontWeight: FontWeight.w600)),
-                        subtitle: const Text('Identificación rápida en ventanilla'),
-                        trailing: const CupertinoListTileChevron(),
-                        onTap: () => ProfileQrModal.show(context: context, user: user),
-                      ),
-                    ],
-                  ),
-                  CupertinoListSection.insetGrouped(
-                    backgroundColor: const Color(0x00000000),
-                    decoration: BoxDecoration(
-                      color: AppColors.cardBg(isDark),
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(
-                        color: AppColors.cardBorder(isDark),
-                        width: 0.5,
-                      ),
-                    ),
-                    header: Text('APARIENCIA', style: TextStyle(fontWeight: FontWeight.w700, letterSpacing: 1.2, color: AppColors.textSecondaryC(isDark))),
-                    children: [
-                      ValueListenableBuilder<ThemeMode>(
-                        valueListenable: ThemeManager.themeNotifier,
-                        builder: (context, mode, child) {
-                          // Crucial fix: evaluate the actual system theme instead of just the mode
-                          final isDarkActive = Theme.of(context).brightness == Brightness.dark;
-                          return CupertinoListTile(
-                            leading: Container(
-                              padding: EdgeInsets.all(context.r.spaceXs),
-                              decoration: BoxDecoration(color: AppColors.accentForTheme(isDarkActive), borderRadius: BorderRadius.circular(context.r.badgeRadius)),
-                              child: Icon(isDarkActive ? CupertinoIcons.moon_fill : CupertinoIcons.sun_max_fill, color: AppColors.white, size: 20),
-                            ),
-                            title: Text('Modo Oscuro', style: TextStyle(fontWeight: FontWeight.w600, color: AppColors.textPrimaryC(isDarkActive))),
-                            trailing: CupertinoSwitch(
-                              value: isDarkActive,
-                              activeTrackColor: isDarkActive ? AppColors.primaryMedium.withValues(alpha: 0.7) : AppColors.primary,
-                              onChanged: (val) {
-                                ThemeManager.setThemeMode(val ? ThemeMode.dark : ThemeMode.light);
-                              },
-                            ),
-                          );
-                        },
-                      ),
-                    ],
-                  ),
-                  CupertinoListSection.insetGrouped(
-                    backgroundColor: const Color(0x00000000),
-                    decoration: BoxDecoration(
-                      color: AppColors.cardBg(isDark),
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(
-                        color: AppColors.cardBorder(isDark),
-                        width: 0.5,
-                      ),
-                    ),
-                    margin: EdgeInsets.only(top: context.r.spaceLg, left: context.r.paddingH, right: context.r.paddingH),
-                    children: [
-                      CupertinoListTile(
-                        leading: const Icon(CupertinoIcons.square_arrow_left, color: CupertinoColors.destructiveRed),
-                        title: const Text('Cerrar Sesión', style: TextStyle(color: CupertinoColors.destructiveRed, fontWeight: FontWeight.w600)),
-                        onTap: () async {
-                          final confirmed = await showCupertinoDialog<bool>(
-                            context: context,
-                            builder: (context) => CupertinoAlertDialog(
-                              title: const Text('Cerrar Sesión'),
-                              content: const Text('¿Está seguro que desea cerrar sesión? Se borrará su configuración de PIN y huella.'),
-                              actions: [
-                                CupertinoDialogAction(
-                                  child: const Text('Cancelar'),
-                                  onPressed: () => Navigator.pop(context, false),
-                                ),
-                                CupertinoDialogAction(
-                                  isDestructiveAction: true,
-                                  child: const Text('Cerrar Sesión'),
-                                  onPressed: () => Navigator.pop(context, true),
-                                ),
-                              ],
-                            ),
-                          );
-
-                          if (confirmed == true && context.mounted) {
-                            await TokenStorage.deleteToken();
-                            await SecurityService.clearSecurityData();
-                            await SessionRestoreService.clearUserSession();
-                            if (!context.mounted) return;
-                            Navigator.of(context, rootNavigator: true).pushReplacementNamed('/login');
-                          }
-                        },
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
-      ),
-    ],
-      ),
-    );
-  }
-
-  Widget _buildEditableTile({
-    required bool isDark,
-    required IconData icon,
-    required String label,
-    required String value,
-    required bool isEditing,
-    required TextEditingController controller,
-    required TextInputType keyboardType,
-    required VoidCallback onEdit,
-    required VoidCallback onSave,
-    required VoidCallback onCancel,
-  }) {
-    return CupertinoListTile(
-      leading: Icon(icon, color: AppColors.accentForTheme(isDark), size: 24),
-      title: Text(label, style: context.texts.bodyMedium.copyWith(color: AppColors.textSecondaryC(isDark))),
-      subtitle: isEditing
-          ? CupertinoTextField(
-              controller: controller,
-              keyboardType: keyboardType,
-              autofocus: true,
-              padding: EdgeInsets.symmetric(vertical: context.r.spaceSm),
-              decoration: BoxDecoration(
-                border: Border(bottom: BorderSide(color: AppColors.accentForTheme(isDark).withValues(alpha: 0.5), width: 1)),
-                borderRadius: BorderRadius.zero,
-              ),
-              style: context.texts.titleLarge.copyWith(fontWeight: FontWeight.w600, color: AppColors.textPrimaryC(isDark)),
-              onSubmitted: (_) => onSave(),
-            )
-          : Text(
-              value.isNotEmpty ? value : 'Sin registrar',
-              style: TextStyle(
-                fontWeight: FontWeight.w600,
-                color: value.isNotEmpty
-                    ? AppColors.textPrimaryC(isDark)
-                    : AppColors.textTertiaryC(isDark),
-              ),
-            ),
-      trailing: isEditing
-          ? Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                CupertinoButton(padding: EdgeInsets.zero, onPressed: onCancel, child: const Icon(CupertinoIcons.xmark_circle_fill, color: CupertinoColors.destructiveRed, size: 22)),
-                CupertinoButton(padding: EdgeInsets.zero, onPressed: onSave, child: const Icon(CupertinoIcons.checkmark_alt_circle_fill, color: CupertinoColors.activeGreen, size: 22)),
+                ),
               ],
-            )
-          : CupertinoButton(padding: EdgeInsets.zero, onPressed: onEdit, child: Icon(CupertinoIcons.pencil, color: AppColors.accentForTheme(isDark), size: 20)),
-    );
-  }
-
-
-  Widget _miniChip({required bool isDark, required String label, required bool active}) {
-    return Container(
-      padding: EdgeInsets.symmetric(horizontal: context.r.spaceSm, vertical: 2),
-      decoration: BoxDecoration(
-        color: active
-            ? AppColors.success.withValues(alpha: 0.12)
-            : AppColors.textTertiaryC(isDark).withValues(alpha: 0.12),
-        borderRadius: BorderRadius.circular(context.r.badgeRadius),
-        border: Border.all(
-          color: active
-              ? AppColors.success.withValues(alpha: 0.3)
-              : AppColors.cardBorder(isDark).withValues(alpha: 0.5),
-          width: 0.5,
-        ),
-      ),
-      child: Text(
-        label,
-        style: TextStyle(
-          fontWeight: FontWeight.w700,
-          color: active ? AppColors.success : AppColors.textTertiaryC(isDark),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildPremiumAvatar(UserModel user, bool isDark) {
-    final avatarSize = context.r.profileAvatarSize;
-    return Container(
-      width: avatarSize,
-      height: avatarSize,
-      decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        color: AppColors.cardBg(isDark),
-        border: Border.all(
-          color: AppColors.accentForTheme(isDark).withValues(alpha: 0.3),
-          width: 4,
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: AppColors.accentForTheme(isDark).withValues(alpha: 0.15),
-            blurRadius: 20,
-            spreadRadius: 2,
-            offset: const Offset(0, 8),
+            ),
           ),
-        ],
-      ),
-      child: Padding(
-        padding: EdgeInsets.all(context.r.spaceXs),
-        child: ClipOval(
-          child: _cachedUserPhoto != null
-              ? Image.memory(
-                  _cachedUserPhoto!,
-                  fit: BoxFit.cover,
-                  errorBuilder: (_, __, ___) => _fallbackAvatar(user),
-                )
-              : _fallbackAvatar(user),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildInfoGrid(UserModel user, bool isDark) {
-    final items = <_InfoRow>[
-      _InfoRow(CupertinoIcons.checkmark_shield_fill, const Color(0xFF10B981), 'Estado', user.isEnabled ? 'Habilitado' : 'Inactivo'),
-      _InfoRow(CupertinoIcons.heart_fill, const Color(0xFF3B82F6), 'Ficha Médica', user.hasMedicalAppointment ? 'Activa' : 'Ninguna'),
-      _InfoRow(CupertinoIcons.drop_fill, const Color(0xFFEF4444), 'Tipo de Sangre', user.bloodType),
-      _InfoRow(CupertinoIcons.gift_fill, const Color(0xFFF59E0B), 'Edad', '${user.age} años'),
-      _InfoRow(CupertinoIcons.person_crop_rectangle, isDark ? AppColors.darkTextPrimary : const Color(0xFF8B5CF6), 'Documento CI', user.ci.isNotEmpty ? user.ci : 'Sin registro'),
-      _InfoRow(CupertinoIcons.calendar, const Color(0xFFE91E63), 'Fecha Nac.', user.birthDate.isNotEmpty ? user.birthDate.split(' ')[0] : 'Sin registro'),
-    ];
-
-    return Container(
-      decoration: BoxDecoration(
-        color: AppColors.cardBg(isDark),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: AppColors.cardBorder(isDark),
-          width: 0.5,
-        ),
-      ),
-      child: Column(
-        children: [
-          for (int i = 0; i < items.length; i++) ...[
-            if (i > 0)
-              Divider(
-                height: 0.5,
-                thickness: 0.5,
-                indent: 52,
-                color: AppColors.cardBorder(isDark),
-              ),
-            Padding(
-              padding: EdgeInsets.symmetric(horizontal: context.r.tileHorizontalPad, vertical: context.r.tileVerticalPad),
-              child: Row(
-                children: [
-                  Container(
-                    width: 30,
-                    height: 30,
-                    decoration: BoxDecoration(
-                      color: items[i].color.withValues(alpha: 0.12),
-                      borderRadius: BorderRadius.circular(7),
-                    ),
-                    child: Icon(items[i].icon, size: 16, color: items[i].color),
-                  ),
-                  SizedBox(width: context.r.spaceMd),
-                  Expanded(
-                    child: Text(
-                      items[i].label,
-                      style: TextStyle(
-                        fontWeight: FontWeight.w500,
-                        color: AppColors.textSecondaryC(isDark),
-                      ),
-                    ),
-                  ),
-                  Flexible(
-                    child: Text(
-                      items[i].value,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        fontWeight: FontWeight.w700,
-                        color: AppColors.textPrimaryC(isDark),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
+          actions: [
+            CupertinoDialogAction(
+              child: const Text('Cancelar'),
+              onPressed: () => Navigator.pop(ctx),
+            ),
+            CupertinoDialogAction(
+              isDefaultAction: true,
+              onPressed: isSaving ? null : () async {
+                final pwd = newPwdCtrl.text.trim();
+                final confirm = confirmPwdCtrl.text.trim();
+                if (pwd.isEmpty) return;
+                if (pwd != confirm) {
+                  await CossmilIosAlert.show(
+                    context: ctx, title: 'Contraseñas no coinciden',
+                    message: 'Verifica que ambas contraseñas sean iguales.',
+                    type: AlertType.warning, confirmText: 'Entendido',
+                  );
+                  return;
+                }
+                setDialogState(() => isSaving = true);
+                try {
+                  final idper = int.tryParse(UserSession.currentUser.id) ?? 0;
+                  await AuthService().changePassword(idper: idper, newPassword: pwd);
+                  if (!ctx.mounted) return;
+                  Navigator.pop(ctx);
+                  if (!mounted) return;
+                  await CossmilIosAlert.show(
+                    context: context, title: 'Contraseña actualizada',
+                    message: 'Tu contraseña fue cambiada exitosamente.',
+                    type: AlertType.success, confirmText: 'Aceptar',
+                  );
+                } catch (e) {
+                  if (!ctx.mounted) return;
+                  setDialogState(() => isSaving = false);
+                  await CossmilIosAlert.show(
+                    context: ctx, title: 'Error',
+                    message: 'No se pudo cambiar la contraseña: $e',
+                    type: AlertType.error, confirmText: 'Aceptar',
+                  );
+                }
+              },
+              child: isSaving
+                  ? const CupertinoActivityIndicator()
+                  : const Text('Guardar'),
             ),
           ],
-        ],
+        ),
       ),
     );
+
+    newPwdCtrl.dispose();
+    confirmPwdCtrl.dispose();
   }
 }
 
-class _InfoRow {
-  final IconData icon;
-  final Color color;
-  final String label;
-  final String value;
-  const _InfoRow(this.icon, this.color, this.label, this.value);
-}

@@ -6,8 +6,6 @@ import 'package:flutter/services.dart';
 
 import '../../../core/constants/app_colors.dart';
 
-import '../../../core/theme/app_constants.dart';
-
 import '../../../core/services/security_service.dart';
 
 import '../../../core/animations/optimized_animations.dart';

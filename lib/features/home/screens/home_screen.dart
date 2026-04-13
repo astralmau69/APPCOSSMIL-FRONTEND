@@ -12,6 +12,7 @@ import '../../../core/models/news_item_model.dart';
 import '../../../core/models/user_model.dart';
 import '../../../core/services/cossmil_news_service.dart';
 import '../../../core/widgets/section_header.dart';
+import '../../../core/widgets/professional_profile_card.dart';
 import '../../../shell/tab_shell.dart';
 import 'contactos_screen.dart';
 import 'noticias_screen.dart';
@@ -62,12 +63,12 @@ class _HomeScreenState extends State<HomeScreen> {
         physics: const AlwaysScrollableScrollPhysics(),
         slivers: [
           CupertinoSliverNavigationBar(
-            largeTitle: Text('Menu Principal', style: TextStyle(color: AppColors.textPrimaryC(isDark))),
-            backgroundColor: AppColors.scaffoldBg(isDark).withValues(alpha: 0.95),
+            largeTitle: Text('Menú Principal', style: TextStyle(color: AppColors.textPrimaryC(isDark))),
+            backgroundColor: AppColors.navBarBg(isDark),
             border: null,
           ),
           CupertinoSliverRefreshControl(
-            onRefresh: _loadNews,
+            onRefresh: _loadNews, 
           ),
           // Banner de estado de horario
           if (widget.tabShell.isInHorario != null)
@@ -126,227 +127,13 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  // ── Tarjeta de perfil ───────────────────────────────────────────────────────
+  // ── Tarjeta de perfil profesional ───────────────────────────────────────────
 
   Widget _buildProfileCard(UserModel user) {
-    final r = context.r;
-    final avatarRadius = r.avatarMd / 2;
-    final texts = context.texts;
-
-    return Container(
-      padding: r.cardInsets,
-      decoration: BoxDecoration(
-        color: AppColors.primary,
-        borderRadius: BorderRadius.circular(r.cardRadius),
-        boxShadow: [
-          BoxShadow(
-            color: const Color(0xFF191C1E).withValues(alpha: 0.04),
-            blurRadius: 32,
-            offset: const Offset(0, 8),
-          ),
-        ],
-      ),
-      child: Column(
-        children: [
-          Row(
-            children: [
-              CircleAvatar(
-                radius: avatarRadius,
-                backgroundColor: AppColors.white.withValues(alpha: 0.2),
-                child: ClipOval(
-                  child: _cachedUserPhoto != null
-                      ? Image.memory(
-                          _cachedUserPhoto!,
-                          width: avatarRadius * 2,
-                          height: avatarRadius * 2,
-                          fit: BoxFit.cover,
-                          errorBuilder: (_, __, ___) => _fallbackAvatar(user),
-                        )
-                      : _fallbackAvatar(user),
-                ),
-              ),
-              SizedBox(width: r.spaceMd),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    FittedBox(
-                      fit: BoxFit.scaleDown,
-                      alignment: Alignment.centerLeft,
-                      child: Text(
-                        user.fullName,
-                        style: texts.headlineMedium.copyWith(
-                          color: AppColors.white,
-                          height: 1.2,
-                        ),
-                      ),
-                    ),
-                    SizedBox(height: r.spaceXs),
-                    Text(
-                      '${user.rank} • Mat: ${user.matricula}',
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: texts.bodySmall.copyWith(
-                        color: AppColors.white.withValues(alpha: 0.8),
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              _statusChip(user),
-            ],
-          ),
-          SizedBox(height: r.spaceMd),
-          Container(height: 0.5, color: AppColors.white.withValues(alpha: 0.12)),
-          SizedBox(height: r.spaceMd),
-          Row(
-            children: [
-              Expanded(
-                child: _infoTile(
-                  icon: Icons.badge_outlined,
-                  label: 'C.I.',
-                  value: user.ci.isNotEmpty ? user.ci : '—',
-                ),
-              ),
-              Expanded(
-                child: _infoTile(
-                  icon: Icons.cake_outlined,
-                  label: 'Edad',
-                  value: '${user.age} años',
-                ),
-              ),
-            ],
-          ),
-          SizedBox(height: r.spaceMd),
-          Row(
-            children: [
-              Expanded(
-                child: _infoTile(
-                  icon: Icons.phone_outlined,
-                  label: 'Celular',
-                  value: user.phone.isNotEmpty ? user.phone : '—',
-                ),
-              ),
-              Expanded(
-                child: _infoTile(
-                  icon: Icons.bloodtype_outlined,
-                  label: 'Grupo Sanguineo',
-                  value: user.bloodType.isNotEmpty ? user.bloodType : '—',
-                ),
-              ),
-            ],
-          ),
-          SizedBox(height: r.spaceMd),
-          Row(
-            children: [
-              Expanded(
-                child: _infoTile(
-                  icon: Icons.warning_amber_outlined,
-                  label: 'Alergias',
-                  value: user.allergies.isNotEmpty ? user.allergies : 'Sin registrar',
-                ),
-              ),
-              Expanded(
-                child: _infoTile(
-                  icon: Icons.email_outlined,
-                  label: 'Correo',
-                  value: user.email.isNotEmpty ? user.email : '—',
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _fallbackAvatar(UserModel user) {
-    final r = context.r;
-    return Text(
-      user.fullName.isNotEmpty ? user.fullName[0] : 'U',
-      style: TextStyle(
-        color: AppColors.white,
-        fontWeight: FontWeight.w800,
-        fontSize: r.avatarMd * 0.5,
-      ),
-    );
-  }
-
-  Widget _statusChip(UserModel user) {
-    final r = context.r;
-    final enabled = user.isEnabled;
-    final color = enabled ? const Color(0xFF4ADE80) : const Color(0xFFFB923C);
-    return Container(
-      padding: EdgeInsets.symmetric(horizontal: r.chipPaddingH, vertical: r.chipPaddingV),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.18),
-        borderRadius: BorderRadius.circular(r.chipRadius),
-        border: Border.all(color: color.withValues(alpha: 0.4), width: 0.8),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Container(
-            width: 6,
-            height: 6,
-            decoration: BoxDecoration(shape: BoxShape.circle, color: color),
-          ),
-          SizedBox(width: r.spaceXs),
-          Text(
-            enabled ? 'Habilitado' : 'Inactivo',
-            style: context.texts.labelSmall.copyWith(
-              color: AppColors.white,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _infoTile({
-    required IconData icon,
-    required String label,
-    required String value,
-  }) {
-    final r = context.r;
-    return Row(
-      children: [
-        Container(
-          width: r.infoTileIconBox,
-          height: r.infoTileIconBox,
-          decoration: BoxDecoration(
-            color: AppColors.white.withValues(alpha: 0.1),
-            borderRadius: BorderRadius.circular(r.radiusSm),
-          ),
-          child: Icon(icon, size: r.infoTileIconSize, color: AppColors.white.withValues(alpha: 0.7)),
-        ),
-        SizedBox(width: r.spaceSm),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                label,
-                style: context.texts.labelSmall.copyWith(
-                  color: AppColors.white.withValues(alpha: 0.5),
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-              Text(
-                value,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: context.texts.bodySmall.copyWith(
-                  color: AppColors.white.withValues(alpha: 0.95),
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ],
+    return ProfessionalProfileCard(
+      user: user,
+      cachedPhoto: _cachedUserPhoto,
+      onTap: () => widget.tabShell.goToTab(4), // Ir al perfil
     );
   }
 
@@ -372,7 +159,7 @@ class _HomeScreenState extends State<HomeScreen> {
           : const Color(0xFFECFDF5);
       textColor = isDark ? AppColors.success : const Color(0xFF065F46);
       icon = CupertinoIcons.checkmark_seal_fill;
-      mensaje = 'Reservas habilitadas. Puede agendar su cita medica ahora.';
+      mensaje = 'Reservas habilitadas. Puede agendar su cita médica ahora.';
     } else {
       accentColor = AppColors.warning;
       bgColor = isDark
@@ -431,7 +218,7 @@ class _HomeScreenState extends State<HomeScreen> {
       _QuickAction(
         icon: CupertinoIcons.calendar_badge_plus,
         label: 'Nueva Reserva',
-        subtitle: 'Agendar Cita',
+        subtitle: 'Agendar Cita Médica',
         color: AppColors.primary,
         onTap: () {
           final bens = UserSession.currentUser.beneficiaries;
@@ -450,14 +237,14 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
       _QuickAction(
         icon: CupertinoIcons.person_2,
-        label: 'Mi Familia',
+        label: 'Grupo Familiar',
         subtitle: 'Beneficiarios',
         color: AppColors.success,
         onTap: () => widget.tabShell.goToTab(3),
       ),
       _QuickAction(
         icon: CupertinoIcons.phone,
-        label: 'Contactos',
+        label: 'Contactos COSSMIL',
         subtitle: 'Llamar',
         color: AppColors.info,
         onTap: () => Navigator.push(
@@ -471,20 +258,26 @@ class _HomeScreenState extends State<HomeScreen> {
 
     return Column(
       children: [
-        Row(
-          children: [
-            Expanded(child: _buildActionCard(items[0])),
-            SizedBox(width: spacing),
-            Expanded(child: _buildActionCard(items[1])),
-          ],
+        IntrinsicHeight(
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Expanded(child: _buildActionCard(items[0])),
+              SizedBox(width: spacing),
+              Expanded(child: _buildActionCard(items[1])),
+            ],
+          ),
         ),
         SizedBox(height: spacing),
-        Row(
-          children: [
-            Expanded(child: _buildActionCard(items[2])),
-            SizedBox(width: spacing),
-            Expanded(child: _buildActionCard(items[3])),
-          ],
+        IntrinsicHeight(
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Expanded(child: _buildActionCard(items[2])),
+              SizedBox(width: spacing),
+              Expanded(child: _buildActionCard(items[3])),
+            ],
+          ),
         ),
       ],
     );
@@ -538,28 +331,26 @@ class _HomeScreenState extends State<HomeScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  FittedBox(
-                    fit: BoxFit.scaleDown,
-                    alignment: Alignment.centerLeft,
-                    child: Text(
-                      action.label,
-                      style: texts.titleMedium.copyWith(
-                        color: textMainColor,
-                        fontWeight: FontWeight.w900,
-                      ),
+                  Text(
+                    action.label,
+                    style: texts.titleMedium.copyWith(
+                      color: textMainColor,
+                      fontWeight: FontWeight.w900,
+                      height: 1.1,
                     ),
+                    maxLines: 2,
+                    overflow: TextOverflow.visible,
                   ),
                   SizedBox(height: r.spaceXs),
-                  FittedBox(
-                    fit: BoxFit.scaleDown,
-                    alignment: Alignment.centerLeft,
-                    child: Text(
-                      action.subtitle,
-                      style: texts.bodySmall.copyWith(
-                        color: textSubColor,
-                        fontWeight: FontWeight.w600,
-                      ),
+                  Text(
+                    action.subtitle,
+                    style: texts.bodySmall.copyWith(
+                      color: textSubColor,
+                      fontWeight: FontWeight.w600,
+                      height: 1.1,
                     ),
+                    maxLines: 2,
+                    overflow: TextOverflow.visible,
                   ),
                 ],
               ),
@@ -596,7 +387,7 @@ class _HomeScreenState extends State<HomeScreen> {
               padding: const EdgeInsets.all(20),
               child: Row(
                 children: [
-                  Icon(Icons.newspaper_outlined, size: 22, color: AppColors.textTertiaryC(isDark)),
+                  Icon(Icons.newspaper_outlined, size: r.iconSm, color: AppColors.textTertiaryC(isDark)),
                   SizedBox(width: r.spaceMd),
                   Text(
                     'Sin comunicados recientes',
@@ -622,6 +413,9 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Widget _buildNewsRow(NewsItemModel item, bool isDark, {bool isLast = false}) {
     final r = context.r;
+    final thumbSize = r.avatarSm;
+    final hasImage = item.imageUrl.isNotEmpty;
+
     return GestureDetector(
       onTap: () => _showNewsDetail(item),
       behavior: HitTestBehavior.opaque,
@@ -630,43 +424,55 @@ class _HomeScreenState extends State<HomeScreen> {
           Padding(
             padding: r.tilePadding,
             child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
+              crossAxisAlignment: CrossAxisAlignment.center,
               children: [
-                // Indicador de color por clase
-                Container(
-                  width: 4,
-                  height: 4,
-                  margin: const EdgeInsets.only(top: 7),
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: item.clase == 'A' ? AppColors.primary : AppColors.accent,
-                  ),
-                ),
-                SizedBox(width: r.spaceSm),
-                // Fecha compacta
-                SizedBox(
-                  width: 52,
-                  child: Text(
-                    _shortDate(item.dateTime),
-                    style: context.texts.labelSmall.copyWith(
-                      color: AppColors.textTertiaryC(isDark),
+                // Miniatura de imagen (si existe) o dot+fecha
+                if (hasImage)
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(r.radiusSm),
+                    child: SizedBox(
+                      width: thumbSize,
+                      height: thumbSize,
+                      child: Image.network(
+                        item.imageUrl,
+                        fit: BoxFit.cover,
+                        errorBuilder: (_, __, ___) => _buildNewsDotDate(item, isDark, r),
+                        loadingBuilder: (_, child, progress) =>
+                            progress == null ? child : _buildNewsDotDate(item, isDark, r),
+                      ),
                     ),
-                  ),
-                ),
+                  )
+                else
+                  _buildNewsDotDate(item, isDark, r),
                 SizedBox(width: r.spaceSm),
-                // Título
+                // Título + fecha secundaria cuando hay imagen
                 Expanded(
-                  child: Text(
-                    item.title,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: context.texts.bodySmall.copyWith(
-                      fontWeight: FontWeight.w600,
-                      color: AppColors.textPrimaryC(isDark),
-                    ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        item.title,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: context.texts.bodySmall.copyWith(
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.textPrimaryC(isDark),
+                        ),
+                      ),
+                      if (hasImage && item.dateTime != null) ...[
+                        const SizedBox(height: 2),
+                        Text(
+                          _shortDate(item.dateTime),
+                          style: context.texts.labelSmall.copyWith(
+                            color: AppColors.textTertiaryC(isDark),
+                          ),
+                        ),
+                      ],
+                    ],
                   ),
                 ),
-                SizedBox(width: r.spaceSm),
+                SizedBox(width: r.spaceXs),
                 Icon(
                   CupertinoIcons.chevron_right,
                   size: r.iconSm * 0.6,
@@ -685,6 +491,35 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
         ],
       ),
+    );
+  }
+
+  /// Bloque de dot + fecha (fallback cuando no hay imagen).
+  Widget _buildNewsDotDate(NewsItemModel item, bool isDark, AppResponsive r) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Container(
+          width: 4,
+          height: 4,
+          margin: const EdgeInsets.only(top: 7),
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: item.clase == 'A' ? AppColors.primary : AppColors.accent,
+          ),
+        ),
+        SizedBox(width: r.spaceXs),
+        SizedBox(
+          width: 44,
+          child: Text(
+            _shortDate(item.dateTime),
+            style: context.texts.labelSmall.copyWith(
+              color: AppColors.textTertiaryC(isDark),
+            ),
+          ),
+        ),
+      ],
     );
   }
 
@@ -869,7 +704,7 @@ class _HomeScreenState extends State<HomeScreen> {
                               child: Column(
                                 mainAxisAlignment: MainAxisAlignment.center,
                                 children: [
-                                  Icon(CupertinoIcons.photo, size: 32, color: AppColors.textTertiaryC(isDark)),
+                                  Icon(CupertinoIcons.photo, size: context.r.iconLg, color: AppColors.textTertiaryC(isDark)),
                                   SizedBox(height: context.r.spaceSm),
                                   Text(
                                     'No se pudo cargar la imagen',

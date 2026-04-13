@@ -5,7 +5,7 @@ import '../models/specialty_model.dart';
 ///
 /// Reglas de negocio (basadas en `idesp`, nunca por nombre):
 ///   - `idesp = 16` (Pediatría): solo visible si edad <= 15
-///   - `idesp = 31` (Ginecología): solo visible si género es FEMENINO
+///   - `idesp = 31` (Ginecología): solo visible si género es FEMENINO y edad >= 13
 ///
 /// Uso:
 /// ```dart
@@ -49,10 +49,15 @@ class SpecialtyFilter {
         }
       }
 
-      // Regla 2: Ginecología (31) — Solo para Femenino
+      // Regla 2: Ginecología (31) — Solo para Femenino >= 13 años
       if (idesp == _idGinecologia) {
         if (genderUpper == 'MASCULINO') {
           if (kDebugMode) debugPrint('   ❌ Ocultando Ginecología (género=$genderUpper)');
+          return false;
+        }
+        // Femenino menor de 13 años: ocultar también
+        if (age > 0 && age < 13) {
+          if (kDebugMode) debugPrint('   ❌ Ocultando Ginecología (femenino menor de 13 años, edad=$age)');
           return false;
         }
       }

@@ -27,6 +27,10 @@ class UserSession {
     beneficiaries: [],
   );
 
+  /// true si hay un usuario autenticado en memoria.
+  /// Falso justo después de [clear()] o antes del primer login.
+  static bool get isLoggedIn => currentUser.id.isNotEmpty;
+
   /// Limpia la sesión actual (llamar en logout).
   static void clear() {
     currentUser = const UserModel(

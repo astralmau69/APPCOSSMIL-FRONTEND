@@ -9,10 +9,19 @@ import 'package:url_launcher/url_launcher.dart';
 
 // ── Data Model ──────────────────────────────────────────────────────────────
 
-class _ContactCategory {
+class _ContactGroup {
+  final String key;
   final String title;
+  final IconData icon;
+  final Color accentColor;
   final List<_ContactItem> items;
-  const _ContactCategory({required this.title, required this.items});
+  const _ContactGroup({
+    required this.key,
+    required this.title,
+    required this.icon,
+    required this.accentColor,
+    required this.items,
+  });
 }
 
 class _ContactItem {
@@ -35,37 +44,43 @@ class _ContactItem {
 
 // ── Contact Data ────────────────────────────────────────────────────────────
 
-const _emergencyContacts = [
-  _ContactItem(
-    title: 'Emergencias Hospital Militar Central',
-    phone: '164',
-    icon: CupertinoIcons.phone_fill,
-    subtitle: 'Línea Gratuita — disponible 24/7',
-    isEmergency: true,
-    isFreeCall: true,
-  ),
-];
+const _emergencyContact = _ContactItem(
+  title: 'Emergencias Hospital Militar Central',
+  phone: '164',
+  icon: CupertinoIcons.phone_fill,
+  subtitle: 'Línea Gratuita — disponible 24/7',
+  isEmergency: true,
+  isFreeCall: true,
+);
 
-const _lineasGratuitas = [
-  _ContactItem(
-    title: 'Atención al Asegurado',
-    phone: '800-11-6465',
-    icon: CupertinoIcons.headphones,
-    subtitle: 'Encargado: Lic. Rubén Alfredo García Peñaloza',
-    isFreeCall: true,
+const _contactGroups = [
+  _ContactGroup(
+    key: 'lineas',
+    title: 'Líneas Gratuitas',
+    icon: CupertinoIcons.phone_circle_fill,
+    accentColor: Color(0xFF059669),
+    items: [
+      _ContactItem(
+        title: 'Atención al Asegurado',
+        phone: '800-11-6465',
+        icon: CupertinoIcons.headphones,
+        subtitle: 'Lic. Rubén Alfredo García Peñaloza',
+        isFreeCall: true,
+      ),
+      _ContactItem(
+        title: 'Transparencia',
+        phone: '800-11-6464',
+        icon: CupertinoIcons.shield_lefthalf_fill,
+        subtitle: 'Denuncias y reclamos',
+        isFreeCall: true,
+      ),
+    ],
   ),
-  _ContactItem(
-    title: 'Transparencia',
-    phone: '800-11-6464',
-    icon: CupertinoIcons.shield_lefthalf_fill,
-    subtitle: 'Línea Gratuita de denuncias y reclamos',
-    isFreeCall: true,
-  ),
-];
-
-const _contactCategories = [
-  _ContactCategory(
-    title: 'Contactos Gerencias',
+  _ContactGroup(
+    key: 'gerencias',
+    title: 'Gerencias',
+    icon: CupertinoIcons.building_2_fill,
+    accentColor: Color(0xFF2563EB),
     items: [
       _ContactItem(
         title: 'Junta Superior de Decisiones',
@@ -104,8 +119,11 @@ const _contactCategories = [
       ),
     ],
   ),
-  _ContactCategory(
-    title: 'Contactos H.M.C.',
+  _ContactGroup(
+    key: 'hospital',
+    title: 'Hospital Militar Central',
+    icon: CupertinoIcons.plus_rectangle_fill,
+    accentColor: Color(0xFF7C3AED),
     items: [
       _ContactItem(
         title: 'Hospital Militar Central',
@@ -113,7 +131,7 @@ const _contactCategories = [
         icon: CupertinoIcons.plus_rectangle_fill,
       ),
       _ContactItem(
-        title: 'Citas Médicas H.M.C.',
+        title: 'Citas Médicas HMC',
         phone: '2242058',
         icon: CupertinoIcons.calendar,
       ),
@@ -133,8 +151,25 @@ const _contactCategories = [
 
 // ── Screen ──────────────────────────────────────────────────────────────────
 
-class ContactosScreen extends StatelessWidget {
+class ContactosScreen extends StatefulWidget {
   const ContactosScreen({super.key});
+
+  @override
+  State<ContactosScreen> createState() => _ContactosScreenState();
+}
+
+class _ContactosScreenState extends State<ContactosScreen> {
+  final Set<String> _expanded = {};
+
+  void _toggle(String key) {
+    setState(() {
+      if (_expanded.contains(key)) {
+        _expanded.remove(key);
+      } else {
+        _expanded.add(key);
+      }
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -148,7 +183,10 @@ class ContactosScreen extends StatelessWidget {
         ),
         slivers: [
           CupertinoSliverNavigationBar(
-            largeTitle: Text('Contactos', style: TextStyle(color: AppColors.textPrimaryC(isDark))),
+            largeTitle: Text(
+              'Contactos COSSMIL',
+              style: TextStyle(color: AppColors.textPrimaryC(isDark)),
+            ),
             backgroundColor: isDark
                 ? AppColors.darkSurface.withValues(alpha: 0.92)
                 : AppColors.white.withValues(alpha: 0.92),
@@ -160,7 +198,8 @@ class ContactosScreen extends StatelessWidget {
             ),
           ),
           SliverPadding(
-            padding: EdgeInsets.fromLTRB(context.r.paddingH, 12, context.r.paddingH, 40),
+            padding: EdgeInsets.fromLTRB(
+                context.r.paddingH, 12, context.r.paddingH, context.r.navBarBottomSpace),
             sliver: SliverList(
               delegate: SliverChildListDelegate([
                 // Subtitle
@@ -178,86 +217,26 @@ class ContactosScreen extends StatelessWidget {
                   ),
                 ),
 
-                // ── Emergency hero card ─────────────────────────
-                for (final c in _emergencyContacts) ...[
-                  FadeSlideIn(
-                    delay: const Duration(milliseconds: 80),
-                    child: _EmergencyCard(contact: c),
-                  ),
-                  SizedBox(height: context.r.spaceLg),
-                ],
-
-                // ── Líneas gratuitas ────────────────────────────
+                // ── Emergency hero card — always visible ───────────
                 FadeSlideIn(
-                  delay: const Duration(milliseconds: 160),
-                  child: _sectionHeader(context, 'LÍNEAS GRATUITAS'),
+                  delay: const Duration(milliseconds: 80),
+                  child: _EmergencyCard(contact: _emergencyContact),
                 ),
-                SizedBox(height: context.r.spaceSm),
-                for (int i = 0; i < _lineasGratuitas.length; i++) ...[
-                  FadeSlideIn(
-                    delay: Duration(milliseconds: 200 + i * 80),
-                    child: _ContactCard(
-                      contact: _lineasGratuitas[i],
-                      onCopy: () => _copyPhone(context, _lineasGratuitas[i].phone),
-                    ),
-                  ),
-                  SizedBox(height: context.r.spaceSm),
-                ],
-
                 SizedBox(height: context.r.spaceLg),
 
-                // ── Institutional categories ────────────────────
-                for (int ci = 0; ci < _contactCategories.length; ci++) ...[
+                // ── Collapsible groups ─────────────────────────────
+                for (int i = 0; i < _contactGroups.length; i++) ...[
                   FadeSlideIn(
-                    delay: Duration(milliseconds: 360 + ci * 100),
-                    child: _sectionHeader(context, _contactCategories[ci].title.toUpperCase()),
+                    delay: Duration(milliseconds: 160 + i * 60),
+                    child: _CollapsibleGroup(
+                      group: _contactGroups[i],
+                      isExpanded: _expanded.contains(_contactGroups[i].key),
+                      onToggle: () => _toggle(_contactGroups[i].key),
+                    ),
                   ),
                   SizedBox(height: context.r.spaceSm),
-                  for (int j = 0; j < _contactCategories[ci].items.length; j++) ...[
-                    FadeSlideIn(
-                      delay: Duration(milliseconds: 400 + ci * 100 + j * 50),
-                      child: _ContactCard(
-                        contact: _contactCategories[ci].items[j],
-                        onCopy: () => _copyPhone(context, _contactCategories[ci].items[j].phone),
-                      ),
-                    ),
-                    SizedBox(height: context.r.spaceSm),
-                  ],
-                  SizedBox(height: context.r.spaceLg),
                 ],
               ]),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _sectionHeader(BuildContext context, String text) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    return Padding(
-      padding: const EdgeInsets.only(left: 4),
-      child: Row(
-        children: [
-          Container(
-            width: 3,
-            height: 14,
-            decoration: BoxDecoration(
-              color: isDark ? AppColors.white : AppColors.primary,
-              borderRadius: BorderRadius.circular(context.r.spaceXs),
-            ),
-          ),
-          SizedBox(width: context.r.spaceSm),
-          Flexible(
-            child: Text(
-              text,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(
-                fontWeight: FontWeight.w800,
-                color: AppColors.textSecondaryC(isDark),
-                letterSpacing: 1.5,
-              ),
             ),
           ),
         ],
@@ -283,15 +262,336 @@ class ContactosScreen extends StatelessWidget {
       ),
     );
   }
+
   static Future<void> _makePhoneCall(String phoneNumber) async {
-    final cleanFormat = phoneNumber.replaceAll(RegExp(r'[^\d+]'), '');
-    final Uri launchUri = Uri(
-      scheme: 'tel',
-      path: cleanFormat,
-    );
+    final cleanFormat = phoneNumber.split(' ').first.replaceAll(RegExp(r'[^\d+]'), '');
+    final Uri launchUri = Uri(scheme: 'tel', path: cleanFormat);
     if (!await launchUrl(launchUri, mode: LaunchMode.externalApplication)) {
       debugPrint('Could not launch $launchUri');
     }
+  }
+}
+
+// ── Collapsible Group ───────────────────────────────────────────────────────
+
+class _CollapsibleGroup extends StatelessWidget {
+  final _ContactGroup group;
+  final bool isExpanded;
+  final VoidCallback onToggle;
+
+  const _CollapsibleGroup({
+    required this.group,
+    required this.isExpanded,
+    required this.onToggle,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final r = context.r;
+
+    return Container(
+      decoration: BoxDecoration(
+        color: AppColors.cardBg(isDark),
+        borderRadius: BorderRadius.circular(AppTheme.radiusXl),
+        boxShadow: AppColors.cardShadowFor(isDark),
+        border: Border.all(
+          color: isExpanded
+              ? group.accentColor.withValues(alpha: 0.30)
+              : AppColors.cardBorder(isDark),
+          width: isExpanded ? 1.5 : 0.5,
+        ),
+      ),
+      child: Column(
+        children: [
+          // ── Header row — always visible ──────────────────────────
+          GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onTap: onToggle,
+            child: Padding(
+              padding: EdgeInsets.symmetric(
+                  horizontal: r.cardPadding, vertical: r.spaceMd),
+              child: Row(
+                children: [
+                  // Icon container
+                  Container(
+                    width: r.listAvatarSize,
+                    height: r.listAvatarSize,
+                    decoration: BoxDecoration(
+                      color: group.accentColor.withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(r.radiusMd),
+                    ),
+                    child: Icon(group.icon, size: r.iconMd, color: group.accentColor),
+                  ),
+                  SizedBox(width: r.spaceMd),
+
+                  // Title + count
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          group.title,
+                          style: context.texts.titleMedium.copyWith(
+                            fontWeight: FontWeight.w800,
+                            color: AppColors.textPrimaryC(isDark),
+                            letterSpacing: -0.3,
+                          ),
+                        ),
+                        SizedBox(height: 2),
+                        Text(
+                          isExpanded
+                              ? 'Toca para cerrar'
+                              : '${group.items.length} contacto${group.items.length != 1 ? 's' : ''}',
+                          style: context.texts.bodySmall.copyWith(
+                            fontWeight: FontWeight.w500,
+                            color: AppColors.textTertiaryC(isDark),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+
+                  // Count badge (collapsed only)
+                  if (!isExpanded)
+                    Container(
+                      padding: EdgeInsets.symmetric(
+                          horizontal: r.chipPaddingH, vertical: r.chipPaddingV),
+                      decoration: BoxDecoration(
+                        color: group.accentColor.withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(r.chipRadius),
+                      ),
+                      child: Text(
+                        '${group.items.length}',
+                        style: context.texts.bodyMedium.copyWith(
+                          fontWeight: FontWeight.w800,
+                          color: group.accentColor,
+                        ),
+                      ),
+                    ),
+                  SizedBox(width: r.spaceSm),
+
+                  // Chevron
+                  AnimatedRotation(
+                    turns: isExpanded ? 0.5 : 0,
+                    duration: const Duration(milliseconds: 250),
+                    curve: Curves.easeInOut,
+                    child: Icon(
+                      CupertinoIcons.chevron_down,
+                      size: 16,
+                      color: isExpanded
+                          ? group.accentColor
+                          : AppColors.textTertiaryC(isDark),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+
+          // ── Expandable content ───────────────────────────────────
+          AnimatedCrossFade(
+            firstChild: const SizedBox.shrink(),
+            secondChild: _GroupContent(group: group),
+            crossFadeState: isExpanded
+                ? CrossFadeState.showSecond
+                : CrossFadeState.showFirst,
+            duration: const Duration(milliseconds: 280),
+            sizeCurve: Curves.easeInOut,
+            firstCurve: Curves.easeIn,
+            secondCurve: Curves.easeOut,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ── Group Content (items list) ───────────────────────────────────────────────
+
+class _GroupContent extends StatelessWidget {
+  final _ContactGroup group;
+  const _GroupContent({required this.group});
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final r = context.r;
+
+    return Column(
+      children: [
+        // Divider
+        Container(
+          height: 0.5,
+          color: group.accentColor.withValues(alpha: 0.20),
+        ),
+        // Items
+        for (int i = 0; i < group.items.length; i++) ...[
+          _ContactRow(
+            item: group.items[i],
+            accentColor: group.accentColor,
+            isDark: isDark,
+            showDivider: i < group.items.length - 1,
+          ),
+        ],
+        SizedBox(height: r.spaceXs),
+      ],
+    );
+  }
+}
+
+// ── Contact Row (inside expanded group) ─────────────────────────────────────
+
+class _ContactRow extends StatelessWidget {
+  final _ContactItem item;
+  final Color accentColor;
+  final bool isDark;
+  final bool showDivider;
+
+  const _ContactRow({
+    required this.item,
+    required this.accentColor,
+    required this.isDark,
+    required this.showDivider,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final r = context.r;
+
+    return Column(
+      children: [
+        Padding(
+          padding: EdgeInsets.symmetric(
+              horizontal: r.cardPadding, vertical: r.spaceMd),
+          child: Row(
+            children: [
+              // Icon
+              Container(
+                width: r.contactRowIconSize,
+                height: r.contactRowIconSize,
+                decoration: BoxDecoration(
+                  color: accentColor.withValues(alpha: 0.08),
+                  borderRadius: BorderRadius.circular(r.radiusMd),
+                ),
+                child: Icon(item.icon, size: r.iconSm, color: accentColor),
+              ),
+              SizedBox(width: r.spaceMd),
+
+              // Text
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    if (item.isFreeCall)
+                      Container(
+                        margin: const EdgeInsets.only(bottom: 3),
+                        padding: EdgeInsets.symmetric(
+                            horizontal: r.spaceSm, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF059669).withValues(alpha: 0.10),
+                          borderRadius: BorderRadius.circular(r.radiusSm),
+                        ),
+                        child: Text(
+                          'LÍNEA GRATUITA',
+                          style: context.texts.labelSmall.copyWith(
+                            fontWeight: FontWeight.w800,
+                            color: const Color(0xFF059669),
+                            letterSpacing: 0.8,
+                          ),
+                        ),
+                      ),
+                    Text(
+                      item.title,
+                      style: context.texts.bodyMedium.copyWith(
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.textPrimaryC(isDark),
+                        letterSpacing: -0.2,
+                      ),
+                    ),
+                    SizedBox(height: 2),
+                    Text(
+                      item.phone,
+                      style: context.texts.bodyLarge.copyWith(
+                        fontWeight: FontWeight.w800,
+                        color: accentColor,
+                        letterSpacing: 0.8,
+                      ),
+                    ),
+                    if (item.subtitle != null) ...[
+                      SizedBox(height: 2),
+                      Text(
+                        item.subtitle!,
+                        style: context.texts.bodySmall.copyWith(
+                          color: AppColors.textTertiaryC(isDark),
+                          height: 1.3,
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+
+              // Action buttons
+              Column(
+                children: [
+                  _ActionButton(
+                    icon: CupertinoIcons.phone_fill,
+                    color: accentColor,
+                    onTap: () => _ContactosScreenState._makePhoneCall(item.phone),
+                  ),
+                  SizedBox(height: r.spaceXs),
+                  _ActionButton(
+                    icon: CupertinoIcons.doc_on_clipboard,
+                    color: AppColors.textSecondaryC(isDark),
+                    onTap: () => _ContactosScreenState._copyPhone(context, item.phone),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+        if (showDivider)
+          Padding(
+            padding: EdgeInsets.symmetric(horizontal: r.cardPadding),
+            child: Container(
+              height: 0.5,
+              color: AppColors.cardBorder(isDark),
+            ),
+          ),
+      ],
+    );
+  }
+}
+
+// ── Small action button ──────────────────────────────────────────────────────
+
+class _ActionButton extends StatelessWidget {
+  final IconData icon;
+  final Color color;
+  final VoidCallback onTap;
+
+  const _ActionButton({
+    required this.icon,
+    required this.color,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final r = context.r;
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: r.avatarSm + 4,
+        height: r.avatarSm + 4,
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: 0.10),
+          borderRadius: BorderRadius.circular(r.radiusMd),
+        ),
+        child: Icon(icon, size: r.iconSm, color: color),
+      ),
+    );
   }
 }
 
@@ -303,8 +603,9 @@ class _EmergencyCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final r = context.r;
     return Container(
-      padding: EdgeInsets.all(context.r.cardPadding),
+      padding: EdgeInsets.all(r.cardPadding),
       decoration: BoxDecoration(
         color: const Color(0xFFDC2626),
         borderRadius: BorderRadius.circular(AppTheme.radiusXl),
@@ -319,23 +620,19 @@ class _EmergencyCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Top row — icon + badge
           Row(
             children: [
               Container(
-                width: context.r.avatarMd,
-                height: context.r.avatarMd,
+                width: r.avatarMd,
+                height: r.avatarMd,
                 decoration: BoxDecoration(
                   color: AppColors.white.withValues(alpha: 0.18),
-                  borderRadius: BorderRadius.circular(context.r.radiusMd),
+                  borderRadius: BorderRadius.circular(r.radiusMd),
                 ),
-                child: const Icon(
-                  CupertinoIcons.bell_fill,
-                  color: AppColors.white,
-                  size: 30,
-                ),
+                child: Icon(CupertinoIcons.bell_fill,
+                    color: AppColors.white, size: r.iconLg * 0.75),
               ),
-              SizedBox(width: context.r.spaceMd),
+              SizedBox(width: r.spaceMd),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -345,7 +642,7 @@ class _EmergencyCard extends StatelessWidget {
                           horizontal: 8, vertical: 3),
                       decoration: BoxDecoration(
                         color: AppColors.white.withValues(alpha: 0.20),
-                        borderRadius: BorderRadius.circular(context.r.badgeRadius),
+                        borderRadius: BorderRadius.circular(r.badgeRadius),
                       ),
                       child: const Text(
                         'EMERGENCIA',
@@ -356,7 +653,7 @@ class _EmergencyCard extends StatelessWidget {
                         ),
                       ),
                     ),
-                    SizedBox(height: context.r.spaceXs),
+                    SizedBox(height: r.spaceXs),
                     FittedBox(
                       fit: BoxFit.scaleDown,
                       alignment: Alignment.centerLeft,
@@ -373,23 +670,22 @@ class _EmergencyCard extends StatelessWidget {
               ),
             ],
           ),
-          SizedBox(height: context.r.spaceLg),
-
-          // Phone number — BIG
+          SizedBox(height: r.spaceLg),
           Center(
             child: FittedBox(
               fit: BoxFit.scaleDown,
               child: Text(
                 contact.phone,
-                style: const TextStyle(
+                style: TextStyle(
                   fontWeight: FontWeight.w900,
                   color: AppColors.white,
-                  letterSpacing: 4,
+                  fontSize: r.displayXl,
+                  letterSpacing: 8,
                 ),
               ),
             ),
           ),
-          SizedBox(height: context.r.spaceSm),
+          SizedBox(height: r.spaceSm),
           Center(
             child: Text(
               contact.subtitle ?? '',
@@ -400,17 +696,13 @@ class _EmergencyCard extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 18),
-
-          // Call button
           SizedBox(
             width: double.infinity,
             child: CupertinoButton(
-              padding: EdgeInsets.symmetric(vertical: context.r.spaceMd),
+              padding: EdgeInsets.symmetric(vertical: r.spaceMd),
               color: AppColors.white.withValues(alpha: 0.20),
-              borderRadius: BorderRadius.circular(context.r.radiusMd),
-              onPressed: () {
-                ContactosScreen._makePhoneCall(contact.phone);
-              },
+              borderRadius: BorderRadius.circular(r.radiusMd),
+              onPressed: () => _ContactosScreenState._makePhoneCall(contact.phone),
               child: const Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
@@ -433,156 +725,3 @@ class _EmergencyCard extends StatelessWidget {
     );
   }
 }
-
-// ── Standard Contact Card ───────────────────────────────────────────────────
-
-class _ContactCard extends StatelessWidget {
-  final _ContactItem contact;
-  final VoidCallback? onCopy;
-  const _ContactCard({required this.contact, this.onCopy});
-
-  @override
-  Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final accentColor =
-        contact.isFreeCall ? AppColors.accent : (isDark ? AppColors.white : AppColors.primary);
-
-    return Container(
-      padding: EdgeInsets.all(context.r.cardPadding),
-      decoration: BoxDecoration(
-        color: AppColors.cardBg(isDark),
-        borderRadius: BorderRadius.circular(AppTheme.radiusXl),
-        boxShadow: AppColors.cardShadowFor(isDark),
-        border: Border.all(
-          color: accentColor.withValues(alpha: 0.12),
-        ),
-      ),
-      child: Row(
-        children: [
-          // Icon
-          Container(
-            width: context.r.listAvatarSize,
-            height: context.r.listAvatarSize,
-            decoration: BoxDecoration(
-              color: accentColor.withValues(alpha: 0.08),
-              borderRadius: BorderRadius.circular(14),
-            ),
-            child: Icon(contact.icon, size: 30, color: accentColor),
-          ),
-          SizedBox(width: context.r.spaceMd),
-
-          // Text content
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                if (contact.isFreeCall)
-                  Padding(
-                    padding: const EdgeInsets.only(bottom: 3),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 6, vertical: 2),
-                      decoration: BoxDecoration(
-                        color: AppColors.accent.withValues(alpha: 0.10),
-                        borderRadius: BorderRadius.circular(context.r.spaceXs),
-                      ),
-                      child: const Text(
-                        'LÍNEA GRATUITA',
-                        style: TextStyle(
-                          fontWeight: FontWeight.w900,
-                          color: AppColors.accentDark,
-                          letterSpacing: 0.8,
-                        ),
-                      ),
-                    ),
-                  ),
-                FittedBox(
-                  fit: BoxFit.scaleDown,
-                  alignment: Alignment.centerLeft,
-                  child: Text(
-                    contact.title,
-                    style: TextStyle(
-                      fontWeight: FontWeight.w800,
-                      color: AppColors.textPrimaryC(isDark),
-                      letterSpacing: -0.5,
-                    ),
-                  ),
-                ),
-                SizedBox(height: context.r.spaceXs),
-                FittedBox(
-                  fit: BoxFit.scaleDown,
-                  alignment: Alignment.centerLeft,
-                  child: Text(
-                    contact.phone,
-                    style: TextStyle(
-                      fontWeight: FontWeight.w900,
-                      color: accentColor,
-                      letterSpacing: 1.0,
-                    ),
-                  ),
-                ),
-                if (contact.subtitle != null) ...[
-                  SizedBox(height: context.r.spaceXs),
-                  FittedBox(
-                    fit: BoxFit.scaleDown,
-                    alignment: Alignment.centerLeft,
-                    child: Text(
-                      contact.subtitle!,
-                      style: TextStyle(
-                        fontWeight: FontWeight.w600,
-                        color: AppColors.textSecondaryC(isDark),
-                        height: 1.3,
-                      ),
-                    ),
-                  ),
-                ],
-              ],
-            ),
-          ),
-
-          // Actions column
-          Column(
-            children: [
-              // Call
-              CupertinoButton(
-                padding: EdgeInsets.zero,
-                minimumSize: const Size.square(36),
-                onPressed: () {
-                  ContactosScreen._makePhoneCall(contact.phone);
-                },
-                child: Container(
-                  width: context.r.avatarMd,
-                  height: context.r.avatarMd,
-                  decoration: BoxDecoration(
-                    color: accentColor.withValues(alpha: 0.10),
-                    borderRadius: BorderRadius.circular(context.r.radiusMd),
-                  ),
-                  child: Icon(CupertinoIcons.phone_fill,
-                      size: 24, color: accentColor),
-                ),
-              ),
-              SizedBox(height: context.r.spaceSm),
-              // Copy
-              CupertinoButton(
-                padding: EdgeInsets.zero,
-                minimumSize: const Size.square(36),
-                onPressed: onCopy,
-                child: Container(
-                  width: context.r.avatarMd,
-                  height: context.r.avatarMd,
-                  decoration: BoxDecoration(
-                    color: AppColors.background,
-                    borderRadius: BorderRadius.circular(context.r.radiusMd),
-                  ),
-                  child: Icon(CupertinoIcons.doc_on_clipboard,
-                      size: 24, color: AppColors.textSecondaryC(isDark)),
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-}
-

@@ -23,6 +23,39 @@ class SessionRestoreService {
   );
 
   static const _keyUserData = 'user_session_data';
+  static const _keyStoredUsername = 'stored_login_username';
+  static const _keyStoredPassword = 'stored_login_password';
+
+  // ─── Credenciales para re-autenticación silenciosa ───────────────────────
+
+  /// Guarda las credenciales cifradas para permitir re-login silencioso
+  /// al desbloquear con PIN/biometría sin mantener el token del servidor vivo.
+  static Future<void> storeCredentials(String username, String password) async {
+    try {
+      await _storage.write(key: _keyStoredUsername, value: username);
+      await _storage.write(key: _keyStoredPassword, value: password);
+    } catch (_) {}
+  }
+
+  /// Lee las credenciales almacenadas. Retorna null si no existen.
+  static Future<({String username, String password})?> loadCredentials() async {
+    try {
+      final u = await _storage.read(key: _keyStoredUsername);
+      final p = await _storage.read(key: _keyStoredPassword);
+      if (u == null || p == null || u.isEmpty || p.isEmpty) return null;
+      return (username: u, password: p);
+    } catch (_) {
+      return null;
+    }
+  }
+
+  /// Borra las credenciales almacenadas (logout explícito).
+  /// Nota: [TokenStorage.wipeAll()] ya las borra al hacer deleteAll(); este
+  /// método sirve para borrarlas de forma selectiva si fuera necesario.
+  static Future<void> clearCredentials() async {
+    await _storage.delete(key: _keyStoredUsername);
+    await _storage.delete(key: _keyStoredPassword);
+  }
 
   // ─── Guardar ──────────────────────────────────────────────────────────────
 
@@ -56,12 +89,34 @@ class SessionRestoreService {
       final jsonMap = jsonDecode(jsonStr) as Map<String, dynamic>;
       final user = UserModel.fromJson(jsonMap);
 
-      // Restaurar el singleton en memoria
-      UserSession.currentUser = user;
+      // Parche en caliente para sesiones antiguas: asegurar grado del titular
+      final resolvedBeneficiaries = user.beneficiaries.map((b) {
+        if (b.isTitular && b.grado.isEmpty) {
+          return BeneficiaryModel(
+            id: b.id,
+            fullName: b.fullName,
+            relationship: b.relationship,
+            age: b.age,
+            gender: b.gender,
+            matricula: b.matricula,
+            photoBase64: b.photoBase64,
+            grado: user.rank,
+            serviceStatus: b.serviceStatus,
+          );
+        }
+        return b;
+      }).toList();
+      final enforcedUser = user.copyWith(beneficiaries: resolvedBeneficiaries);
 
-      // Sincronizar nombre con SecurityService
-      if (user.fullName.isNotEmpty) {
-        await SecurityService.saveDisplayName(user.fullName);
+      // Restaurar el singleton en memoria
+      UserSession.currentUser = enforcedUser;
+
+      // Fallback global para displayTitle
+      BeneficiaryModel.titularRankFallback = enforcedUser.rank;
+
+      // Sincronizar nombre CON rango militar con SecurityService
+      if (enforcedUser.fullName.isNotEmpty) {
+        await SecurityService.saveDisplayName(enforcedUser.displayName);
       }
 
       // Si no hay foto guardada, intentar re-fetch silencioso
@@ -96,14 +151,21 @@ class SessionRestoreService {
         final rawPhoto = data['foto2'] as String? ?? '';
         final cleanPhoto = AuthService.cleanBase64(rawPhoto);
         
-        final eBloodType = (data['grupoSanguineo'] as String? ?? data['grupo_sanguineo'] as String? ?? '').trim();
-        final eAllergies = (data['alergias'] as String? ?? data['allergies'] as String? ?? '').trim();
+        final eBloodType = (data['gruposan'] as String? ?? data['grupoSanguineo'] as String? ?? data['grupo_sanguineo'] as String? ?? '').trim();
+        final eAllergies = (data['alergia'] as String? ?? data['alergias'] as String? ?? data['allergies'] as String? ?? '').trim();
+        final eGrado = (data['grado']?.toString() ?? 
+                        data['Grado']?.toString() ?? 
+                        data['rango']?.toString() ?? 
+                        data['Rango']?.toString() ?? '').trim();
+        final eRefe4 = (data['refe4'] as String? ?? '').trim();
 
-        if (cleanPhoto.isNotEmpty || eBloodType.isNotEmpty || eAllergies.isNotEmpty) {
+        if (cleanPhoto.isNotEmpty || eBloodType.isNotEmpty || eAllergies.isNotEmpty || eGrado.isNotEmpty || eRefe4.isNotEmpty) {
           UserSession.currentUser = UserSession.currentUser.copyWith(
             photoBase64: cleanPhoto.isNotEmpty ? cleanPhoto : UserSession.currentUser.photoBase64,
             bloodType: eBloodType.isNotEmpty ? eBloodType : UserSession.currentUser.bloodType,
             allergies: eAllergies.isNotEmpty ? eAllergies : UserSession.currentUser.allergies,
+            rank: eGrado.isNotEmpty ? eGrado : UserSession.currentUser.rank,
+            serviceStatus: eRefe4.isNotEmpty ? eRefe4 : UserSession.currentUser.serviceStatus,
           );
           
           // Actualizar también en la lista de beneficiarios si está el titular
@@ -117,6 +179,8 @@ class SessionRestoreService {
                 gender: b.gender,
                 matricula: b.matricula,
                 photoBase64: cleanPhoto.isNotEmpty ? cleanPhoto : b.photoBase64,
+                grado: eGrado.isNotEmpty ? eGrado : b.grado,
+                serviceStatus: eRefe4.isNotEmpty ? eRefe4 : b.serviceStatus,
               );
             }
             return b;
@@ -147,7 +211,12 @@ class SessionRestoreService {
         final data = response.data as Map<String, dynamic>;
         final rawPhoto = data['foto2'] as String? ?? '';
         final cleanPhoto = AuthService.cleanBase64(rawPhoto);
-        if (cleanPhoto.isNotEmpty) {
+        final bGrado = (data['grado']?.toString() ?? 
+                        data['Grado']?.toString() ?? 
+                        data['rango']?.toString() ?? 
+                        data['Rango']?.toString() ?? '').trim();
+        final bRefe4 = (data['refe4'] as String? ?? '').trim();
+        if (cleanPhoto.isNotEmpty || bGrado.isNotEmpty || bRefe4.isNotEmpty) {
           final updatedBens = UserSession.currentUser.beneficiaries.map((b) {
             if (b.id == beneficiary.id) {
               return BeneficiaryModel(
@@ -157,7 +226,9 @@ class SessionRestoreService {
                 age: b.age,
                 gender: b.gender,
                 matricula: b.matricula,
-                photoBase64: cleanPhoto,
+                photoBase64: cleanPhoto.isNotEmpty ? cleanPhoto : b.photoBase64,
+                grado: bGrado.isNotEmpty ? bGrado : b.grado,
+                serviceStatus: bRefe4.isNotEmpty ? bRefe4 : b.serviceStatus,
               );
             }
             return b;

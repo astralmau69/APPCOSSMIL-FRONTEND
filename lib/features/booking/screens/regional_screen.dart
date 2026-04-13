@@ -3,7 +3,6 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/extensions/responsive_extensions.dart';
-import '../../../core/theme/app_constants.dart';
 import '../../../core/session/user_session.dart';
 import '../../../core/models/regional_model.dart';
 import '../../../core/models/hospital_model.dart';
@@ -17,14 +16,17 @@ import '../../../shell/tab_shell.dart';
 import '../../../core/services/location_service.dart';
 import '../../../core/helpers/distance_helper.dart';
 import '../../../core/widgets/skeleton_loading.dart';
-import '../../../core/widgets/booking_stepper.dart';
 import '../../../core/utils/error_mapper.dart';
 import 'specialty_screen.dart';
 
 class RegionalScreen extends StatefulWidget {
   final TabShellState tabShell;
 
-  const RegionalScreen({super.key, required this.tabShell});
+  /// Cuando no es null, la pantalla se muestra sin scaffold/stepper propio
+  /// y llama este callback en vez de Navigator.push al avanzar.
+  final VoidCallback? onNext;
+
+  const RegionalScreen({super.key, required this.tabShell, this.onNext});
 
   @override
   State<RegionalScreen> createState() => _RegionalScreenState();
@@ -33,25 +35,27 @@ class RegionalScreen extends StatefulWidget {
 class _RegionalScreenState extends State<RegionalScreen> {
   final _service = ProgramacionService();
   List<RegionalModel> _regionals = [];
+  List<BeneficiaryModel> _beneficiaries = [];
   bool _isLoading = true;
   String? _errorMessage;
   int _expandedIndex = -1;
   bool _locationApplied = false;
+  bool _isCheckingCita = false;
 
   @override
   void initState() {
     super.initState();
+    _beneficiaries = List<BeneficiaryModel>.from(UserSession.currentUser.beneficiaries);
     // Default to titular if no beneficiary selected
     final bs = widget.tabShell.bookingState;
     if (bs.beneficiary == null) {
-      final bens = UserSession.currentUser.beneficiaries;
-      if (bens.isNotEmpty) {
-        final titular = bens.firstWhere(
+      if (_beneficiaries.isNotEmpty) {
+        final titular = _beneficiaries.firstWhere(
           (b) => b.isTitular,
-          orElse: () => bens.first,
+          orElse: () => _beneficiaries.first,
         );
         bs.beneficiary = titular;
-        bs.beneficiaryLabel = titular.isTitular ? 'Para mí' : titular.fullName;
+        bs.beneficiaryLabel = titular.isTitular ? 'Para mí' : titular.displayTitle;
       }
     }
     _fetchData();
@@ -63,7 +67,22 @@ class _RegionalScreenState extends State<RegionalScreen> {
       _errorMessage = null;
     });
     try {
-      final data = await _service.getRegionalesPorDepartamento(1);
+      final rawData = await _service.getRegionalesPorDepartamento(1);
+
+      // Filtro: solo mostrar La Paz – Hospital Militar Central.
+      final data = <RegionalModel>[];
+      for (final regional in rawData) {
+        if (!regional.name.toLowerCase().contains('paz')) continue;
+        final hospitals = regional.hospitals
+            .where((h) => h.name.toLowerCase().contains('central'))
+            .toList();
+        if (hospitals.isEmpty) continue;
+        data.add(RegionalModel(
+          id: regional.id,
+          name: regional.name,
+          hospitals: hospitals,
+        ));
+      }
 
       bool locationUsed = false;
       try {
@@ -106,10 +125,22 @@ class _RegionalScreenState extends State<RegionalScreen> {
       }
 
       if (mounted) {
+        final freshBens = UserSession.currentUser.beneficiaries;
+        final bs = widget.tabShell.bookingState;
         setState(() {
           _regionals = data;
           _isLoading = false;
           _locationApplied = locationUsed;
+          _beneficiaries = List<BeneficiaryModel>.from(freshBens);
+          // Re-set default beneficiary if it was empty at initState time
+          if (bs.beneficiary == null && freshBens.isNotEmpty) {
+            final titular = freshBens.firstWhere(
+              (b) => b.isTitular,
+              orElse: () => freshBens.first,
+            );
+            bs.beneficiary = titular;
+            bs.beneficiaryLabel = titular.isTitular ? 'Para mí' : titular.displayTitle;
+          }
         });
       }
     } catch (e) {
@@ -122,10 +153,92 @@ class _RegionalScreenState extends State<RegionalScreen> {
     }
   }
 
-  @override
-  Widget build(BuildContext context) {
+  Widget _buildBody(BuildContext context) {
     final bs = widget.tabShell.bookingState;
     final currentBeneficiary = bs.beneficiary;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final r = context.r;
+
+    if (_isLoading) {
+      return ListView(
+        padding: EdgeInsets.only(top: r.spaceMd, bottom: r.navBarBottomSpace),
+        children: const [SkeletonRegionalList(count: 4)],
+      );
+    }
+    if (_errorMessage != null) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Text(_errorMessage!, textAlign: TextAlign.center),
+            SizedBox(height: r.spaceMd),
+            CupertinoButton(onPressed: _fetchData, child: const Text('Reintentar')),
+          ],
+        ),
+      );
+    }
+    return RefreshIndicator(
+      onRefresh: _fetchData,
+      child: ListView(
+        padding: EdgeInsets.only(top: r.spaceMd, bottom: r.navBarBottomSpace),
+        children: [
+          FadeSlideIn(
+            offsetY: 30,
+            child: _buildActiveProfileCard(context, currentBeneficiary, isDark),
+          ),
+          SizedBox(height: r.spaceXl),
+          Padding(
+            padding: EdgeInsets.symmetric(horizontal: r.paddingH),
+            child: Text(
+              'Seleccione la Agencia Regional de su preferencia',
+              style: context.texts.headlineMedium.copyWith(
+                color: AppColors.textPrimaryC(isDark),
+              ),
+            ),
+          ),
+          SizedBox(height: r.spaceSm),
+          if (_locationApplied && _regionals.isNotEmpty && _regionals.first.distanceFromUser != null)
+            Padding(
+              padding: EdgeInsets.only(left: r.paddingH, right: r.paddingH, top: 0, bottom: r.spaceMd),
+              child: Row(
+                children: [
+                  Icon(Icons.location_on, size: r.iconSm, color: AppColors.accentForTheme(isDark)),
+                  SizedBox(width: r.spaceSm),
+                  Expanded(
+                    child: Text(
+                      'Te mostramos primero el departamento más cercano a tu ubicación.',
+                      style: context.texts.bodySmall.copyWith(
+                        color: AppColors.accentForTheme(isDark),
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          for (int i = 0; i < _regionals.length; i++)
+            FadeSlideIn(
+              delay: Duration(milliseconds: 60 * (i + 1).clamp(0, 5)),
+              offsetY: 15,
+              child: _buildRegionalItem(context, _regionals[i], i, isDark),
+            ),
+          if (_regionals.isEmpty)
+            Padding(
+              padding: EdgeInsets.all(r.spaceXxl),
+              child: const Center(child: Text('No hay establecimientos disponibles.')),
+            ),
+        ],
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    // Modo embebido: solo el contenido, sin scaffold ni stepper.
+    if (widget.onNext != null) {
+      return _buildBody(context);
+    }
+
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final r = context.r;
 
@@ -149,82 +262,7 @@ class _RegionalScreenState extends State<RegionalScreen> {
       child: SafeArea(
         child: Column(
           children: [
-            const BookingStepper(currentStep: 0),
-            Expanded(
-              child: _isLoading
-                  ? ListView(
-                      padding: EdgeInsets.symmetric(vertical: r.spaceMd),
-                      children: const [SkeletonRegionalList(count: 4)],
-                    )
-                  : _errorMessage != null
-                      ? Center(
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Text(_errorMessage!,
-                                  textAlign: TextAlign.center),
-                              SizedBox(height: r.spaceMd),
-                              CupertinoButton(
-                                  onPressed: _fetchData, child: const Text('Reintentar')),
-                            ],
-                          ),
-                        )
-                      : RefreshIndicator(
-                          onRefresh: _fetchData,
-                          child: ListView(
-                      padding: EdgeInsets.symmetric(vertical: r.spaceMd),
-                      children: [
-                        // ── Active profile selector ─────────────────────────────────
-                        FadeSlideIn(
-                          offsetY: 30,
-                          child: _buildActiveProfileCard(context, currentBeneficiary, isDark),
-                        ),
-                        SizedBox(height: r.spaceXl),
-                        Padding(
-                          padding: EdgeInsets.symmetric(horizontal: r.paddingH),
-                          child: Text(
-                            '¿Qué establecimiento desea consultar?',
-                            style: context.texts.headlineMedium.copyWith(
-                              color: AppColors.textPrimaryC(isDark),
-                            ),
-                          ),
-                        ),
-                        SizedBox(height: r.spaceSm),
-                        if (_locationApplied && _regionals.isNotEmpty && _regionals.first.distanceFromUser != null)
-                          Padding(
-                            padding: EdgeInsets.only(left: r.paddingH, right: r.paddingH, top: 0, bottom: r.spaceMd),
-                            child: Row(
-                              children: [
-                                Icon(Icons.location_on, size: r.iconSm, color: AppColors.accentForTheme(isDark)),
-                                SizedBox(width: r.spaceSm),
-                                Expanded(
-                                  child: Text(
-                                    'Te mostramos primero el departamento más cercano a tu ubicación.',
-                                    style: context.texts.bodySmall.copyWith(
-                                      color: AppColors.accentForTheme(isDark),
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        for (int i = 0; i < _regionals.length; i++)
-                          FadeSlideIn(
-                            delay: Duration(milliseconds: 60 * (i + 1).clamp(0, 5)),
-                            offsetY: 15,
-                            child: _buildRegionalItem(context, _regionals[i], i, isDark),
-                          ),
-                        if (_regionals.isEmpty)
-                          Padding(
-                            padding: EdgeInsets.all(r.spaceXxl),
-                            child: const Center(
-                                child: Text('No hay establecimientos disponibles.')),
-                          ),
-                      ],
-                    ),
-                  ),
-            ),
+            Expanded(child: _buildBody(context)),
           ],
         ),
       ),
@@ -272,79 +310,89 @@ class _RegionalScreenState extends State<RegionalScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  'Reserva para:',
-                  style: context.texts.bodySmall.copyWith(
-                    fontWeight: FontWeight.w600,
-                    color: AppColors.textSecondary,
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      Expanded(
+                        child: Text(
+                          'Reserva para:',
+                          style: context.texts.bodySmall.copyWith(
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.textSecondary,
+                          ),
+                        ),
+                      ),
+                      if (UserSession.currentUser.isTitular)
+                        AnimatedPressButton(
+                          onTap: _onChangeBeneficiary,
+                          child: Container(
+                            padding: EdgeInsets.symmetric(
+                                horizontal: r.chipPaddingH, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: AppColors.accentForTheme(isDark).withValues(alpha: 0.08),
+                              borderRadius: BorderRadius.circular(r.chipRadius),
+                              border: Border.all(
+                                color: AppColors.accentForTheme(isDark).withValues(alpha: 0.2),
+                              ),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(Icons.swap_horiz,
+                                    size: r.iconSm * 0.7, color: AppColors.accentForTheme(isDark)),
+                                SizedBox(width: r.spaceXs),
+                                Text(
+                                  'Cambiar',
+                                  style: context.texts.bodySmall.copyWith(
+                                    fontWeight: FontWeight.w700,
+                                    color: AppColors.accentForTheme(isDark),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                    ],
                   ),
-                ),
-                SizedBox(height: r.spaceXs),
-                Text(
-                  beneficiary.fullName,
-                  style: context.texts.headlineMedium.copyWith(
-                    color: AppColors.textPrimaryC(isDark),
-                    height: 1.2,
-                  ),
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                SizedBox(height: r.spaceSm),
-                Container(
-                  padding: EdgeInsets.symmetric(
-                      horizontal: r.chipPaddingH, vertical: r.chipPaddingV),
-                  decoration: BoxDecoration(
-                    color: isTitular
-                        ? AppColors.primary.withValues(alpha: 0.1)
-                        : AppColors.accent.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(r.radiusSm),
-                  ),
-                  child: Text(
-                    label,
-                    style: context.texts.bodySmall.copyWith(
-                      fontWeight: FontWeight.w700,
-                      color: isTitular
-                          ? AppColors.accentForTheme(isDark)
-                          : AppColors.accentDark,
+                  SizedBox(height: r.spaceXs),
+                  FittedBox(
+                    fit: BoxFit.scaleDown,
+                    alignment: Alignment.centerLeft,
+                    child: Text(
+                      (beneficiary.isTitular && beneficiary.grado.isEmpty)
+                          ? UserSession.currentUser.displayName
+                          : beneficiary.displayTitle,
+                      style: context.texts.headlineMedium.copyWith(
+                        color: AppColors.textPrimaryC(isDark),
+                        height: 1.2,
+                      ),
                     ),
                   ),
-                ),
-              ],
-            ),
-          ),
-          // Change button
-          if (UserSession.currentUser.isTitular && UserSession.currentUser.beneficiaries.length > 1)
-          AnimatedPressButton(
-            onTap: _onChangeBeneficiary,
-            child: Container(
-              padding: EdgeInsets.symmetric(
-                  horizontal: r.chipPaddingH, vertical: r.spaceSm),
-              decoration: BoxDecoration(
-                color: AppColors.accentForTheme(isDark).withValues(alpha: 0.08),
-                borderRadius: BorderRadius.circular(r.chipRadius),
-                border: Border.all(
-                  color: AppColors.accentForTheme(isDark).withValues(alpha: 0.2),
-                ),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(Icons.swap_horiz,
-                      size: r.iconSm * 0.7, color: AppColors.accentForTheme(isDark)),
-                  SizedBox(width: r.spaceXs),
-                  Text(
-                    'Cambiar',
-                    style: context.texts.bodySmall.copyWith(
-                      fontWeight: FontWeight.w700,
-                      color: AppColors.accentForTheme(isDark),
+                  SizedBox(height: r.spaceSm),
+                  Container(
+                    padding: EdgeInsets.symmetric(
+                        horizontal: r.chipPaddingH, vertical: r.chipPaddingV),
+                    decoration: BoxDecoration(
+                      color: isTitular
+                          ? AppColors.primary.withValues(alpha: 0.1)
+                          : AppColors.accent.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(r.radiusSm),
+                    ),
+                    child: Text(
+                      label,
+                      style: context.texts.bodySmall.copyWith(
+                        fontWeight: FontWeight.w700,
+                        color: isTitular
+                            ? AppColors.accentForTheme(isDark)
+                            : AppColors.accentDark,
+                      ),
                     ),
                   ),
                 ],
               ),
             ),
-          ),
-        ],
-      ),
+          ],
+        ),
     );
   }
 
@@ -388,14 +436,14 @@ class _RegionalScreenState extends State<RegionalScreen> {
   Future<void> _onChangeBeneficiary() async {
     final selected = await BeneficiarySelectorModal.show(
       context: context,
-      beneficiaries: UserSession.currentUser.beneficiaries,
+      beneficiaries: _beneficiaries,
       currentId: widget.tabShell.bookingState.beneficiary?.id,
     );
     if (selected != null && mounted) {
       setState(() {
         widget.tabShell.bookingState.beneficiary = selected;
         widget.tabShell.bookingState.beneficiaryLabel =
-            selected.isTitular ? 'Para mí' : selected.fullName;
+            selected.isTitular ? 'Para mí' : selected.displayTitle;
       });
     }
   }
@@ -501,16 +549,36 @@ class _RegionalScreenState extends State<RegionalScreen> {
     );
   }
 
-  void _onHospitalSelected(RegionalModel regional, HospitalModel hospital) {
+  Future<void> _onHospitalSelected(RegionalModel regional, HospitalModel hospital) async {
     debugPrint('🏥 Hospital seleccionado: ${hospital.name} (hospital.id="${hospital.id}")');
     widget.tabShell.bookingState.regional = regional;
     widget.tabShell.bookingState.hospital = hospital;
-    Navigator.push(
-      context,
-      AppPageRoute(
-        builder: (_) => SpecialtyScreen(tabShell: widget.tabShell),
-      ),
-    );
+
+    // Para titulares: verificar si el beneficiario seleccionado ya tiene cita activa.
+    // Toda la UI (loader + modal) se maneja desde TabShell para evitar conflictos de contexto.
+    if (UserSession.currentUser.isTitular) {
+      if (_isCheckingCita) return;
+      setState(() => _isCheckingCita = true);
+      try {
+        final hasActiveCita = await widget.tabShell.checkAndShowActiveCitaForBeneficiary();
+        if (hasActiveCita) return; // Modal ya mostrado, no navegar
+      } finally {
+        if (mounted) setState(() => _isCheckingCita = false);
+      }
+    }
+
+    // Sin cita activa → continuar al siguiente paso
+    if (!mounted) return;
+    if (widget.onNext != null) {
+      widget.onNext!();
+    } else {
+      Navigator.push(
+        context,
+        AppPageRoute(
+          builder: (_) => SpecialtyScreen(tabShell: widget.tabShell),
+        ),
+      );
+    }
   }
 
   Widget _hospitalCard(BuildContext context, RegionalModel regional, HospitalModel hospital, bool isDark) {
