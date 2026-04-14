@@ -397,7 +397,7 @@ class _BeneficiaryCard extends StatelessWidget {
                 SizedBox(height: context.r.spaceXs),
                 Text(
                   isTitular
-                      ? (b.grado.isNotEmpty ? b.grado.toUpperCase() : 'Titular de la cuenta')
+                      ? (b.effectiveGrado.isNotEmpty ? b.effectiveGrado.toUpperCase() : 'Titular de la cuenta')
                       : b.relationship.toUpperCase(),
                   style: context.texts.bodySmall.copyWith(
                     fontWeight: FontWeight.w700,

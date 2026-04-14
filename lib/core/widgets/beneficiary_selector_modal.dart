@@ -123,10 +123,12 @@ class _ModalContent extends StatelessWidget {
                   itemBuilder: (context, index) {
                     final b = beneficiaries[index];
                     final isSelected = b.id == currentId;
+                    final isEnabled = b.isAtencionEnabled;
                     return _BeneficiaryTile(
                       beneficiary: b,
                       isSelected: isSelected,
-                      onTap: () => Navigator.pop(context, b),
+                      isDisabled: !isEnabled,
+                      onTap: isEnabled ? () => Navigator.pop(context, b) : null,
                     );
                   },
                 ),
@@ -143,12 +145,14 @@ class _ModalContent extends StatelessWidget {
 class _BeneficiaryTile extends StatelessWidget {
   final BeneficiaryModel beneficiary;
   final bool isSelected;
-  final VoidCallback onTap;
+  final bool isDisabled;
+  final VoidCallback? onTap;
 
   const _BeneficiaryTile({
     required this.beneficiary,
     required this.isSelected,
     required this.onTap,
+    this.isDisabled = false,
   });
 
   @override
@@ -156,96 +160,136 @@ class _BeneficiaryTile extends StatelessWidget {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final r = context.r;
     final isTitular = beneficiary.isTitular;
-    final avatarColor = isTitular ? AppColors.primary : AppColors.accent;
+    final avatarColor = isDisabled
+        ? AppColors.textTertiary
+        : (isTitular ? AppColors.primary : AppColors.accent);
     final label = isTitular ? 'Titular' : beneficiary.relationship;
     final avatarSize = r.avatarMd;
 
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
       onTap: onTap,
-      child: Container(
-        padding: EdgeInsets.symmetric(horizontal: r.paddingH, vertical: r.cardPadding),
-        color: isSelected
-            ? (isDark ? AppColors.primary.withValues(alpha: 0.15) : AppColors.primaryLight)
-            : Colors.transparent,
-        child: Row(
-          children: [
-            // Avatar
-            Container(
-              width: avatarSize,
-              height: avatarSize,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: avatarColor,
+      child: Opacity(
+        opacity: isDisabled ? 0.45 : 1.0,
+        child: Container(
+          padding: EdgeInsets.symmetric(horizontal: r.paddingH, vertical: r.cardPadding),
+          color: isSelected
+              ? (isDark ? AppColors.primary.withValues(alpha: 0.15) : AppColors.primaryLight)
+              : Colors.transparent,
+          child: Row(
+            children: [
+              // Avatar
+              Container(
+                width: avatarSize,
+                height: avatarSize,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: avatarColor,
+                ),
+                child: ClipOval(
+                  child: beneficiary.photoBase64.isNotEmpty
+                      ? Image.memory(
+                          base64Decode(beneficiary.photoBase64),
+                          fit: BoxFit.cover,
+                          errorBuilder: (_, __, ___) => _fallbackAvatar(beneficiary, avatarSize),
+                        )
+                      : _fallbackAvatar(beneficiary, avatarSize),
+                ),
               ),
-              child: ClipOval(
-                child: beneficiary.photoBase64.isNotEmpty
-                    ? Image.memory(
-                        base64Decode(beneficiary.photoBase64),
-                        fit: BoxFit.cover,
-                        errorBuilder: (_, __, ___) => _fallbackAvatar(beneficiary, avatarSize),
-                      )
-                    : _fallbackAvatar(beneficiary, avatarSize),
-              ),
-            ),
-            SizedBox(width: r.spaceMd),
-            // Name + relationship
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    (beneficiary.isTitular && beneficiary.grado.isEmpty)
-                        ? UserSession.currentUser.displayName
-                        : beneficiary.displayTitle,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      fontSize: r.isSmallPhone ? 14 : 16,
-                      fontWeight: FontWeight.w700,
-                      color: AppColors.textPrimaryC(isDark),
-                    ),
-                  ),
-                  SizedBox(height: context.r.spaceXs),
-                  Container(
-                    padding: EdgeInsets.symmetric(
-                        horizontal: context.r.chipPaddingH, vertical: context.r.chipPaddingV),
-                    decoration: BoxDecoration(
-                      color: isTitular
-                          ? AppColors.primary.withValues(alpha: 0.1)
-                          : AppColors.accent.withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(context.r.badgeRadius),
-                    ),
-                    child: Text(
-                      label,
+              SizedBox(width: r.spaceMd),
+              // Name + relationship
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      (beneficiary.isTitular && beneficiary.grado.isEmpty)
+                          ? UserSession.currentUser.displayName
+                          : beneficiary.displayTitle,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
                       style: TextStyle(
-                        fontSize: r.isSmallPhone ? 12 : 14,
+                        fontSize: r.isSmallPhone ? 14 : 16,
                         fontWeight: FontWeight.w700,
-                        color: isTitular
-                            ? AppColors.primary
-                            : AppColors.accentDark,
+                        color: AppColors.textPrimaryC(isDark),
                       ),
                     ),
+                    SizedBox(height: context.r.spaceXs),
+                    Row(
+                      children: [
+                        Container(
+                          padding: EdgeInsets.symmetric(
+                              horizontal: context.r.chipPaddingH, vertical: context.r.chipPaddingV),
+                          decoration: BoxDecoration(
+                            color: isTitular
+                                ? AppColors.primary.withValues(alpha: 0.1)
+                                : AppColors.accent.withValues(alpha: 0.1),
+                            borderRadius: BorderRadius.circular(context.r.badgeRadius),
+                          ),
+                          child: Text(
+                            label,
+                            style: TextStyle(
+                              fontSize: r.isSmallPhone ? 12 : 14,
+                              fontWeight: FontWeight.w700,
+                              color: isTitular
+                                  ? AppColors.primary
+                                  : AppColors.accentDark,
+                            ),
+                          ),
+                        ),
+                        if (isDisabled) ...[
+                          SizedBox(width: context.r.spaceSm),
+                          Container(
+                            padding: EdgeInsets.symmetric(
+                                horizontal: context.r.chipPaddingH,
+                                vertical: context.r.chipPaddingV),
+                            decoration: BoxDecoration(
+                              color: Colors.red.withValues(alpha: 0.1),
+                              borderRadius: BorderRadius.circular(context.r.badgeRadius),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  Icons.block_rounded,
+                                  size: r.isSmallPhone ? 10 : 12,
+                                  color: Colors.red.shade600,
+                                ),
+                                const SizedBox(width: 3),
+                                Text(
+                                  'Sin atención',
+                                  style: TextStyle(
+                                    fontSize: r.isSmallPhone ? 10 : 12,
+                                    fontWeight: FontWeight.w700,
+                                    color: Colors.red.shade600,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              // Check icon (solo para habilitados)
+              if (isSelected && !isDisabled)
+                Container(
+                  width: 28,
+                  height: 28,
+                  decoration: BoxDecoration(
+                    color: AppColors.primary.withValues(alpha: 0.1),
+                    shape: BoxShape.circle,
                   ),
-                ],
-              ),
-            ),
-            // Check icon
-            if (isSelected)
-              Container(
-                width: 28,
-                height: 28,
-                decoration: BoxDecoration(
-                  color: AppColors.primary.withValues(alpha: 0.1),
-                  shape: BoxShape.circle,
+                  child: const Icon(
+                    Icons.check,
+                    size: 16,
+                    color: AppColors.primary,
+                  ),
                 ),
-                child: const Icon(
-                  Icons.check,
-                  size: 16,
-                  color: AppColors.primary,
-                ),
-              ),
-          ],
+            ],
+          ),
         ),
       ),
     );

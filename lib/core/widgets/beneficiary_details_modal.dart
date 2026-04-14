@@ -132,7 +132,7 @@ class BeneficiaryDetailsModal extends StatelessWidget {
                       children: [
                         Expanded(child: _InfoTile(icon: b.effectiveGender == 'FEMENINO' ? Icons.female : Icons.male, label: 'Género', value: b.effectiveGender.isNotEmpty ? b.effectiveGender : 'No disp.', isDark: isDark)),
                         const SizedBox(width: 8),
-                        Expanded(child: _InfoTile(icon: CupertinoIcons.person_badge_plus, label: 'Grado', value: b.grado.isNotEmpty ? b.grado : 'N/A', isDark: isDark)),
+                        Expanded(child: _InfoTile(icon: CupertinoIcons.person_badge_plus, label: 'Grado', value: isTitular ? (b.effectiveGrado.isNotEmpty ? b.effectiveGrado : 'N/A') : 'N/A', isDark: isDark)),
                       ],
                     ),
                     

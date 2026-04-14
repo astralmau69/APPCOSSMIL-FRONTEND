@@ -434,18 +434,96 @@ class _RegionalScreenState extends State<RegionalScreen> {
   }
 
   Future<void> _onChangeBeneficiary() async {
+    // 1. Preferir datos frescos de la sesión (cargados por _tryEnterBookingTab).
+    var bens = UserSession.currentUser.beneficiaries.isNotEmpty
+        ? UserSession.currentUser.beneficiaries
+        : _beneficiaries;
+
+    // 2. Si sigue vacío (race condition: _fetchData corrió antes de que
+    //    _tryEnterBookingTab cargara el grupo familiar), ir al API.
+    if (bens.isEmpty && UserSession.currentUser.isTitular) {
+      bool loaderOpen = false;
+      showCupertinoDialog<void>(
+        context: context,
+        barrierDismissible: false,
+        builder: (_) => const Center(child: CupertinoActivityIndicator(radius: 14)),
+      );
+      loaderOpen = true;
+      try {
+        final idper = int.tryParse(UserSession.currentUser.id) ?? 0;
+        final fresh = await _service.getGrupoFamiliar(idper);
+        if (!mounted) return;
+        if (loaderOpen) { loaderOpen = false; Navigator.of(context, rootNavigator: true).pop(); }
+        if (fresh.isNotEmpty) {
+          bens = fresh;
+          UserSession.currentUser = UserSession.currentUser.copyWith(beneficiaries: fresh);
+          setState(() => _beneficiaries = List.from(fresh));
+        }
+      } catch (_) {
+        if (mounted && loaderOpen) { loaderOpen = false; Navigator.of(context, rootNavigator: true).pop(); }
+        bens = _beneficiaries; // fallback a caché local
+      }
+    }
+
+    if (!mounted) return;
+
     final selected = await BeneficiarySelectorModal.show(
       context: context,
-      beneficiaries: _beneficiaries,
+      beneficiaries: bens,
       currentId: widget.tabShell.bookingState.beneficiary?.id,
     );
     if (selected != null && mounted) {
       setState(() {
+        _beneficiaries = List.from(bens); // sincronizar caché local
         widget.tabShell.bookingState.beneficiary = selected;
         widget.tabShell.bookingState.beneficiaryLabel =
             selected.isTitular ? 'Para mí' : selected.displayTitle;
       });
     }
+  }
+
+  Future<void> _showValidacionModal(String message) async {
+    if (!mounted) return;
+    await showCupertinoDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) {
+        final isDark = Theme.of(ctx).brightness == Brightness.dark;
+        return CupertinoAlertDialog(
+          title: const Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(CupertinoIcons.exclamationmark_shield_fill,
+                  color: CupertinoColors.systemOrange, size: 20),
+              SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  'Atención no disponible',
+                  style: TextStyle(fontWeight: FontWeight.w800),
+                ),
+              ),
+            ],
+          ),
+          content: Padding(
+            padding: const EdgeInsets.only(top: 8),
+            child: Text(
+              message,
+              style: TextStyle(
+                height: 1.4,
+                color: isDark ? CupertinoColors.white : CupertinoColors.black,
+              ),
+            ),
+          ),
+          actions: [
+            CupertinoDialogAction(
+              isDefaultAction: true,
+              onPressed: () => Navigator.of(ctx).pop(),
+              child: const Text('Entendido'),
+            ),
+          ],
+        );
+      },
+    );
   }
 
   // ── Regional list ────────────────────────────────────────────────────────
@@ -554,14 +632,56 @@ class _RegionalScreenState extends State<RegionalScreen> {
     widget.tabShell.bookingState.regional = regional;
     widget.tabShell.bookingState.hospital = hospital;
 
-    // Para titulares: verificar si el beneficiario seleccionado ya tiene cita activa.
-    // Toda la UI (loader + modal) se maneja desde TabShell para evitar conflictos de contexto.
+    // Para titulares: verificar validaciones + cita activa del beneficiario elegido.
     if (UserSession.currentUser.isTitular) {
       if (_isCheckingCita) return;
       setState(() => _isCheckingCita = true);
+
+      bool loaderOpen = false;
+      void closeLoader() {
+        if (loaderOpen && mounted) {
+          loaderOpen = false;
+          Navigator.of(context, rootNavigator: true).pop();
+        }
+      }
+
       try {
+        // 1. Verificar aportes (Art. 186) para la persona que va a ser atendida.
+        //    Se comprueba aquí (al elegir sucursal) porque el titular pudo cambiar
+        //    el beneficiario con el botón "Cambiar" antes de llegar a este punto.
+        final bs = widget.tabShell.bookingState;
+        final beneficiary = bs.beneficiary;
+        final matricula = (beneficiary == null || beneficiary.isTitular)
+            ? UserSession.currentUser.matricula
+            : (beneficiary.matricula.isNotEmpty
+                ? beneficiary.matricula
+                : UserSession.currentUser.matricula);
+        final idper = (beneficiary == null || beneficiary.isTitular)
+            ? (int.tryParse(UserSession.currentUser.id) ?? 0)
+            : (int.tryParse(beneficiary.id) ?? 0);
+
+        showCupertinoDialog<void>(
+          context: context,
+          barrierDismissible: false,
+          builder: (_) => const Center(child: CupertinoActivityIndicator(radius: 14)),
+        );
+        loaderOpen = true;
+
+        final validMsg = await _service.verificarValidaciones(matricula, idper);
+        if (!mounted) return;
+        closeLoader();
+
+        if (validMsg != null) {
+          await _showValidacionModal(validMsg);
+          return; // no continuar
+        }
+
+        // 2. Verificar si tiene cita activa.
         final hasActiveCita = await widget.tabShell.checkAndShowActiveCitaForBeneficiary();
-        if (hasActiveCita) return; // Modal ya mostrado, no navegar
+        if (hasActiveCita) return;
+      } catch (e) {
+        closeLoader();
+        debugPrint('⚠️ Error en verificaciones del hospital: $e');
       } finally {
         if (mounted) setState(() => _isCheckingCita = false);
       }

@@ -49,7 +49,15 @@ class _SpecialtyScreenState extends State<SpecialtyScreen> {
     try {
       final bs = widget.tabShell.bookingState;
       final idsuc = int.tryParse(bs.hospital?.id ?? '') ?? 0;
-      final idper = int.tryParse(UserSession.currentUser.id) ?? 0;
+      // Usar el idper del BENEFICIARIO seleccionado (no siempre el titular).
+      // Si se está reservando para un familiar, las interconsultas deben
+      // ser las de ese familiar, no las del titular.
+      final beneficiary = bs.beneficiary;
+      final idper = int.tryParse(
+            (!UserSession.currentUser.isTitular || beneficiary == null || beneficiary.isTitular)
+                ? UserSession.currentUser.id
+                : beneficiary.id,
+          ) ?? 0;
 
       final directasFuture = _service.getEspecialidadesDirectas(1, idsuc);
       final interFuture = _service.getEspecialidadesInterconsulta(idper);
@@ -69,7 +77,6 @@ class _SpecialtyScreenState extends State<SpecialtyScreen> {
       }
 
       // ── Filtrar por edad y género de la persona que reserva ─────────
-      final beneficiary = bs.beneficiary;
       final int personAge = UserSession.ageFor(beneficiary);
       final String personGender = UserSession.genderFor(beneficiary);
 

@@ -1,3 +1,4 @@
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 
 import 'package:flutter/services.dart';
@@ -19,6 +20,7 @@ import '../../../core/services/location_service.dart';
 import '../../../core/services/notification_service.dart';
 
 import 'package:url_launcher/url_launcher.dart';
+import 'package:permission_handler/permission_handler.dart';
 import '../../../core/animations/animated_gradient_background.dart';
 import '../../../core/extensions/responsive_extensions.dart';
 import '../../../core/services/programacion_service.dart';
@@ -109,6 +111,10 @@ class _SplashScreenState extends State<SplashScreen>
   AudioPlayer? _audioPlayer;
 
   bool _navigated = false;
+  bool _wasUpdated = false;
+  // Version check corre en paralelo con las animaciones del splash.
+  bool _versionBlocked = false;
+  Future<void>? _versionCheckFuture;
 
 
 
@@ -277,18 +283,23 @@ class _SplashScreenState extends State<SplashScreen>
 
 
   Future<void> _runSequence() async {
-    // Verificar si es una versión nueva y limpiar datos si es necesario
+    // Verificar si es una versión nueva
     if (!widget.isOverlay) {
-      final wasWiped = await VersionMigrationService.runIfNeeded();
-      if (wasWiped) {
-        debugPrint('🚀 Versión actualizada detectada: Limpieza de datos ejecutada (borrón y cuenta nueva).');
+      final wasUpdated = await VersionMigrationService.runIfNeeded();
+      if (wasUpdated) {
+        _wasUpdated = true;
+        debugPrint('🚀 Versión actualizada detectada.');
       }
     }
 
     // Initial delay
     await Future.delayed(const Duration(milliseconds: 300));
 
-
+    // Verificar versión EN PARALELO con las animaciones.
+    // Si está desactualizada el modal aparece de inmediato sin esperar el splash.
+    if (!widget.isOverlay) {
+      _versionCheckFuture = _checkVersionEarly();
+    }
 
     if (!widget.isOverlay && mounted && SoundManager.isEnabled && !await SoundManager.isDeviceSilentOrVibrate()) {
 
@@ -351,11 +362,34 @@ class _SplashScreenState extends State<SplashScreen>
 
     if (!mounted) return;
 
+    // Si hubo actualización, verificar permisos antes de continuar
+    if (_wasUpdated) {
+      await _checkPermissionsOnUpdate();
+    }
+
+    if (!mounted) return;
+
     _navigate();
 
   }
 
 
+
+  /// Verifica la versión inmediatamente al abrir la app (en paralelo con el splash).
+  /// Si está desactualizada muestra el modal de actualización de inmediato.
+  Future<void> _checkVersionEarly() async {
+    try {
+      await ProgramacionService().verificarVersion();
+    } on VersionOutdatedException catch (e) {
+      _versionBlocked = true;
+      if (!mounted) return;
+      _audioPlayer?.stop();
+      await _showUpdateDialog(e.message);
+      // El diálogo no es dismissable — la ejecución queda bloqueada aquí.
+    } catch (_) {
+      // Error de red / timeout: dejar pasar al usuario.
+    }
+  }
 
   /// Solicita permisos de ubicación y notificaciones en paralelo.
 
@@ -375,15 +409,155 @@ class _SplashScreenState extends State<SplashScreen>
 
   }
 
+  /// Verifica permisos tras una actualización de versión.
+  /// Si falta alguno, muestra un diálogo explicativo antes de continuar.
+  Future<void> _checkPermissionsOnUpdate() async {
+    if (!mounted) return;
+
+    final notifStatus   = await Permission.notification.status;
+    final locationStatus = await Permission.location.status;
+
+    final notifOk    = notifStatus.isGranted;
+    final locationOk = locationStatus.isGranted;
+
+    if (notifOk && locationOk) return;
+
+    if (!mounted) return;
+
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    // Si alguno está denegado permanentemente, hay que ir a Configuración
+    final needsSettings = notifStatus.isPermanentlyDenied ||
+        locationStatus.isPermanentlyDenied;
+
+    await showCupertinoDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => CupertinoAlertDialog(
+        title: const Text('Permisos requeridos'),
+        content: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const SizedBox(height: 8),
+            Text(
+              'COSSMIL necesita los siguientes permisos para funcionar correctamente:',
+              style: TextStyle(
+                fontSize: 13,
+                color: isDark ? CupertinoColors.white : CupertinoColors.black,
+              ),
+            ),
+            const SizedBox(height: 12),
+            _permissionRow(
+              icon: CupertinoIcons.bell_fill,
+              label: 'Notificaciones',
+              granted: notifOk,
+              detail: 'Recordatorios de citas médicas',
+              isDark: isDark,
+            ),
+            const SizedBox(height: 8),
+            _permissionRow(
+              icon: CupertinoIcons.location_fill,
+              label: 'Ubicación',
+              granted: locationOk,
+              detail: 'Mostrar el centro médico más cercano',
+              isDark: isDark,
+            ),
+            if (needsSettings) ...[
+              const SizedBox(height: 10),
+              Text(
+                'Uno o más permisos fueron denegados permanentemente. Toca "Ir a Configuración" para habilitarlos manualmente.',
+                style: TextStyle(
+                  fontSize: 12,
+                  color: CupertinoColors.systemOrange,
+                  height: 1.4,
+                ),
+              ),
+            ],
+          ],
+        ),
+        actions: [
+          CupertinoDialogAction(
+            child: const Text('Ahora no'),
+            onPressed: () => Navigator.of(ctx).pop(),
+          ),
+          CupertinoDialogAction(
+            isDefaultAction: true,
+            child: Text(needsSettings ? 'Ir a Configuración' : 'Conceder'),
+            onPressed: () async {
+              Navigator.of(ctx).pop();
+              if (needsSettings) {
+                await openAppSettings();
+              } else {
+                if (!notifOk) await Permission.notification.request();
+                if (!locationOk) await Permission.location.request();
+              }
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _permissionRow({
+    required IconData icon,
+    required String label,
+    required bool granted,
+    required String detail,
+    required bool isDark,
+  }) {
+    final color = granted ? CupertinoColors.systemGreen : CupertinoColors.systemRed;
+    return Row(
+      children: [
+        Icon(icon, size: 18, color: AppColors.primary),
+        const SizedBox(width: 8),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                label,
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w700,
+                  color: isDark ? CupertinoColors.white : CupertinoColors.black,
+                ),
+              ),
+              Text(
+                detail,
+                style: TextStyle(
+                  fontSize: 11,
+                  color: isDark
+                      ? CupertinoColors.systemGrey
+                      : CupertinoColors.systemGrey2,
+                ),
+              ),
+            ],
+          ),
+        ),
+        Icon(
+          granted ? CupertinoIcons.checkmark_circle_fill : CupertinoIcons.xmark_circle_fill,
+          size: 18,
+          color: color,
+        ),
+      ],
+    );
+  }
+
 
 
   Future<void> _navigate() async {
 
     if (_navigated || !mounted) return;
 
+    // Esperar a que el chequeo de versión termine (si aún está en curso).
+    if (_versionCheckFuture != null) {
+      await _versionCheckFuture;
+    }
+
+    // Si la versión está bloqueada el modal ya está visible — no navegar.
+    if (_versionBlocked || !mounted) return;
+
     _navigated = true;
-
-
 
     if (widget.isOverlay) {
 
@@ -397,11 +571,7 @@ class _SplashScreenState extends State<SplashScreen>
 
         final hasPin = await SecurityService.hasPin();
 
-
-
         if (!mounted) return;
-
-
 
         if (hasToken) {
 
@@ -409,30 +579,15 @@ class _SplashScreenState extends State<SplashScreen>
 
           if (!mounted) return;
 
-
-
           if (!restored) {
             Navigator.pushReplacementNamed(context, '/login');
             return;
-          }
-
-          // Verificación de Versión Obligatoria
-          // Solo VersionOutdatedException bloquea el acceso; errores de red son ignorados.
-          try {
-            await ProgramacionService().verificarVersion();
-          } on VersionOutdatedException catch (e) {
-            if (!mounted) return;
-            await _showUpdateDialog(e.message);
-            return; // Bloquea la navegación permanentemente
-          } catch (_) {
-            // Error de red / timeout: no bloquear al usuario.
           }
 
           if (!mounted) return;
           if (hasPin) {
             Navigator.pushReplacementNamed(context, '/local-auth');
           } else {
-            // Sin PIN/biométrico → no mantener sesión, forzar re-login
             await NotificationService.cancelAllReminders();
             await TokenStorage.deleteToken();
             await SessionRestoreService.clearUserSession();
@@ -441,17 +596,6 @@ class _SplashScreenState extends State<SplashScreen>
           }
 
         } else {
-
-          // Sin sesión: verificar versión antes de ir al login.
-          try {
-            await ProgramacionService().verificarVersion();
-          } on VersionOutdatedException catch (e) {
-            if (!mounted) return;
-            await _showUpdateDialog(e.message);
-            return; // Bloquea la navegación permanentemente
-          } catch (_) {
-            // Error de red / timeout: no bloquear.
-          }
 
           if (!mounted) return;
           Navigator.pushReplacementNamed(context, '/login');
@@ -467,8 +611,6 @@ class _SplashScreenState extends State<SplashScreen>
           await SecurityService.clearSecurityData();
 
         } catch (_) {}
-
-        
 
         if (mounted) {
 
@@ -545,7 +687,7 @@ class _SplashScreenState extends State<SplashScreen>
                   ),
                   icon: const Icon(Icons.language_rounded, size: 18),
                   label: const Text(
-                    'Ir a cossmil.mil.bo para actualizar',
+                    'Actualizar',
                     style: TextStyle(fontWeight: FontWeight.w700),
                   ),
                   onPressed: () => launchUrl(

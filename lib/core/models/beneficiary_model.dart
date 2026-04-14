@@ -19,6 +19,8 @@ class BeneficiaryModel {
   final String grado;
   /// Estado de servicio del endpoint de foto (refe4). Ej: "ACTIVO"
   final String serviceStatus;
+  /// Habilitación para atención médica. "S" = habilitado, "N" = deshabilitado.
+  final String atencion;
 
   const BeneficiaryModel({
     required this.id,
@@ -30,6 +32,7 @@ class BeneficiaryModel {
     this.gender = '',
     this.grado = '',
     this.serviceStatus = '',
+    this.atencion = 'S',
   });
 
   factory BeneficiaryModel.fromJson(Map<String, dynamic> json) {
@@ -69,6 +72,7 @@ class BeneficiaryModel {
               '').trim(),
       grado: (json['grado'] as String? ?? '').trim(),
       serviceStatus: json['serviceStatus'] as String? ?? json['refe4'] as String? ?? '',
+      atencion: (json['atencion'] as String? ?? 'S').trim().toUpperCase(),
     );
   }
 
@@ -82,6 +86,7 @@ class BeneficiaryModel {
         'gender': gender,
         'grado': grado,
         'serviceStatus': serviceStatus,
+        'atencion': atencion,
       };
 
   /// First letter of name for avatar display.
@@ -111,6 +116,18 @@ class BeneficiaryModel {
 
   /// `true` si el servicio es activo.
   bool get isServiceActive => RankUtils.isServiceActive(serviceStatus);
+
+  /// `true` si el beneficiario está habilitado para atención médica (atencion == "S").
+  bool get isAtencionEnabled => atencion != 'N';
+
+  /// Grado efectivo para mostrar en UI:
+  /// - Titulares: usa `grado` del campo propio; si está vacío, usa `_titularRankFallback`.
+  /// - Beneficiarios: siempre vacío (no tienen rango militar propio).
+  String get effectiveGrado {
+    if (!isTitular) return '';
+    if (grado.isNotEmpty) return grado;
+    return _titularRankFallback;
+  }
 
   /// Infiere género a partir del parentesco si no viene explícito del backend.
   ///

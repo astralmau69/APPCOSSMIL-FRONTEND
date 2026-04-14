@@ -94,6 +94,11 @@ class ApiConstants {
   static String grupoFamiliar(int idper) =>
       '/api/safil/afiliado/gpo-familiar/$idper';
 
+  /// Verificar validaciones de aportes del asegurado (Artículo 186 Ley SSML).
+  /// Retorna data:true si puede atenderse, data:false si no tiene aportes vigentes.
+  static String verificaValidaciones(String matricula, int idper) =>
+      '/api/programacion/verifica-validaciones/$matricula/$idper';
+
   /// Actualizar datos de usuario (contraseña, correo, teléfono).
   static String updateUsuarioWeb(int idper) =>
       '/api/usuarioweb/update/$idper';

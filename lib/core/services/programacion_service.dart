@@ -1,10 +1,6 @@
-import 'dart:convert';
 import 'package:flutter/foundation.dart';
-import 'package:http/http.dart' as http;
-import 'package:package_info_plus/package_info_plus.dart';
 import '../config/app_config.dart';
 import '../constants/api_constants.dart';
-import '../storage/token_storage.dart';
 import '../models/doctor_agenda_model.dart';
 import '../models/time_slot_model.dart';
 import '../models/beneficiary_model.dart';
@@ -53,42 +49,32 @@ class ProgramacionService {
     if (AppConfig.useMockData) return true;
 
     try {
-      final info = await PackageInfo.fromPlatform();
-      final version = info.version;
+      // Usar la versión declarada en AppConfig (siempre actualizada con pubspec.yaml)
+      // en vez de PackageInfo, que depende del APK compilado y puede quedar desfasada.
+      final version = AppConfig.appVersion;
 
-      final url = Uri.parse(
-          '${ApiConstants.baseUrl}${ApiConstants.verificaVersion(version)}');
+      // ApiClient inyecta Bearer y refresca el token automáticamente en 401,
+      // por lo que el chequeo funciona también en splash con sesión restaurable.
+      final response = await _api.get(ApiConstants.verificaVersion(version));
 
-      // Incluir Bearer si hay token disponible (usuario con sesión).
-      // Sin token, se intenta sin auth por si el endpoint es público.
-      final token = await TokenStorage.getToken();
-      final headers = (token != null && token.isNotEmpty)
-          ? {'Authorization': 'Bearer $token'}
-          : <String, String>{};
-
-      final response =
-          await http.get(url, headers: headers).timeout(const Duration(seconds: 10));
-
-      if (response.statusCode == 200) {
-        final data = jsonDecode(utf8.decode(response.bodyBytes));
-        if (data is Map<String, dynamic>) {
-          final isOk = data['data'] == true;
-          if (!isOk) {
-            final msg = data['message'] as String? ??
-                'Es necesario actualizar la versión del aplicativo.';
-            throw VersionOutdatedException(msg);
-          }
-        }
-        return true;
-      }
-
-      // 401 sin token: endpoint protegido, no se puede verificar sin sesión → dejar pasar.
-      // El login verificará de nuevo después de autenticar.
-      return true;
+      return switch (response) {
+        ApiSuccess(:final data) => () {
+            if (data is Map<String, dynamic>) {
+              final isOk = data['data'] == true;
+              if (!isOk) {
+                final msg = data['message'] as String? ??
+                    'Es necesario actualizar la versión del aplicativo.';
+                throw VersionOutdatedException(msg);
+              }
+            }
+            return true;
+          }(),
+          // Error de red, 401 sin refresh, etc. → no bloquear al usuario.
+          ApiError() => true,
+      };
     } on VersionOutdatedException {
       rethrow;
     } catch (_) {
-      // Error de red / timeout: no bloquear.
       return true;
     }
   }
@@ -217,6 +203,37 @@ class ProgramacionService {
       ApiSuccess(:final data) => _parseEspecialidades(data),
       ApiError(:final message) => throw Exception(message),
     };
+  }
+
+  // ── Verificar validaciones de aportes ─────────────────────────────────
+
+  /// Verifica si el asegurado tiene aportes vigentes (Art. 186 Ley SSML).
+  /// Retorna `null` si puede atenderse, o el mensaje de error si no puede.
+  Future<String?> verificarValidaciones(String matricula, int idper) async {
+    if (AppConfig.useMockData) return null;
+    if (matricula.isEmpty || idper == 0) return null;
+
+    try {
+      final response = await _api.get(
+        ApiConstants.verificaValidaciones(matricula, idper),
+      );
+
+      return switch (response) {
+        ApiSuccess(:final data) => () {
+            if (data is Map<String, dynamic>) {
+              final isOk = data['data'] == true;
+              if (!isOk) {
+                return data['message'] as String? ??
+                    'No cuenta con aportes válidos para atención médica.';
+              }
+            }
+            return null; // OK
+          }(),
+        ApiError(:final message) => message,
+      };
+    } catch (_) {
+      return null; // Error de red → dejar pasar
+    }
   }
 
   // ── Verificar horario de atención ──────────────────────────────────────

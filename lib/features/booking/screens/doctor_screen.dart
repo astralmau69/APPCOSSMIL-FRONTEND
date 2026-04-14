@@ -14,8 +14,9 @@ import '../../../shell/tab_shell.dart';
 class DoctorScreen extends StatefulWidget {
   final TabShellState tabShell;
   final VoidCallback? onNext;
+  final VoidCallback? onBack;
 
-  const DoctorScreen({super.key, required this.tabShell, this.onNext});
+  const DoctorScreen({super.key, required this.tabShell, this.onNext, this.onBack});
 
   @override
   State<DoctorScreen> createState() => _DoctorScreenState();
@@ -27,6 +28,7 @@ class _DoctorScreenState extends State<DoctorScreen> {
   List<DoctorAgendaModel> _medicos = [];
   bool _isLoading = true;
   String? _errorMessage;
+  String _fechaCita = '';
 
   @override
   void initState() {
@@ -41,7 +43,7 @@ class _DoctorScreenState extends State<DoctorScreen> {
       final idsuc = int.tryParse(bs.hospital?.id ?? '') ?? 0;
       final idesp = int.tryParse(bs.specialty?.id ?? '') ?? 0;
 
-      // Obtener la fecha del servidor (mañana)
+      // Obtener la fecha del servidor
       final fecha = await _getFecha();
 
       final medicos = await _service.getMedicosAgenda(
@@ -53,6 +55,7 @@ class _DoctorScreenState extends State<DoctorScreen> {
 
       if (!mounted) return;
       setState(() {
+        _fechaCita = fecha;
         _medicos = medicos;
         _isLoading = false;
       });
@@ -72,10 +75,25 @@ class _DoctorScreenState extends State<DoctorScreen> {
       if (fecha.isEmpty) throw Exception('fecha vacía');
       return fecha;
     } catch (_) {
-      // Fallback a mañana local
-      final tomorrow = DateTime.now().add(const Duration(days: 1));
-      return DateFormat('yyyy-MM-dd').format(tomorrow);
+      return DateFormat('yyyy-MM-dd').format(_fallbackFecha());
     }
+  }
+
+  /// Calcula la fecha de reserva local cuando el servidor no responde.
+  /// Respeta el corte de 00:03 AM y el caso domingo → lunes.
+  DateTime _fallbackFecha() {
+    final now = DateTime.now();
+    // Antes de las 00:03 el ciclo aún no ha avanzado → misma lógica que ayer
+    final base = (now.hour == 0 && now.minute < 3)
+        ? now.subtract(const Duration(days: 1))
+        : now;
+    var next = DateTime(base.year, base.month, base.day)
+        .add(const Duration(days: 1));
+    // Domingo → lunes
+    if (next.weekday == DateTime.sunday) {
+      next = next.add(const Duration(days: 1));
+    }
+    return next;
   }
 
   void _onDoctorSelected(DoctorAgendaModel doctor) {
@@ -126,9 +144,34 @@ class _DoctorScreenState extends State<DoctorScreen> {
     }
 
     if (_medicos.isEmpty) {
-      return AppStateWidget.empty(
-        title: 'Sin médicos disponibles',
-        message: 'No hay médicos con fichas disponibles para esta especialidad mañana.',
+      return Column(
+        children: [
+          Expanded(
+            child: AppStateWidget.empty(
+              title: 'Sin médicos disponibles',
+              message: 'No hay médicos con fichas disponibles para esta especialidad'
+                  '${_fechaCita.isNotEmpty ? ' el ${_formatFecha(_fechaCita)}' : ' en la siguiente fecha disponible'}.',
+            ),
+          ),
+          Padding(
+            padding: EdgeInsets.fromLTRB(r.paddingH, 0, r.paddingH, r.navBarBottomSpace + r.spaceMd),
+            child: SizedBox(
+              width: double.infinity,
+              child: CupertinoButton(
+                color: AppColors.primary,
+                borderRadius: BorderRadius.circular(r.radiusMd),
+                onPressed: widget.onBack,
+                child: const Text(
+                  'Volver a Especialidades',
+                  style: TextStyle(
+                    color: AppColors.white,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
       );
     }
 

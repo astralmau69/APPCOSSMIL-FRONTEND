@@ -1315,64 +1315,96 @@ class _ReservasScreenState extends State<ReservasScreen> {
   }
 
   Widget _emptyState(BuildContext context, bool isDark) {
+    final r = context.r;
+    final isTitularWithGroup = UserSession.currentUser.isTitular &&
+        UserSession.currentUser.beneficiaries.length > 1;
+
+    // Nombre del beneficiario seleccionado (o del titular si no hay selección).
+    final emptyLabel = _selectedBeneficiary != null && !_selectedBeneficiary!.isTitular
+        ? '${_selectedBeneficiary!.displayTitle}\nno tiene atenciones registradas'
+        : 'No tiene atenciones registradas';
+
     return CupertinoPageScaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-      child: CustomScrollView(
-        physics: const BouncingScrollPhysics(
-          parent: AlwaysScrollableScrollPhysics(),
-        ),
-        slivers: [
-          CupertinoSliverNavigationBar(
-            largeTitle: Text('Mis Reservas',
-                style: TextStyle(color: AppColors.textPrimaryC(isDark))),
-            backgroundColor: isDark
-                ? AppColors.darkSurface.withValues(alpha: 0.92)
-                : AppColors.white.withValues(alpha: 0.92),
-            border: Border(
-              bottom: BorderSide(
-                color:
-                    AppColors.cardBorder(isDark).withValues(alpha: 0.5),
-                width: 0.5,
-              ),
+      child: Center(
+        child: ConstrainedBox(
+          constraints: BoxConstraints(maxWidth: r.maxContentWidth),
+          child: CustomScrollView(
+            physics: const BouncingScrollPhysics(
+              parent: AlwaysScrollableScrollPhysics(),
             ),
-          ),
-          SliverFillRemaining(
-            child: Center(
-              child: FadeSlideIn(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(
-                      CupertinoIcons.calendar,
-                      size: 64,
-                      color: AppColors.textTertiaryC(isDark)
-                          .withValues(alpha: 0.3),
-                    ),
-                    SizedBox(height: context.r.spaceLg),
-                    Text(
-                      _selectedBeneficiary != null && !_selectedBeneficiary!.isTitular
-                          ? '${_selectedBeneficiary!.displayTitle}\nno tiene atenciones registradas'
-                          : 'No tiene atenciones registradas',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        fontWeight: FontWeight.w700,
-                        color: AppColors.textSecondaryC(isDark),
-                      ),
-                    ),
-                    SizedBox(height: context.r.spaceMd),
-                    Text(
-                      'El historial de atenciones aparecerá aquí',
-                      style: TextStyle(
-                        fontWeight: FontWeight.w500,
-                        color: AppColors.textTertiaryC(isDark),
-                      ),
-                    ),
-                  ],
+            slivers: [
+              CupertinoSliverNavigationBar(
+                largeTitle: Text('Mis Reservas',
+                    style: TextStyle(color: AppColors.textPrimaryC(isDark))),
+                backgroundColor: isDark
+                    ? AppColors.darkSurface.withValues(alpha: 0.92)
+                    : AppColors.white.withValues(alpha: 0.92),
+                border: Border(
+                  bottom: BorderSide(
+                    color: AppColors.cardBorder(isDark).withValues(alpha: 0.5),
+                    width: 0.5,
+                  ),
                 ),
               ),
-            ),
+
+              // Pull-to-refresh disponible incluso en estado vacío.
+              CupertinoSliverRefreshControl(onRefresh: () async { _fetchReservas(); }),
+
+              // Selector de beneficiario — el titular nunca queda atrapado
+              // sin poder cambiar al ver que un miembro no tiene historial.
+              if (isTitularWithGroup)
+                SliverToBoxAdapter(
+                  child: Padding(
+                    padding: EdgeInsets.fromLTRB(r.paddingH, r.spaceSm, r.paddingH, 0),
+                    child: _buildBeneficiarySelector(isDark),
+                  ),
+                ),
+
+              SliverFillRemaining(
+                hasScrollBody: false,
+                child: Center(
+                  child: FadeSlideIn(
+                    child: Padding(
+                      padding: EdgeInsets.symmetric(horizontal: r.paddingH),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            CupertinoIcons.calendar,
+                            size: 64,
+                            color: AppColors.textTertiaryC(isDark)
+                                .withValues(alpha: 0.3),
+                          ),
+                          SizedBox(height: r.spaceLg),
+                          Text(
+                            emptyLabel,
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              fontWeight: FontWeight.w700,
+                              color: AppColors.textSecondaryC(isDark),
+                            ),
+                          ),
+                          SizedBox(height: r.spaceMd),
+                          Text(
+                            isTitularWithGroup
+                                ? 'Puedes cambiar de miembro con el selector de arriba'
+                                : 'El historial de atenciones aparecerá aquí',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              fontWeight: FontWeight.w500,
+                              color: AppColors.textTertiaryC(isDark),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ],
           ),
-        ],
+        ),
       ),
     );
   }

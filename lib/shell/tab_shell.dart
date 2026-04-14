@@ -43,6 +43,7 @@ import '../features/booking/screens/booking_flow_screen.dart';
 import '../features/familia/screens/familia_screen.dart';
 
 import '../features/perfil/screens/perfil_screen.dart';
+import '../features/perfil/screens/security_setup_screen.dart';
 
 import 'widgets/floating_nav_bar.dart';
 
@@ -193,11 +194,6 @@ class TabShellState extends State<TabShell>
 
   Timer? _inactivityTimer;
 
-  /// Caché en memoria de si el usuario tiene PIN configurado.
-  /// Se carga al inicio y se refresca en cada `resumed`.
-  /// Determina si el fondo activa bloqueo (true) o cierre de sesión (false).
-  bool _hasLocalAuth = false;
-
   /// Cuando es true, el próximo `resumed` redirige al login
   /// porque la sesión fue cerrada al ir a background sin seguridad local.
   bool _requiresLoginOnResume = false;
@@ -250,16 +246,12 @@ class TabShellState extends State<TabShell>
 
     _checkHorarioStatus();
 
-    // Cargar estado de seguridad local (PIN/biometría configurado o no).
-    SecurityService.hasPin().then((v) => _hasLocalAuth = v);
-
     // Registrar el cambio de pestaña para que las notificaciones de calificación
     // puedan abrir Mis Reservas directamente desde la bandeja de notificaciones.
     NotificationService.registerTabSwitcher(goToTab);
 
-    // Mostrar aviso de horario de atención una vez por día.
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      _showScheduleInfoModalIfNeeded();
+      _offerBiometricSetupIfNeeded();
     });
 
   }
@@ -370,6 +362,88 @@ class TabShellState extends State<TabShell>
 
 
 
+  // ─── Paused handler ─────────────────────────────────────────────────────
+
+  /// Decide si limpiar la sesión al ir a background.
+  ///
+  /// Se extrae del handler síncrono de lifecycle para poder llamar a
+  /// `SecurityService.hasPin()` de forma async, garantizando que siempre se
+  /// lee el valor ACTUAL (no uno cacheado en initState). Esto evita el bug donde
+  /// configurar un PIN mientras la app está abierta no lo refleja en el paused handler.
+  Future<void> _handlePaused() async {
+    final hasPin = await SecurityService.hasPin();
+    if (!mounted) return;
+
+    if (!_isLocked && !hasPin) {
+      _requiresLoginOnResume = true;
+      // Cancelar notificaciones y limpiar sesión de forma asíncrona.
+      await NotificationService.cancelAllReminders();
+      await TokenStorage.deleteToken();
+      await SessionRestoreService.clearUserSession();
+      UserSession.clear();
+    }
+  }
+
+  // ─── Biometric setup prompt ──────────────────────────────────────────────
+
+  /// Muestra una propuesta de configurar huella/PIN una vez por sesión si:
+  ///   1. El dispositivo tiene biometría disponible y enrollada.
+  ///   2. El usuario aún no tiene PIN configurado.
+  ///   3. No se ha mostrado ya este login (flag en SharedPreferences por sesión).
+  Future<void> _offerBiometricSetupIfNeeded() async {
+    try {
+      final hasPin = await SecurityService.hasPin();
+      if (hasPin) return; // Ya tiene seguridad configurada
+
+      final bioStatus = await SecurityService.getDeviceBiometricStatus();
+      if (bioStatus != DeviceBiometricStatus.available) return;
+
+      final prefs = await SharedPreferences.getInstance();
+      const key = 'bio_setup_offered_this_session';
+      if (prefs.getBool(key) == true) return;
+      await prefs.setBool(key, true);
+
+      if (!mounted) return;
+      _showBiometricSetupOffer();
+    } catch (_) {}
+  }
+
+  void _showBiometricSetupOffer() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    showCupertinoDialog<void>(
+      context: context,
+      builder: (ctx) => CupertinoAlertDialog(
+        title: const Text('Protege tu cuenta'),
+        content: const Text(
+          'Tu dispositivo tiene huella dactilar disponible. '
+          '¿Deseas activar el bloqueo automático con PIN y huella? '
+          'La app se bloqueará cuando la minimices.',
+        ),
+        actions: [
+          CupertinoDialogAction(
+            child: Text(
+              'Ahora no',
+              style: TextStyle(color: isDark ? AppColors.textSecondaryC(isDark) : null),
+            ),
+            onPressed: () => Navigator.pop(ctx),
+          ),
+          CupertinoDialogAction(
+            isDefaultAction: true,
+            child: const Text('Configurar'),
+            onPressed: () {
+              Navigator.pop(ctx);
+              Navigator.of(context, rootNavigator: true).push(
+                CupertinoPageRoute(
+                  builder: (_) => const _SecuritySetupWrapper(),
+                ),
+              );
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
   // ─── Lifecycle ──────────────────────────────────────────────────────────
 
 
@@ -387,17 +461,10 @@ class TabShellState extends State<TabShell>
       // haya salido realmente de la app.
       SecurityService.recordBackground();
 
-      // Sin seguridad local (sin PIN ni huella): cerrar sesión al salir.
-      // Con seguridad local, la sesión se mantiene y se pide PIN al volver.
-      if (!_isLocked && !_hasLocalAuth) {
-        _requiresLoginOnResume = true;
-        // Cancelar notificaciones y limpiar sesión de forma asíncrona.
-        NotificationService.cancelAllReminders().then((_) async {
-          await TokenStorage.deleteToken();
-          await SessionRestoreService.clearUserSession();
-          UserSession.clear();
-        });
-      }
+      // Refrescar la caché de _hasLocalAuth de forma asíncrona antes de decidir.
+      // Evita que un PIN recién configurado (sin reiniciar TabShell) cause que
+      // la sesión se borre incorrectamente al minimizar la app.
+      _handlePaused();
 
     } else if (state == AppLifecycleState.resumed) {
 
@@ -428,10 +495,6 @@ class TabShellState extends State<TabShell>
 
 
     final hasPin = await SecurityService.hasPin();
-
-    // Refrescar caché — el usuario puede haber configurado/eliminado PIN
-    // desde el perfil mientras la app estaba en primer plano.
-    _hasLocalAuth = hasPin;
 
     if (!hasPin) return;
 
@@ -537,6 +600,17 @@ class TabShellState extends State<TabShell>
 
     }
 
+    // Al navegar a Mis Reservas desde cualquier otra tab, disparar un refresh
+    // ligero (notifier) para que el historial esté siempre actualizado.
+    if (index == 1 && _currentIndex != 1) {
+      reservasRefreshNotifier.value++;
+    }
+
+    // Al navegar al perfil, mostrar el aviso de horarios una vez por día.
+    if (index == 4 && _currentIndex != 4) {
+      _showScheduleInfoModalIfNeeded();
+    }
+
     setState(() => _currentIndex = index);
 
     _tabController.index = index;
@@ -568,8 +642,17 @@ class TabShellState extends State<TabShell>
     if (_isCheckingHorario) return;
 
     _isCheckingHorario = true;
+    bool _loaderOpen = false;
 
-
+    // Helper para cerrar el loader una sola vez de forma segura.
+    // showCupertinoDialog usa rootNavigator:true por defecto → hay que popearlo
+    // con rootNavigator:true o el pop afecta al sub-navigator del tab.
+    void _closeLoader() {
+      if (_loaderOpen && mounted) {
+        _loaderOpen = false;
+        Navigator.of(context, rootNavigator: true).pop();
+      }
+    }
 
     try {
       // Mostrar indicador de carga
@@ -578,8 +661,64 @@ class TabShellState extends State<TabShell>
         barrierDismissible: false,
         builder: (context) => const Center(child: CupertinoActivityIndicator(radius: 15)),
       );
+      _loaderOpen = true;
 
-      // 1. Verificar si ya tiene una cita activa (solo para no titulares;
+      // 0. Pre-cargar grupo familiar para titulares si aún no está en sesión.
+      //    Necesario para que el selector de beneficiarios en RegionalScreen
+      //    tenga datos desde la primera vez.
+      if (UserSession.currentUser.isTitular &&
+          UserSession.currentUser.beneficiaries.isEmpty) {
+        try {
+          final idper = int.tryParse(UserSession.currentUser.id) ?? 0;
+          final members = await _programacionService.getGrupoFamiliar(idper);
+          if (members.isNotEmpty && mounted) {
+            UserSession.currentUser = UserSession.currentUser.copyWith(
+              beneficiaries: members,
+            );
+          }
+        } catch (e) {
+          debugPrint('⚠️ Error cargando grupo familiar para reserva: $e');
+        }
+      }
+
+      // Establecer beneficiario por defecto si el paso anterior lo cargó
+      if (bookingState.beneficiary == null) {
+        final bens = UserSession.currentUser.beneficiaries;
+        if (bens.isNotEmpty) {
+          final titular = bens.firstWhere(
+            (b) => b.isTitular,
+            orElse: () => bens.first,
+          );
+          bookingState.beneficiary = titular;
+          bookingState.beneficiaryLabel =
+              titular.isTitular ? 'Para mí' : titular.fullName;
+        }
+      }
+
+      // 1. Verificar validaciones de aportes (solo para beneficiarios no titulares).
+      //    Los titulares son verificados al seleccionar hospital en RegionalScreen
+      //    porque pueden cambiar el beneficiario antes de elegir sucursal.
+      if (!UserSession.currentUser.isTitular) {
+        try {
+          final matricula = UserSession.currentUser.matricula;
+          final idper = int.tryParse(UserSession.currentUser.id) ?? 0;
+          final validMsg = await _programacionService.verificarValidaciones(matricula, idper);
+          if (validMsg != null) {
+            if (!mounted) return;
+            _closeLoader();
+            await _showValidacionesModal(validMsg);
+            if (mounted) {
+              setState(() => _currentIndex = 0);
+              _tabController.index = 0;
+            }
+            return;
+          }
+        } catch (e) {
+          debugPrint('⚠️ Error al verificar validaciones: $e');
+        }
+      }
+
+      // 2. Verificar si ya tiene una cita activa (solo para no titulares;
       //    los titulares son verificados al seleccionar hospital en RegionalScreen)
       if (!UserSession.currentUser.isTitular) {
         try {
@@ -604,7 +743,7 @@ class TabShellState extends State<TabShell>
 
           if (activeAppointments.isNotEmpty) {
             if (!mounted) return;
-            Navigator.pop(context); // Quitar loader
+            _closeLoader();
 
             await showActiveAppointmentModal(activeAppointments.first);
 
@@ -619,7 +758,7 @@ class TabShellState extends State<TabShell>
         }
       }
 
-      // 2. Consultar horarios disponibles (idins=1, idsuc=1 como check general)
+      // 3. Consultar horarios disponibles (idins=1, idsuc=1 como check general)
 
       List<HorarioAtencionModel> todosHorarios = [];
 
@@ -643,7 +782,7 @@ class TabShellState extends State<TabShell>
 
 
 
-      // Verificar si estamos en horario
+      // 4. Verificar si estamos en horario
 
       final codigoHorario =
 
@@ -657,8 +796,7 @@ class TabShellState extends State<TabShell>
 
       if (codigoHorario != null && codigoHorario > 0) {
 
-        if (!mounted) return;
-        Navigator.pop(context); // Quitar loader
+        _closeLoader();
 
         bookingState.idhorario = codigoHorario;
 
@@ -679,7 +817,7 @@ class TabShellState extends State<TabShell>
         // ❌ Fuera de horario → mostrar modal y volver al inicio
 
         if (!mounted) return;
-        Navigator.pop(context); // Quitar loader
+        _closeLoader();
 
         final horariosParaMostrar =
 
@@ -709,10 +847,9 @@ class TabShellState extends State<TabShell>
       debugPrint('❌ Error verificando horario: $e');
 
       // En caso de error de conexión, dejarlo pasar al booking
+      _closeLoader();
 
       if (mounted) {
-        Navigator.pop(context); // Quitar loader
-
         setState(() => _currentIndex = 2);
 
         _tabController.index = 2;
@@ -735,19 +872,28 @@ class TabShellState extends State<TabShell>
   /// Muestra loader → consulta → cierra loader → modal si aplica.
   /// Retorna true si hay cita activa (el flujo debe detenerse), false si puede continuar.
   Future<bool> checkAndShowActiveCitaForBeneficiary() async {
+    bool loaderOpen = false;
+    void closeLoader() {
+      if (loaderOpen && mounted) {
+        loaderOpen = false;
+        Navigator.of(context, rootNavigator: true).pop();
+      }
+    }
+
     try {
       showCupertinoDialog(
         context: context,
         barrierDismissible: false,
         builder: (_) => const Center(child: CupertinoActivityIndicator(radius: 15)),
       );
+      loaderOpen = true;
 
       final idperStr = bookingState.beneficiary?.id ?? UserSession.currentUser.id;
       final idper = int.tryParse(idperStr) ?? 0;
       final historyResult = await _programacionService.getHistorialCitas(idper, pagina: 1, cantidad: 10);
 
       if (!mounted) return false;
-      Navigator.pop(context); // Quitar loader
+      closeLoader();
 
       // Bloquear solo si ya tiene cita para mañana (el próximo día reservable).
       // Citas pendientes para fechas posteriores no impiden reservar para mañana.
@@ -768,7 +914,7 @@ class TabShellState extends State<TabShell>
       }
       return false;
     } catch (e) {
-      if (mounted) Navigator.pop(context);
+      closeLoader();
       debugPrint('⚠️ Error al verificar historial para titular: $e');
       return false;
     }
@@ -809,6 +955,49 @@ class TabShellState extends State<TabShell>
   }
 
   /// Modal para cuando el usuario ya tiene una cita activa
+  /// Modal que informa al usuario que no cuenta con aportes vigentes (Art. 186).
+  Future<void> _showValidacionesModal(String message) async {
+    if (!mounted) return;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    await showCupertinoDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => CupertinoAlertDialog(
+        title: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(CupertinoIcons.exclamationmark_shield_fill,
+                color: CupertinoColors.systemOrange, size: 22),
+            const SizedBox(width: 8),
+            const Expanded(
+              child: Text(
+                'Atención no disponible',
+                style: TextStyle(fontWeight: FontWeight.w800),
+              ),
+            ),
+          ],
+        ),
+        content: Padding(
+          padding: const EdgeInsets.only(top: 8),
+          child: Text(
+            message,
+            style: TextStyle(
+              height: 1.4,
+              color: isDark ? CupertinoColors.white : CupertinoColors.black,
+            ),
+          ),
+        ),
+        actions: [
+          CupertinoDialogAction(
+            isDefaultAction: true,
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: const Text('Entendido'),
+          ),
+        ],
+      ),
+    );
+  }
+
   Future<void> showActiveAppointmentModal(ReservaModel reserva) async {
     if (!mounted) return;
 
@@ -1484,6 +1673,19 @@ class TabShellState extends State<TabShell>
 
 }
 
+// ── Wrapper para SecuritySetupScreen desde el prompt de biometría ────────────
+
+/// Envuelve SecuritySetupScreen para que, al completar la configuración,
+/// el usuario vea un mensaje de confirmación antes de volver al home.
+class _SecuritySetupWrapper extends StatelessWidget {
+  const _SecuritySetupWrapper();
+
+  @override
+  Widget build(BuildContext context) {
+    return const SecuritySetupScreen();
+  }
+}
+
 // ── Modal informativo de días de atención ────────────────────────────────────
 
 class _ScheduleInfoDialog extends StatelessWidget {
@@ -1516,8 +1718,10 @@ class _ScheduleInfoDialog extends StatelessWidget {
           _infoRow('🗓', 'Lunes a Viernes', 'Reserva de citas disponible para todas las especialidades habilitadas.', textColor),
           const SizedBox(height: 10),
           _infoRow('🚨', 'Sábados, Domingos y Feriados', 'Atención directa y exclusiva a través del área de Emergencias.', textColor),
-          const SizedBox(height: 12),
+          const SizedBox(height: 10),
           _infoRow('ℹ️', 'Nota especial', 'Los días sábado contamos con atención regular únicamente para la especialidad de Ginecología.', textColor),
+          const SizedBox(height: 10),
+          _infoRow('📱', 'Reserva por App', 'Solo puedes reservar para el siguiente día hábil (ej. lunes→martes, domingo→lunes). A partir de las 00:03 AM se habilita automáticamente el día siguiente.', textColor),
         ],
       ),
       actions: [

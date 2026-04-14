@@ -158,11 +158,13 @@ class BookingFlowScreenState extends State<BookingFlowScreen> {
         key: const ValueKey(2),
         tabShell: widget.tabShell,
         onNext: _nextStep,
+        onBack: _prevStep,
       ),
       3 => ScheduleScreen(
         key: const ValueKey(3),
         tabShell: widget.tabShell,
         onNext: _nextStep,
+        onBack: _prevStep,
       ),
       4 => SummaryScreen(
         key: const ValueKey(4),

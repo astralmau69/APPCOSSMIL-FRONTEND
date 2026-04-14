@@ -29,7 +29,9 @@
       "Bash(node:*)",
       "Bash(flutter --version)",
       "Bash(git checkout:*)",
-      "Bash(git add:*)"
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git push:*)"
     ]
   }
 }

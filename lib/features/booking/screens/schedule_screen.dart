@@ -19,8 +19,9 @@ import 'summary_screen.dart';
 class ScheduleScreen extends StatefulWidget {
   final TabShellState tabShell;
   final VoidCallback? onNext;
+  final VoidCallback? onBack;
 
-  const ScheduleScreen({super.key, required this.tabShell, this.onNext});
+  const ScheduleScreen({super.key, required this.tabShell, this.onNext, this.onBack});
 
   @override
   State<ScheduleScreen> createState() => _ScheduleScreenState();
@@ -326,11 +327,27 @@ class _ScheduleScreenState extends State<ScheduleScreen>
                   Text(
                     'Por el momento no hay fichas disponibles para '
                     '${widget.tabShell.bookingState.specialty?.name ?? "esta especialidad"}. '
-                    'Intenta nuevamente más tarde o selecciona otra especialidad.',
+                    'Intenta nuevamente más tarde o selecciona otro médico.',
                     textAlign: TextAlign.center,
                     style: TextStyle(
                       color: AppColors.textSecondaryC(isDark),
                       height: 1.5,
+                    ),
+                  ),
+                  SizedBox(height: context.r.spaceLg),
+                  SizedBox(
+                    width: double.infinity,
+                    child: CupertinoButton(
+                      color: AppColors.primary,
+                      borderRadius: BorderRadius.circular(context.r.radiusMd),
+                      onPressed: widget.onBack,
+                      child: const Text(
+                        'Volver a Médicos',
+                        style: TextStyle(
+                          color: AppColors.white,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
                     ),
                   ),
                 ],
@@ -428,7 +445,7 @@ class _ScheduleScreenState extends State<ScheduleScreen>
               SizedBox(width: context.r.spaceSm),
               Expanded(
                 child: Text(
-                  'Las reservas solo están habilitadas para el día de mañana.',
+                  'Las reservas por app son para el siguiente día hábil. A partir de las 00:03 AM se habilita el día siguiente.',
                   style: TextStyle(
                     color: AppColors.textSecondaryC(isDark),
                     height: 1.3,

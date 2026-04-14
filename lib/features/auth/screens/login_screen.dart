@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
+import 'package:flutter/services.dart';
 import 'package:audioplayers/audioplayers.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:package_info_plus/package_info_plus.dart';
@@ -34,9 +35,8 @@ class _LoginScreenState extends State<LoginScreen>
   bool _isLoading = false;
   bool _obscurePassword = true;
   String? _errorMessage;
-  bool _isVersionError = false;
   AuthErrorType _errorType = AuthErrorType.unknown;
-  String _appVersion = '';
+  String _appVersion = '1.0.3'; // fallback; se sobreescribe con PackageInfo
   AudioPlayer? _audioPlayer;
 
   late final AnimationController _logoCtrl;
@@ -103,92 +103,8 @@ class _LoginScreenState extends State<LoginScreen>
     PackageInfo.fromPlatform().then((info) {
       if (mounted) setState(() => _appVersion = info.version);
     });
-
-    // Verificar versión al cargar el login — muestra modal si está desactualizada.
-    WidgetsBinding.instance.addPostFrameCallback((_) => _checkVersionOnLoad());
   }
 
-  Future<void> _checkVersionOnLoad() async {
-    try {
-      await ProgramacionService().verificarVersion();
-    } on VersionOutdatedException catch (e) {
-      if (!mounted) return;
-      _showVersionModal(e.message);
-    } catch (_) {
-      // Sin conexión / error de red: no bloquear.
-    }
-  }
-
-  void _showVersionModal(String message) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    showDialog<void>(
-      context: context,
-      barrierDismissible: false,
-      builder: (ctx) => PopScope(
-        canPop: false,
-        child: AlertDialog(
-          backgroundColor: AppColors.cardBg(isDark),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-          title: Row(
-            children: [
-              const Icon(Icons.system_update_rounded, color: AppColors.warning, size: 28),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  'Nueva versión disponible',
-                  style: TextStyle(
-                    fontWeight: FontWeight.w800,
-                    color: AppColors.textPrimaryC(isDark),
-                    fontSize: 18,
-                  ),
-                ),
-              ),
-            ],
-          ),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Tu aplicación necesita actualizarse para continuar usando COSSMIL.',
-                style: TextStyle(color: AppColors.textSecondaryC(isDark), height: 1.4),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                'Visita el sitio web oficial de COSSMIL y descarga la última versión desde ahí.',
-                style: TextStyle(color: AppColors.textSecondaryC(isDark), height: 1.4),
-              ),
-            ],
-          ),
-          actionsAlignment: MainAxisAlignment.center,
-          actions: [
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton.icon(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.warning,
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(vertical: 14),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                ),
-                icon: const Icon(Icons.language_rounded, size: 18),
-                label: const Text(
-                  'Ir a cossmil.mil.bo para actualizar',
-                  style: TextStyle(fontWeight: FontWeight.w700),
-                ),
-                onPressed: () => launchUrl(
-                  Uri.parse('https://www.cossmil.mil.bo/#/'),
-                  mode: LaunchMode.externalApplication,
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
 
   Future<void> _playLoginAudio() async {
     if (!SoundManager.isEnabled) return;
@@ -229,7 +145,6 @@ class _LoginScreenState extends State<LoginScreen>
     setState(() {
       _isLoading = true;
       _errorMessage = null;
-      _isVersionError = false;
       _errorType = AuthErrorType.unknown;
     });
 
@@ -246,21 +161,6 @@ class _LoginScreenState extends State<LoginScreen>
 
         // Guardar credenciales cifradas para re-login silencioso en desbloqueo.
         await SessionRestoreService.storeCredentials(username, password);
-
-        // Verificar versión con token ya disponible (chequeo definitivo).
-        try {
-          await ProgramacionService().verificarVersion();
-        } on VersionOutdatedException catch (e) {
-          if (!mounted) return;
-          setState(() => _isLoading = false);
-          // Borrar token para que no quede sesión activa con versión inválida.
-          await TokenStorage.wipeAll();
-          if (!mounted) return;
-          _showVersionModal(e.message);
-          return;
-        } catch (_) {
-          // Error de red: dejar pasar.
-        }
 
         if (!mounted) return;
 
@@ -422,191 +322,166 @@ class _LoginScreenState extends State<LoginScreen>
   @override
   Widget build(BuildContext context) {
     final r = context.r;
-    final logoSize = r.logoSize;
-
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final double logoSize = (r.screenHeight * 0.17).clamp(70.0, 140.0);
+    final double keyboardHeight = MediaQuery.of(context).viewInsets.bottom;
+    final bool keyboardVisible = keyboardHeight > 80;
 
     return Scaffold(
-      backgroundColor: Colors.transparent,
-      resizeToAvoidBottomInset: true, // <-- permite que el teclado suba el contenido
+      // Usar el color real de fondo — nunca transparent, para que no se vea
+      // negro detrás del gradient cuando el sistema renderiza en capas.
+      backgroundColor: isDark ? const Color(0xFF101214) : const Color(0xFFF7F9FB),
+      // false → el fondo siempre ocupa la pantalla completa; el scroll
+      // compensa manualmente el teclado vía viewInsets.bottom.
+      resizeToAvoidBottomInset: false,
       body: AnimatedGradientBackground(
         isDark: isDark,
         child: SafeArea(
           child: Stack(
             children: [
-              SingleChildScrollView(
-                controller: _scrollController,
-                physics: const BouncingScrollPhysics(),
-                padding: EdgeInsets.only(
-                  left: r.paddingH,
-                  right: r.paddingH,
-                  bottom: MediaQuery.of(context).viewInsets.bottom + 20,
-                  top: 20,
-                ),
-                child: ConstrainedBox(
-                  constraints: BoxConstraints(
-                    minHeight: r.screenHeight - MediaQuery.of(context).padding.vertical - 40,
-                  ),
-            child: Center(
-              child: ResponsiveContainer(
-                maxWidth: r.isTablet ? 450 : double.infinity,
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    SizedBox(height: r.spaceLg),
-                    // Logo — entrance animations + continuous float
-                    FadeTransition(
-                      opacity: _logoFade,
-                      child: ScaleTransition(
-                        scale: _logoScale,
-                        child: RotationTransition(
-                          turns: _logoRotate,
-                          child: SlideTransition(
-                            position: _logoFloat,
-                            child: _buildLogo(logoSize, isDark),
+              // ── Contenido principal (scrollable, centrado verticalmente) ──
+              GestureDetector(
+                onTap: () => FocusScope.of(context).unfocus(),
+                behavior: HitTestBehavior.translucent,
+                child: LayoutBuilder(
+                  builder: (context, constraints) => SingleChildScrollView(
+                    controller: _scrollController,
+                    physics: const ClampingScrollPhysics(),
+                    child: ConstrainedBox(
+                      // minHeight = pantalla disponible → el Column se centra
+                      // verticalmente cuando el contenido es más corto que la pantalla.
+                      constraints: BoxConstraints(minHeight: constraints.maxHeight),
+                      child: Padding(
+                        padding: EdgeInsets.fromLTRB(
+                          r.paddingH,
+                          keyboardVisible ? 12 : 8,
+                          r.paddingH,
+                          keyboardVisible ? keyboardHeight + 24 : 24,
+                        ),
+                        child: Center(
+                          child: ResponsiveContainer(
+                            maxWidth: r.isTablet ? 450 : double.infinity,
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              mainAxisSize: MainAxisSize.min,
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                              children: [
+                          // Logo — más pequeño cuando el teclado está visible
+                          Center(
+                            child: FadeTransition(
+                              opacity: _logoFade,
+                              child: ScaleTransition(
+                                scale: _logoScale,
+                                child: RotationTransition(
+                                  turns: _logoRotate,
+                                  child: SlideTransition(
+                                    position: _logoFloat,
+                                    child: _buildLogo(
+                                      keyboardVisible ? logoSize * 0.65 : logoSize,
+                                      isDark,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                          SizedBox(height: keyboardVisible ? r.spaceSm : r.spaceMd),
+                          // Header — se oculta con teclado en pantallas pequeñas
+                          if (!keyboardVisible || r.screenHeight > 700)
+                            FadeSlideIn(
+                              duration: AppDurations.slow,
+                              delay: const Duration(milliseconds: 100),
+                              child: _buildHeader(isDark),
+                            ),
+                          SizedBox(height: keyboardVisible ? r.spaceMd : r.spaceXl),
+                          // Form
+                          FadeSlideIn(
+                            duration: AppDurations.normal,
+                            delay: const Duration(milliseconds: 200),
+                            child: _buildForm(isDark),
+                          ),
+                          SizedBox(height: r.spaceMd),
+                          // Error message
+                          if (_errorMessage != null) ...[
+                            FadeSlideIn(
+                              duration: AppDurations.fast,
+                              child: _buildErrorBanner(),
+                            ),
+                            SizedBox(height: r.spaceSm),
+                          ],
+                          // Login button
+                          FadeSlideIn(
+                            duration: AppDurations.normal,
+                            delay: const Duration(milliseconds: 250),
+                            child: _buildLoginButton(),
+                          ),
+                          // Footer — solo cuando no hay teclado
+                          if (!keyboardVisible) ...[
+                            SizedBox(height: r.spaceXl),
+                            FadeSlideIn(
+                              duration: AppDurations.normal,
+                              delay: const Duration(milliseconds: 350),
+                              child: _buildFooter(isDark),
+                            ),
+                          ],
+                              ],
+                            ),
                           ),
                         ),
                       ),
                     ),
-
-                    SizedBox(height: r.spaceXl),
-
-                    // Header
-                    FadeSlideIn(
-                      duration: AppDurations.slow,
-                      delay: const Duration(milliseconds: 100),
-                      child: _buildHeader(isDark),
-                    ),
-
-                    SizedBox(height: r.spaceXxl),
-
-                    // Form
-                    FadeSlideIn(
-                      duration: AppDurations.normal,
-                      delay: const Duration(milliseconds: 200),
-                      child: _buildForm(isDark),
-                    ),
-
-                    SizedBox(height: r.spaceLg),
-
-                    // Error message
-                    if (_errorMessage != null) ...[
-                      FadeSlideIn(
-                        duration: AppDurations.fast,
-                        child: _buildErrorBanner(),
-                      ),
-                      SizedBox(height: r.spaceMd),
-                    ],
-
-                    // Login button
-                    FadeSlideIn(
-                      duration: AppDurations.normal,
-                      delay: const Duration(milliseconds: 250),
-                      child: _buildLoginButton(),
-                    ),
-
-                    SizedBox(height: r.spaceXl),
-
-
-
-                    SizedBox(height: r.spaceXxl),
-
-                    // Footer
-                    FadeSlideIn(
-                      duration: AppDurations.normal,
-                      delay: const Duration(milliseconds: 350),
-                      child: Column(
-                        children: [
-                          Text(
-                            'Dirección Nacional de Sistemas',
-                            style: TextStyle(
-                              fontWeight: FontWeight.w700,
-                              color: isDark
-                                  ? Colors.white
-                                  : const Color(0xFF0284C7),
-                              letterSpacing: 1.2,
-                            ),
-                          ),
-                          SizedBox(height: context.r.spaceXs),
-                          Text(
-                            'COSSMIL',
-                            style: TextStyle(
-                              fontWeight: FontWeight.w800,
-                              color: isDark
-                                  ? Colors.white
-                                  : const Color(0xFF0284C7),
-                              letterSpacing: 1.5,
-                            ),
-                          ),
-                          SizedBox(height: context.r.spaceXs),
-                          Text(
-                            '2026',
-                            style: TextStyle(
-                              fontWeight: FontWeight.w700,
-                              color: isDark
-                                  ? Colors.white.withValues(alpha: 0.8)
-                                  : const Color(0xFF0284C7).withValues(alpha: 0.8),
-                              letterSpacing: 2.0,
-                            ),
-                          ),
-                          if (_appVersion.isNotEmpty) ...[
-                            SizedBox(height: context.r.spaceXs),
-                            Text(
-                              'v$_appVersion',
-                              style: TextStyle(
-                                fontWeight: FontWeight.w500,
-                                fontSize: 11,
-                                color: isDark
-                                    ? Colors.white.withValues(alpha: 0.45)
-                                    : const Color(0xFF0284C7).withValues(alpha: 0.5),
-                                letterSpacing: 1.0,
-                              ),
-                            ),
-                          ],
-                        ],
-                      ),
-                    ),
-                    SizedBox(height: r.spaceLg),
-                  ],
+                  ),
                 ),
               ),
-            ),
-          ),
-        ),
-            // Sound & Theme toggle buttons — top right
-            Positioned(
-              top: 8,
-              right: 0,
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  ValueListenableBuilder<bool>(
-                    valueListenable: SoundManager.soundEnabledNotifier,
-                    builder: (context, soundOn, _) => CupertinoButton(
+              // ── Sonido & Tema — esquina superior derecha ─────────────
+              Positioned(
+                top: 8,
+                right: 0,
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    ValueListenableBuilder<bool>(
+                      valueListenable: SoundManager.soundEnabledNotifier,
+                      builder: (context, soundOn, _) => CupertinoButton(
+                        padding: EdgeInsets.all(context.r.spaceSm),
+                        onPressed: () => SoundManager.toggle(),
+                        child: Icon(
+                          soundOn
+                              ? CupertinoIcons.speaker_2_fill
+                              : CupertinoIcons.speaker_slash_fill,
+                          size: context.r.iconMd,
+                          color: AppColors.textSecondaryC(isDark),
+                        ),
+                      ),
+                    ),
+                    CupertinoButton(
                       padding: EdgeInsets.all(context.r.spaceSm),
-                      onPressed: () => SoundManager.toggle(),
+                      onPressed: () => ThemeManager.toggleTheme(),
                       child: Icon(
-                        soundOn ? CupertinoIcons.speaker_2_fill : CupertinoIcons.speaker_slash_fill,
+                        isDark
+                            ? CupertinoIcons.sun_max_fill
+                            : CupertinoIcons.moon_fill,
                         size: context.r.iconMd,
                         color: AppColors.textSecondaryC(isDark),
                       ),
                     ),
-                  ),
-                  CupertinoButton(
-                    padding: EdgeInsets.all(context.r.spaceSm),
-                    onPressed: () => ThemeManager.toggleTheme(),
-                    child: Icon(
-                      isDark ? CupertinoIcons.sun_max_fill : CupertinoIcons.moon_fill,
-                      size: context.r.iconMd,
-                      color: AppColors.textSecondaryC(isDark),
-                    ),
-                  ),
-                ],
+                  ],
+                ),
               ),
-            ),
-          ],
+              // ── FAB de soporte — oculto cuando el teclado está activo ──
+              if (!keyboardVisible)
+                Positioned(
+                  bottom: 20,
+                  right: 20,
+                  child: FadeSlideIn(
+                    duration: AppDurations.normal,
+                    delay: const Duration(milliseconds: 450),
+                    child: _buildSupportFab(isDark),
+                  ),
+                ),
+            ],
+          ),
         ),
-      ),
       ),
     );
   }
@@ -774,72 +649,6 @@ class _LoginScreenState extends State<LoginScreen>
   Widget _buildErrorBanner() {
     final r = context.r;
 
-    // ── Banner especial de actualización ────────────────────────────────────
-    if (_isVersionError) {
-      return Container(
-        padding: EdgeInsets.all(r.cardPadding),
-        decoration: BoxDecoration(
-          color: const Color(0xFFFFF7ED),
-          borderRadius: BorderRadius.circular(r.radiusMd),
-          border: Border.all(color: const Color(0xFFF97316).withValues(alpha: 0.4)),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                const Icon(Icons.system_update_rounded,
-                    color: Color(0xFFF97316), size: 20),
-                SizedBox(width: r.spaceSm),
-                Text(
-                  'Actualización disponible',
-                  style: context.texts.bodyMedium.copyWith(
-                    color: const Color(0xFFEA580C),
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
-              ],
-            ),
-            SizedBox(height: r.spaceSm),
-            Text(
-              'Tu aplicación necesita actualizarse para continuar. '
-              'Visita el sitio web oficial de COSSMIL y descarga la última versión.',
-              style: context.texts.bodySmall.copyWith(
-                color: const Color(0xFFEA580C).withValues(alpha: 0.85),
-                height: 1.4,
-              ),
-            ),
-            SizedBox(height: r.spaceMd),
-            SizedBox(
-              width: double.infinity,
-              child: CupertinoButton(
-                padding: EdgeInsets.symmetric(vertical: r.spaceSm),
-                color: const Color(0xFFF97316),
-                borderRadius: BorderRadius.circular(r.buttonRadius),
-                onPressed: () => launchUrl(
-                  Uri.parse('https://www.cossmil.mil.bo/#/'),
-                  mode: LaunchMode.externalApplication,
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const Icon(CupertinoIcons.globe, color: Colors.white, size: 16),
-                    SizedBox(width: r.spaceXs),
-                    Text(
-                      'Ir a cossmil.mil.bo para actualizar',
-                      style: context.texts.bodyMedium.copyWith(
-                        color: Colors.white,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ],
-        ),
-      );
-    }
 
     final bool isNetwork = _errorType == AuthErrorType.network;
     final bool isDisabled = _errorType == AuthErrorType.disabled;
@@ -926,8 +735,138 @@ class _LoginScreenState extends State<LoginScreen>
     );
   }
 
+  Widget _buildFooter(bool isDark) {
+    return Column(
+      children: [
+        Text(
+          'Dirección Nacional de Sistemas',
+          style: TextStyle(
+            fontWeight: FontWeight.w700,
+            color: isDark ? Colors.white : const Color(0xFF0284C7),
+            letterSpacing: 1.2,
+          ),
+          textAlign: TextAlign.center,
+        ),
+        SizedBox(height: context.r.spaceXs),
+        Text(
+          'COSSMIL',
+          style: TextStyle(
+            fontWeight: FontWeight.w800,
+            color: isDark ? Colors.white : const Color(0xFF0284C7),
+            letterSpacing: 1.5,
+          ),
+          textAlign: TextAlign.center,
+        ),
+        SizedBox(height: context.r.spaceXs),
+        Text(
+          '2026',
+          style: TextStyle(
+            fontWeight: FontWeight.w700,
+            color: isDark
+                ? Colors.white.withValues(alpha: 0.8)
+                : const Color(0xFF0284C7).withValues(alpha: 0.8),
+            letterSpacing: 2.0,
+          ),
+          textAlign: TextAlign.center,
+        ),
+        if (_appVersion.isNotEmpty) ...[
+          SizedBox(height: context.r.spaceXs),
+          Text(
+            'v$_appVersion',
+            style: TextStyle(
+              fontWeight: FontWeight.w600,
+              fontSize: 11,
+              color: const Color(0xFF16A34A).withValues(alpha: isDark ? 0.75 : 0.9),
+              letterSpacing: 1.0,
+            ),
+            textAlign: TextAlign.center,
+          ),
+        ],
+      ],
+    );
+  }
+
+  Widget _buildSupportFab(bool isDark) {
+    return Tooltip(
+      message: 'Soporte: 71527970',
+      child: GestureDetector(
+        onTap: () => _showSupportSheet('71527970'),
+        child: Container(
+          width: 52,
+          height: 52,
+          decoration: BoxDecoration(
+            color: const Color(0xFF25D366),
+            shape: BoxShape.circle,
+            boxShadow: [
+              BoxShadow(
+                color: const Color(0xFF25D366).withValues(alpha: 0.45),
+                blurRadius: 14,
+                offset: const Offset(0, 5),
+              ),
+            ],
+          ),
+          child: const Icon(
+            Icons.support_agent_rounded,
+            color: Colors.white,
+            size: 26,
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _showSupportSheet(String number) {
+    showCupertinoModalPopup<void>(
+      context: context,
+      builder: (ctx) => CupertinoActionSheet(
+        title: const Text('Soporte COSSMIL'),
+        message: Text(
+          number,
+          style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w800),
+        ),
+        actions: [
+          CupertinoActionSheetAction(
+            onPressed: () {
+              Navigator.pop(ctx);
+              launchUrl(
+                Uri.parse('https://wa.me/591$number'),
+                mode: LaunchMode.externalApplication,
+              );
+            },
+            child: const Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(Icons.chat_rounded, size: 20, color: Color(0xFF25D366)),
+                SizedBox(width: 8),
+                Text('Abrir en WhatsApp'),
+              ],
+            ),
+          ),
+          CupertinoActionSheetAction(
+            onPressed: () {
+              Navigator.pop(ctx);
+              Clipboard.setData(ClipboardData(text: number));
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('Número copiado'),
+                  duration: Duration(seconds: 2),
+                  behavior: SnackBarBehavior.floating,
+                ),
+              );
+            },
+            child: const Text('Copiar número'),
+          ),
+        ],
+        cancelButton: CupertinoActionSheetAction(
+          isDestructiveAction: false,
+          onPressed: () => Navigator.pop(ctx),
+          child: const Text('Cancelar'),
+        ),
+      ),
+    );
+  }
+
   Widget _buildLoginButton() {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
     return SizedBox(
       width: double.infinity,
       height: context.r.buttonHeight,
@@ -936,13 +875,25 @@ class _LoginScreenState extends State<LoginScreen>
         scaleDown: 0.95,
         child: Container(
           decoration: BoxDecoration(
-            color: _isLoading ? AppColors.textSecondary : AppColors.primary,
+            color: _isLoading
+                ? AppColors.textSecondary
+                : const Color(0xFF16A34A),
             borderRadius: BorderRadius.circular(context.r.buttonRadius),
             border: Border.all(
-              color: isDark ? AppColors.darkBorder : const Color(0xFF191C1E).withValues(alpha: 0.15),
+              color: _isLoading
+                  ? Colors.transparent
+                  : const Color(0xFF15803D).withValues(alpha: 0.6),
               width: 0.8,
             ),
-            boxShadow: _isLoading ? [] : AppColors.softShadow,
+            boxShadow: _isLoading
+                ? []
+                : [
+                    BoxShadow(
+                      color: const Color(0xFF16A34A).withValues(alpha: 0.35),
+                      blurRadius: 12,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
           ),
           child: Center(
             child: _isLoading
