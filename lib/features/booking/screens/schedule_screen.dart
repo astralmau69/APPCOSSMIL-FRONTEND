@@ -416,7 +416,7 @@ class _ScheduleScreenState extends State<ScheduleScreen>
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Fechas de Reserva',
+                      'Fecha de Reserva',
                       style: context.texts.titleLarge.copyWith(
                         color: AppColors.textPrimaryC(isDark),
                         fontWeight: FontWeight.w800,

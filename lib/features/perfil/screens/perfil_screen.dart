@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:typed_data';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import '../../../core/config/app_config.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/extensions/responsive_extensions.dart';
 import '../../../core/session/user_session.dart';
@@ -239,6 +240,22 @@ class _PerfilScreenState extends State<PerfilScreen> {
                       // Cerrar sesión
                       FadeSlideIn(delay: const Duration(milliseconds: 320), offsetY: 12,
                         child: _buildLogoutTile(isDark, r),
+                      ),
+                      SizedBox(height: r.spaceXl),
+
+                      // Version de la app
+                      FadeSlideIn(delay: const Duration(milliseconds: 360), offsetY: 12,
+                        child: Center(
+                          child: Text(
+                            'Versión ${AppConfig.appVersion}',
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                              color: AppColors.textTertiaryC(isDark),
+                              letterSpacing: 0.5,
+                            ),
+                          ),
+                        ),
                       ),
                     ],
                   ),
@@ -1163,6 +1180,21 @@ class _PerfilScreenState extends State<PerfilScreen> {
                 final pwd = newPwdCtrl.text.trim();
                 final confirm = confirmPwdCtrl.text.trim();
                 if (pwd.isEmpty) return;
+
+                // Validación de seguridad de contraseña
+                final isValid = pwd.length >= 6 &&
+                                RegExp(r'[A-Z]').hasMatch(pwd) &&
+                                RegExp(r'[!@#\$%^&*(),.?":{}|<>]').hasMatch(pwd);
+
+                if (!isValid) {
+                  await CossmilIosAlert.show(
+                    context: ctx, title: 'Contraseña débil',
+                    message: 'La contraseña debe tener al menos 6 caracteres, una mayúscula y un carácter especial.',
+                    type: AlertType.warning, confirmText: 'Entendido',
+                  );
+                  return;
+                }
+
                 if (pwd != confirm) {
                   await CossmilIosAlert.show(
                     context: ctx, title: 'Contraseñas no coinciden',

@@ -55,7 +55,7 @@ class SecurityService {
 
   /// Tiempo de inactividad antes de cerrar la sesión completamente
   /// cuando el usuario NO tiene PIN/biométrica configurado.
-  static const sessionTimeoutNoPinDuration = Duration(minutes: 10);
+  static const sessionTimeoutNoPinDuration = Duration(minutes: 7);
 
   // ─── PIN ───────────────────────────────────────────────────────────────────
 
@@ -254,6 +254,16 @@ class SecurityService {
   /// disparar el bloqueo dentro de la misma sesión activa.
   static Future<void> clearBackground() async {
     await _storage.delete(key: _keyLastBackground);
+  }
+
+  /// Retorna true si el usuario SIN PIN ha estado minimizado en background
+  /// por más tiempo del permitido por [sessionTimeoutNoPinDuration].
+  static Future<bool> shouldLogoutOnResumeNoPin() async {
+    final v = await _storage.read(key: _keyLastBackground);
+    if (v == null) return false;
+    final backgroundAt = DateTime.fromMillisecondsSinceEpoch(int.parse(v));
+    final elapsed = DateTime.now().difference(backgroundAt);
+    return elapsed > sessionTimeoutNoPinDuration;
   }
 
   // ─── Bloqueo por inactividad ───────────────────────────────────────────────

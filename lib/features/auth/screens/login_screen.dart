@@ -36,7 +36,7 @@ class _LoginScreenState extends State<LoginScreen>
   bool _obscurePassword = true;
   String? _errorMessage;
   AuthErrorType _errorType = AuthErrorType.unknown;
-  String _appVersion = '1.0.3'; // fallback; se sobreescribe con PackageInfo
+  String _appVersion = '1.0.2'; // fallback; se sobreescribe con PackageInfo
   AudioPlayer? _audioPlayer;
 
   late final AnimationController _logoCtrl;
@@ -114,6 +114,77 @@ class _LoginScreenState extends State<LoginScreen>
     } catch (_) {}
   }
 
+  void _showVersionModal(String message) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => PopScope(
+        canPop: false,
+        child: AlertDialog(
+          backgroundColor: AppColors.cardBg(isDark),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          title: Row(
+            children: [
+              const Icon(Icons.system_update_rounded, color: AppColors.warning, size: 28),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  'Nueva version disponible',
+                  style: TextStyle(
+                    fontWeight: FontWeight.w800,
+                    color: AppColors.textPrimaryC(isDark),
+                    fontSize: 18,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Tu aplicacion necesita actualizarse para continuar usando COSSMIL.',
+                style: TextStyle(color: AppColors.textSecondaryC(isDark), height: 1.4),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Visita el sitio web oficial de COSSMIL y descarga la ultima version desde ahi.',
+                style: TextStyle(color: AppColors.textSecondaryC(isDark), height: 1.4),
+              ),
+            ],
+          ),
+          actionsAlignment: MainAxisAlignment.center,
+          actions: [
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.warning,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                ),
+                icon: const Icon(Icons.language_rounded, size: 18),
+                label: const Text(
+                  'Actualizar',
+                  style: TextStyle(fontWeight: FontWeight.w700),
+                ),
+                onPressed: () => launchUrl(
+                  Uri.parse('https://www.cossmil.mil.bo/#/'),
+                  mode: LaunchMode.externalApplication,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   @override
   void dispose() {
     _audioPlayer?.stop();
@@ -157,6 +228,20 @@ class _LoginScreenState extends State<LoginScreen>
 
     switch (result) {
       case AuthSuccess(:final token):
+        // Verificar version DESPUÉS del login porque el endpoint requiere Bearer token
+        try {
+          await ProgramacionService().verificarVersion();
+        } on VersionOutdatedException catch (e) {
+          if (!mounted) return;
+          setState(() => _isLoading = false);
+          // Borrar credenciales porque la app está desactualizada
+          await TokenStorage.deleteToken();
+          _showVersionModal(e.message);
+          return;
+        } catch (_) {
+          // Error de red: dejar pasar.
+        }
+
         if (!mounted) return;
 
         // Guardar credenciales cifradas para re-login silencioso en desbloqueo.

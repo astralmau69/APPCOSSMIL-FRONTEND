@@ -1,4 +1,6 @@
+import 'dart:convert';
 import 'package:flutter/foundation.dart';
+import 'package:http/http.dart' as http;
 import '../config/app_config.dart';
 import '../constants/api_constants.dart';
 import '../models/doctor_agenda_model.dart';
@@ -53,8 +55,7 @@ class ProgramacionService {
       // en vez de PackageInfo, que depende del APK compilado y puede quedar desfasada.
       final version = AppConfig.appVersion;
 
-      // ApiClient inyecta Bearer y refresca el token automáticamente en 401,
-      // por lo que el chequeo funciona también en splash con sesión restaurable.
+      // ApiClient inyecta Bearer y refresca el token automáticamente en 401
       final response = await _api.get(ApiConstants.verificaVersion(version));
 
       return switch (response) {

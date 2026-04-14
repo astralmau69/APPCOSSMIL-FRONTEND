@@ -248,10 +248,11 @@ class TabShellState extends State<TabShell>
 
     // Registrar el cambio de pestaña para que las notificaciones de calificación
     // puedan abrir Mis Reservas directamente desde la bandeja de notificaciones.
+    // Además, se muestra el aviso de horarios al iniciar sesión por primera vez.
     NotificationService.registerTabSwitcher(goToTab);
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      _offerBiometricSetupIfNeeded();
+      _showScheduleInfoModalIfNeeded();
     });
 
   }
@@ -606,9 +607,9 @@ class TabShellState extends State<TabShell>
       reservasRefreshNotifier.value++;
     }
 
-    // Al navegar al perfil, mostrar el aviso de horarios una vez por día.
+    // Al navegar al perfil, proponer configuración de biometría si aplica
     if (index == 4 && _currentIndex != 4) {
-      _showScheduleInfoModalIfNeeded();
+      _offerBiometricSetupIfNeeded();
     }
 
     setState(() => _currentIndex = index);
