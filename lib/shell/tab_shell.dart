@@ -664,11 +664,11 @@ class TabShellState extends State<TabShell>
       );
       _loaderOpen = true;
 
-      // 0. Pre-cargar grupo familiar para titulares si aún no está en sesión.
-      //    Necesario para que el selector de beneficiarios en RegionalScreen
-      //    tenga datos desde la primera vez.
+      // 0. Pre-cargar grupo familiar para titulares si aún no está en sesión,
+      //    o si solo hay el titular (el backend a veces omite la familia en el
+      //    token y el login guarda únicamente [selfAsFallback]).
       if (UserSession.currentUser.isTitular &&
-          UserSession.currentUser.beneficiaries.isEmpty) {
+          UserSession.currentUser.beneficiaries.length <= 1) {
         try {
           final idper = int.tryParse(UserSession.currentUser.id) ?? 0;
           final members = await _programacionService.getGrupoFamiliar(idper);

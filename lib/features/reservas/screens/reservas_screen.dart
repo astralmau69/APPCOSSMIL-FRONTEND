@@ -42,6 +42,13 @@ class _ReservasScreenState extends State<ReservasScreen> {
   static const _pageSize = 20;
 
   BeneficiaryModel? _selectedBeneficiary;
+
+  /// Caché local del grupo familiar. Se carga desde UserSession y se refresca
+  /// desde la API cuando solo hay el titular, igual que hace RegionalScreen.
+  /// Usar ESTO en lugar de UserSession.currentUser.beneficiaries directamente
+  /// para evitar la race condition que hace desaparecer el selector.
+  List<BeneficiaryModel> _beneficiaries = [];
+
   final List<String> _statusFilters = ['Todos', 'Completado', 'Falta', 'Cancelado'];
   String _activeStatusFilter = 'Todos';
   int _displayLimit = 10;
@@ -59,8 +66,11 @@ class _ReservasScreenState extends State<ReservasScreen> {
   @override
   void initState() {
     super.initState();
+    // Carga inicial del caché local — puede ser solo [titular] en este momento.
+    _beneficiaries = List.from(UserSession.currentUser.beneficiaries);
     _fetchReservas();
     _fetchHospitalNames();
+    _loadBeneficiaries(); // refresca en background si la lista aún está incompleta
     widget.refreshNotifier?.addListener(_onRefreshRequested);
   }
 
@@ -71,7 +81,42 @@ class _ReservasScreenState extends State<ReservasScreen> {
   }
 
   void _onRefreshRequested() {
+    _loadBeneficiaries();
     _fetchReservas();
+  }
+
+  /// Garantiza que `_beneficiaries` tenga el grupo familiar completo.
+  ///
+  /// Si la sesión ya tiene 2+ miembros, los usa directamente.
+  /// Si solo hay el titular (o la lista está vacía), va al API igual que
+  /// hace [_tryEnterBookingTab] en TabShell para el flujo de reserva.
+  Future<void> _loadBeneficiaries() async {
+    if (!UserSession.currentUser.isTitular) return;
+
+    final fromSession = UserSession.currentUser.beneficiaries;
+    if (fromSession.length > 1) {
+      if (mounted) setState(() => _beneficiaries = List.from(fromSession));
+      return;
+    }
+
+    // Solo titular o vacío → pedir al API
+    try {
+      final idper = int.tryParse(UserSession.currentUser.id) ?? 0;
+      if (idper == 0) return;
+      final fresh = await _service.getGrupoFamiliar(idper);
+      if (!mounted) return;
+      if (fresh.isNotEmpty) {
+        // Actualizar sesión global y caché local
+        UserSession.currentUser = UserSession.currentUser.copyWith(beneficiaries: fresh);
+        setState(() => _beneficiaries = List.from(fresh));
+      } else if (fromSession.isNotEmpty) {
+        setState(() => _beneficiaries = List.from(fromSession));
+      }
+    } catch (_) {
+      if (fromSession.isNotEmpty && mounted) {
+        setState(() => _beneficiaries = List.from(fromSession));
+      }
+    }
   }
 
   Future<void> _fetchReservas({bool loadMore = false}) async {
@@ -159,7 +204,7 @@ class _ReservasScreenState extends State<ReservasScreen> {
   Future<void> _onChangeBeneficiary() async {
     final selected = await BeneficiarySelectorModal.show(
       context: context,
-      beneficiaries: UserSession.currentUser.beneficiaries,
+      beneficiaries: _beneficiaries,
       currentId: _selectedBeneficiary?.id,
     );
     if (selected != null && mounted) {
@@ -338,7 +383,7 @@ class _ReservasScreenState extends State<ReservasScreen> {
               ),
               CupertinoSliverRefreshControl(onRefresh: () async { _fetchReservas(); }),
 
-              if (UserSession.currentUser.isTitular && UserSession.currentUser.beneficiaries.length > 1)
+              if (UserSession.currentUser.isTitular && _beneficiaries.length > 1)
                 SliverToBoxAdapter(
                   child: Padding(
                     padding: EdgeInsets.fromLTRB(r.paddingH, r.spaceSm, r.paddingH, 0),
@@ -1317,7 +1362,7 @@ class _ReservasScreenState extends State<ReservasScreen> {
   Widget _emptyState(BuildContext context, bool isDark) {
     final r = context.r;
     final isTitularWithGroup = UserSession.currentUser.isTitular &&
-        UserSession.currentUser.beneficiaries.length > 1;
+        _beneficiaries.length > 1;
 
     // Nombre del beneficiario seleccionado (o del titular si no hay selección).
     final emptyLabel = _selectedBeneficiary != null && !_selectedBeneficiary!.isTitular

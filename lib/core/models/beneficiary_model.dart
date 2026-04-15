@@ -120,7 +120,7 @@ class BeneficiaryModel {
   /// `true` si el beneficiario está habilitado para atención médica (atencion == "S").
   bool get isAtencionEnabled => atencion != 'N';
 
-  /// Grado efectivo para mostrar en UI:
+  /// Grado efectivo para lógica interna (valor crudo del backend).
   /// - Titulares: usa `grado` del campo propio; si está vacío, usa `_titularRankFallback`.
   /// - Beneficiarios: siempre vacío (no tienen rango militar propio).
   String get effectiveGrado {
@@ -128,6 +128,9 @@ class BeneficiaryModel {
     if (grado.isNotEmpty) return grado;
     return _titularRankFallback;
   }
+
+  /// Grado con primera letra en mayúscula por palabra, para mostrar en UI.
+  String get displayGrado => effectiveGrado.toDisplayCase;
 
   /// Infiere género a partir del parentesco si no viene explícito del backend.
   ///
@@ -140,4 +143,8 @@ class BeneficiaryModel {
     if (rel.contains('ESPOSO') || rel.contains('HIJO') || rel.contains('PADRE')) return 'MASCULINO';
     return '';
   }
+
+  /// Género con primera letra en mayúscula, para mostrar en UI.
+  /// Mantiene [effectiveGender] en ALLCAPS para comparaciones internas.
+  String get displayGender => effectiveGender.toDisplayCase;
 }

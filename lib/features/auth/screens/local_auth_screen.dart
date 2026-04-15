@@ -38,6 +38,11 @@ class _LocalAuthScreenState extends State<LocalAuthScreen>
   bool _isVerifying = false;
   bool _isLoadingHome = false;
 
+  // true mientras se carga; evita flash del keypad antes de saber si hay PIN.
+  bool _hasPin = true;
+  // true cuando biometría falla/cancela en modo sin-PIN → mostrar botón de login.
+  bool _biometricFailed = false;
+
   // Nombre del usuario real desde SecurityService
   String _displayName = '';
   // Foto real recuperada en la sesión
@@ -74,25 +79,27 @@ class _LocalAuthScreenState extends State<LocalAuthScreen>
   }
 
   Future<void> _init() async {
-    // Carga en paralelo: nombre, biometría y cooldown actual
+    // Carga en paralelo: nombre, biometría, cooldown y si hay PIN configurado.
     final results = await Future.wait([
       SecurityService.getDisplayName(),
       SecurityService.isBiometricsEnabled(),
       SecurityService.cooldownRemaining(),
+      SecurityService.hasPin(),
     ]);
 
     if (!mounted) return;
 
-    final name = results[0] as String?;
+    final name       = results[0] as String?;
     final bioEnabled = results[1] as bool;
-    final cooldown = results[2] as Duration?;
+    final cooldown   = results[2] as Duration?;
+    final hasPinRes  = results[3] as bool;
 
     setState(() {
-      _displayName = name ?? '';
+      _displayName       = name ?? '';
       _isBiometricEnabled = bioEnabled;
       _cooldownRemaining = cooldown;
-      // Foto real (ya restaurada por SessionRestoreService)
-      _photoBase64 = UserSession.currentUser.photoBase64;
+      _photoBase64       = UserSession.currentUser.photoBase64;
+      _hasPin            = hasPinRes;
     });
 
     if (cooldown != null) {
@@ -127,11 +134,17 @@ class _LocalAuthScreenState extends State<LocalAuthScreen>
   bool _biometricInProgress = false;
 
   Future<void> _tryBiometrics() async {
-    if (_biometricInProgress) return; // guard against infinite loop
+    if (_biometricInProgress) return;
     _biometricInProgress = true;
+    if (mounted) setState(() => _biometricFailed = false);
     try {
       final authenticated = await SecurityService.authenticateWithBiometrics();
-      if (authenticated && mounted) _onSuccess();
+      if (authenticated && mounted) {
+        _onSuccess();
+      } else if (!_hasPin && mounted) {
+        // Sin PIN: mostrar botón de fallback a login con contraseña.
+        setState(() => _biometricFailed = true);
+      }
     } finally {
       _biometricInProgress = false;
     }
@@ -307,6 +320,9 @@ class _LocalAuthScreenState extends State<LocalAuthScreen>
       );
     }
 
+    // ── Sin PIN: pantalla de solo biometría ─────────────────────────────────
+    if (!_hasPin) return _buildBiometricOnlyScreen(isDark, r);
+
     return Scaffold(
       backgroundColor: Colors.transparent,
       body: AnimatedGradientBackground(
@@ -446,6 +462,131 @@ class _LocalAuthScreenState extends State<LocalAuthScreen>
           ],
         ),
       ),
+      ),
+    );
+  }
+
+  // ─── Pantalla de solo biometría (sin PIN configurado) ─────────────────────
+
+  Widget _buildBiometricOnlyScreen(bool isDark, AppResponsive r) {
+    return Scaffold(
+      backgroundColor: Colors.transparent,
+      body: AnimatedGradientBackground(
+        isDark: isDark,
+        child: SafeArea(
+          child: Column(
+            children: [
+              const Spacer(flex: 2),
+              FadeSlideIn(
+                child: Column(
+                  children: [
+                    _buildAvatar(isDark),
+                    SizedBox(height: r.spaceLg),
+                    Text(
+                      _displayName.isNotEmpty
+                          ? 'Bienvenido de vuelta'
+                          : 'Autenticación requerida',
+                      style: context.texts.bodyMedium.copyWith(
+                        color: AppColors.textSecondaryC(isDark),
+                      ),
+                    ),
+                    if (_displayName.isNotEmpty) ...[
+                      SizedBox(height: r.spaceXs),
+                      Padding(
+                        padding: EdgeInsets.symmetric(horizontal: r.paddingH),
+                        child: Text(
+                          _displayName,
+                          style: context.texts.titleLarge.copyWith(
+                            fontWeight: FontWeight.w700,
+                            color: isDark ? AppColors.accentForTheme(isDark) : null,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          textAlign: TextAlign.center,
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+              const Spacer(),
+              // Botón biométrico central
+              OptimizedPressButton(
+                onTap: _biometricInProgress ? null : _tryBiometrics,
+                child: Container(
+                  width: r.pinKeySize * 1.8,
+                  height: r.pinKeySize * 1.8,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: AppColors.primary.withValues(alpha: 0.1),
+                    border: Border.all(
+                      color: AppColors.primary.withValues(alpha: 0.25),
+                      width: 2,
+                    ),
+                  ),
+                  child: Icon(
+                    Icons.fingerprint,
+                    size: r.pinKeySize * 0.9,
+                    color: AppColors.primary,
+                  ),
+                ),
+              ),
+              SizedBox(height: r.spaceMd),
+              Text(
+                'Toca para autenticarte',
+                style: context.texts.bodySmall.copyWith(
+                  color: AppColors.textTertiaryC(isDark),
+                ),
+              ),
+              // Fallback: aparece cuando biometría falla o el usuario cancela
+              AnimatedSwitcher(
+                duration: const Duration(milliseconds: 250),
+                child: _biometricFailed
+                    ? Padding(
+                        key: const ValueKey('fallback'),
+                        padding: EdgeInsets.symmetric(horizontal: r.paddingH),
+                        child: Column(
+                          children: [
+                            SizedBox(height: r.spaceLg),
+                            Text(
+                              'No se pudo verificar tu identidad.\nPuedes intentarlo de nuevo o ingresar con tus credenciales.',
+                              textAlign: TextAlign.center,
+                              style: context.texts.bodySmall.copyWith(
+                                color: AppColors.textSecondaryC(isDark),
+                                height: 1.4,
+                              ),
+                            ),
+                            CupertinoButton(
+                              onPressed: () =>
+                                  Navigator.pushReplacementNamed(context, '/login'),
+                              child: Text(
+                                'Iniciar sesión con contraseña',
+                                style: context.texts.bodyMedium.copyWith(
+                                  color: AppColors.primary,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      )
+                    : const SizedBox(key: ValueKey('empty')),
+              ),
+              const Spacer(),
+              CupertinoButton(
+                onPressed: _onExitApp,
+                child: Text(
+                  'Salir',
+                  style: context.texts.bodyMedium.copyWith(
+                    color: AppColors.textSecondaryC(isDark),
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+              SizedBox(height: r.spaceMd),
+            ],
+          ),
+        ),
       ),
     );
   }

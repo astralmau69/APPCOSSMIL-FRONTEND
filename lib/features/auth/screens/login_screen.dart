@@ -14,6 +14,7 @@ import '../../../core/theme/theme_manager.dart';
 import '../../../core/storage/token_storage.dart';
 import '../../../core/services/auth_service.dart';
 import '../../../core/services/programacion_service.dart';
+import '../../../core/services/security_service.dart';
 import '../../../core/services/session_restore_service.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -246,6 +247,16 @@ class _LoginScreenState extends State<LoginScreen>
 
         // Guardar credenciales cifradas para re-login silencioso en desbloqueo.
         await SessionRestoreService.storeCredentials(username, password);
+
+        if (!mounted) return;
+
+        // Habilitar biometría automáticamente si el dispositivo la soporta.
+        // Esto permite que en el próximo arranque se ofrezca desbloqueo biométrico
+        // sin que el usuario tenga que configurar un PIN.
+        final bioStatus = await SecurityService.getDeviceBiometricStatus();
+        if (bioStatus == DeviceBiometricStatus.available) {
+          await SecurityService.setBiometricsEnabled(true);
+        }
 
         if (!mounted) return;
 

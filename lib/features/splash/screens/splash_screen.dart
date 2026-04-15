@@ -588,11 +588,22 @@ class _SplashScreenState extends State<SplashScreen>
           if (hasPin) {
             Navigator.pushReplacementNamed(context, '/local-auth');
           } else {
-            await NotificationService.cancelAllReminders();
-            await TokenStorage.deleteToken();
-            await SessionRestoreService.clearUserSession();
+            // Sin PIN: intentar desbloqueo biométrico si está habilitado y disponible.
+            // Se activa automáticamente cuando el usuario inicia sesión con credenciales
+            // en un dispositivo con huella o Face ID registrado.
+            final bioEnabled = await SecurityService.isBiometricsEnabled();
+            final bioAvailable = await SecurityService.canCheckBiometrics();
             if (!mounted) return;
-            Navigator.pushReplacementNamed(context, '/login');
+            if (bioEnabled && bioAvailable) {
+              Navigator.pushReplacementNamed(context, '/local-auth');
+            } else {
+              // Sin biometría disponible: limpiar sesión y solicitar credenciales.
+              await NotificationService.cancelAllReminders();
+              await TokenStorage.deleteToken();
+              await SessionRestoreService.clearUserSession();
+              if (!mounted) return;
+              Navigator.pushReplacementNamed(context, '/login');
+            }
           }
 
         } else {

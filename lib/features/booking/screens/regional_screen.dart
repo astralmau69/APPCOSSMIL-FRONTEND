@@ -439,9 +439,10 @@ class _RegionalScreenState extends State<RegionalScreen> {
         ? UserSession.currentUser.beneficiaries
         : _beneficiaries;
 
-    // 2. Si sigue vacío (race condition: _fetchData corrió antes de que
-    //    _tryEnterBookingTab cargara el grupo familiar), ir al API.
-    if (bens.isEmpty && UserSession.currentUser.isTitular) {
+    // 2. Si solo hay el titular (o vacío), ir al API para obtener la familia.
+    //    Cubre la race condition donde _fetchData corrió antes que _tryEnterBookingTab,
+    //    y también el caso donde el backend omitió la familia en el token de login.
+    if (bens.length <= 1 && UserSession.currentUser.isTitular) {
       bool loaderOpen = false;
       showCupertinoDialog<void>(
         context: context,
