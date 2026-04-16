@@ -59,19 +59,26 @@ class _PerfilScreenState extends State<PerfilScreen> {
   }
 
   Future<void> _loadSecurityStatus() async {
-    final results = await Future.wait([
-      SecurityService.hasPin(),
-      SecurityService.isBiometricsEnabled(),
-      SecurityService.getDeviceBiometricStatus(),
-      SecurityService.getBiometricLabel(),
-    ]);
-    if (mounted) {
+    // try-catch obligatorio: local_auth puede lanzar en Android < API 23
+    // o en dispositivos sin soporte biométrico correcto. Sin esto la app
+    // crashea al entrar a Perfil en dispositivos viejos.
+    try {
+      final results = await Future.wait([
+        SecurityService.hasPin(),
+        SecurityService.isBiometricsEnabled(),
+        SecurityService.getDeviceBiometricStatus(),
+        SecurityService.getBiometricLabel(),
+      ]);
+      if (!mounted) return;
       setState(() {
         _hasPin = results[0] as bool;
         _isBiometricEnabled = results[1] as bool;
         _bioStatus = results[2] as DeviceBiometricStatus;
         _bioLabel = results[3] as String;
       });
+    } catch (_) {
+      // Valores por defecto ya están asignados en la declaración del estado.
+      // En dispositivos incompatibles simplemente no se muestra la sección biométrica.
     }
   }
 

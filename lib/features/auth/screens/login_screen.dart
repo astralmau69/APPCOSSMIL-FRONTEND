@@ -56,7 +56,8 @@ class _LoginScreenState extends State<LoginScreen>
       duration: const Duration(milliseconds: 1500),
     );
 
-    // Animación continua de flotación
+    // Animación continua de flotación — se pausa cuando el teclado abre
+    // para liberar GPU en dispositivos antiguos.
     _floatCtrl = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 2500),
@@ -93,6 +94,10 @@ class _LoginScreenState extends State<LoginScreen>
       ),
     );
 
+    // Pausar flotación al abrir teclado — libera GPU en dispositivos viejos.
+    _usernameFocus.addListener(_onFocusChanged);
+    _passwordFocus.addListener(_onFocusChanged);
+
     Future.delayed(const Duration(milliseconds: 200), () {
       if (mounted) {
         _logoCtrl.forward();
@@ -103,16 +108,27 @@ class _LoginScreenState extends State<LoginScreen>
 
     PackageInfo.fromPlatform().then((info) {
       if (mounted) setState(() => _appVersion = info.version);
+    }).catchError((_) {}); // old devices can throw here
+  }
+
+  /// Pausa la animación de flotación cuando el teclado está activo y la reanuda
+  /// al cerrar, reduciendo la carga de GPU en dispositivos de gama baja.
+  /// Se difiere con addPostFrameCallback para evitar mutaciones mid-frame
+  /// que en Android antiguo causan el bucle de foco abierto/cerrado.
+  void _onFocusChanged() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      if (_usernameFocus.hasFocus || _passwordFocus.hasFocus) {
+        if (_floatCtrl.isAnimating) _floatCtrl.stop();
+      } else {
+        if (!_floatCtrl.isAnimating) _floatCtrl.repeat(reverse: true);
+      }
     });
   }
 
 
   Future<void> _playLoginAudio() async {
-    if (!SoundManager.isEnabled) return;
-    try {
-      _audioPlayer = AudioPlayer();
-      await _audioPlayer!.play(AssetSource('vof/AUDIO 2. LOGIN.mp3'));
-    } catch (_) {}
+    _audioPlayer = await SoundManager.playIfAllowed('vof/AUDIO 2. LOGIN.mp3');
   }
 
   void _showVersionModal(String message) {
@@ -188,12 +204,17 @@ class _LoginScreenState extends State<LoginScreen>
 
   @override
   void dispose() {
+    _usernameFocus.removeListener(_onFocusChanged);
+    _passwordFocus.removeListener(_onFocusChanged);
     _audioPlayer?.stop();
     _audioPlayer?.dispose();
     _logoCtrl.dispose();
     _floatCtrl.dispose();
     _usernameController.dispose();
     _passwordController.dispose();
+    _usernameFocus.dispose();
+    _passwordFocus.dispose();
+    _scrollController.dispose();
     super.dispose();
   }
 
@@ -283,14 +304,8 @@ class _LoginScreenState extends State<LoginScreen>
     final r = context.r;
     final texts = context.texts;
 
-    // Reproducir audio de advertencia de seguridad
-    AudioPlayer? warningPlayer;
-    if (SoundManager.isEnabled) {
-      try {
-        warningPlayer = AudioPlayer();
-        await warningPlayer.play(AssetSource('vof/AUDIO 3. ADVERTENCIA DE SEGURIDAD.mp3'));
-      } catch (_) {}
-    }
+    // Reproducir audio de advertencia de seguridad (respeta modo silencio/vibración)
+    final warningPlayer = await SoundManager.playIfAllowed('vof/AUDIO 3. ADVERTENCIA DE SEGURIDAD.mp3');
 
     if (!mounted) return;
     await showGeneralDialog(
@@ -462,19 +477,22 @@ class _LoginScreenState extends State<LoginScreen>
                               mainAxisSize: MainAxisSize.min,
                               crossAxisAlignment: CrossAxisAlignment.stretch,
                               children: [
-                          // Logo — más pequeño cuando el teclado está visible
+                          // Logo — RepaintBoundary aísla sus repaints del resto
+                          // del árbol, reduciendo la carga en GPU de gama baja.
                           Center(
-                            child: FadeTransition(
-                              opacity: _logoFade,
-                              child: ScaleTransition(
-                                scale: _logoScale,
-                                child: RotationTransition(
-                                  turns: _logoRotate,
-                                  child: SlideTransition(
-                                    position: _logoFloat,
-                                    child: _buildLogo(
-                                      keyboardVisible ? logoSize * 0.65 : logoSize,
-                                      isDark,
+                            child: RepaintBoundary(
+                              child: FadeTransition(
+                                opacity: _logoFade,
+                                child: ScaleTransition(
+                                  scale: _logoScale,
+                                  child: RotationTransition(
+                                    turns: _logoRotate,
+                                    child: SlideTransition(
+                                      position: _logoFloat,
+                                      child: _buildLogo(
+                                        keyboardVisible ? logoSize * 0.65 : logoSize,
+                                        isDark,
+                                      ),
                                     ),
                                   ),
                                 ),
@@ -634,14 +652,9 @@ class _LoginScreenState extends State<LoginScreen>
           isDark: isDark,
           focusNode: _usernameFocus,
           textCapitalization: TextCapitalization.characters,
-          onChanged: (val) {
-            if (val != val.toUpperCase()) {
-              _usernameController.value = _usernameController.value.copyWith(
-                text: val.toUpperCase(),
-                selection: _usernameController.selection,
-              );
-            }
-          },
+          // TextInputFormatter es seguro en todos los Android —
+          // evita el setState reentrante que crashea en dispositivos viejos.
+          inputFormatters: [_UpperCaseFormatter()],
         ),
         SizedBox(height: r.spaceMd),
         _buildModernInputField(
@@ -681,10 +694,17 @@ class _LoginScreenState extends State<LoginScreen>
     FocusNode? focusNode,
     TextCapitalization textCapitalization = TextCapitalization.none,
     ValueChanged<String>? onChanged,
+    List<TextInputFormatter>? inputFormatters,
   }) {
     final r = context.r;
     final texts = context.texts;
-    return Container(
+    // GestureDetector.opaque amplía el área de toque al container completo
+    // (label + padding + field), evitando que en Android antiguo el teclado
+    // no abra por pegar fuera del área mínima del CupertinoTextField.
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: () => focusNode?.requestFocus(),
+      child: Container(
       decoration: BoxDecoration(
         color: isDark ? AppColors.darkCard : const Color(0xFFF8F9FB),
         borderRadius: BorderRadius.circular(r.inputRadius),
@@ -717,6 +737,7 @@ class _LoginScreenState extends State<LoginScreen>
                   enabled: !_isLoading,
                   textCapitalization: textCapitalization,
                   onChanged: onChanged,
+                  inputFormatters: inputFormatters,
                   padding: EdgeInsets.zero,
                   decoration: null,
                   placeholder: placeholder,
@@ -739,7 +760,8 @@ class _LoginScreenState extends State<LoginScreen>
           ],
         ],
       ),
-    );
+    ), // Container
+    ); // GestureDetector
   }
 
   Widget _buildErrorBanner() {
@@ -1013,6 +1035,25 @@ class _LoginScreenState extends State<LoginScreen>
       ),
     );
   }
+}
 
-
+/// Convierte el texto a mayúsculas de forma segura en todos los Android.
+/// Usa el API oficial de TextInputFormatter — evita el setState reentrante
+/// que causaba crashes en dispositivos con Android < 8 al abrir el teclado.
+class _UpperCaseFormatter extends TextInputFormatter {
+  @override
+  TextEditingValue formatEditUpdate(
+    TextEditingValue oldValue,
+    TextEditingValue newValue,
+  ) {
+    final upper = newValue.text.toUpperCase();
+    if (upper == newValue.text) return newValue;
+    return newValue.copyWith(
+      text: upper,
+      selection: newValue.selection.copyWith(
+        baseOffset: newValue.selection.baseOffset.clamp(0, upper.length),
+        extentOffset: newValue.selection.extentOffset.clamp(0, upper.length),
+      ),
+    );
+  }
 }

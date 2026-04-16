@@ -159,7 +159,8 @@ class ContactosScreen extends StatefulWidget {
 }
 
 class _ContactosScreenState extends State<ContactosScreen> {
-  final Set<String> _expanded = {};
+  // 'dntic' empieza expandido por defecto
+  final Set<String> _expanded = {'dntic'};
 
   void _toggle(String key) {
     setState(() {
@@ -224,10 +225,20 @@ class _ContactosScreenState extends State<ContactosScreen> {
                 ),
                 SizedBox(height: context.r.spaceLg),
 
+                // ── Soporte DNTIC — primero, colapsable ───────────
+                FadeSlideIn(
+                  delay: const Duration(milliseconds: 140),
+                  child: _DnticSupportCard(
+                    isExpanded: _expanded.contains('dntic'),
+                    onToggle: () => _toggle('dntic'),
+                  ),
+                ),
+                SizedBox(height: context.r.spaceSm),
+
                 // ── Collapsible groups ─────────────────────────────
                 for (int i = 0; i < _contactGroups.length; i++) ...[
                   FadeSlideIn(
-                    delay: Duration(milliseconds: 160 + i * 60),
+                    delay: Duration(milliseconds: 200 + i * 60),
                     child: _CollapsibleGroup(
                       group: _contactGroups[i],
                       isExpanded: _expanded.contains(_contactGroups[i].key),
@@ -591,6 +602,311 @@ class _ActionButton extends StatelessWidget {
         ),
         child: Icon(icon, size: r.iconSm, color: color),
       ),
+    );
+  }
+}
+
+// ── DNTIC Support Card ──────────────────────────────────────────────────────
+
+/// Tarjeta de soporte técnico de la DNTIC.
+/// Colapsable — misma mecánica que _CollapsibleGroup.
+/// Empieza expandida (ver _ContactosScreenState._expanded).
+class _DnticSupportCard extends StatelessWidget {
+  static const String _phone = '22248745';
+  static const Color _accent = Color(0xFF1D4ED8); // blue-700
+  static const Color _accentLight = Color(0xFF3B82F6); // blue-500
+
+  final bool isExpanded;
+  final VoidCallback onToggle;
+
+  const _DnticSupportCard({
+    required this.isExpanded,
+    required this.onToggle,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final r = context.r;
+
+    return Container(
+      decoration: BoxDecoration(
+        color: AppColors.cardBg(isDark),
+        borderRadius: BorderRadius.circular(AppTheme.radiusXl),
+        boxShadow: AppColors.cardShadowFor(isDark),
+        border: Border.all(
+          color: isExpanded
+              ? _accent.withValues(alpha: 0.30)
+              : AppColors.cardBorder(isDark),
+          width: isExpanded ? 1.5 : 0.5,
+        ),
+      ),
+      child: Column(
+        children: [
+          // ── Header — siempre visible, toca para colapsar ──────
+          GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onTap: onToggle,
+            child: Padding(
+              padding: EdgeInsets.symmetric(
+                  horizontal: r.cardPadding, vertical: r.spaceMd),
+              child: Row(
+                children: [
+                  // Ícono con degradado azul
+                  Container(
+                    width: r.listAvatarSize,
+                    height: r.listAvatarSize,
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [_accent, _accentLight],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
+                      borderRadius: BorderRadius.circular(r.radiusMd),
+                      boxShadow: isExpanded
+                          ? [
+                              BoxShadow(
+                                color: _accent.withValues(alpha: 0.35),
+                                blurRadius: 8,
+                                offset: const Offset(0, 3),
+                              ),
+                            ]
+                          : null,
+                    ),
+                    child: Icon(
+                      Icons.support_agent_rounded,
+                      size: r.iconMd,
+                      color: AppColors.white,
+                    ),
+                  ),
+                  SizedBox(width: r.spaceMd),
+
+                  // Título + hint
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Soporte DNTIC',
+                          style: context.texts.titleMedium.copyWith(
+                            fontWeight: FontWeight.w800,
+                            color: AppColors.textPrimaryC(isDark),
+                            letterSpacing: -0.3,
+                          ),
+                        ),
+                        SizedBox(height: 2),
+                        Text(
+                          isExpanded
+                              ? 'Toca para cerrar'
+                              : 'Soporte técnico de la app',
+                          style: context.texts.bodySmall.copyWith(
+                            fontWeight: FontWeight.w500,
+                            color: AppColors.textTertiaryC(isDark),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+
+                  // Badge "1 contacto" cuando está cerrado
+                  if (!isExpanded)
+                    Container(
+                      padding: EdgeInsets.symmetric(
+                          horizontal: r.chipPaddingH, vertical: r.chipPaddingV),
+                      decoration: BoxDecoration(
+                        color: _accent.withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(r.chipRadius),
+                      ),
+                      child: Text(
+                        '1',
+                        style: context.texts.bodyMedium.copyWith(
+                          fontWeight: FontWeight.w800,
+                          color: _accent,
+                        ),
+                      ),
+                    ),
+                  SizedBox(width: r.spaceSm),
+
+                  // Chevron animado
+                  AnimatedRotation(
+                    turns: isExpanded ? 0.5 : 0,
+                    duration: const Duration(milliseconds: 250),
+                    curve: Curves.easeInOut,
+                    child: Icon(
+                      CupertinoIcons.chevron_down,
+                      size: 16,
+                      color: isExpanded
+                          ? _accent
+                          : AppColors.textTertiaryC(isDark),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+
+          // ── Contenido expandible ──────────────────────────────
+          AnimatedCrossFade(
+            firstChild: const SizedBox.shrink(),
+            secondChild: _DnticContent(accent: _accent, phone: _phone),
+            crossFadeState: isExpanded
+                ? CrossFadeState.showSecond
+                : CrossFadeState.showFirst,
+            duration: const Duration(milliseconds: 280),
+            sizeCurve: Curves.easeInOut,
+            firstCurve: Curves.easeIn,
+            secondCurve: Curves.easeOut,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Contenido interior de la tarjeta DNTIC (descripción, horario, teléfono, CTA).
+class _DnticContent extends StatelessWidget {
+  final Color accent;
+  final String phone;
+  const _DnticContent({required this.accent, required this.phone});
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final r = context.r;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Divider superior
+        Container(
+          height: 0.5,
+          color: accent.withValues(alpha: 0.20),
+        ),
+
+        Padding(
+          padding: EdgeInsets.fromLTRB(
+              r.cardPadding, r.spaceMd, r.cardPadding, r.spaceMd),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Badge SOPORTE TÉCNICO
+              Container(
+                padding:
+                    EdgeInsets.symmetric(horizontal: r.spaceSm, vertical: 2),
+                decoration: BoxDecoration(
+                  color: accent.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(r.radiusSm),
+                ),
+                child: Text(
+                  'SOPORTE TÉCNICO',
+                  style: context.texts.labelSmall.copyWith(
+                    fontWeight: FontWeight.w800,
+                    color: accent,
+                    letterSpacing: 0.8,
+                  ),
+                ),
+              ),
+              SizedBox(height: r.spaceSm),
+
+              // Descripción
+              Text(
+                '¿Problemas con la app o tienes una consulta técnica? '
+                'Comunícate con la DNTIC — estamos aquí para ayudarte.',
+                style: context.texts.bodyMedium.copyWith(
+                  color: AppColors.textSecondaryC(isDark),
+                  height: 1.45,
+                ),
+              ),
+              SizedBox(height: r.spaceSm),
+
+              // Horario
+              Row(
+                children: [
+                  Icon(Icons.access_time_rounded,
+                      size: r.iconSm, color: accent),
+                  SizedBox(width: r.spaceXs),
+                  Text(
+                    'Atención: Lun–Vie  08:30 – 16:30',
+                    style: context.texts.bodySmall.copyWith(
+                      fontWeight: FontWeight.w600,
+                      color: accent,
+                    ),
+                  ),
+                ],
+              ),
+              SizedBox(height: r.spaceMd),
+
+              // Fila número + botones
+              Row(
+                children: [
+                  Container(
+                    width: r.contactRowIconSize,
+                    height: r.contactRowIconSize,
+                    decoration: BoxDecoration(
+                      color: accent.withValues(alpha: 0.10),
+                      borderRadius: BorderRadius.circular(r.radiusMd),
+                    ),
+                    child: Icon(Icons.phone_rounded,
+                        size: r.iconSm, color: accent),
+                  ),
+                  SizedBox(width: r.spaceSm),
+                  Expanded(
+                    child: Text(
+                      phone,
+                      style: context.texts.titleLarge.copyWith(
+                        fontWeight: FontWeight.w900,
+                        color: accent,
+                        letterSpacing: 1.2,
+                      ),
+                    ),
+                  ),
+                  _ActionButton(
+                    icon: CupertinoIcons.doc_on_clipboard,
+                    color: AppColors.textSecondaryC(isDark),
+                    onTap: () =>
+                        _ContactosScreenState._copyPhone(context, phone),
+                  ),
+                  SizedBox(width: r.spaceXs),
+                  _ActionButton(
+                    icon: CupertinoIcons.phone_fill,
+                    color: accent,
+                    onTap: () =>
+                        _ContactosScreenState._makePhoneCall(phone),
+                  ),
+                ],
+              ),
+              SizedBox(height: r.spaceMd),
+
+              // CTA principal
+              SizedBox(
+                width: double.infinity,
+                child: CupertinoButton(
+                  padding: EdgeInsets.symmetric(vertical: r.spaceMd),
+                  color: accent,
+                  borderRadius: BorderRadius.circular(r.radiusMd),
+                  onPressed: () =>
+                      _ContactosScreenState._makePhoneCall(phone),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Icon(Icons.phone_rounded,
+                          size: 20, color: AppColors.white),
+                      SizedBox(width: r.spaceSm),
+                      Text(
+                        'Llamar al soporte',
+                        style: context.texts.bodyLarge.copyWith(
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.white,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
     );
   }
 }

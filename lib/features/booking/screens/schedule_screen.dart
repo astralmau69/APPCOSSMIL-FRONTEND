@@ -112,8 +112,36 @@ class _ScheduleScreenState extends State<ScheduleScreen>
     } catch (_) {}
   }
 
-  List<TimeSlotModel> get _availableSlots =>
-      _slots.where((s) => s.isAvailable && s.statusLevel != 'none').toList();
+  /// Turnos disponibles, filtrando los pasados cuando la reserva es para hoy.
+  ///
+  /// Si el usuario eligió la fecha de HOY, solo muestra turnos cuya hora sea
+  /// estrictamente posterior a la hora actual del dispositivo.
+  List<TimeSlotModel> get _availableSlots {
+    final base = _slots
+        .where((s) => s.isAvailable && s.statusLevel != 'none')
+        .toList();
+
+    final selectedDate = widget.tabShell.bookingState.selectedDate ?? '';
+    final today = DateFormat('yyyy-MM-dd').format(DateTime.now());
+
+    if (selectedDate != today) return base;
+
+    // Es reserva para hoy — ocultar turnos cuya hora ya pasó.
+    final now = DateTime.now();
+    return base.where((slot) {
+      try {
+        final parts = slot.time.split(':');
+        if (parts.length < 2) return true;
+        final slotH = int.parse(parts[0]);
+        final slotM = int.parse(parts[1]);
+        // Incluir solo si el turno empieza DESPUÉS del minuto actual.
+        return slotH > now.hour ||
+            (slotH == now.hour && slotM > now.minute);
+      } catch (_) {
+        return true; // Si no se puede parsear la hora, incluir el turno.
+      }
+    }).toList();
+  }
 
   Future<void> _onSlotSelected(TimeSlotModel slot) async {
     final bs = widget.tabShell.bookingState;
@@ -326,9 +354,7 @@ class _ScheduleScreenState extends State<ScheduleScreen>
                   ),
                   SizedBox(height: context.r.spaceSm),
                   Text(
-                    'Por el momento no hay fichas disponibles para '
-                    '${widget.tabShell.bookingState.specialty?.name ?? "esta especialidad"}. '
-                    'Intenta nuevamente pasando las 24 horas o selecciona otro médico.',
+                    _buildEmptyMessage(),
                     textAlign: TextAlign.center,
                     style: context.texts.bodyMedium.copyWith(
                       color: AppColors.textSecondaryC(isDark),
@@ -433,25 +459,6 @@ class _ScheduleScreenState extends State<ScheduleScreen>
                       ),
                     ),
                   ],
-                ),
-              ),
-            ],
-          ),
-          SizedBox(height: context.r.spaceMd),
-          Container(height: 0.5, color: AppColors.dividerC(isDark)),
-          SizedBox(height: context.r.spaceSm),
-          Row(
-            children: [
-              const Icon(Icons.info, size: 16, color: AppColors.info),
-              SizedBox(width: context.r.spaceSm),
-              Expanded(
-                child: Text(
-                  'Las reservas por app son para el siguiente día hábil. A partir de las 00:03 AM se habilita el día siguiente.',
-                  style: TextStyle(
-                    color: AppColors.textSecondaryC(isDark),
-                    height: 1.3,
-                    fontWeight: FontWeight.w500,
-                  ),
                 ),
               ),
             ],
@@ -606,6 +613,21 @@ class _ScheduleScreenState extends State<ScheduleScreen>
         ),
       ),
     );
+  }
+
+  /// Mensaje de vacío adaptado: si la reserva es para hoy y todos los turnos
+  /// restantes son pasados, indica que se agotaron los horarios de hoy.
+  String _buildEmptyMessage() {
+    final selectedDate = widget.tabShell.bookingState.selectedDate ?? '';
+    final today = DateFormat('yyyy-MM-dd').format(DateTime.now());
+    final specialty = widget.tabShell.bookingState.specialty?.name ?? 'esta especialidad';
+
+    if (selectedDate == today) {
+      return 'No quedan turnos disponibles para hoy en $specialty. '
+          'Selecciona otro médico o elige una fecha diferente.';
+    }
+    return 'Por el momento no hay fichas disponibles para $specialty. '
+        'Selecciona otro médico o elige otra fecha.';
   }
 
   Widget _buildTimeGrid(BuildContext context, bool isDark) {

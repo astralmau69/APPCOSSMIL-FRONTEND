@@ -37,6 +37,9 @@ class FloatingNavBar extends StatelessWidget {
         isDark ? AppColors.darkTextSecondary : Colors.black.withValues(alpha: 0.5);
 
     final activeColor = isDark ? const Color(0xFF5BA3E6) : Colors.black;
+    // Azul institucional para el ítem Inicio
+    final homeActiveColor =
+        isDark ? const Color(0xFF60A5FA) : const Color(0xFF2563EB);
 
     final shadowColor = isDark
         ? const Color(0xFF040810).withValues(alpha: 0.6)
@@ -73,12 +76,11 @@ class FloatingNavBar extends StatelessWidget {
                     _NavBarItem(
                       icon: CupertinoIcons.house,
                       activeIcon: CupertinoIcons.house_fill,
-                      label: 'Menu',
+                      label: 'Inicio',
                       isActive: currentIndex == 0,
                       onTap: () => onTap(0),
-                      activeColor: activeColor,
+                      activeColor: homeActiveColor,
                       inactiveColor: inactiveColor,
-                      isFirstItem: true,
                     ),
                     _NavBarItem(
                       icon: CupertinoIcons.time,
@@ -128,9 +130,6 @@ class FloatingNavBar extends StatelessWidget {
   }
 }
 
-// Solid color used for the first nav item accent.
-const _kTinderColor = Color(0xFFFD297B);
-
 class _NavBarItem extends StatelessWidget {
   final IconData icon;
   final IconData activeIcon;
@@ -140,7 +139,6 @@ class _NavBarItem extends StatelessWidget {
   final Color activeColor;
   final Color inactiveColor;
   final int badgeCount;
-  final bool isFirstItem;
 
   const _NavBarItem({
     required this.icon,
@@ -151,7 +149,6 @@ class _NavBarItem extends StatelessWidget {
     required this.activeColor,
     required this.inactiveColor,
     this.badgeCount = 0,
-    this.isFirstItem = false,
   });
 
   @override
@@ -165,19 +162,12 @@ class _NavBarItem extends StatelessWidget {
     final bgPillColor =
         isDark ? const Color(0xFF1A2E45) : Colors.black.withValues(alpha: 0.08);
 
-    final Widget iconWidget = (isActive && isFirstItem)
-        ? Icon(
-            activeIcon,
-            key: const ValueKey(true),
-            size: iconSize,
-            color: _kTinderColor,
-          )
-        : Icon(
-            isActive ? activeIcon : icon,
-            key: ValueKey(isActive),
-            size: iconSize,
-            color: isActive ? activeColor : inactiveColor,
-          );
+    final Widget iconWidget = Icon(
+      isActive ? activeIcon : icon,
+      key: ValueKey(isActive),
+      size: iconSize,
+      color: isActive ? activeColor : inactiveColor,
+    );
 
     return Expanded(
       child: GestureDetector(

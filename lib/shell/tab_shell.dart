@@ -74,6 +74,9 @@ class BookingState {
 
   SpecialtyModel? specialty;
 
+  /// Fecha seleccionada en el calendario de reserva (formato "yyyy-MM-dd").
+  String? selectedDate;
+
   DoctorModel? doctor;
 
   String? selectedTime;
@@ -115,6 +118,8 @@ class BookingState {
     hospital = null;
 
     specialty = null;
+
+    selectedDate = null;
 
     doctor = null;
 
@@ -738,45 +743,8 @@ class TabShellState extends State<TabShell>
         }
       }
 
-      // 2. Verificar si ya tiene una cita activa (solo para no titulares;
-      //    los titulares son verificados al seleccionar hospital en RegionalScreen)
-      if (!UserSession.currentUser.isTitular) {
-        try {
-          final idperStr = bookingState.beneficiary?.id ?? UserSession.currentUser.id;
-          final idper = int.tryParse(idperStr) ?? 0;
-          final historyResult = await _programacionService.getHistorialCitas(idper, pagina: 1, cantidad: 10);
-
-          // Bloquear solo si ya tiene cita para el próximo día reservable (mañana).
-          // Si la cita pendiente es para pasado mañana o después, el usuario puede
-          // reservar para mañana con normalidad — son fechas distintas.
-          final tomorrow = DateTime.now().add(const Duration(days: 1));
-          final tomorrowDate = DateTime(tomorrow.year, tomorrow.month, tomorrow.day);
-
-          final activeAppointments = historyResult.reservas.where((r) {
-            if (r.estadoCancelacion != '0') return false;
-            if (r.status != 'Pendiente') return false;
-            if (r.isAppointmentPast) return false;
-            // Solo bloquear si la cita existente es para mañana (mismo día objetivo).
-            final apptDate = r.appointmentDate;
-            return apptDate != null && apptDate.isAtSameMomentAs(tomorrowDate);
-          }).toList();
-
-          if (activeAppointments.isNotEmpty) {
-            if (!mounted) return;
-            _closeLoader();
-
-            await showActiveAppointmentModal(activeAppointments.first);
-
-            if (mounted) {
-              setState(() => _currentIndex = 0);
-              _tabController.index = 0;
-            }
-            return;
-          }
-        } catch (e) {
-          debugPrint('⚠️ Error al verificar historial previo: $e');
-        }
-      }
+      // 2. [Cita activa] — verificación movida al paso "Elige tu Fecha" (DatePickerScreen)
+      //    para que aplique a cualquiera de los 7 días disponibles, no solo a mañana.
 
       // 3. Consultar horarios disponibles (idins=1, idsuc=1 como check general)
 

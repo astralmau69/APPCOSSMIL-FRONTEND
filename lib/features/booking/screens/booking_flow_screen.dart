@@ -6,6 +6,7 @@ import '../../../core/widgets/booking_stepper.dart';
 import '../../../shell/tab_shell.dart';
 import 'regional_screen.dart';
 import 'specialty_screen.dart';
+import 'date_picker_screen.dart';
 import 'doctor_screen.dart';
 import 'schedule_screen.dart';
 import 'summary_screen.dart';
@@ -32,6 +33,7 @@ class BookingFlowScreenState extends State<BookingFlowScreen> {
   static const _titles = [
     'Establecimiento',
     'Especialidad',
+    'Elige tu Fecha',
     'Elige tu Médico',
     'Horas Disponibles',
     'Confirmar Reserva',
@@ -48,7 +50,7 @@ class BookingFlowScreenState extends State<BookingFlowScreen> {
   }
 
   void _nextStep() {
-    if (_currentStep < 4) {
+    if (_currentStep < 5) {
       setState(() => _currentStep++);
     }
   }
@@ -69,11 +71,15 @@ class BookingFlowScreenState extends State<BookingFlowScreen> {
     final r = context.r;
 
     return PopScope(
-      canPop: _currentStep == 0,
+      // Nunca dejar que el sistema haga pop del flujo (salvo confirmación).
+      // onPopInvokedWithResult maneja el retroceso de pasos manualmente.
+      canPop: _isConfirmed,
       onPopInvokedWithResult: (didPop, _) {
         if (!didPop && _currentStep > 0 && !_isConfirmed) {
           _prevStep();
         }
+        // En paso 0 el botón atrás no hace nada — el usuario debe
+        // cambiar de tab o usar la navegación de la app.
       },
       child: CupertinoPageScaffold(
         backgroundColor: Theme.of(context).scaffoldBackgroundColor,
@@ -154,20 +160,25 @@ class BookingFlowScreenState extends State<BookingFlowScreen> {
         tabShell: widget.tabShell,
         onNext: _nextStep,
       ),
-      2 => DoctorScreen(
+      2 => DatePickerScreen(
         key: const ValueKey(2),
         tabShell: widget.tabShell,
         onNext: _nextStep,
-        onBack: _prevStep,
       ),
-      3 => ScheduleScreen(
+      3 => DoctorScreen(
         key: const ValueKey(3),
         tabShell: widget.tabShell,
         onNext: _nextStep,
         onBack: _prevStep,
       ),
-      4 => SummaryScreen(
+      4 => ScheduleScreen(
         key: const ValueKey(4),
+        tabShell: widget.tabShell,
+        onNext: _nextStep,
+        onBack: _prevStep,
+      ),
+      5 => SummaryScreen(
+        key: const ValueKey(5),
         tabShell: widget.tabShell,
         onBack: _prevStep,
         onConfirmed: _onBookingConfirmed,

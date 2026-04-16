@@ -42,9 +42,9 @@ class _DoctorScreenState extends State<DoctorScreen> {
       final bs = widget.tabShell.bookingState;
       final idsuc = int.tryParse(bs.hospital?.id ?? '') ?? 0;
       final idesp = int.tryParse(bs.specialty?.id ?? '') ?? 0;
-
-      // Obtener la fecha del servidor
-      final fecha = await _getFecha();
+      // La fecha ya fue elegida en DatePickerScreen
+      final fecha = bs.selectedDate ?? '';
+      if (fecha.isEmpty) throw Exception('fecha no seleccionada');
 
       final medicos = await _service.getMedicosAgenda(
         idins: 1,
@@ -66,34 +66,6 @@ class _DoctorScreenState extends State<DoctorScreen> {
         _isLoading = false;
       });
     }
-  }
-
-  Future<String> _getFecha() async {
-    try {
-      final result = await _service.getFechaServidor();
-      final fecha = result['fechaCitaMovil'] ?? '';
-      if (fecha.isEmpty) throw Exception('fecha vacía');
-      return fecha;
-    } catch (_) {
-      return DateFormat('yyyy-MM-dd').format(_fallbackFecha());
-    }
-  }
-
-  /// Calcula la fecha de reserva local cuando el servidor no responde.
-  /// Respeta el corte de 00:03 AM y el caso domingo → lunes.
-  DateTime _fallbackFecha() {
-    final now = DateTime.now();
-    // Antes de las 00:03 el ciclo aún no ha avanzado → misma lógica que ayer
-    final base = (now.hour == 0 && now.minute < 3)
-        ? now.subtract(const Duration(days: 1))
-        : now;
-    var next = DateTime(base.year, base.month, base.day)
-        .add(const Duration(days: 1));
-    // Domingo → lunes
-    if (next.weekday == DateTime.sunday) {
-      next = next.add(const Duration(days: 1));
-    }
-    return next;
   }
 
   void _onDoctorSelected(DoctorAgendaModel doctor) {

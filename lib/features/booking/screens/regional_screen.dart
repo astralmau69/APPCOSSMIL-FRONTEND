@@ -677,9 +677,7 @@ class _RegionalScreenState extends State<RegionalScreen> {
           return; // no continuar
         }
 
-        // 2. Verificar si tiene cita activa.
-        final hasActiveCita = await widget.tabShell.checkAndShowActiveCitaForBeneficiary();
-        if (hasActiveCita) return;
+        // 2. [Cita activa] — verificación movida al paso "Elige tu Fecha" (DatePickerScreen).
       } catch (e) {
         closeLoader();
         debugPrint('⚠️ Error en verificaciones del hospital: $e');
