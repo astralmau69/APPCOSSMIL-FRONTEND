@@ -22,8 +22,11 @@ import '../widgets/doctor_rating_modal.dart';
 class ReservasScreen extends StatefulWidget {
   final ValueNotifier<int>? refreshNotifier;
   final ({int idtran, int dr})? lastBookingIds;
+  /// idper del paciente de la última reserva confirmada.
+  /// Usado para refrescar la lista en la vista correcta del beneficiario.
+  final String? lastBookedIdper;
 
-  const ReservasScreen({super.key, this.refreshNotifier, this.lastBookingIds});
+  const ReservasScreen({super.key, this.refreshNotifier, this.lastBookingIds, this.lastBookedIdper});
 
   @override
   State<ReservasScreen> createState() => _ReservasScreenState();
@@ -40,6 +43,9 @@ class _ReservasScreenState extends State<ReservasScreen> {
   int _currentPage = 1;
   int _totalPages = 1;
   static const _pageSize = 20;
+  // Tamaño grande para la carga inicial: trae todo el historial en un solo request
+  // independientemente del orden (ASC/DESC) que use el backend.
+  static const _initialPageSize = 999;
 
   BeneficiaryModel? _selectedBeneficiary;
 
@@ -80,8 +86,24 @@ class _ReservasScreenState extends State<ReservasScreen> {
     super.dispose();
   }
 
-  void _onRefreshRequested() {
-    _loadBeneficiaries();
+  Future<void> _onRefreshRequested() async {
+    await _loadBeneficiaries();
+
+    // Si viene de una reserva recién confirmada, seleccionar automáticamente
+    // al beneficiario correcto antes de pedir el historial.
+    final bookedIdper = widget.lastBookedIdper;
+    if (bookedIdper != null && UserSession.currentUser.isTitular) {
+      // Titular reservando para un familiar: apuntar la vista al paciente reservado.
+      final match = _beneficiaries.where((b) => b.id == bookedIdper).firstOrNull;
+      if (match != null && mounted) {
+        setState(() => _selectedBeneficiary = match.isTitular ? null : match);
+      }
+    } else if (bookedIdper != null && !UserSession.currentUser.isTitular) {
+      // Cuenta beneficiaria: usar el idper capturado directamente para el fetch.
+      _fetchReservasForIdper(bookedIdper);
+      return;
+    }
+
     _fetchReservas();
   }
 
@@ -136,11 +158,36 @@ class _ReservasScreenState extends State<ReservasScreen> {
     try {
       final idper = int.tryParse(_selectedBeneficiary?.id ?? UserSession.currentUser.id) ?? 0;
       final page = loadMore ? _currentPage + 1 : 1;
+      // Carga inicial con tamaño grande: el backend devuelve TODO el historial en
+      // un solo request (independientemente del orden ASC/DESC del servidor).
+      final cantidad = loadMore ? _pageSize : _initialPageSize;
       final result = await _service.getHistorialCitas(
         idper,
         pagina: page,
-        cantidad: _pageSize,
+        cantidad: cantidad,
       );
+
+      // Red de seguridad: si el backend capó la respuesta y reporta más páginas,
+      // traer también la última para capturar las citas más recientes.
+      List<ReservaModel> fetched = result.reservas;
+      final fetchedTotalPages = result.totalPages > 0 ? result.totalPages : 1;
+      if (!loadMore && fetchedTotalPages > 1) {
+        try {
+          final lastPage = await _service.getHistorialCitas(
+            idper,
+            pagina: fetchedTotalPages,
+            cantidad: _pageSize,
+          );
+          if (!mounted) return;
+          final seen = result.reservas
+              .map((r) => '${r.idtran}_${r.dr}_${r.id}')
+              .toSet();
+          final extra = lastPage.reservas
+              .where((r) => !seen.contains('${r.idtran}_${r.dr}_${r.id}'))
+              .toList();
+          if (extra.isNotEmpty) fetched = [...result.reservas, ...extra];
+        } catch (_) {}
+      }
 
       if (!mounted) return;
       setState(() {
@@ -148,22 +195,26 @@ class _ReservasScreenState extends State<ReservasScreen> {
           _history.addAll(result.reservas);
           _isLoadingMore = false;
         } else {
-          _history = result.reservas;
+          _history = fetched;
           _isLoading = false;
         }
 
         _history.sort((a, b) {
-          final aP = a.status == 'Pendiente' ? 1 : 0;
-          final bP = b.status == 'Pendiente' ? 1 : 0;
-          if (aP != bP) return bP.compareTo(aP);
-
+          final aP = a.status == 'Pendiente' ? 0 : 1;
+          final bP = b.status == 'Pendiente' ? 0 : 1;
+          if (aP != bP) return aP.compareTo(bP);
+          if (a.status == 'Pendiente') {
+            final dC = a.date.compareTo(b.date);
+            if (dC != 0) return dC;
+            return a.time.compareTo(b.time);
+          }
           final dC = b.date.compareTo(a.date);
           if (dC != 0) return dC;
           return b.time.compareTo(a.time);
         });
 
         _currentPage = page;
-        _totalPages = result.totalPages;
+        _totalPages = fetchedTotalPages;
       });
 
       // Fetch foto del médico para la primera ficha vigente (silencioso)
@@ -185,6 +236,67 @@ class _ReservasScreenState extends State<ReservasScreen> {
           _errorMessage = ErrorMapper.message(e, context: ErrorContext.cargarHistorial);
           _isLoading = false;
         }
+      });
+    }
+  }
+
+  /// Variante de [_fetchReservas] que usa un idper explícito en lugar del
+  /// `_selectedBeneficiary` actual. Usada para refrescar al paciente recién reservado
+  /// cuando es una cuenta beneficiaria (no titular).
+  Future<void> _fetchReservasForIdper(String idperStr) async {
+    if (!mounted) return;
+    final idper = int.tryParse(idperStr) ?? 0;
+    if (idper == 0) { _fetchReservas(); return; }
+
+    setState(() { _isLoading = true; _errorMessage = null; _currentPage = 1; });
+    try {
+      final result = await _service.getHistorialCitas(idper, pagina: 1, cantidad: _initialPageSize);
+      if (!mounted) return;
+
+      List<ReservaModel> fetched = result.reservas;
+      final fetchedTotalPages = result.totalPages > 0 ? result.totalPages : 1;
+      if (fetchedTotalPages > 1) {
+        try {
+          final lastPage = await _service.getHistorialCitas(
+              idper, pagina: fetchedTotalPages, cantidad: _pageSize);
+          if (!mounted) return;
+          final seen = result.reservas
+              .map((r) => '${r.idtran}_${r.dr}_${r.id}')
+              .toSet();
+          final extra = lastPage.reservas
+              .where((r) => !seen.contains('${r.idtran}_${r.dr}_${r.id}'))
+              .toList();
+          if (extra.isNotEmpty) fetched = [...result.reservas, ...extra];
+        } catch (_) {}
+      }
+
+      setState(() {
+        _history = fetched;
+        _isLoading = false;
+        _history.sort((a, b) {
+          final aP = a.status == 'Pendiente' ? 0 : 1;
+          final bP = b.status == 'Pendiente' ? 0 : 1;
+          if (aP != bP) return aP.compareTo(bP);
+          if (a.status == 'Pendiente') {
+            final dC = a.date.compareTo(b.date);
+            if (dC != 0) return dC;
+            return a.time.compareTo(b.time);
+          }
+          final dC = b.date.compareTo(a.date);
+          if (dC != 0) return dC;
+          return b.time.compareTo(a.time);
+        });
+        _currentPage = 1;
+        _totalPages = fetchedTotalPages;
+      });
+      final vigentes = _allPendingVigentes;
+      if (vigentes.isNotEmpty) _fetchLatestDoctorPhoto(vigentes.first);
+      if (mounted) _loadPendingRatings();
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _errorMessage = ErrorMapper.message(e, context: ErrorContext.cargarHistorial);
+        _isLoading = false;
       });
     }
   }
@@ -296,12 +408,28 @@ class _ReservasScreenState extends State<ReservasScreen> {
     );
   }
 
-  /// Todas las fichas vigentes: pendientes, no canceladas y cuya fecha no pasó.
-  /// La cita recién creada (lastBookingIds) aparece primera si está en la lista.
+  /// Fichas pendientes cuya fecha de cita es hoy o en el futuro (comparación
+  /// de fecha pura, sin hora). Citas Pendiente de días pasados que el sistema
+  /// aún no procesó no se muestran en grande — van solo al historial.
   List<ReservaModel> get _allPendingVigentes {
-    final vigentes = _history.where(
-      (r) => r.estadoCancelacion == '0' && r.status == 'Pendiente' && !r.isAppointmentPast,
-    ).toList();
+    final now = DateTime.now();
+    final todayDate = DateTime(now.year, now.month, now.day);
+
+    final vigentes = _history.where((r) {
+      if (r.estadoCancelacion != '0' || r.status != 'Pendiente') return false;
+      final apptDate = r.appointmentDate;
+      // Si no se puede parsear la fecha, mostrar por si acaso
+      if (apptDate == null) return true;
+      // Mostrar solo si la fecha de la cita es hoy o posterior
+      return !apptDate.isBefore(todayDate);
+    }).toList();
+
+    // Ascendente: la cita más próxima (o recién reservada para mañana) aparece primero.
+    vigentes.sort((a, b) {
+      final dC = a.date.compareTo(b.date);
+      if (dC != 0) return dC;
+      return a.time.compareTo(b.time);
+    });
 
     final match = widget.lastBookingIds;
     if (match != null) {
@@ -391,7 +519,7 @@ class _ReservasScreenState extends State<ReservasScreen> {
                   ),
                 ),
 
-              // ── Fichas vigentes: todas las pendientes no pasadas ──
+              // ── Fichas vigentes: pendientes con fecha >= hoy ──
               if (allPending.isNotEmpty && _activeStatusFilter == 'Todos')
                 SliverToBoxAdapter(
                   child: Padding(

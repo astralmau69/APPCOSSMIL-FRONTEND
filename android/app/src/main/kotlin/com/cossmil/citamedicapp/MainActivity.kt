@@ -1,4 +1,4 @@
-package bo.mil.cossmil.app
+package com.cossmil.citamedicapp
 
 import android.content.Context
 import android.media.AudioManager

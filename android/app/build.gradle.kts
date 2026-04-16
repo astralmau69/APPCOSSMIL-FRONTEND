@@ -15,7 +15,7 @@ if (keystorePropertiesFile.exists()) {
 }
 
 android {
-    namespace = "bo.mil.cossmil.app"
+    namespace = "com.cossmil.citamedicapp"
     compileSdk = flutter.compileSdkVersion
     ndkVersion = "27.0.12077973"
 
@@ -30,7 +30,7 @@ android {
     }
 
     defaultConfig {
-        applicationId = "bo.mil.cossmil.app"
+        applicationId = "com.cossmil.citamedicapp"
         // minSdk 21 = Android 5.0 (Lollipop) — máxima cobertura de dispositivos.
         // local_auth funciona en API 21+; en dispositivos sin biometría la app
         // simplemente desactiva esa opción en tiempo de ejecución.

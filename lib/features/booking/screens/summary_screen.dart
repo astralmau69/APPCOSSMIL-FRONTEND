@@ -483,6 +483,7 @@ class _SummaryScreenState extends State<SummaryScreen>
         width: double.infinity,
         height: double.infinity,
         fit: BoxFit.cover,
+        cacheWidth: 200,
         errorBuilder: (_, __, ___) => fallback,
       );
     } catch (_) {

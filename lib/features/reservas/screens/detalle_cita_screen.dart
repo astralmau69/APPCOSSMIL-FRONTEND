@@ -70,6 +70,7 @@ class _DetalleCitaScreenState extends State<DetalleCitaScreen> {
       return Image.memory(
         bytes,
         fit: BoxFit.cover,
+        cacheWidth: 150,
         errorBuilder: (_, __, ___) => fallback,
       );
     } catch (_) {

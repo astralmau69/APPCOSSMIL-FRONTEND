@@ -220,6 +220,7 @@ class ProfessionalProfileCard extends StatelessWidget {
                   cachedPhoto!,
                   width: avatarSize,
                   height: avatarSize,
+                  cacheWidth: 150,
                   fit: BoxFit.cover,
                   errorBuilder: (_, __, ___) => _buildFallbackAvatar(r),
                 )

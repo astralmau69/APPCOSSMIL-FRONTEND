@@ -37,7 +37,7 @@
 
 # ─── Modelos COSSMIL: preservar campos usados en fromJson/toJson ─────────────
 # R8 puede eliminar campos que solo se acceden mediante cast de Map dinámico.
--keepclassmembers class bo.mil.cossmil.app.** {
+-keepclassmembers class com.cossmil.citamedicapp.** {
     public <init>(...);
     public *;
 }

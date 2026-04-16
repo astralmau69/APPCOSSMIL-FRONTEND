@@ -186,6 +186,10 @@ class TabShellState extends State<TabShell>
   /// IDs de la última reserva creada, para destacarla en ReservasScreen.
   ({int idtran, int dr})? lastBookingIds;
 
+  /// idper del paciente de la última reserva confirmada.
+  /// Permite que ReservasScreen refresque para el beneficiario correcto.
+  String? lastBookedIdper;
+
 
 
   // Evita que el bloqueo se apile múltiples veces si el lifecycle
@@ -1461,9 +1465,12 @@ class TabShellState extends State<TabShell>
       lastBookingIds = (idtran: idtran, dr: dr);
     }
 
-    bookingState.reset();
+    // Capturar el idper del paciente ANTES de resetear el estado de reserva.
+    // Esto permite que ReservasScreen refresque para el beneficiario correcto
+    // incluso cuando el titular reservó para un familiar.
+    lastBookedIdper = bookingState.beneficiary?.id ?? UserSession.currentUser.id;
 
-    reservasRefreshNotifier.value++;
+    bookingState.reset();
 
     // Reiniciar el flujo de reserva al paso 0.
     _bookingFlowKey.currentState?.resetFlow();
@@ -1473,6 +1480,13 @@ class TabShellState extends State<TabShell>
     _tabController.index = 0;
 
     _tabNavKeys[0].currentState?.popUntil((route) => route.isFirst);
+
+    // Disparar el refresh DESPUÉS de que el frame se reconstruya, para que
+    // widget.lastBookedIdper y widget.lastBookingIds en ReservasScreen ya
+    // reflejen los valores recién asignados (lastBookedIdper / lastBookingIds).
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) reservasRefreshNotifier.value++;
+    });
 
   }
 
@@ -1486,7 +1500,7 @@ class TabShellState extends State<TabShell>
 
       0 => HomeScreen(key: refreshKey, tabShell: this),
 
-      1 => ReservasScreen(key: refreshKey, refreshNotifier: reservasRefreshNotifier, lastBookingIds: lastBookingIds),
+      1 => ReservasScreen(key: refreshKey, refreshNotifier: reservasRefreshNotifier, lastBookingIds: lastBookingIds, lastBookedIdper: lastBookedIdper),
 
       2 => BookingFlowScreen(key: _bookingFlowKey, tabShell: this),
 

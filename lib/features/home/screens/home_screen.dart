@@ -511,6 +511,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       child: Image.network(
                         item.imageUrl,
                         fit: BoxFit.cover,
+                        cacheWidth: 200, // Optimización: carga la imagen al tamaño necesario
                         errorBuilder: (_, __, ___) => _buildNewsDotDate(item, isDark, r),
                         loadingBuilder: (_, child, progress) =>
                             progress == null ? child : _buildNewsDotDate(item, isDark, r),
@@ -769,6 +770,7 @@ class _HomeScreenState extends State<HomeScreen> {
                             item.imageUrl,
                             width: double.infinity,
                             fit: BoxFit.contain,
+                            cacheWidth: 800, // Limitar tamaño máximo en memoria
                             errorBuilder: (_, __, ___) => Container(
                               height: 120,
                               width: double.infinity,
