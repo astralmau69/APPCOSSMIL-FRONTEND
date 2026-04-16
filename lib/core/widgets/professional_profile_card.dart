@@ -354,69 +354,40 @@ class ProfessionalProfileCard extends StatelessWidget {
   }
 
   Widget _buildInfoGrid(BuildContext context, AppResponsive r) {
-    final infoItems = [
-      _InfoItem(
-        icon: CupertinoIcons.creditcard,
-        label: 'C.I.',
-        value: user.ci.isNotEmpty ? user.ci : '—',
-      ),
-      _InfoItem(
-        icon: CupertinoIcons.calendar,
-        label: 'Edad',
-        value: '${user.age} años',
-      ),
-      _InfoItem(
-        icon: CupertinoIcons.phone,
-        label: 'Celular',
-        value: user.phone.isNotEmpty ? user.phone : '—',
-      ),
-      _InfoItem(
-        icon: CupertinoIcons.drop,
-        label: 'Tipo de Sangre',
-        value: user.bloodType.isNotEmpty ? user.bloodType : '—',
-      ),
-      _InfoItem(
-        icon: CupertinoIcons.exclamationmark_triangle,
-        label: 'Alergias',
-        value: user.allergies.isNotEmpty ? user.allergies : 'Sin registrar',
-      ),
-      _InfoItem(
-        icon: CupertinoIcons.envelope,
-        label: 'Correo',
-        value: user.email.isNotEmpty ? user.email : '—',
-      ),
-    ];
+    final bloodType = _InfoItem(
+      icon: CupertinoIcons.drop,
+      label: 'Tipo de Sangre',
+      value: user.bloodType.isNotEmpty ? user.bloodType : '—',
+    );
+    final allergies = _InfoItem(
+      icon: CupertinoIcons.exclamationmark_triangle,
+      label: 'Alergias',
+      value: user.allergies.isNotEmpty ? user.allergies : 'Sin registrar',
+    );
+    final email = _InfoItem(
+      icon: CupertinoIcons.envelope,
+      label: 'Correo',
+      value: user.email.isNotEmpty ? user.email : '—',
+    );
 
     return Column(
       children: [
         Row(
           children: [
-            Expanded(child: _buildInfoTile(infoItems[0], r)),
+            Expanded(child: _buildInfoTile(bloodType, r)),
             SizedBox(width: r.spaceMd),
-            Expanded(child: _buildInfoTile(infoItems[1], r)),
+            Expanded(child: _buildInfoTile(allergies, r)),
           ],
         ),
         SizedBox(height: r.spaceSm + 2),
-        Row(
-          children: [
-            Expanded(child: _buildInfoTile(infoItems[2], r)),
-            SizedBox(width: r.spaceMd),
-            Expanded(child: _buildInfoTile(infoItems[3], r)),
-          ],
-        ),
-        SizedBox(height: r.spaceSm + 2),
-        Row(
-          children: [
-            Expanded(child: _buildInfoTile(infoItems[4], r)),
-            SizedBox(width: r.spaceMd),
-            Expanded(child: _buildInfoTile(infoItems[5], r)),
-          ],
-        ),
+        _buildInfoTile(email, r),
       ],
     );
   }
 
   Widget _buildInfoTile(_InfoItem item, AppResponsive r) {
+    final iconBox = r.infoTileIconBox;
+    final iconSize = r.infoTileIconSize;
     return Container(
       padding: EdgeInsets.symmetric(
         horizontal: r.spaceSm + 2,
@@ -434,15 +405,15 @@ class ProfessionalProfileCard extends StatelessWidget {
         children: [
           // Ícono container
           Container(
-            width: 32,
-            height: 32,
+            width: iconBox,
+            height: iconBox,
             decoration: BoxDecoration(
               color: Colors.white.withValues(alpha: 0.1),
-              borderRadius: BorderRadius.circular(8),
+              borderRadius: BorderRadius.circular(r.radiusSm),
             ),
             child: Icon(
               item.icon,
-              size: 16,
+              size: iconSize,
               color: Colors.white.withValues(alpha: 0.8),
             ),
           ),
@@ -456,7 +427,7 @@ class ProfessionalProfileCard extends StatelessWidget {
                   item.label,
                   style: TextStyle(
                     color: Colors.white.withValues(alpha: 0.5),
-                    fontSize: 10,
+                    fontSize: r.sectionLabelSize - 1,
                     fontWeight: FontWeight.w600,
                     letterSpacing: 0.5,
                   ),
@@ -466,7 +437,7 @@ class ProfessionalProfileCard extends StatelessWidget {
                   item.value,
                   style: TextStyle(
                     color: Colors.white.withValues(alpha: 0.95),
-                    fontSize: 12,
+                    fontSize: r.sectionLabelSize + 1,
                     fontWeight: FontWeight.w600,
                   ),
                   maxLines: 1,

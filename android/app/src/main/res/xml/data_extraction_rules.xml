@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Reglas de extracción de datos para Android 12+ (API 31+).
+    Para una app militar/sanitaria, bloqueamos TODA extracción de datos:
+    - Cloud Backup (Google Drive) → prohibido
+    - D2D Transfer (migración entre dispositivos) → prohibido
+    Esto evita que tokens, PINs o datos médicos se filtren a backups.
+-->
+<data-extraction-rules>
+    <cloud-backup>
+        <exclude domain="root" />
+        <exclude domain="file" />
+        <exclude domain="database" />
+        <exclude domain="sharedpref" />
+        <exclude domain="external" />
+    </cloud-backup>
+    <device-transfer>
+        <exclude domain="root" />
+        <exclude domain="file" />
+        <exclude domain="database" />
+        <exclude domain="sharedpref" />
+        <exclude domain="external" />
+    </device-transfer>
+</data-extraction-rules>

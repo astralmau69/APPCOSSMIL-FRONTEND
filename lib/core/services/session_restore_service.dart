@@ -19,7 +19,10 @@ import '../constants/api_constants.dart';
 ///   3. Logout → [clearUserSession] borra todo.
 class SessionRestoreService {
   static const _storage = FlutterSecureStorage(
-    aOptions: AndroidOptions(encryptedSharedPreferences: true),
+    aOptions: AndroidOptions(
+      encryptedSharedPreferences: true,
+      sharedPreferencesName: 'cossmil_secure_prefs',
+    ),
   );
 
   static const _keyUserData = 'user_session_data';

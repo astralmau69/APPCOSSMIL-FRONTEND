@@ -235,10 +235,10 @@ class _DoctorScreenState extends State<DoctorScreen> {
 
   Widget _buildDoctorCard(DoctorAgendaModel doctor, bool isDark, AppResponsive r) {
     final photoBytes = doctor.photoBytes;
-    final noFichas = doctor.ase == 0;
 
-    final cardContent = Opacity(
-      opacity: noFichas ? 0.55 : 1.0,
+    return OptimizedPressButton(
+      onTap: () => _onDoctorSelected(doctor),
+      scaleDown: 0.98,
       child: Container(
         decoration: BoxDecoration(
           color: AppColors.cardBg(isDark),
@@ -247,7 +247,7 @@ class _DoctorScreenState extends State<DoctorScreen> {
             color: AppColors.cardBorder(isDark),
             width: 0.8,
           ),
-          boxShadow: (isDark || noFichas) ? [] : [
+          boxShadow: isDark ? [] : [
             BoxShadow(
               color: Colors.black.withValues(alpha: 0.05),
               blurRadius: 12,
@@ -316,55 +316,18 @@ class _DoctorScreenState extends State<DoctorScreen> {
                       ],
                     ),
 
-                    // Sin fichas
-                    if (noFichas) ...[
-                      SizedBox(height: r.spaceSm),
-                      Container(
-                        padding: EdgeInsets.symmetric(
-                          horizontal: r.spaceXs + 2,
-                          vertical: 3,
-                        ),
-                        decoration: BoxDecoration(
-                          color: Colors.red.withValues(alpha: 0.1),
-                          borderRadius: BorderRadius.circular(6),
-                          border: Border.all(
-                            color: Colors.red.withValues(alpha: 0.3),
-                            width: 0.8,
-                          ),
-                        ),
-                        child: Text(
-                          'Sin fichas disponibles',
-                          style: context.texts.labelSmall.copyWith(
-                            color: Colors.red.shade600,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ),
-                    ],
-
                     SizedBox(height: r.spaceSm),
                   ],
                 ),
               ),
 
-              // Flecha (solo si hay fichas)
-              if (!noFichas) ...[
-                SizedBox(width: r.spaceSm),
-                Icon(CupertinoIcons.chevron_right,
-                    size: r.iconSm, color: AppColors.textTertiaryC(isDark)),
-              ],
+              SizedBox(width: r.spaceSm),
+              Icon(CupertinoIcons.chevron_right,
+                  size: r.iconSm, color: AppColors.textTertiaryC(isDark)),
             ],
           ),
         ),
       ),
-    );
-
-    if (noFichas) return cardContent;
-
-    return OptimizedPressButton(
-      onTap: () => _onDoctorSelected(doctor),
-      scaleDown: 0.98,
-      child: cardContent,
     );
   }
 

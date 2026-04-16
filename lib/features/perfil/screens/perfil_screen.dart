@@ -702,8 +702,9 @@ class _PerfilScreenState extends State<PerfilScreen> {
                 const SizedBox(height: 3),
                 Text(
                   value,
-                  maxLines: multiLine ? 3 : 1,
-                  overflow: multiLine ? TextOverflow.visible : TextOverflow.ellipsis,
+                  maxLines: multiLine ? null : 1,
+                  overflow: multiLine ? TextOverflow.clip : TextOverflow.ellipsis,
+                  softWrap: true,
                   style: TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.w600,

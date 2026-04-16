@@ -24,11 +24,32 @@ class ImageEnlargedModal extends StatelessWidget {
     if (base64Photo.isEmpty) return;
     Uint8List? decoded;
     try {
-      decoded = base64Decode(base64Photo);
+      final clean = base64Photo.contains(',')
+          ? base64Photo.split(',').last
+          : base64Photo;
+      decoded = base64Decode(clean.trim());
     } catch (_) {
       return; // Si no es válido o está corrupto
     }
+    await _showDialog(context: context, decoded: decoded, fallbackText: fallbackText);
+  }
 
+  /// Abre el modal directamente con bytes ya decodificados (útil cuando la
+  /// foto viene en formato de bytes con signo, no base64).
+  static Future<void> showFromBytes({
+    required BuildContext context,
+    required Uint8List bytes,
+    String fallbackText = 'M',
+  }) async {
+    if (bytes.isEmpty) return;
+    await _showDialog(context: context, decoded: bytes, fallbackText: fallbackText);
+  }
+
+  static Future<void> _showDialog({
+    required BuildContext context,
+    required Uint8List decoded,
+    required String fallbackText,
+  }) async {
     await showGeneralDialog(
       context: context,
       barrierColor: Colors.transparent, // Lo manejamos con BackdropFilter
@@ -40,7 +61,7 @@ class ImageEnlargedModal extends StatelessWidget {
       },
       pageBuilder: (context, _, __) {
         return ImageEnlargedModal(
-          decodedPhoto: decoded!,
+          decodedPhoto: decoded,
           fallbackText: fallbackText,
         );
       },

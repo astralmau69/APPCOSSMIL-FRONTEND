@@ -1,32 +1,48 @@
-# Flutter Secure Storage
--keep class com.it_monkey.flutter_secure_storage.** { *; }
+# ─── Flutter Engine ──────────────────────────────────────────────────────────
+# El engine de Flutter usa reflection para registrar plugins. Sin estas reglas,
+# R8 eliminaría clases del engine y la app crashearía en release.
+-keep class io.flutter.** { *; }
+-keep class io.flutter.plugins.** { *; }
+-keep class io.flutter.embedding.** { *; }
+-dontwarn io.flutter.**
 
-# Local Auth / Biometrics
+# ─── flutter_secure_storage ──────────────────────────────────────────────────
+# Usa Android Keystore vía reflection — preservar las clases de cifrado.
+-keep class com.it_nomads.fluttersecurestorage.** { *; }
+
+# ─── local_auth (biometría) ──────────────────────────────────────────────────
+# BiometricPrompt usa callbacks vía reflection.
 -keep class androidx.biometric.** { *; }
--keep class io.flutter.plugins.localauth.** { *; }
 
-# Audioplayers
+# ─── flutter_local_notifications ─────────────────────────────────────────────
+-keep class com.dexterous.** { *; }
+
+# ─── audioplayers ────────────────────────────────────────────────────────────
 -keep class xyz.luan.audioplayers.** { *; }
 
-# General Flutter
--keep class io.flutter.app.** { *; }
--keep class io.flutter.plugin.** { *; }
--keep class io.flutter.util.** { *; }
--keep class io.flutter.view.** { *; }
--keep class io.flutter.embedding.** { *; }
--keep class io.flutter.plugin.editing.** { *; }
+# ─── geolocator ──────────────────────────────────────────────────────────────
+-keep class com.baseflow.geolocator.** { *; }
 
-# Evitar warnings que bloquean R8 (common with various plugins)
--dontwarn android.hardware.biometrics.**
--dontwarn androidx.biometric.**
--dontwarn io.flutter.plugins.localauth.**
--dontwarn xyz.luan.audioplayers.**
+# ─── permission_handler ──────────────────────────────────────────────────────
+-keep class com.baseflow.permissionhandler.** { *; }
+
+# ─── Kotlin Coroutines (usadas internamente por varios plugins) ───────────────
+-keepnames class kotlinx.coroutines.internal.MainDispatcherFactory {}
+-keepnames class kotlinx.coroutines.CoroutineExceptionHandler {}
+-dontwarn kotlinx.coroutines.**
+
+# ─── OkHttp / okio (dependencias transitivas de algunos plugins) ─────────────
 -dontwarn okhttp3.**
 -dontwarn okio.**
--dontwarn com.google.android.gms.**
--dontwarn org.bouncycastle.**
--dontwarn com.google.android.play.core.**
 
-# No optimizar (muchos plugins de Flutter fallan con optimización agresiva)
--dontoptimize
--dontobfuscate
+# ─── Modelos COSSMIL: preservar campos usados en fromJson/toJson ─────────────
+# R8 puede eliminar campos que solo se acceden mediante cast de Map dinámico.
+-keepclassmembers class bo.mil.cossmil.app.** {
+    public <init>(...);
+    public *;
+}
+
+# ─── Stack traces legibles (para futuro Crashlytics / Sentry) ────────────────
+# Descomentar si añades un servicio de crash reporting.
+# -keepattributes SourceFile,LineNumberTable
+# -renamesourcefileattribute SourceFile

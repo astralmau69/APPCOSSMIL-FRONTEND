@@ -6,6 +6,7 @@ import 'features/auth/screens/login_screen.dart';
 import 'features/auth/screens/local_auth_screen.dart';
 import 'features/auth/screens/password_change_screen.dart';
 import 'features/auth/screens/pin_setup_screen.dart';
+import 'features/loading/screens/loading_data_screen.dart';
 import 'features/perfil/screens/security_setup_screen.dart';
 import 'shell/tab_shell.dart';
 import 'core/theme/theme_manager.dart';
@@ -69,6 +70,7 @@ class _CossmilAppState extends State<CossmilApp> {
             '/pin-setup': (context) => const PinSetupScreen(),
             '/security-setup': (context) => const SecuritySetupScreen(),
             '/password-change': (context) => const PasswordChangeScreen(),
+            '/loading-data': (context) => const LoadingDataScreen(),
             '/home': (context) => const TabShell(),
           },
         );

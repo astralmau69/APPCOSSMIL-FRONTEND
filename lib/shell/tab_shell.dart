@@ -47,6 +47,7 @@ import '../features/perfil/screens/security_setup_screen.dart';
 
 import 'widgets/floating_nav_bar.dart';
 
+import '../core/data/app_session_cache.dart';
 import '../core/storage/token_storage.dart';
 
 import '../core/services/session_restore_service.dart';
@@ -375,13 +376,14 @@ class TabShellState extends State<TabShell>
     final hasPin = await SecurityService.hasPin();
     if (!mounted) return;
 
+    // Sin PIN: NO cerrar la sesión de inmediato al minimizar.
+    // El timestamp de background ya fue registrado por recordBackground()
+    // antes de llamar a este método. La verificación real ocurre en
+    // _checkSecurityLock() cuando el usuario vuelve a la app: si pasaron
+    // más de [SecurityService.sessionTimeoutNoPinDuration] (10 min) →
+    // logout; si no → la sesión se mantiene sin interrumpir al usuario.
     if (!_isLocked && !hasPin) {
-      _requiresLoginOnResume = true;
-      // Cancelar notificaciones y limpiar sesión de forma asíncrona.
-      await NotificationService.cancelAllReminders();
-      await TokenStorage.deleteToken();
-      await SessionRestoreService.clearUserSession();
-      UserSession.clear();
+      _requiresLoginOnResume = false;
     }
   }
 
@@ -493,14 +495,33 @@ class TabShellState extends State<TabShell>
 
     if (_isLocked) return;
 
-
-
     final hasPin = await SecurityService.hasPin();
 
-    if (!hasPin) return;
+    if (!hasPin) {
+      // Sin PIN: verificar si el tiempo en background superó los 10 minutos.
+      // Solo en ese caso se cierra la sesión; si no, el usuario continúa
+      // sin ninguna interrupción.
+      final shouldLogout = await SecurityService.shouldLogoutOnResumeNoPin();
+      if (shouldLogout && mounted) {
+        await NotificationService.cancelAllReminders();
+        await TokenStorage.deleteToken();
+        await SessionRestoreService.clearUserSession();
+        UserSession.clear();
+        AppSessionCache.clear();
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) {
+            Navigator.of(context, rootNavigator: true)
+                .pushReplacementNamed('/login');
+          }
+        });
+      } else {
+        // Tiempo dentro del límite — refrescar el timestamp de actividad.
+        SecurityService.recordActivity();
+      }
+      return;
+    }
 
-
-
+    // Con PIN: lógica original de ventana de gracia.
     final shouldLock = await SecurityService.shouldLockOnResume();
 
     if (!shouldLock) {
@@ -510,8 +531,6 @@ class TabShellState extends State<TabShell>
       return;
 
     }
-
-
 
     if (!mounted) return;
 

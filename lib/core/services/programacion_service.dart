@@ -99,7 +99,7 @@ class ProgramacionService {
         return list
             .whereType<Map<String, dynamic>>()
             .map(DoctorAgendaModel.fromJson)
-            .where((d) => d.ase > 0) // solo médicos con fichas ASE disponibles
+            .where((d) => d.oferta > 0) // médicos con al menos una ficha ofertada
             .toList();
       }(),
       ApiError(:final message) => throw Exception(message),
@@ -710,6 +710,12 @@ class ProgramacionService {
     if (body is Map<String, dynamic>) {
       final data = body['data'];
       if (data is Map<String, dynamic>) {
+        if (kDebugMode) {
+          debugPrint('🔍 detalle-cita keys: ${data.keys.toList()}');
+          debugPrint('🔍 fotoMedico: ${data['fotoMedico']}');
+          debugPrint('🔍 foto: ${data['foto']}');
+          debugPrint('🔍 base64: ${data['base64']}');
+        }
         return DetalleCitaModel.fromJson(data);
       }
     }

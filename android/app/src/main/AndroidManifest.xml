@@ -9,12 +9,30 @@
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED"/>
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
 
+    <!--
+        Marcar biometría y ubicación como características OPCIONALES.
+        Sin esto, local_auth inyecta android.hardware.fingerprint con
+        required="true" al mergear manifests, lo que impide instalar la app
+        en dispositivos sin sensor biométrico o sin GPS.
+        required="false" sobreescribe el valor del plugin y permite la
+        instalación en cualquier dispositivo (la app maneja gracefully
+        la ausencia de estas capacidades en tiempo de ejecución).
+    -->
+    <uses-feature android:name="android.hardware.fingerprint"  android:required="false"/>
+    <uses-feature android:name="android.hardware.biometrics"   android:required="false"/>
+    <uses-feature android:name="android.hardware.location"     android:required="false"/>
+    <uses-feature android:name="android.hardware.location.gps" android:required="false"/>
+    <uses-feature android:name="android.hardware.touchscreen"  android:required="false"/>
+
     <application
         android:label="COSSMIL"
         android:name="${applicationName}"
         android:networkSecurityConfig="@xml/network_security_config"
         android:icon="@mipmap/ic_launcher"
-        android:enableOnBackInvokedCallback="true">
+        android:enableOnBackInvokedCallback="true"
+        android:allowBackup="false"
+        android:fullBackupContent="false"
+        android:dataExtractionRules="@xml/data_extraction_rules">
         <activity
             android:name=".MainActivity"
             android:exported="true"

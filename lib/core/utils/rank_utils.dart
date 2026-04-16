@@ -100,8 +100,10 @@ class RankUtils {
 
     if (isTitular && grado.isNotEmpty) {
       if (grado.toLowerCase() == 'asegurado') return fullName;
-      final abbr = abbreviateRank(grado);
-      return abbr.isNotEmpty ? '$abbr $fullName' : fullName;
+      // La API ya devuelve el grado abreviado (ej: "CNL.").
+      // Solo limpiamos el doble punto que podría aparecer por datos legacy.
+      final cleanGrado = grado.trim().replaceAll('..', '.');
+      return cleanGrado.isNotEmpty ? '$cleanGrado $fullName' : fullName;
     }
 
     if (!isTitular) {

@@ -12,7 +12,10 @@ import 'package:package_info_plus/package_info_plus.dart';
 /// con [PackageInfo]. No hay ningún string que actualizar manualmente.
 class VersionMigrationService {
   static const _storage = FlutterSecureStorage(
-    aOptions: AndroidOptions(encryptedSharedPreferences: true),
+    aOptions: AndroidOptions(
+      encryptedSharedPreferences: true,
+      sharedPreferencesName: 'cossmil_secure_prefs',
+    ),
   );
 
   /// Clave donde se guarda la última versión ejecutada.

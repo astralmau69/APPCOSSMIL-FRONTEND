@@ -4,7 +4,10 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 /// iOS: Keychain | Android: Keystore / EncryptedSharedPreferences
 class TokenStorage {
   static const _storage = FlutterSecureStorage(
-    aOptions: AndroidOptions(encryptedSharedPreferences: true),
+    aOptions: AndroidOptions(
+      encryptedSharedPreferences: true,
+      sharedPreferencesName: 'cossmil_secure_prefs',
+    ),
   );
   static const _keyAccessToken = 'access_token';
   static const _keyRefreshToken = 'refresh_token';

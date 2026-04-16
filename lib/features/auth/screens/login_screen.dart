@@ -265,7 +265,7 @@ class _LoginScreenState extends State<LoginScreen>
         if (!token.reqReset) {
           await _showSecurityWarningModal();
         } else {
-          Navigator.pushReplacementNamed(context, '/home');
+          Navigator.pushReplacementNamed(context, '/loading-data');
         }
 
       case AuthError(:final message, :final type):

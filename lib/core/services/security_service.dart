@@ -23,7 +23,10 @@ enum DeviceBiometricStatus { available, notEnrolled, unavailable }
 ///   - Inactividad / gracia  → SecurityService (timestamps persistidos)
 class SecurityService {
   static const _storage = FlutterSecureStorage(
-    aOptions: AndroidOptions(encryptedSharedPreferences: true),
+    aOptions: AndroidOptions(
+      encryptedSharedPreferences: true,
+      sharedPreferencesName: 'cossmil_secure_prefs',
+    ),
   );
   static final _localAuth = LocalAuthentication();
 
@@ -55,7 +58,7 @@ class SecurityService {
 
   /// Tiempo de inactividad antes de cerrar la sesión completamente
   /// cuando el usuario NO tiene PIN/biométrica configurado.
-  static const sessionTimeoutNoPinDuration = Duration(minutes: 7);
+  static const sessionTimeoutNoPinDuration = Duration(minutes: 10);
 
   // ─── PIN ───────────────────────────────────────────────────────────────────
 

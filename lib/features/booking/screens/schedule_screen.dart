@@ -14,6 +14,7 @@ import '../../../core/animations/optimized_animations.dart';
 import '../../../core/animations/app_page_route.dart';
 import '../../../shell/tab_shell.dart';
 import '../../../core/utils/error_mapper.dart';
+import '../../../core/widgets/image_enlarged_modal.dart';
 import 'summary_screen.dart';
 
 class ScheduleScreen extends StatefulWidget {
@@ -303,23 +304,23 @@ class _ScheduleScreenState extends State<ScheduleScreen>
               child: Column(
                 children: [
                   Container(
-                    width: context.r.listAvatarSize,
-                    height: context.r.listAvatarSize,
+                    width: context.r.listAvatarSize * 1.4,
+                    height: context.r.listAvatarSize * 1.4,
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
                       color: AppColors.warning.withValues(alpha: 0.1),
                     ),
                     child: Icon(
                       CupertinoIcons.clock,
-                      size: context.r.iconMd,
+                      size: context.r.iconLg,
                       color: AppColors.warning,
                     ),
                   ),
                   SizedBox(height: context.r.spaceMd),
                   Text(
                     'Sin fichas disponibles',
-                    style: TextStyle(
-                      fontWeight: FontWeight.w700,
+                    style: context.texts.titleMedium.copyWith(
+                      fontWeight: FontWeight.w800,
                       color: AppColors.textPrimaryC(isDark),
                     ),
                   ),
@@ -327,9 +328,9 @@ class _ScheduleScreenState extends State<ScheduleScreen>
                   Text(
                     'Por el momento no hay fichas disponibles para '
                     '${widget.tabShell.bookingState.specialty?.name ?? "esta especialidad"}. '
-                    'Intenta nuevamente más tarde o selecciona otro médico.',
+                    'Intenta nuevamente pasando las 24 horas o selecciona otro médico.',
                     textAlign: TextAlign.center,
-                    style: TextStyle(
+                    style: context.texts.bodyMedium.copyWith(
                       color: AppColors.textSecondaryC(isDark),
                       height: 1.5,
                     ),
@@ -342,7 +343,7 @@ class _ScheduleScreenState extends State<ScheduleScreen>
                       borderRadius: BorderRadius.circular(context.r.radiusMd),
                       onPressed: widget.onBack,
                       child: const Text(
-                        'Volver a Médicos',
+                        'Seleccionar otro médico',
                         style: TextStyle(
                           color: AppColors.white,
                           fontWeight: FontWeight.w700,
@@ -477,15 +478,20 @@ class _ScheduleScreenState extends State<ScheduleScreen>
       ),
       child: Row(
         children: [
-          Container(
-            width: context.r.listAvatarSize,
-            height: context.r.listAvatarSize,
-            decoration: BoxDecoration(
-              color: AppColors.primary.withValues(alpha: 0.15),
-              borderRadius: BorderRadius.circular(14),
+          GestureDetector(
+            onTap: doctor.foto.isNotEmpty
+                ? () => _showDoctorPhotoEnlarged(doctor.foto, initial)
+                : null,
+            child: Container(
+              width: context.r.listAvatarSize,
+              height: context.r.listAvatarSize,
+              decoration: BoxDecoration(
+                color: AppColors.primary.withValues(alpha: 0.15),
+                borderRadius: BorderRadius.circular(14),
+              ),
+              alignment: Alignment.center,
+              child: _buildAvatarFromFoto(doctor.foto, initial, isDark),
             ),
-            alignment: Alignment.center,
-            child: _buildAvatarFromFoto(doctor.foto, initial, isDark),
           ),
           SizedBox(width: context.r.spaceMd),
           Expanded(
@@ -546,6 +552,23 @@ class _ScheduleScreenState extends State<ScheduleScreen>
         ],
       ),
     );
+  }
+
+  /// Decodifica el formato de bytes con signo y abre el modal de foto ampliada.
+  void _showDoctorPhotoEnlarged(String foto, String initial) {
+    if (foto.isEmpty) return;
+    try {
+      final bytes = foto.split(',').map((s) {
+        final v = int.parse(s.trim());
+        return v < 0 ? v + 256 : v;
+      }).toList();
+      final photoBytes = Uint8List.fromList(bytes);
+      ImageEnlargedModal.showFromBytes(
+        context: context,
+        bytes: photoBytes,
+        fallbackText: initial,
+      );
+    } catch (_) {}
   }
 
   /// Renders avatar from the comma-separated signed-byte string stored in DoctorModel.foto.

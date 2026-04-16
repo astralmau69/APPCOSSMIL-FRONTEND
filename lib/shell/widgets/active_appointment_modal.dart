@@ -423,7 +423,7 @@ class ActiveAppointmentModal extends StatelessWidget {
                         child: CupertinoButton(
                           padding:
                               const EdgeInsets.symmetric(vertical: 14),
-                          color: CupertinoColors.destructiveRed,
+                          color: const Color(0xFFEF9A9A),
                           borderRadius: BorderRadius.circular(r.buttonRadius),
                           onPressed:
                               isCancelling ? null : onCancelAppointment,
@@ -432,7 +432,9 @@ class ActiveAppointmentModal extends StatelessWidget {
                               : const Text(
                                   'Cancelar Cita Médica',
                                   style: TextStyle(
-                                      fontWeight: FontWeight.w700),
+                                    fontWeight: FontWeight.w700,
+                                    color: Colors.black87,
+                                  ),
                                 ),
                         ),
                       ),

@@ -12,7 +12,10 @@ class SoundManager {
   SoundManager._();
 
   static const _storage = FlutterSecureStorage(
-    aOptions: AndroidOptions(encryptedSharedPreferences: true),
+    aOptions: AndroidOptions(
+      encryptedSharedPreferences: true,
+      sharedPreferencesName: 'cossmil_secure_prefs',
+    ),
   );
   static const _key = 'app_sound_enabled';
 

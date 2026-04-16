@@ -3,6 +3,7 @@ import 'dart:convert';
 class ApiConstants {
   // ─── Servidor ──────────────────────────────────────────────────────────────
   static const String baseUrl = 'https://api.cossmil.mil.bo';
+  //static const String baseUrl = 'http://10.150.10.13:9999';
 
   // ─── Endpoints ─────────────────────────────────────────────────────────────
   static const String tokenEndpoint = '/api/security/oauth/token';

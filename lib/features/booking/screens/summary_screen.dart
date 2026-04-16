@@ -16,6 +16,7 @@ import '../../../shell/tab_shell.dart';
 import '../../../core/widgets/cossmil_ios_alert.dart';
 import '../../../core/services/notification_service.dart';
 import '../../../core/theme/sound_manager.dart';
+import '../../../core/widgets/image_enlarged_modal.dart';
 
 class SummaryScreen extends StatefulWidget {
   final TabShellState tabShell;
@@ -249,16 +250,21 @@ class _SummaryScreenState extends State<SummaryScreen>
                             child: Row(
                               children: [
                                 // Foto del médico
-                                Container(
-                                  width: 48,
-                                  height: 48,
-                                  decoration: BoxDecoration(
-                                    color: AppColors.accentForTheme(isDark).withValues(alpha: 0.08),
-                                    borderRadius: BorderRadius.circular(context.r.radiusMd),
-                                  ),
-                                  child: ClipRRect(
-                                    borderRadius: BorderRadius.circular(context.r.radiusMd),
-                                    child: _buildPhoto(bs.doctor?.foto, isDark, icon: CupertinoIcons.person_fill),
+                                GestureDetector(
+                                  onTap: (bs.doctor?.foto != null && bs.doctor!.foto.isNotEmpty)
+                                      ? () => _showDoctorPhotoEnlarged(bs.doctor!.foto, bs.doctor!.fullName)
+                                      : null,
+                                  child: Container(
+                                    width: 48,
+                                    height: 48,
+                                    decoration: BoxDecoration(
+                                      color: AppColors.accentForTheme(isDark).withValues(alpha: 0.08),
+                                      borderRadius: BorderRadius.circular(context.r.radiusMd),
+                                    ),
+                                    child: ClipRRect(
+                                      borderRadius: BorderRadius.circular(context.r.radiusMd),
+                                      child: _buildPhoto(bs.doctor?.foto, isDark, icon: CupertinoIcons.person_fill),
+                                    ),
                                   ),
                                 ),
                                 SizedBox(width: context.r.spaceMd),
@@ -418,22 +424,70 @@ class _SummaryScreenState extends State<SummaryScreen>
     );
   }
 
-  Widget _buildPhoto(String? fotoBase64, bool isDark, {required IconData icon}) {
-    if (fotoBase64 != null && fotoBase64.isNotEmpty) {
-      try {
-        final photoBytes = base64Decode(fotoBase64);
-        return Image.memory(
-          photoBytes,
-          width: double.infinity,
-          height: double.infinity,
-          fit: BoxFit.cover,
-          errorBuilder: (_, __, ___) => Icon(icon, size: context.r.iconMd,
-              color: AppColors.accentForTheme(isDark).withValues(alpha: 0.6)),
+  /// Decodifica bytes con signo y abre el modal de foto ampliada.
+  void _showDoctorPhotoEnlarged(String foto, String fullName) {
+    if (foto.isEmpty) return;
+    try {
+      final firstToken = foto.split(',').first.trim();
+      Uint8List bytes;
+      if (int.tryParse(firstToken) != null) {
+        final list = foto.split(',').map((s) {
+          final v = int.parse(s.trim());
+          return v < 0 ? v + 256 : v;
+        }).toList();
+        bytes = Uint8List.fromList(list);
+        ImageEnlargedModal.showFromBytes(
+          context: context,
+          bytes: bytes,
+          fallbackText: fullName.isNotEmpty ? fullName[0].toUpperCase() : 'M',
         );
-      } catch (_) {}
-    }
-    return Icon(icon, size: context.r.iconMd,
+      } else {
+        final clean = foto.contains(',') ? foto.split(',').last : foto;
+        ImageEnlargedModal.show(
+          context: context,
+          base64Photo: clean.trim(),
+          fallbackText: fullName.isNotEmpty ? fullName[0].toUpperCase() : 'M',
+        );
+      }
+    } catch (_) {}
+  }
+
+  /// Decodifica la foto del médico, que puede venir en dos formatos:
+  ///   - Bytes con signo separados por coma: "120,-34,56,..."  (DoctorModel.foto)
+  ///   - Base64 / Data URL: "/9j/4AAQ..." o "data:image/jpeg;base64,..."
+  Widget _buildPhoto(String? foto, bool isDark, {required IconData icon}) {
+    final fallback = Icon(icon, size: context.r.iconMd,
         color: AppColors.accentForTheme(isDark).withValues(alpha: 0.6));
+    if (foto == null || foto.isEmpty) return fallback;
+
+    try {
+      Uint8List? bytes;
+
+      // Detecta formato de bytes con signo: primer segmento es un entero
+      final firstToken = foto.split(',').first.trim();
+      if (int.tryParse(firstToken) != null) {
+        // Bytes con signo separados por coma
+        final list = foto.split(',').map((s) {
+          final v = int.parse(s.trim());
+          return v < 0 ? v + 256 : v;
+        }).toList();
+        bytes = Uint8List.fromList(list);
+      } else {
+        // Base64 o Data URL
+        final clean = foto.contains(',') ? foto.split(',').last : foto;
+        bytes = base64Decode(clean.trim());
+      }
+
+      return Image.memory(
+        bytes,
+        width: double.infinity,
+        height: double.infinity,
+        fit: BoxFit.cover,
+        errorBuilder: (_, __, ___) => fallback,
+      );
+    } catch (_) {
+      return fallback;
+    }
   }
 
   Widget _buildActionButtons(bool isDark) {

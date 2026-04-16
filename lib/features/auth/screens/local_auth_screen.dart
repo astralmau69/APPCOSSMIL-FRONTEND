@@ -13,9 +13,11 @@ import '../../../core/storage/token_storage.dart';
 import '../../../core/session/user_session.dart';
 import '../../../core/animations/optimized_animations.dart';
 import '../../../core/animations/animated_gradient_background.dart';
+import '../../../core/data/app_session_cache.dart';
 import '../../../core/services/notification_service.dart';
 import '../../../core/services/programacion_service.dart';
 import '../../../core/widgets/cossmil_loader.dart';
+import '../../../core/widgets/custom_numpad.dart';
 
 class LocalAuthScreen extends StatefulWidget {
   /// true  → fue pusheado por TabShell al volver al primer plano.
@@ -105,7 +107,9 @@ class _LocalAuthScreenState extends State<LocalAuthScreen>
     if (cooldown != null) {
       _startCooldownTimer();
     } else if (bioEnabled) {
-      // Pequeño delay para que la pantalla termine de montar antes del prompt.
+      // Si hay biometría configurada, dispararla primero siempre.
+      // Si falla/cancela y hay PIN, el teclado queda visible como fallback.
+      // Si falla/cancela y no hay PIN, aparece el botón de login con contraseña.
       await Future.delayed(const Duration(milliseconds: 300));
       if (mounted) _tryBiometrics();
     }
@@ -262,7 +266,7 @@ class _LocalAuthScreenState extends State<LocalAuthScreen>
     }
 
     if (!mounted) return;
-    Navigator.pushReplacementNamed(context, '/home');
+    Navigator.pushReplacementNamed(context, '/loading-data');
   }
 
   Future<void> _onLogoutPressed() async {
@@ -294,6 +298,7 @@ class _LocalAuthScreenState extends State<LocalAuthScreen>
       // wipeAll borra tokens + PIN + sesión + todo el secure storage en un paso
       await TokenStorage.wipeAll();
       UserSession.clear();
+      AppSessionCache.clear();
       if (!mounted) return;
       Navigator.of(context, rootNavigator: true)
           .pushReplacementNamed('/login');
@@ -417,6 +422,14 @@ class _LocalAuthScreenState extends State<LocalAuthScreen>
 
             // ── Teclado numérico ────────────────────────────────────
             _buildKeypad(isDark, r),
+
+            // ── Opción biométrica secundaria ─────────────────────────
+            // Solo aparece cuando hay PIN + biometría configurados y
+            // el usuario no está en cooldown. Es un enlace discreto,
+            // no un botón prominente, para que el PIN siga siendo el
+            // método principal de desbloqueo.
+            if (_hasPin && _isBiometricEnabled && !_isBlocked)
+              _buildBiometricLink(isDark),
 
             SizedBox(height: r.spaceLg),
 
@@ -741,120 +754,69 @@ class _LocalAuthScreenState extends State<LocalAuthScreen>
   }
 
   Widget _buildKeypad(bool isDark, AppResponsive r) {
-    final keyGap = r.pinKeyGap;
-    return Padding(
-      padding: EdgeInsets.symmetric(horizontal: r.pinKeypadPadding),
-      child: Column(
+    return CustomNumpad(
+      isDark: isDark,
+      disabled: _isBlocked,
+      onNumberPressed: _onNumberPressed,
+      onDelete: _onDeletePressed,
+      leftBottomWidget: _buildBiometricKey(isDark, r),
+    );
+  }
+
+  /// Enlace discreto "Usar huella / rostro" para usuarios que tienen
+  /// tanto PIN como biometría habilitada. No reemplaza al PIN como método
+  /// primario — el usuario debe elegirlo activamente.
+  Widget _buildBiometricLink(bool isDark) {
+    return CupertinoButton(
+      padding: EdgeInsets.symmetric(vertical: context.r.spaceSm),
+      onPressed: _biometricInProgress ? null : _tryBiometrics,
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        mainAxisSize: MainAxisSize.min,
         children: [
-          _buildKeyRow([1, 2, 3], isDark, r),
-          SizedBox(height: keyGap),
-          _buildKeyRow([4, 5, 6], isDark, r),
-          SizedBox(height: keyGap),
-          _buildKeyRow([7, 8, 9], isDark, r),
-          SizedBox(height: keyGap),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              _buildBiometricKey(isDark, r),
-              _buildNumberKey(0, isDark, r),
-              _buildDeleteKey(isDark, r),
-            ],
+          Icon(
+            Icons.fingerprint,
+            size: context.r.iconSm,
+            color: AppColors.primary.withValues(alpha: 0.65),
+          ),
+          SizedBox(width: context.r.spaceXs),
+          Text(
+            'Usar huella o rostro',
+            style: context.texts.bodySmall.copyWith(
+              color: AppColors.primary.withValues(alpha: 0.65),
+              fontWeight: FontWeight.w500,
+            ),
           ),
         ],
       ),
     );
   }
 
-  Row _buildKeyRow(List<int> numbers, bool isDark, AppResponsive r) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: numbers.map((n) => _buildNumberKey(n, isDark, r)).toList(),
-    );
-  }
-
-  Widget _buildNumberKey(int number, bool isDark, AppResponsive r) {
-    final blocked = _isBlocked;
-    final keySize = r.pinKeySize;
-    final fontSize = r.pinKeyFontSize;
-    final bgColor = isDark 
-        ? AppColors.darkSurface.withValues(alpha: 0.8) 
-        : Colors.white.withValues(alpha: 0.9);
-    final borderColor = isDark 
-        ? Colors.white.withValues(alpha: 0.1) 
-        : Colors.black.withValues(alpha: 0.05);
-
-    return OptimizedPressButton(
-      onTap: blocked ? null : () => _onNumberPressed(number),
-      scaleDown: 0.9,
-      child: Container(
-        width: keySize,
-        height: keySize,
-        decoration: BoxDecoration(
-          shape: BoxShape.circle,
-          color: blocked ? bgColor.withValues(alpha: 0.3) : bgColor,
-          border: Border.all(color: borderColor, width: 1.5),
-          boxShadow: isDark ? [] : [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.03),
-              blurRadius: 10,
-              offset: const Offset(0, 4),
-            ),
-          ],
-        ),
-        child: Center(
-          child: Text(
-            number.toString(),
-            style: context.texts.displayLarge.copyWith(
-              fontSize: fontSize,
-              fontWeight: FontWeight.w600,
-              color: blocked
-                  ? AppColors.textTertiaryC(isDark)
-                  : AppColors.textPrimaryC(isDark),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
   Widget _buildBiometricKey(bool isDark, AppResponsive r) {
     final keySize = r.pinKeySize;
-    if (!_isBiometricEnabled || _isBlocked) {
+    // Ocultar del teclado numérico cuando hay PIN configurado.
+    // En ese caso la biometría se ofrece como enlace secundario bajo el teclado,
+    // no como botón integrado que permite saltarse los 4 dígitos.
+    if (!_isBiometricEnabled || _isBlocked || _hasPin) {
       return SizedBox(width: keySize, height: keySize);
     }
 
-    return OptimizedPressButton(
-      onTap: _tryBiometrics,
-      child: Container(
-        width: keySize,
-        height: keySize,
-        decoration: BoxDecoration(
-          shape: BoxShape.circle,
-          color: AppColors.primary.withValues(alpha: 0.1),
-        ),
-        child: Icon(
-          Icons.fingerprint,
-          size: keySize * 0.5,
-          color: AppColors.primary,
-        ),
-      ),
-    );
-  }
-
-  Widget _buildDeleteKey(bool isDark, AppResponsive r) {
-    final keySize = r.pinKeySize;
-    return OptimizedPressButton(
-      onTap: _isBlocked ? null : _onDeletePressed,
-      child: Container(
-        width: keySize,
-        height: keySize,
-        decoration: const BoxDecoration(shape: BoxShape.circle),
-        child: Icon(
-          CupertinoIcons.delete_left,
-          size: keySize * 0.36,
-          color: _isBlocked 
-              ? AppColors.textTertiaryC(isDark) 
-              : AppColors.textSecondaryC(isDark),
+    return SizedBox(
+      width: keySize,
+      height: keySize,
+      child: Material(
+        color: AppColors.primary.withValues(alpha: 0.1),
+        shape: const CircleBorder(),
+        child: InkWell(
+          onTap: _tryBiometrics,
+          customBorder: const CircleBorder(),
+          splashColor: AppColors.primary.withValues(alpha: 0.2),
+          highlightColor: AppColors.primary.withValues(alpha: 0.1),
+          child: Icon(
+            Icons.fingerprint,
+            size: keySize * 0.5,
+            color: AppColors.primary,
+          ),
         ),
       ),
     );

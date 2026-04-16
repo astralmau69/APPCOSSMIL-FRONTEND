@@ -212,6 +212,25 @@ class _HomeScreenState extends State<HomeScreen> {
 
   // ── Acciones rápidas (grandes y prominentes) ────────────────────────────────
 
+  void _showEnDesarrollo(String feature) {
+    showCupertinoDialog(
+      context: context,
+      builder: (ctx) => CupertinoAlertDialog(
+        title: const Text('En Desarrollo'),
+        content: Text(
+          '$feature estará disponible próximamente.',
+        ),
+        actions: [
+          CupertinoDialogAction(
+            isDefaultAction: true,
+            child: const Text('Aceptar'),
+            onPressed: () => Navigator.pop(ctx),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildQuickActions() {
     final r = context.r;
     final items = [
@@ -252,33 +271,41 @@ class _HomeScreenState extends State<HomeScreen> {
           CupertinoPageRoute(builder: (_) => const ContactosScreen()),
         ),
       ),
+      _QuickAction(
+        icon: CupertinoIcons.calendar,
+        label: 'Calendario de Atención',
+        subtitle: 'Horarios Médicos',
+        color: const Color(0xFF7C3AED),
+        badge: 'Próximamente',
+        onTap: () => _showEnDesarrollo('Calendario de Atención Médica'),
+      ),
+      _QuickAction(
+        icon: CupertinoIcons.doc_text,
+        label: 'Procedimientos COSSMIL',
+        subtitle: 'Requerimientos Médicos',
+        color: const Color(0xFFD97706),
+        badge: 'Próximamente',
+        onTap: () => _showEnDesarrollo('Procedimientos Para Requerimientos Médicos COSSMIL'),
+      ),
     ];
 
     final spacing = r.gridSpacing;
 
     return Column(
       children: [
-        IntrinsicHeight(
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Expanded(child: _buildActionCard(items[0])),
-              SizedBox(width: spacing),
-              Expanded(child: _buildActionCard(items[1])),
-            ],
+        for (int row = 0; row < items.length; row += 2) ...[
+          if (row > 0) SizedBox(height: spacing),
+          IntrinsicHeight(
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Expanded(child: _buildActionCard(items[row])),
+                SizedBox(width: spacing),
+                Expanded(child: _buildActionCard(items[row + 1])),
+              ],
+            ),
           ),
-        ),
-        SizedBox(height: spacing),
-        IntrinsicHeight(
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Expanded(child: _buildActionCard(items[2])),
-              SizedBox(width: spacing),
-              Expanded(child: _buildActionCard(items[3])),
-            ],
-          ),
-        ),
+        ],
       ],
     );
   }
@@ -287,70 +314,118 @@ class _HomeScreenState extends State<HomeScreen> {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final r = context.r;
     final texts = context.texts;
-    
-    final cardBgColor = isDark 
-        ? const Color(0xFF0284C7).withValues(alpha: 0.3) 
-        : const Color(0xFFE0F2FE);
+    final hasBadge = action.badge != null;
+
+    final cardBgColor = isDark
+        ? (hasBadge
+            ? action.color.withValues(alpha: 0.12)
+            : const Color(0xFF0284C7).withValues(alpha: 0.3))
+        : (hasBadge
+            ? action.color.withValues(alpha: 0.06)
+            : const Color(0xFFE0F2FE));
 
     final textMainColor = isDark ? Colors.white : Colors.black;
-    final textSubColor = isDark ? Colors.white70 : Colors.black87;
-    final cardBorderColor = isDark ? Colors.black : Colors.black87;
+    final textSubColor  = isDark ? Colors.white70 : Colors.black87;
+    final cardBorderColor = hasBadge
+        ? action.color.withValues(alpha: isDark ? 0.35 : 0.25)
+        : (isDark ? Colors.black : Colors.black87);
+
+    // Tamaño de ícono reducido en teléfonos pequeños para que el texto respire
+    final iconBox  = r.isSmallPhone ? r.listAvatarSize * 0.85 : r.listAvatarSize;
+    final iconSize = r.isSmallPhone ? r.iconSm : r.iconMd;
+    // Tamaño de fuente para el label — se escala hacia abajo en phones pequeños
+    final labelSize = r.isSmallPhone ? 12.0 : (r.isTablet ? 16.0 : 13.0);
+    final subSize   = r.isSmallPhone ? 10.0 : (r.isTablet ? 14.0 : 11.0);
+    final badgeSize = r.isSmallPhone ?  8.0 : (r.isTablet ? 11.0 :  9.0);
 
     return OptimizedPressButton(
       onTap: action.onTap,
       scaleDown: 0.96,
       child: Container(
-        padding: EdgeInsets.symmetric(vertical: r.tileVerticalPad, horizontal: r.tileHorizontalPad),
+        padding: EdgeInsets.symmetric(
+          vertical: r.tileVerticalPad,
+          horizontal: r.tileHorizontalPad,
+        ),
         decoration: BoxDecoration(
           color: cardBgColor,
           borderRadius: BorderRadius.circular(r.cardRadius),
-          border: Border.all(
-            color: cardBorderColor,
-            width: isDark ? 0.8 : 1.0,
-          ),
+          border: Border.all(color: cardBorderColor, width: isDark ? 0.8 : 1.0),
           boxShadow: AppColors.cardShadowFor(isDark),
         ),
         child: Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
           children: [
+            // Ícono
             Container(
-              width: r.listAvatarSize,
-              height: r.listAvatarSize,
+              width: iconBox,
+              height: iconBox,
               decoration: BoxDecoration(
                 color: isDark ? action.color.withValues(alpha: 0.2) : Colors.white,
-                borderRadius: BorderRadius.circular(r.radiusLg),
+                borderRadius: BorderRadius.circular(r.radiusMd),
                 border: Border.all(
                   color: isDark ? Colors.transparent : action.color.withValues(alpha: 0.5),
                   width: 0.5,
                 ),
               ),
-              child: Icon(action.icon, size: r.iconMd, color: action.color),
+              child: Icon(action.icon, size: iconSize, color: action.color),
             ),
             SizedBox(width: r.spaceSm),
+            // Texto + badge integrado en el flujo (sin Positioned para evitar overlaps)
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisSize: MainAxisSize.min,
                 children: [
+                  // Badge en línea, arriba del label, solo para cards "en desarrollo"
+                  if (hasBadge) ...[
+                    Container(
+                      padding: EdgeInsets.symmetric(
+                        horizontal: r.spaceXs + 2,
+                        vertical: 2,
+                      ),
+                      decoration: BoxDecoration(
+                        color: action.color.withValues(alpha: 0.15),
+                        borderRadius: BorderRadius.circular(r.chipRadius),
+                        border: Border.all(
+                          color: action.color.withValues(alpha: 0.45),
+                          width: 0.8,
+                        ),
+                      ),
+                      child: Text(
+                        action.badge!,
+                        style: TextStyle(
+                          fontSize: badgeSize,
+                          fontWeight: FontWeight.w700,
+                          color: action.color,
+                          letterSpacing: 0.2,
+                          height: 1.2,
+                        ),
+                      ),
+                    ),
+                    SizedBox(height: r.spaceXs),
+                  ],
                   Text(
                     action.label,
                     style: texts.titleMedium.copyWith(
+                      fontSize: labelSize,
                       color: textMainColor,
                       fontWeight: FontWeight.w900,
-                      height: 1.1,
+                      height: 1.15,
                     ),
                     maxLines: 2,
-                    overflow: TextOverflow.visible,
+                    overflow: TextOverflow.ellipsis,
                   ),
                   SizedBox(height: r.spaceXs),
                   Text(
                     action.subtitle,
                     style: texts.bodySmall.copyWith(
+                      fontSize: subSize,
                       color: textSubColor,
                       fontWeight: FontWeight.w600,
                       height: 1.1,
                     ),
-                    maxLines: 2,
-                    overflow: TextOverflow.visible,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                   ),
                 ],
               ),
@@ -380,8 +455,8 @@ class _HomeScreenState extends State<HomeScreen> {
       child: Column(
         children: [
           if (_isLoadingNews) ...[
-            for (int i = 0; i < 4; i++)
-              _buildSkeletonRow(isDark, isLast: i == 3),
+            for (int i = 0; i < 3; i++)
+              _buildSkeletonRow(isDark, isLast: i == 2),
           ] else if (_news.isEmpty)
             Padding(
               padding: const EdgeInsets.all(20),
@@ -400,9 +475,9 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
             )
           else ...[
-            // Mostrar hasta 5 noticias compactas (solo fecha + título)
-            for (int i = 0; i < (_news.length > 5 ? 5 : _news.length); i++)
-              _buildNewsRow(_news[i], isDark, isLast: i == (_news.length > 5 ? 4 : _news.length - 1)),
+            // Mostrar hasta 3 noticias compactas
+            for (int i = 0; i < (_news.length > 3 ? 3 : _news.length); i++)
+              _buildNewsRow(_news[i], isDark, isLast: i == (_news.length > 3 ? 2 : _news.length - 1)),
           ],
           // Botón "Ver todos"
           _buildViewAllButton(isDark),
@@ -756,6 +831,7 @@ class _QuickAction {
   final String subtitle;
   final Color color;
   final VoidCallback onTap;
+  final String? badge;
 
   const _QuickAction({
     required this.icon,
@@ -763,5 +839,6 @@ class _QuickAction {
     required this.subtitle,
     required this.color,
     required this.onTap,
+    this.badge,
   });
 }

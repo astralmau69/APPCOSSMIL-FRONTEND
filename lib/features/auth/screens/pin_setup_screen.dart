@@ -4,7 +4,7 @@ import 'package:flutter/services.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/extensions/responsive_extensions.dart';
 import '../../../core/services/security_service.dart';
-import '../../../core/animations/optimized_animations.dart';
+import '../../../core/widgets/custom_numpad.dart';
 
 /// Pantalla de creación/cambio de PIN de 4 dígitos.
 ///
@@ -110,14 +110,17 @@ class _PinSetupScreenState extends State<PinSetupScreen>
     if (_activeInput.isNotEmpty) {
       _setActiveInput(_activeInput.substring(0, _activeInput.length - 1));
     } else if (_phase == _PinPhase.confirmNewPin) {
-      // Retroceder a crear
-      setState(() {
-        _phase = _PinPhase.createNewPin;
-        _newPin = _newPin.isNotEmpty
-            ? _newPin.substring(0, _newPin.length - 1)
-            : '';
-      });
+      _goBackToCreatePin();
     }
+  }
+
+  void _goBackToCreatePin() {
+    setState(() {
+      _phase = _PinPhase.createNewPin;
+      _newPin = '';
+      _confirmPin = '';
+      _errorMessage = null;
+    });
   }
 
   Future<void> _handleFullInput() async {
@@ -181,7 +184,14 @@ class _PinSetupScreenState extends State<PinSetupScreen>
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final r = context.r;
 
-    return Scaffold(
+    return PopScope(
+      canPop: _phase != _PinPhase.confirmNewPin,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop && _phase == _PinPhase.confirmNewPin) {
+          _goBackToCreatePin();
+        }
+      },
+      child: Scaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: CupertinoNavigationBar(
         middle: Text(_appBarTitle),
@@ -257,6 +267,7 @@ class _PinSetupScreenState extends State<PinSetupScreen>
             SizedBox(height: r.spaceLg),
           ],
         ),
+      ),
       ),
     );
   }
@@ -388,92 +399,11 @@ class _PinSetupScreenState extends State<PinSetupScreen>
   }
 
   Widget _buildKeypad(bool isDark, AppResponsive r) {
-    final keySize = r.pinKeySize;
-    final keyGap = r.isSmallPhone ? 10.0 : 16.0;
-    return Padding(
-      padding: EdgeInsets.symmetric(horizontal: r.pinKeypadPadding),
-      child: Column(
-        children: [
-          _buildRow([1, 2, 3], isDark, r),
-          SizedBox(height: keyGap),
-          _buildRow([4, 5, 6], isDark, r),
-          SizedBox(height: keyGap),
-          _buildRow([7, 8, 9], isDark, r),
-          SizedBox(height: keyGap),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              SizedBox(width: keySize),
-              _buildKey(0, isDark, r),
-              _buildDeleteKey(isDark, r),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  Row _buildRow(List<int> nums, bool isDark, AppResponsive r) => Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: nums.map((n) => _buildKey(n, isDark, r)).toList(),
-      );
-
-  Widget _buildKey(int number, bool isDark, AppResponsive r) {
-    final keySize = r.pinKeySize;
-    final fontSize = r.isSmallPhone ? 24.0 : 32.0;
-    final bgColor = isDark 
-        ? AppColors.darkSurface.withValues(alpha: 0.8) 
-        : Colors.white.withValues(alpha: 0.9);
-    final borderColor = isDark 
-        ? Colors.white.withValues(alpha: 0.1) 
-        : Colors.black.withValues(alpha: 0.05);
-
-    return OptimizedPressButton(
-      onTap: _saving ? null : () => _onNumberPressed(number),
-      scaleDown: 0.9,
-      child: Container(
-        width: keySize,
-        height: keySize,
-        decoration: BoxDecoration(
-          shape: BoxShape.circle,
-          color: _saving ? bgColor.withValues(alpha: 0.3) : bgColor,
-          border: Border.all(color: borderColor, width: 1.5),
-          boxShadow: isDark ? [] : [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.03),
-              blurRadius: 10,
-              offset: const Offset(0, 4),
-            ),
-          ],
-        ),
-        child: Center(
-          child: Text(
-            number.toString(),
-            style: context.texts.displayLarge.copyWith(
-              fontSize: fontSize,
-              fontWeight: FontWeight.w600,
-              color: AppColors.textPrimaryC(isDark),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildDeleteKey(bool isDark, AppResponsive r) {
-    final keySize = r.pinKeySize;
-    return OptimizedPressButton(
-      onTap: _saving ? null : _onDeletePressed,
-      child: Container(
-        width: keySize,
-        height: keySize,
-        decoration: const BoxDecoration(shape: BoxShape.circle),
-        child: Icon(
-          CupertinoIcons.delete_left,
-          size: keySize * 0.36,
-          color: AppColors.textSecondaryC(isDark),
-        ),
-      ),
+    return CustomNumpad(
+      isDark: isDark,
+      disabled: _saving,
+      onNumberPressed: _onNumberPressed,
+      onDelete: _onDeletePressed,
     );
   }
 }

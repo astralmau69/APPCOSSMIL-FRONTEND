@@ -127,31 +127,21 @@ class ReservaModel {
     return name;
   }
 
-  /// El backend usa "S" = atendido/completado, "N" = no atendido (falta o pendiente).
-  /// Distinguimos "Pendiente" de "Falta" evaluando si la fecha ya pasó.
+  /// Mapeo directo de los códigos del backend:
+  ///   N = Pendiente (cita reservada, aún no atendida)
+  ///   P = Falta     (paciente no se presentó)
+  ///   S = Atendido/Completado
+  ///   1 = Cancelado (estadoCancelacion)
+  ///   0 = Pendiente (estadoCancelacion activo)
   static String _parseStatus(dynamic raw, String dateStr) {
     if (raw == null) return 'Pendiente';
     final s = raw.toString().toUpperCase().trim();
     if (s == '1') return 'Cancelado';
     if (s == '0') return 'Pendiente';
     if (s == 'S') return 'Completado';
-    if (s == 'N') {
-      try {
-        if (dateStr.isNotEmpty) {
-          final parts = dateStr.split(' ')[0].split('-');
-          if (parts.length == 3) {
-            final appDate = DateTime(int.parse(parts[0]), int.parse(parts[1]), int.parse(parts[2]));
-            final now = DateTime.now();
-            final today = DateTime(now.year, now.month, now.day);
-            if (appDate.isBefore(today)) {
-              return 'Falta';
-            }
-          }
-        }
-      } catch (_) {}
-      return 'Pendiente';
-    }
-    // Fallback para otros formatos
+    if (s == 'N') return 'Pendiente';
+    if (s == 'P') return 'Falta';
+    // Fallback para strings descriptivos
     final lower = s.toLowerCase();
     if (lower == 'completado' || lower == 'atendido') return 'Completado';
     if (lower == 'falta' || lower == 'ausente') return 'Falta';

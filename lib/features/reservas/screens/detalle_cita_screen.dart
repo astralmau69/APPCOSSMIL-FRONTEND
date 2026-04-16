@@ -44,23 +44,63 @@ class _DetalleCitaScreenState extends State<DetalleCitaScreen> {
     _fetchDetalle();
   }
 
-  Widget _buildPhoto(String? base64, bool isDark, {required IconData icon}) {
-    if (base64 == null || base64.isEmpty) {
-      return Icon(icon, size: 28, color: AppColors.accentForTheme(isDark).withValues(alpha: 0.5));
-    }
+  /// Decodifica la foto, soportando dos formatos del backend:
+  ///   - Bytes con signo separados por coma: "120,-34,56,..."
+  ///   - Base64 / Data URL: "/9j/4AAQ..." o "data:image/jpeg;base64,..."
+  Widget _buildPhoto(String? foto, bool isDark, {required IconData icon}) {
+    final fallback = Icon(icon, size: 28,
+        color: AppColors.accentForTheme(isDark).withValues(alpha: 0.5));
+    if (foto == null || foto.isEmpty) return fallback;
 
     try {
-      final cleanBase64 = base64.contains(',') ? base64.split(',').last : base64;
-      final bytes = const Base64Decoder().convert(cleanBase64.trim());
+      Uint8List bytes;
+      final firstToken = foto.split(',').first.trim();
+      if (int.tryParse(firstToken) != null) {
+        // Bytes con signo separados por coma
+        final list = foto.split(',').map((s) {
+          final v = int.parse(s.trim());
+          return v < 0 ? v + 256 : v;
+        }).toList();
+        bytes = Uint8List.fromList(list);
+      } else {
+        // Base64 o Data URL
+        final clean = foto.contains(',') ? foto.split(',').last : foto;
+        bytes = base64Decode(clean.trim());
+      }
       return Image.memory(
         bytes,
         fit: BoxFit.cover,
-        errorBuilder: (context, error, stackTrace) =>
-            Icon(icon, size: 28, color: AppColors.accentForTheme(isDark).withValues(alpha: 0.5)),
+        errorBuilder: (_, __, ___) => fallback,
       );
     } catch (_) {
-      return Icon(icon, size: 28, color: AppColors.accentForTheme(isDark).withValues(alpha: 0.5));
+      return fallback;
     }
+  }
+
+  /// Abre el modal de foto ampliada detectando el formato automáticamente.
+  void _showPhotoEnlarged(String foto, String fallbackLetter) {
+    if (foto.isEmpty) return;
+    try {
+      final firstToken = foto.split(',').first.trim();
+      if (int.tryParse(firstToken) != null) {
+        final list = foto.split(',').map((s) {
+          final v = int.parse(s.trim());
+          return v < 0 ? v + 256 : v;
+        }).toList();
+        ImageEnlargedModal.showFromBytes(
+          context: context,
+          bytes: Uint8List.fromList(list),
+          fallbackText: fallbackLetter,
+        );
+      } else {
+        final clean = foto.contains(',') ? foto.split(',').last : foto;
+        ImageEnlargedModal.show(
+          context: context,
+          base64Photo: clean.trim(),
+          fallbackText: fallbackLetter,
+        );
+      }
+    } catch (_) {}
   }
 
   Future<void> _fetchDetalle() async {
@@ -260,10 +300,9 @@ class _DetalleCitaScreenState extends State<DetalleCitaScreen> {
                 secondaryValue: d.consultorio.isNotEmpty ? d.consultorio : null,
                 photoBase64: d.fotoMedico,
                 onPhotoTap: (d.fotoMedico != null && d.fotoMedico!.isNotEmpty)
-                    ? () => ImageEnlargedModal.show(
-                          context: context,
-                          base64Photo: d.fotoMedico!,
-                          fallbackText: d.medico.isNotEmpty ? d.medico[0].toUpperCase() : 'M',
+                    ? () => _showPhotoEnlarged(
+                          d.fotoMedico!,
+                          d.medico.isNotEmpty ? d.medico[0].toUpperCase() : 'M',
                         )
                     : null,
               ),
