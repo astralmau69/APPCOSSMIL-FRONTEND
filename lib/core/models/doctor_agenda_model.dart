@@ -15,6 +15,10 @@ class DoctorAgendaModel {
   final String horafin;
   final int ase;     // fichas disponibles para modalidad ASE
   final int oferta;  // total de fichas ofertadas
+  final int demanda;
+  final int ope;
+  final int med;
+  final int adm;
   final String foto; // bytes como string de enteros separados por coma
   final String consultorio;
   final String mtrmin;
@@ -30,6 +34,10 @@ class DoctorAgendaModel {
     required this.horafin,
     required this.ase,
     required this.oferta,
+    required this.demanda,
+    required this.ope,
+    required this.med,
+    required this.adm,
     required this.foto,
     required this.consultorio,
     required this.mtrmin,
@@ -47,6 +55,10 @@ class DoctorAgendaModel {
       horafin:     json['horafin'] as String? ?? '',
       ase:         json['ase'] as int? ?? 0,
       oferta:      json['oferta'] as int? ?? 0,
+      demanda:     json['demanda'] as int? ?? 0,
+      ope:         json['ope'] as int? ?? 0,
+      med:         json['med'] as int? ?? 0,
+      adm:         json['adm'] as int? ?? 0,
       foto:        json['foto'] as String? ?? '',
       consultorio: (json['consultorio'] as String? ?? '').toDisplayCase,
       mtrmin:      json['mtrmin'] as String? ?? '',

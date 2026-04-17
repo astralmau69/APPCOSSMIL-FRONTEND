@@ -99,7 +99,7 @@ class ProgramacionService {
         return list
             .whereType<Map<String, dynamic>>()
             .map(DoctorAgendaModel.fromJson)
-            .where((d) => d.oferta > 0) // médicos con al menos una ficha ofertada
+            .where((d) => d.ase > 0 && d.oferta > 0) // médicos con cupos para asegurados y oferta total
             .toList();
       }(),
       ApiError(:final message) => throw Exception(message),
