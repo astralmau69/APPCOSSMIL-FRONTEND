@@ -439,105 +439,89 @@ class _LoginScreenState extends State<LoginScreen>
     final bool keyboardVisible = keyboardHeight > 80;
 
     return Scaffold(
-      // Usar el color real de fondo — nunca transparent, para que no se vea
-      // negro detrás del gradient cuando el sistema renderiza en capas.
       backgroundColor: isDark ? const Color(0xFF101214) : const Color(0xFFF7F9FB),
-      // false → el fondo siempre ocupa la pantalla completa; el scroll
-      // compensa manualmente el teclado vía viewInsets.bottom.
+      // adjustNothing en el manifest + false aquí = Flutter recibe viewInsets
+      // correctos sin que Android encoja la ventana, evitando el bug de MagicOS
+      // donde el resize del Scaffold interrumpe el IME y cierra el teclado.
       resizeToAvoidBottomInset: false,
       body: AnimatedGradientBackground(
         isDark: isDark,
         child: SafeArea(
           child: Stack(
             children: [
-              // ── Contenido principal (scrollable, centrado verticalmente) ──
-              GestureDetector(
-                onTap: () => FocusScope.of(context).unfocus(),
-                behavior: HitTestBehavior.translucent,
-                child: LayoutBuilder(
-                  builder: (context, constraints) => SingleChildScrollView(
-                    controller: _scrollController,
-                    physics: const ClampingScrollPhysics(),
-                    child: ConstrainedBox(
-                      // minHeight = pantalla disponible → el Column se centra
-                      // verticalmente cuando el contenido es más corto que la pantalla.
-                      constraints: BoxConstraints(minHeight: constraints.maxHeight),
-                      child: Padding(
-                        padding: EdgeInsets.fromLTRB(
-                          r.paddingH,
-                          keyboardVisible ? 12 : 8,
-                          r.paddingH,
-                          keyboardVisible ? keyboardHeight + 24 : 24,
-                        ),
-                        child: Center(
-                          child: ResponsiveContainer(
-                            maxWidth: r.isTablet ? 450 : double.infinity,
+              // ── Layout principal: scroll + footer anclado ─────────────
+              Column(
+                children: [
+                  Expanded(
+                    child: GestureDetector(
+                      onTap: () => FocusScope.of(context).unfocus(),
+                      behavior: HitTestBehavior.opaque,
+                      child: LayoutBuilder(
+                        builder: (context, constraints) => SingleChildScrollView(
+                          controller: _scrollController,
+                          physics: const ClampingScrollPhysics(),
+                          // El padding inferior = teclado + margen visual.
+                          // Con adjustNothing, viewInsets.bottom es el alto real
+                          // del teclado (Android no encogió la ventana).
+                          padding: EdgeInsets.fromLTRB(
+                            r.paddingH,
+                            keyboardVisible ? 12 : 8,
+                            r.paddingH,
+                            keyboardVisible ? keyboardHeight + 24 : 0,
+                          ),
+                          child: ConstrainedBox(
+                            constraints: BoxConstraints(minHeight: constraints.maxHeight),
                             child: Column(
                               mainAxisAlignment: MainAxisAlignment.center,
                               mainAxisSize: MainAxisSize.min,
                               crossAxisAlignment: CrossAxisAlignment.stretch,
                               children: [
-                          // Logo — RepaintBoundary aísla sus repaints del resto
-                          // del árbol, reduciendo la carga en GPU de gama baja.
-                          Center(
-                            child: RepaintBoundary(
-                              child: FadeTransition(
-                                opacity: _logoFade,
-                                child: ScaleTransition(
-                                  scale: _logoScale,
-                                  child: RotationTransition(
-                                    turns: _logoRotate,
-                                    child: SlideTransition(
-                                      position: _logoFloat,
-                                      child: _buildLogo(
-                                        keyboardVisible ? logoSize * 0.65 : logoSize,
-                                        isDark,
+                                Center(
+                                  child: RepaintBoundary(
+                                    child: FadeTransition(
+                                      opacity: _logoFade,
+                                      child: ScaleTransition(
+                                        scale: _logoScale,
+                                        child: RotationTransition(
+                                          turns: _logoRotate,
+                                          child: SlideTransition(
+                                            position: _logoFloat,
+                                            child: _buildLogo(
+                                              keyboardVisible ? logoSize * 0.65 : logoSize,
+                                              isDark,
+                                            ),
+                                          ),
+                                        ),
                                       ),
                                     ),
                                   ),
                                 ),
-                              ),
-                            ),
-                          ),
-                          SizedBox(height: keyboardVisible ? r.spaceSm : r.spaceMd),
-                          // Header — se oculta con teclado en pantallas pequeñas
-                          if (!keyboardVisible || r.screenHeight > 700)
-                            FadeSlideIn(
-                              duration: AppDurations.slow,
-                              delay: const Duration(milliseconds: 100),
-                              child: _buildHeader(isDark),
-                            ),
-                          SizedBox(height: keyboardVisible ? r.spaceMd : r.spaceXl),
-                          // Form
-                          FadeSlideIn(
-                            duration: AppDurations.normal,
-                            delay: const Duration(milliseconds: 200),
-                            child: _buildForm(isDark),
-                          ),
-                          SizedBox(height: r.spaceMd),
-                          // Error message
-                          if (_errorMessage != null) ...[
-                            FadeSlideIn(
-                              duration: AppDurations.fast,
-                              child: _buildErrorBanner(),
-                            ),
-                            SizedBox(height: r.spaceSm),
-                          ],
-                          // Login button
-                          FadeSlideIn(
-                            duration: AppDurations.normal,
-                            delay: const Duration(milliseconds: 250),
-                            child: _buildLoginButton(),
-                          ),
-                          // Footer — solo cuando no hay teclado
-                          if (!keyboardVisible) ...[
-                            SizedBox(height: r.spaceXl),
-                            FadeSlideIn(
-                              duration: AppDurations.normal,
-                              delay: const Duration(milliseconds: 350),
-                              child: _buildFooter(isDark),
-                            ),
-                          ],
+                                SizedBox(height: keyboardVisible ? r.spaceSm : r.spaceMd),
+                                if (!keyboardVisible || r.screenHeight > 700)
+                                  FadeSlideIn(
+                                    duration: AppDurations.slow,
+                                    delay: const Duration(milliseconds: 100),
+                                    child: _buildHeader(isDark),
+                                  ),
+                                SizedBox(height: keyboardVisible ? r.spaceMd : r.spaceXl),
+                                FadeSlideIn(
+                                  duration: AppDurations.normal,
+                                  delay: const Duration(milliseconds: 200),
+                                  child: _buildForm(isDark),
+                                ),
+                                SizedBox(height: r.spaceMd),
+                                if (_errorMessage != null) ...[
+                                  FadeSlideIn(
+                                    duration: AppDurations.fast,
+                                    child: _buildErrorBanner(),
+                                  ),
+                                  SizedBox(height: r.spaceSm),
+                                ],
+                                FadeSlideIn(
+                                  duration: AppDurations.normal,
+                                  delay: const Duration(milliseconds: 250),
+                                  child: _buildLoginButton(),
+                                ),
                               ],
                             ),
                           ),
@@ -545,7 +529,18 @@ class _LoginScreenState extends State<LoginScreen>
                       ),
                     ),
                   ),
-                ),
+                  // Footer anclado: FUERA del scroll → nunca sube con el teclado.
+                  // Se oculta cuando el teclado está activo para liberar espacio.
+                  if (!keyboardVisible)
+                    Padding(
+                      padding: EdgeInsets.fromLTRB(r.paddingH, 0, r.paddingH, r.spaceMd),
+                      child: FadeSlideIn(
+                        duration: AppDurations.normal,
+                        delay: const Duration(milliseconds: 350),
+                        child: _buildFooter(isDark),
+                      ),
+                    ),
+                ],
               ),
               // ── Sonido & Tema — esquina superior derecha ─────────────
               Positioned(
@@ -740,6 +735,9 @@ class _LoginScreenState extends State<LoginScreen>
                   inputFormatters: inputFormatters,
                   padding: EdgeInsets.zero,
                   decoration: null,
+                  scrollPadding: EdgeInsets.only(
+                    bottom: MediaQuery.of(context).viewInsets.bottom + 24,
+                  ),
                   placeholder: placeholder,
                   placeholderStyle: texts.bodyLarge.copyWith(
                     color: AppColors.textTertiaryC(isDark).withValues(alpha: 0.6),
