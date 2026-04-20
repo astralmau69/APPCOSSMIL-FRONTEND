@@ -259,7 +259,7 @@ class _DatePickerScreenState extends State<DatePickerScreen> {
                       r.paddingH, r.spaceMd, r.paddingH, 0),
                   child: Row(
                     children: [
-                      _buildLegend(AppColors.primary,
+                      _buildLegend(AppColors.success,
                           isDark ? Colors.white70 : Colors.black54,
                           'Disponible'),
                       SizedBox(width: r.spaceLg),
@@ -281,12 +281,12 @@ class _DatePickerScreenState extends State<DatePickerScreen> {
                       duration: AppDurations.normal,
                       padding: EdgeInsets.all(r.spaceMd),
                       decoration: BoxDecoration(
-                        color: AppColors.primary
+                        color: AppColors.success
                             .withValues(alpha: isDark ? 0.15 : 0.08),
                         borderRadius:
                             BorderRadius.circular(r.cardRadius),
                         border: Border.all(
-                          color: AppColors.primary.withValues(alpha: 0.35),
+                          color: AppColors.success.withValues(alpha: 0.35),
                           width: 0.8,
                         ),
                       ),
@@ -294,7 +294,7 @@ class _DatePickerScreenState extends State<DatePickerScreen> {
                         children: [
                           Icon(
                             CupertinoIcons.calendar_badge_plus,
-                            color: AppColors.primary,
+                            color: AppColors.success,
                             size: r.iconMd,
                           ),
                           SizedBox(width: r.spaceSm),
@@ -303,7 +303,7 @@ class _DatePickerScreenState extends State<DatePickerScreen> {
                               _formatSelectedDate(_selectedDateStr!),
                               style: context.texts.bodyMedium.copyWith(
                                 fontWeight: FontWeight.w700,
-                                color: AppColors.primary,
+                                color: AppColors.success,
                               ),
                             ),
                           ),
@@ -329,8 +329,8 @@ class _DatePickerScreenState extends State<DatePickerScreen> {
             height: r.buttonHeight,
             child: CupertinoButton(
               color: (_selectedDateStr != null && !_isCheckingConflict)
-                  ? AppColors.primary
-                  : AppColors.primary.withValues(alpha: 0.35),
+                  ? AppColors.success
+                  : AppColors.success.withValues(alpha: 0.35),
               borderRadius: BorderRadius.circular(r.buttonRadius),
               onPressed: (_selectedDateStr != null && !_isCheckingConflict)
                   ? _onContinue
@@ -375,8 +375,8 @@ class _DatePickerScreenState extends State<DatePickerScreen> {
     final Color monthColor;
 
     if (isSelected) {
-      bgColor      = AppColors.primary;
-      borderColor  = AppColors.primary;
+      bgColor      = AppColors.success;
+      borderColor  = AppColors.success;
       dayNameColor = Colors.white.withValues(alpha: 0.85);
       dayNumColor  = Colors.white;
       monthColor   = Colors.white.withValues(alpha: 0.75);
@@ -388,7 +388,7 @@ class _DatePickerScreenState extends State<DatePickerScreen> {
       monthColor   = AppColors.error.withValues(alpha: 0.65);
     } else if (isAvailable) {
       bgColor      = isDark ? AppColors.darkElevated : Colors.white;
-      borderColor  = AppColors.primary.withValues(alpha: isDark ? 0.4 : 0.3);
+      borderColor  = AppColors.success.withValues(alpha: isDark ? 0.5 : 0.4);
       dayNameColor = AppColors.textSecondaryC(isDark);
       dayNumColor  = AppColors.textPrimaryC(isDark);
       monthColor   = AppColors.textTertiaryC(isDark);
@@ -421,7 +421,7 @@ class _DatePickerScreenState extends State<DatePickerScreen> {
           boxShadow: isSelected
               ? [
                   BoxShadow(
-                    color: AppColors.primary.withValues(alpha: 0.32),
+                    color: AppColors.success.withValues(alpha: 0.35),
                     blurRadius: 14,
                     offset: const Offset(0, 5),
                   )

@@ -13,6 +13,7 @@ import '../../../core/models/user_model.dart';
 import '../../../core/services/cossmil_news_service.dart';
 import '../../../core/widgets/section_header.dart';
 import '../../../core/widgets/professional_profile_card.dart';
+import '../../calendario/views/calendario_screen.dart';
 import '../../../shell/tab_shell.dart';
 import 'contactos_screen.dart';
 import 'noticias_screen.dart';
@@ -276,8 +277,9 @@ class _HomeScreenState extends State<HomeScreen> {
         label: 'Calendario de Atención',
         subtitle: 'Horarios Médicos',
         color: const Color(0xFF7C3AED),
-        badge: 'Próximamente',
-        onTap: () => _showEnDesarrollo('Calendario de Atención Médica'),
+        onTap: () => Navigator.of(context).push(CupertinoPageRoute(
+          builder: (_) => const CalendarioScreen(),
+        )),
       ),
       _QuickAction(
         icon: CupertinoIcons.doc_text,

@@ -74,6 +74,15 @@ class AuthService {
         },
       );
 
+      // ── DEBUG TEMPORAL: ver exactamente qué responde el servidor ──────────
+      debugPrint('🌐 LOGIN HTTP ${response.statusCode}');
+      debugPrint('   URL: ${ApiConstants.tokenUri}');
+      debugPrint('   username: "$username" | password: "$password"');
+      if (response.statusCode != 200) {
+        debugPrint('   ❌ Body: ${utf8.decode(response.bodyBytes)}');
+      }
+      // ── FIN DEBUG ─────────────────────────────────────────────────────────
+
       if (response.statusCode == 200) {
         final json = jsonDecode(utf8.decode(response.bodyBytes)) as Map<String, dynamic>;
         final tokenModel = AuthTokenModel.fromJson(json);

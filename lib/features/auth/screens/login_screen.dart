@@ -457,12 +457,21 @@ class _LoginScreenState extends State<LoginScreen>
                       onTap: () => FocusScope.of(context).unfocus(),
                       behavior: HitTestBehavior.opaque,
                       child: LayoutBuilder(
-                        builder: (context, constraints) => SingleChildScrollView(
+                        builder: (context, constraints) {
+                          // Cuando el teclado está visible, el área realmente
+                          // visible encima del teclado es constraints.maxHeight
+                          // menos keyboardHeight. Usar esa altura como minHeight
+                          // evita que el Column intente llenar el espacio detrás
+                          // del teclado, previniendo el "Bottom Overflowed".
+                          final visibleHeight = keyboardVisible
+                              ? (constraints.maxHeight - keyboardHeight)
+                                  .clamp(0.0, constraints.maxHeight)
+                              : constraints.maxHeight;
+                          return SingleChildScrollView(
                           controller: _scrollController,
                           physics: const ClampingScrollPhysics(),
-                          // El padding inferior = teclado + margen visual.
-                          // Con adjustNothing, viewInsets.bottom es el alto real
-                          // del teclado (Android no encogió la ventana).
+                          keyboardDismissBehavior:
+                              ScrollViewKeyboardDismissBehavior.onDrag,
                           padding: EdgeInsets.fromLTRB(
                             r.paddingH,
                             keyboardVisible ? 12 : 8,
@@ -470,7 +479,7 @@ class _LoginScreenState extends State<LoginScreen>
                             keyboardVisible ? keyboardHeight + 24 : 0,
                           ),
                           child: ConstrainedBox(
-                            constraints: BoxConstraints(minHeight: constraints.maxHeight),
+                            constraints: BoxConstraints(minHeight: visibleHeight),
                             child: Column(
                               mainAxisAlignment: MainAxisAlignment.center,
                               mainAxisSize: MainAxisSize.min,
@@ -525,7 +534,8 @@ class _LoginScreenState extends State<LoginScreen>
                               ],
                             ),
                           ),
-                        ),
+                        );
+                        },
                       ),
                     ),
                   ),
