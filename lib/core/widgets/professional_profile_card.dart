@@ -365,10 +365,15 @@ class ProfessionalProfileCard extends StatelessWidget {
       label: 'Alergias',
       value: user.allergies.isNotEmpty ? user.allergies : 'Sin registrar',
     );
-    final email = _InfoItem(
-      icon: CupertinoIcons.envelope,
-      label: 'Correo',
-      value: user.email.isNotEmpty ? user.email : '—',
+    final emergencyPhone = _InfoItem(
+      icon: CupertinoIcons.phone_circle_fill,
+      label: 'Tel. Emergencia',
+      value: user.emergencyPhone.isNotEmpty ? user.emergencyPhone : 'Sin registrar',
+    );
+    final referencia = _InfoItem(
+      icon: CupertinoIcons.person_2_fill,
+      label: 'Contacto Ref.',
+      value: user.referencia.isNotEmpty ? user.referencia : 'Sin registrar',
     );
 
     return Column(
@@ -381,7 +386,13 @@ class ProfessionalProfileCard extends StatelessWidget {
           ],
         ),
         SizedBox(height: r.spaceSm + 2),
-        _buildInfoTile(email, r),
+        Row(
+          children: [
+            Expanded(child: _buildInfoTile(emergencyPhone, r)),
+            SizedBox(width: r.spaceMd),
+            Expanded(child: _buildInfoTile(referencia, r)),
+          ],
+        ),
       ],
     );
   }

@@ -191,11 +191,13 @@ class AuthService {
             
             final eBloodType = (extraData['gruposan'] as String? ?? extraData['grupoSanguineo'] as String? ?? extraData['grupo_sanguineo'] as String? ?? '').trim();
             final eAllergies = (extraData['alergia'] as String? ?? extraData['alergias'] as String? ?? extraData['allergies'] as String? ?? '').trim();
-            final eGrado = (extraData['grado']?.toString() ?? 
-                            extraData['Grado']?.toString() ?? 
-                            extraData['rango']?.toString() ?? 
+            final eGrado = (extraData['grado']?.toString() ??
+                            extraData['Grado']?.toString() ??
+                            extraData['rango']?.toString() ??
                             extraData['Rango']?.toString() ?? '').trim();
             final eRefe4 = (extraData['refe4']?.toString() ?? '').trim();
+            final eTelfemerg = (extraData['telfemerg'] as String? ?? '').trim();
+            final eReferencia = (extraData['referencia'] as String? ?? '').trim();
 
             UserSession.currentUser = UserSession.currentUser.copyWith(
               photoBase64: titularPhoto,
@@ -204,6 +206,8 @@ class AuthService {
               allergies: eAllergies.isNotEmpty ? eAllergies : UserSession.currentUser.allergies,
               rank: eGrado.isNotEmpty ? eGrado : UserSession.currentUser.rank,
               serviceStatus: eRefe4.isNotEmpty ? eRefe4 : UserSession.currentUser.serviceStatus,
+              emergencyPhone: eTelfemerg.isNotEmpty ? eTelfemerg : UserSession.currentUser.emergencyPhone,
+              referencia: eReferencia.isNotEmpty ? eReferencia : UserSession.currentUser.referencia,
             );
 
             // Actualizar fallback con el grado real del endpoint de foto
@@ -399,6 +403,33 @@ class AuthService {
     final response = await _api.put(
       ApiConstants.changePassword(idper),
       body: {'pwd': newPassword},
+    );
+    switch (response) {
+      case ApiSuccess():
+        return;
+      case ApiError(:final message):
+        throw Exception(message);
+    }
+  }
+
+  /// Actualiza el teléfono de emergencia y la referencia domiciliaria del afiliado.
+  ///
+  /// Endpoint: POST /api/safil/afiliado/actualiza-datosper
+  /// [matricula] es la matrícula del usuario que realiza el cambio (campo usuariou).
+  Future<void> actualizarDatosPer({
+    required int idper,
+    required String telfemerg,
+    required String referencia,
+    required String matricula,
+  }) async {
+    final response = await _api.post(
+      ApiConstants.actualizaDatosPer(),
+      body: {
+        'idper': idper,
+        'telfemerg': telfemerg,
+        'referencia': referencia,
+        'usuariou': matricula,
+      },
     );
     switch (response) {
       case ApiSuccess():

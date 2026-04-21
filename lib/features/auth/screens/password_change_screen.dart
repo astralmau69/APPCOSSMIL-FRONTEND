@@ -145,12 +145,12 @@ class _PasswordChangeScreenState extends State<PasswordChangeScreen> {
                 FadeSlideIn(
                   child: Image.asset(
                     'assets/images/cossmil_logo.png',
-                    width: 80,
-                    height: 80,
+                    width: (context.r.screenHeight * 0.10).clamp(64.0, 100.0),
+                    height: (context.r.screenHeight * 0.10).clamp(64.0, 100.0),
                     fit: BoxFit.contain,
                     errorBuilder: (_, __, ___) => Container(
-                      width: 80,
-                      height: 80,
+                      width: (context.r.screenHeight * 0.10).clamp(64.0, 100.0),
+                      height: (context.r.screenHeight * 0.10).clamp(64.0, 100.0),
                       decoration: BoxDecoration(
                         color: AppColors.primary.withValues(alpha: 0.1),
                         shape: BoxShape.circle,

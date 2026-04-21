@@ -39,7 +39,7 @@ class _CossmilAppState extends State<CossmilApp> {
             final double widthScale = (screenWidth / referenceWidth).clamp(0.85, 1.2);
 
             // Respetar accesibilidad del sistema pero limitar para no romper layouts
-            final double systemScale = mediaQueryData.textScaler.scale(1.0).clamp(0.8, 1.35);
+            final double systemScale = mediaQueryData.textScaler.scale(1.0).clamp(0.8, 2.0);
 
             final TextScaler customTextScaler = TextScaler.linear(widthScale * systemScale);
 

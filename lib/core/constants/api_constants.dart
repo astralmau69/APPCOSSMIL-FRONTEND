@@ -114,5 +114,8 @@ class ApiConstants {
 
   /// Registrar calificación del médico (POST).
   static String medicoCalificacion() => '/api/programacion/medico-calificacion';
+
+  /// Actualizar datos personales del afiliado: teléfono de emergencia y referencia (POST).
+  static String actualizaDatosPer() => '/api/safil/afiliado/actualiza-datosper';
 }
 

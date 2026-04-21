@@ -227,7 +227,7 @@ class SkeletonSpecialtyList extends StatelessWidget {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     return ShimmerBox(
       builder: (context, color) => Container(
-        margin: const EdgeInsets.symmetric(horizontal: 20),
+        margin: EdgeInsets.symmetric(horizontal: context.r.paddingH),
         decoration: BoxDecoration(
           color: AppColors.cardBg(isDark),
           borderRadius: BorderRadius.circular(context.r.radiusXl),
@@ -238,8 +238,7 @@ class SkeletonSpecialtyList extends StatelessWidget {
             return Column(
               children: [
                 Padding(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                  padding: EdgeInsets.all(context.r.cardPadding),
                   child: Row(
                     children: [
                       SkeletonLine(
@@ -262,7 +261,7 @@ class SkeletonSpecialtyList extends StatelessWidget {
                 ),
                 if (i < count - 1)
                   Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    padding: EdgeInsets.symmetric(horizontal: context.r.cardPadding),
                     child: Container(
                         height: 0.5, color: AppColors.dividerC(isDark)),
                   ),
@@ -284,13 +283,13 @@ class SkeletonSchedule extends StatelessWidget {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     return ShimmerBox(
       builder: (context, color) => Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 20),
+        padding: EdgeInsets.symmetric(horizontal: context.r.paddingH),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // Date header card
             Container(
-              padding: const EdgeInsets.all(16),
+              padding: EdgeInsets.all(context.r.cardPadding),
               decoration: BoxDecoration(
                 color: AppColors.cardBg(isDark),
                 borderRadius: BorderRadius.circular(context.r.cardRadius),
@@ -313,7 +312,7 @@ class SkeletonSchedule extends StatelessWidget {
                 ],
               ),
             ),
-            const SizedBox(height: 18),
+            SizedBox(height: context.r.spaceLg),
             // Doctor card
             Container(
               padding: EdgeInsets.all(context.r.cardPadding),
@@ -347,8 +346,8 @@ class SkeletonSchedule extends StatelessWidget {
             SizedBox(height: context.r.spaceMd),
             // Time grid
             Wrap(
-              spacing: 10,
-              runSpacing: 10,
+              spacing: context.r.spaceSm,
+              runSpacing: context.r.spaceSm,
               children: List.generate(
                 8,
                 (_) => SkeletonLine(
@@ -375,8 +374,8 @@ class SkeletonRegionalList extends StatelessWidget {
         children: [
           // Profile card skeleton
           Container(
-            margin: const EdgeInsets.symmetric(horizontal: 20),
-            padding: const EdgeInsets.all(16),
+            margin: EdgeInsets.symmetric(horizontal: context.r.paddingH),
+            padding: EdgeInsets.all(context.r.cardPadding),
             decoration: BoxDecoration(
               color: AppColors.cardBg(isDark),
               borderRadius: BorderRadius.circular(context.r.radiusXl),
@@ -413,11 +412,9 @@ class SkeletonRegionalList extends StatelessWidget {
           // Regional items
           ...List.generate(count, (i) {
             return Padding(
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
+              padding: EdgeInsets.symmetric(horizontal: context.r.paddingH, vertical: context.r.spaceXs),
               child: Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                padding: EdgeInsets.symmetric(horizontal: context.r.cardPadding, vertical: context.r.spaceMd),
                 decoration: BoxDecoration(
                   color: AppColors.cardBg(isDark),
                   borderRadius: BorderRadius.circular(context.r.cardRadius),
@@ -452,7 +449,7 @@ class SkeletonDetalleCita extends StatelessWidget {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     return ShimmerBox(
       builder: (context, color) => Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 20),
+        padding: EdgeInsets.symmetric(horizontal: context.r.paddingH),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -464,7 +461,7 @@ class SkeletonDetalleCita extends StatelessWidget {
               return Padding(
                 padding: EdgeInsets.only(bottom: context.r.spaceMd),
                 child: Container(
-                  padding: const EdgeInsets.all(16),
+                  padding: EdgeInsets.all(context.r.cardPadding),
                   decoration: BoxDecoration(
                     color: AppColors.cardBg(isDark),
                     borderRadius: BorderRadius.circular(context.r.cardRadius),
@@ -508,7 +505,7 @@ class SkeletonPerfilHeader extends StatelessWidget {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     return ShimmerBox(
       builder: (context, color) => Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 20),
+        padding: EdgeInsets.symmetric(horizontal: context.r.paddingH),
         child: Column(
           children: [
             SizedBox(height: context.r.spaceXxl),
@@ -543,7 +540,7 @@ class SkeletonPerfilHeader extends StatelessWidget {
                           border: Border.all(
                               color: AppColors.cardBorder(isDark), width: 0.5),
                         ),
-                        padding: const EdgeInsets.all(17),
+                        padding: EdgeInsets.all(context.r.cardPadding),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
@@ -568,7 +565,7 @@ class SkeletonPerfilHeader extends StatelessWidget {
                           border: Border.all(
                               color: AppColors.cardBorder(isDark), width: 0.5),
                         ),
-                        padding: const EdgeInsets.all(17),
+                        padding: EdgeInsets.all(context.r.cardPadding),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
@@ -602,7 +599,7 @@ class SkeletonNewsCard extends StatelessWidget {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     return ShimmerBox(
       builder: (context, color) => Container(
-        padding: const EdgeInsets.all(16),
+        padding: EdgeInsets.all(context.r.cardPadding),
         decoration: BoxDecoration(
           color: AppColors.cardBg(isDark),
           borderRadius: BorderRadius.circular(context.r.cardRadius),
@@ -641,13 +638,13 @@ class SkeletonReservasList extends StatelessWidget {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     return ShimmerBox(
       builder: (context, color) => Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 20),
+        padding: EdgeInsets.symmetric(horizontal: context.r.paddingH),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // Summary bar
             Container(
-              padding: EdgeInsets.symmetric(horizontal: context.r.tileHorizontalPad, vertical: 12),
+              padding: EdgeInsets.symmetric(horizontal: context.r.tileHorizontalPad, vertical: context.r.tileVerticalPad),
               decoration: BoxDecoration(
                 color: AppColors.cardBg(isDark),
                 borderRadius: BorderRadius.circular(context.r.cardRadius),
@@ -693,7 +690,7 @@ class SkeletonReservasList extends StatelessWidget {
             // Card list
             ...List.generate(count, (i) {
               return Padding(
-                padding: const EdgeInsets.only(bottom: 10),
+                padding: EdgeInsets.only(bottom: context.r.spaceSm),
                 child: Container(
                   padding: EdgeInsets.all(context.r.spaceMd),
                   decoration: BoxDecoration(

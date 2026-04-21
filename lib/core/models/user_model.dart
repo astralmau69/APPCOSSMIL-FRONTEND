@@ -23,6 +23,10 @@ class UserModel {
   final String allergies;
   /// Estado de servicio del endpoint de foto (refe4). Ej: "ACTIVO", "PASIVO".
   final String serviceStatus;
+  /// Teléfono de emergencia registrado en el backend (campo telfemerg).
+  final String emergencyPhone;
+  /// Dirección o referencia domiciliaria registrada en el backend.
+  final String referencia;
   final List<BeneficiaryModel> beneficiaries;
 
   const UserModel({
@@ -45,6 +49,8 @@ class UserModel {
     this.uc,
     this.allergies = '',
     this.serviceStatus = '',
+    this.emergencyPhone = '',
+    this.referencia = '',
     required this.beneficiaries,
   });
 
@@ -68,6 +74,8 @@ class UserModel {
     String? uc,
     String? allergies,
     String? serviceStatus,
+    String? emergencyPhone,
+    String? referencia,
     List<BeneficiaryModel>? beneficiaries,
   }) {
     return UserModel(
@@ -91,6 +99,8 @@ class UserModel {
       uc: uc ?? this.uc,
       allergies: allergies ?? this.allergies,
       serviceStatus: serviceStatus ?? this.serviceStatus,
+      emergencyPhone: emergencyPhone ?? this.emergencyPhone,
+      referencia: referencia ?? this.referencia,
       beneficiaries: beneficiaries ?? this.beneficiaries,
     );
   }
@@ -139,6 +149,8 @@ class UserModel {
           json['allergies'] as String? ??
           '').toDisplayCase,
       serviceStatus: json['serviceStatus'] as String? ?? json['refe4'] as String? ?? '',
+      emergencyPhone: json['emergencyPhone'] as String? ?? json['telfemerg'] as String? ?? '',
+      referencia: json['referencia'] as String? ?? '',
     );
   }
 
@@ -160,6 +172,8 @@ class UserModel {
         'birthDate': birthDate,
         'allergies': allergies,
         'serviceStatus': serviceStatus,
+        'emergencyPhone': emergencyPhone,
+        'referencia': referencia,
         'beneficiaries': beneficiaries.map((b) => b.toJson()).toList(),
       };
 

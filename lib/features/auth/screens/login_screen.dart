@@ -444,18 +444,18 @@ class _LoginScreenState extends State<LoginScreen>
       // correctos sin que Android encoja la ventana, evitando el bug de MagicOS
       // donde el resize del Scaffold interrumpe el IME y cierra el teclado.
       resizeToAvoidBottomInset: false,
-      body: AnimatedGradientBackground(
-        isDark: isDark,
-        child: SafeArea(
-          child: Stack(
-            children: [
-              // ── Layout principal: scroll + footer anclado ─────────────
-              Column(
-                children: [
-                  Expanded(
-                    child: GestureDetector(
-                      onTap: () => FocusScope.of(context).unfocus(),
-                      behavior: HitTestBehavior.opaque,
+      body: GestureDetector(
+        onTap: () => FocusScope.of(context).unfocus(),
+        behavior: HitTestBehavior.opaque,
+        child: AnimatedGradientBackground(
+          isDark: isDark,
+          child: SafeArea(
+            child: Stack(
+              children: [
+                // ── Layout principal: scroll + footer anclado ─────────────
+                Column(
+                  children: [
+                    Expanded(
                       child: LayoutBuilder(
                         builder: (context, constraints) {
                           // Cuando el teclado está visible, el área realmente
@@ -538,7 +538,6 @@ class _LoginScreenState extends State<LoginScreen>
                         },
                       ),
                     ),
-                  ),
                   // Footer anclado: FUERA del scroll → nunca sube con el teclado.
                   // Se oculta cuando el teclado está activo para liberar espacio.
                   if (!keyboardVisible)
@@ -601,6 +600,7 @@ class _LoginScreenState extends State<LoginScreen>
             ],
           ),
         ),
+      ),
       ),
     );
   }
