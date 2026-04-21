@@ -13,7 +13,7 @@ import '../../../core/models/user_model.dart';
 import '../../../core/services/cossmil_news_service.dart';
 import '../../../core/widgets/section_header.dart';
 import '../../../core/widgets/professional_profile_card.dart';
-import '../../calendario/views/calendario_screen.dart';
+import '../../calendario/screens/specialty_selection_screen.dart';
 import '../../../shell/tab_shell.dart';
 import 'contactos_screen.dart';
 import 'noticias_screen.dart';
@@ -278,7 +278,7 @@ class _HomeScreenState extends State<HomeScreen> {
         subtitle: 'Horarios Médicos',
         color: const Color(0xFF7C3AED),
         onTap: () => Navigator.of(context).push(CupertinoPageRoute(
-          builder: (_) => const CalendarioScreen(),
+          builder: (_) => const SpecialtySelectionScreen(),
         )),
       ),
       _QuickAction(
@@ -588,13 +588,10 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ),
         SizedBox(width: r.spaceXs),
-        SizedBox(
-          width: 44,
-          child: Text(
-            _shortDate(item.dateTime),
-            style: context.texts.labelSmall.copyWith(
-              color: AppColors.textTertiaryC(isDark),
-            ),
+        Text(
+          _shortDate(item.dateTime),
+          style: context.texts.labelSmall.copyWith(
+            color: AppColors.textTertiaryC(isDark),
           ),
         ),
       ],

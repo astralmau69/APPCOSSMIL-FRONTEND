@@ -1723,7 +1723,7 @@ class _ScheduleInfoDialog extends StatelessWidget {
           const SizedBox(height: 10),
           _infoRow('ℹ️', 'Nota especial', 'Los días sábado contamos con atención regular únicamente para la especialidad de Ginecología.', textColor),
           const SizedBox(height: 10),
-          _infoRow('📱', 'Reserva por App', 'Solo puedes reservar para el siguiente día hábil (ej. lunes→martes, domingo→lunes). A partir de las 00:03 AM se habilita automáticamente el día siguiente.', textColor),
+          _infoRow('📱', 'Reserva por App', 'Solo puedes reservar para el siguiente día hábil (ej. lunes→martes, domingo→lunes). A partir de las 00:00 AM se habilita automáticamente el turno del día siguiente. Las fichas del mismo día de la semana siguiente se habilitan a las 00:00 AM de ese mismo día (ej. martes→siguiente martes).', textColor),
         ],
       ),
       actions: [

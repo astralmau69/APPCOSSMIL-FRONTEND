@@ -40,13 +40,30 @@ class TimeSlotModel {
   /// Para el endpoint medico-agenda-fecha-horas:
   /// estado: false = disponible, estado: true = ocupado.
   factory TimeSlotModel.fromAgendaHora(Map<String, dynamic> json) {
-    final ocupado = json['estado'] as bool? ?? true;
+    // `estado` puede llegar como bool, int (0=libre, 1=ocupado) o String.
+    final estadoRaw = json['estado'];
+    bool ocupado;
+    if (estadoRaw is bool) {
+      ocupado = estadoRaw;
+    } else if (estadoRaw is int) {
+      ocupado = estadoRaw != 0;
+    } else if (estadoRaw is String) {
+      ocupado = estadoRaw == 'true' || estadoRaw == '1';
+    } else {
+      ocupado = false; // si no hay dato, asumimos disponible
+    }
+
+    int? safeNumero;
+    final nRaw = json['numero'];
+    if (nRaw is int) safeNumero = nRaw;
+    else if (nRaw != null) safeNumero = int.tryParse(nRaw.toString());
+
     return TimeSlotModel(
       time:        json['hora'] as String? ?? '',
       isAvailable: !ocupado,
       statusLevel: ocupado ? 'none' : 'high',
-      idhora:      json['idhora'] as String?,
-      numero:      json['numero'] as int?,
+      idhora:      json['idhora']?.toString(),
+      numero:      safeNumero,
     );
   }
 

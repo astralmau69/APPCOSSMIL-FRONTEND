@@ -17,7 +17,7 @@ import '../../../core/widgets/cossmil_ios_alert.dart';
 import '../../../core/theme/sound_manager.dart';
 import '../../../core/utils/rank_utils.dart';
 import '../../../core/widgets/image_enlarged_modal.dart';
-import '../../../core/services/session_restore_service.dart';
+import 'emergency_data_screen.dart';
 
 class PerfilScreen extends StatefulWidget {
   const PerfilScreen({super.key});
@@ -37,11 +37,6 @@ class _PerfilScreenState extends State<PerfilScreen> {
   // ── Datos de emergencia ──
   late String _emergencyPhone;
   late String _referencia;
-  bool _isEditingEmergencyPhone = false;
-  bool _isEditingReferencia = false;
-  bool _isSavingEmergency = false;
-  late final TextEditingController _emergencyPhoneCtrl;
-  late final TextEditingController _referenciaCtrl;
 
   bool _hasPin = false;
   bool _isBiometricEnabled = false;
@@ -63,8 +58,6 @@ class _PerfilScreenState extends State<PerfilScreen> {
     _phoneCtrl = TextEditingController(text: _phone);
     _emergencyPhone = user.emergencyPhone;
     _referencia = user.referencia;
-    _emergencyPhoneCtrl = TextEditingController(text: _emergencyPhone);
-    _referenciaCtrl = TextEditingController(text: _referencia);
     final photo = user.photoBase64;
     if (photo.isNotEmpty) {
       try { _cachedUserPhoto = base64Decode(photo); } catch (_) {}
@@ -100,8 +93,6 @@ class _PerfilScreenState extends State<PerfilScreen> {
   void dispose() {
     _emailCtrl.dispose();
     _phoneCtrl.dispose();
-    _emergencyPhoneCtrl.dispose();
-    _referenciaCtrl.dispose();
     super.dispose();
   }
 
@@ -193,6 +184,15 @@ class _PerfilScreenState extends State<PerfilScreen> {
                               onSave: _savePhone,
                               onCancel: () => setState(() { _phoneCtrl.text = _phone; _isEditingPhone = false; }),
                             ),
+                            // Celular real del afiliado (solo lectura desde el backend)
+                            if (user.numCel.isNotEmpty)
+                              _buildDetailTile(
+                                icon: CupertinoIcons.device_phone_portrait,
+                                color: const Color(0xFF8B5CF6),
+                                label: 'Celular Registrado (COSSMIL)',
+                                value: user.numCel,
+                                isDark: isDark,
+                              ),
                           ],
                         ),
                       ),
@@ -203,48 +203,84 @@ class _PerfilScreenState extends State<PerfilScreen> {
                         child: _buildSection(
                           isDark: isDark,
                           header: 'DATOS DE EMERGENCIA',
+                          manualDividers: true,
                           children: [
-                            _buildContactTile(
-                              isDark: isDark,
-                              icon: CupertinoIcons.phone_fill,
-                              iconColor: const Color(0xFFF59E0B),
+                            // Tel. emergencia — solo lectura
+                            _buildDetailTile(
+                              icon: CupertinoIcons.phone_circle_fill,
+                              color: const Color(0xFFEF4444),
                               label: 'Teléfono de Emergencia',
-                              value: _emergencyPhone,
-                              isEditing: _isEditingEmergencyPhone,
-                              isSaving: _isSavingEmergency,
-                              controller: _emergencyPhoneCtrl,
-                              keyboardType: TextInputType.phone,
-                              hint: '7XXXXXXX',
-                              onEdit: () => setState(() {
-                                _emergencyPhoneCtrl.text = _emergencyPhone;
-                                _isEditingEmergencyPhone = true;
-                              }),
-                              onSave: _saveEmergencyData,
-                              onCancel: () => setState(() {
-                                _emergencyPhoneCtrl.text = _emergencyPhone;
-                                _isEditingEmergencyPhone = false;
-                              }),
-                            ),
-                            _buildContactTile(
+                              value: _emergencyPhone.isNotEmpty ? _emergencyPhone : 'Sin registrar',
                               isDark: isDark,
+                            ),
+                            _divider(isDark),
+                            // Referencia — solo lectura
+                            _buildDetailTile(
                               icon: CupertinoIcons.person_2_fill,
-                              iconColor: const Color(0xFF8B5CF6),
+                              color: const Color(0xFF10B981),
                               label: 'Contacto de Referencia',
-                              value: _referencia,
-                              isEditing: _isEditingReferencia,
-                              isSaving: _isSavingEmergency,
-                              controller: _referenciaCtrl,
-                              keyboardType: TextInputType.name,
-                              hint: 'Ej: Mamá, Hermano Juan...',
-                              onEdit: () => setState(() {
-                                _referenciaCtrl.text = _referencia;
-                                _isEditingReferencia = true;
-                              }),
-                              onSave: _saveEmergencyData,
-                              onCancel: () => setState(() {
-                                _referenciaCtrl.text = _referencia;
-                                _isEditingReferencia = false;
-                              }),
+                              value: _referencia.isNotEmpty ? _referencia : 'Sin registrar',
+                              isDark: isDark,
+                            ),
+                            _divider(isDark),
+                            // Botón para actualizar
+                            _buildNavTile(
+                              isDark: isDark,
+                              icon: CupertinoIcons.pencil_circle_fill,
+                              iconColor: const Color(0xFFF59E0B),
+                              title: 'Actualizar datos de emergencia',
+                              subtitle: 'Editar teléfono y referencia',
+                              onTap: () async {
+                                // Capturar referencias antes del gap asíncrono
+                                final messenger = ScaffoldMessenger.of(context);
+                                final paddingH = context.r.paddingH;
+                                final result = await Navigator.of(context, rootNavigator: true).push<String>(
+                                  CupertinoPageRoute(
+                                    builder: (_) => const EmergencyDataScreen(),
+                                  ),
+                                );
+                                if (!mounted) return;
+                                setState(() {
+                                  _emergencyPhone = UserSession.currentUser.emergencyPhone;
+                                  _referencia = UserSession.currentUser.referencia;
+                                });
+                                // Mostrar el mensaje de éxito en el perfil
+                                if (result != null && result.isNotEmpty) {
+                                  messenger.showSnackBar(
+                                    SnackBar(
+                                      content: Row(
+                                        children: [
+                                          const Icon(
+                                            CupertinoIcons.checkmark_circle_fill,
+                                            color: Colors.white,
+                                            size: 18,
+                                          ),
+                                          const SizedBox(width: 10),
+                                          Expanded(
+                                            child: Text(
+                                              result,
+                                              style: const TextStyle(
+                                                color: Colors.white,
+                                                fontWeight: FontWeight.w500,
+                                              ),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                      backgroundColor: AppColors.success,
+                                      behavior: SnackBarBehavior.floating,
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(12),
+                                      ),
+                                      margin: EdgeInsets.symmetric(
+                                        horizontal: paddingH,
+                                        vertical: 12,
+                                      ),
+                                      duration: const Duration(seconds: 3),
+                                    ),
+                                  );
+                                }
+                              },
                             ),
                           ],
                         ),
@@ -1201,79 +1237,6 @@ class _PerfilScreenState extends State<PerfilScreen> {
         context: context, title: 'Error',
         message: 'No se pudo actualizar el celular: $e',
         type: AlertType.error, confirmText: 'Aceptar',
-      );
-    }
-  }
-
-  /// Guarda el teléfono de emergencia y la referencia en el backend.
-  ///
-  /// Siempre envía AMBOS campos en una sola llamada (el backend los requiere juntos).
-  /// Actualiza [UserSession.currentUser] en memoria y persiste la sesión para que
-  /// la tarjeta de perfil del menú principal refleje los cambios de inmediato.
-  Future<void> _saveEmergencyData() async {
-    final newPhone = _isEditingEmergencyPhone
-        ? _emergencyPhoneCtrl.text.trim()
-        : _emergencyPhone;
-    final newRef = _isEditingReferencia
-        ? _referenciaCtrl.text.trim()
-        : _referencia;
-
-    // Nada cambió
-    if (newPhone == _emergencyPhone && newRef == _referencia) {
-      setState(() {
-        _isEditingEmergencyPhone = false;
-        _isEditingReferencia = false;
-      });
-      return;
-    }
-
-    setState(() => _isSavingEmergency = true);
-    try {
-      final user = UserSession.currentUser;
-      final idper = int.tryParse(user.id) ?? 0;
-
-      await AuthService().actualizarDatosPer(
-        idper: idper,
-        telfemerg: newPhone,
-        referencia: newRef,
-        matricula: user.matricula,
-      );
-
-      if (!mounted) return;
-
-      // Actualizar sesión en memoria para que la tarjeta del menú principal
-      // muestre los datos nuevos al volver al tab Home.
-      UserSession.currentUser = user.copyWith(
-        emergencyPhone: newPhone,
-        referencia: newRef,
-      );
-      await SessionRestoreService.saveUserSession(UserSession.currentUser);
-
-      setState(() {
-        _emergencyPhone = newPhone;
-        _referencia = newRef;
-        _isEditingEmergencyPhone = false;
-        _isEditingReferencia = false;
-        _isSavingEmergency = false;
-      });
-
-      if (!mounted) return;
-      await CossmilIosAlert.show(
-        context: context,
-        title: 'Datos guardados',
-        message: 'Los datos de emergencia fueron actualizados exitosamente.',
-        type: AlertType.success,
-        confirmText: 'Aceptar',
-      );
-    } catch (e) {
-      if (!mounted) return;
-      setState(() => _isSavingEmergency = false);
-      await CossmilIosAlert.show(
-        context: context,
-        title: 'Error',
-        message: 'No se pudieron guardar los datos: $e',
-        type: AlertType.error,
-        confirmText: 'Aceptar',
       );
     }
   }

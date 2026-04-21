@@ -110,7 +110,7 @@ class ApiClient {
 
     if (kDebugMode) {
       debugPrint('🌐 POST $url');
-      debugPrint('   📤 body: $body');
+      debugPrint('   📤 body: ${body != null ? jsonEncode(body) : "null"}');
     }
 
     try {
@@ -191,8 +191,17 @@ class ApiClient {
       }
 
       if (response.statusCode == 200 || response.statusCode == 201) {
-        final decoded = jsonDecode(utf8.decode(response.bodyBytes));
-        return ApiClientResponse.success(decoded);
+        final bodyStr = utf8.decode(response.bodyBytes);
+        try {
+          return ApiClientResponse.success(jsonDecode(bodyStr));
+        } on FormatException {
+          // La API retornó texto plano en lugar de JSON (ej: mensaje de confirmación).
+          // Esto es esperado para algunos endpoints como actualiza-datosper.
+          if (kDebugMode) {
+            debugPrint('   ↳ Respuesta en texto plano: "${bodyStr.trim()}"');
+          }
+          return ApiClientResponse.success(bodyStr.trim());
+        }
       }
 
       if (response.statusCode == 401) {

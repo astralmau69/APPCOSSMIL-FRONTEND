@@ -62,6 +62,9 @@ class _ReservasScreenState extends State<ReservasScreen> {
   bool _isCancellingLatest = false;
   Uint8List? _latestDoctorPhotoBytes;
 
+  String _searchQuery = '';
+  int _sortOptionIndex = 0; // 0: Recientes primero, 1: Antiguas primero, 2: Especialidad A-Z
+
   /// idsuc → nombre completo del hospital (cargado desde la API de regionales)
   Map<int, String> _hospitalNames = {};
 
@@ -161,11 +164,17 @@ class _ReservasScreenState extends State<ReservasScreen> {
       // Carga inicial con tamaño grande: el backend devuelve TODO el historial en
       // un solo request (independientemente del orden ASC/DESC del servidor).
       final cantidad = loadMore ? _pageSize : _initialPageSize;
-      final result = await _service.getHistorialCitas(
-        idper,
-        pagina: page,
-        cantidad: cantidad,
-      );
+      final result = _activeStatusFilter == 'Cancelado'
+          ? await _service.getHistorialCitasCanceladas(
+              idper,
+              pagina: page,
+              cantidad: cantidad,
+            )
+          : await _service.getHistorialCitas(
+              idper,
+              pagina: page,
+              cantidad: cantidad,
+            );
 
       // Red de seguridad: si el backend capó la respuesta y reporta más páginas,
       // traer también la última para capturar las citas más recientes.
@@ -173,11 +182,17 @@ class _ReservasScreenState extends State<ReservasScreen> {
       final fetchedTotalPages = result.totalPages > 0 ? result.totalPages : 1;
       if (!loadMore && fetchedTotalPages > 1) {
         try {
-          final lastPage = await _service.getHistorialCitas(
-            idper,
-            pagina: fetchedTotalPages,
-            cantidad: _pageSize,
-          );
+          final lastPage = _activeStatusFilter == 'Cancelado'
+              ? await _service.getHistorialCitasCanceladas(
+                  idper,
+                  pagina: fetchedTotalPages,
+                  cantidad: _pageSize,
+                )
+              : await _service.getHistorialCitas(
+                  idper,
+                  pagina: fetchedTotalPages,
+                  cantidad: _pageSize,
+                );
           if (!mounted) return;
           final seen = result.reservas
               .map((r) => '${r.idtran}_${r.dr}_${r.id}')
@@ -250,15 +265,20 @@ class _ReservasScreenState extends State<ReservasScreen> {
 
     setState(() { _isLoading = true; _errorMessage = null; _currentPage = 1; });
     try {
-      final result = await _service.getHistorialCitas(idper, pagina: 1, cantidad: _initialPageSize);
+      final result = _activeStatusFilter == 'Cancelado'
+          ? await _service.getHistorialCitasCanceladas(idper, pagina: 1, cantidad: _initialPageSize)
+          : await _service.getHistorialCitas(idper, pagina: 1, cantidad: _initialPageSize);
       if (!mounted) return;
 
       List<ReservaModel> fetched = result.reservas;
       final fetchedTotalPages = result.totalPages > 0 ? result.totalPages : 1;
       if (fetchedTotalPages > 1) {
         try {
-          final lastPage = await _service.getHistorialCitas(
-              idper, pagina: fetchedTotalPages, cantidad: _pageSize);
+          final lastPage = _activeStatusFilter == 'Cancelado'
+              ? await _service.getHistorialCitasCanceladas(
+                  idper, pagina: fetchedTotalPages, cantidad: _pageSize)
+              : await _service.getHistorialCitas(
+                  idper, pagina: fetchedTotalPages, cantidad: _pageSize);
           if (!mounted) return;
           final seen = result.reservas
               .map((r) => '${r.idtran}_${r.dr}_${r.id}')
@@ -481,8 +501,41 @@ class _ReservasScreenState extends State<ReservasScreen> {
         ? filtered.where((r) => !pendingIds.contains('${r.idtran}_${r.dr}_${r.id}')).toList()
         : filtered;
 
-    final visible = historyList.take(_displayLimit).toList();
-    final hasMore = historyList.length > visible.length;
+    // Aplicar búsqueda
+    final searchedList = _searchQuery.isEmpty 
+        ? historyList 
+        : historyList.where((r) {
+            final q = _searchQuery.toLowerCase();
+            return r.status.toLowerCase().contains(q) ||
+                r.doctorName.toLowerCase().contains(q) ||
+                r.specialty.toLowerCase().contains(q) ||
+                r.date.contains(q) ||
+                r.formattedDate.contains(q);
+          }).toList();
+
+    // Aplicar ordenamiento local al historial
+    if (_sortOptionIndex == 0) {
+      searchedList.sort((a, b) {
+        final d = b.date.compareTo(a.date);
+        if (d != 0) return d;
+        return b.time.compareTo(a.time);
+      });
+    } else if (_sortOptionIndex == 1) {
+      searchedList.sort((a, b) {
+        final d = a.date.compareTo(b.date);
+        if (d != 0) return d;
+        return a.time.compareTo(b.time);
+      });
+    } else if (_sortOptionIndex == 2) {
+      searchedList.sort((a, b) {
+        final d = a.specialty.compareTo(b.specialty);
+        if (d != 0) return d;
+        return b.date.compareTo(a.date);
+      });
+    }
+
+    final visible = searchedList.take(_displayLimit).toList();
+    final hasMore = searchedList.length > visible.length;
 
     final r = context.r;
 
@@ -547,13 +600,23 @@ class _ReservasScreenState extends State<ReservasScreen> {
                 padding: EdgeInsets.fromLTRB(r.paddingH, r.spaceMd, r.paddingH, r.spaceSm),
                 sliver: SliverList(
                   delegate: SliverChildListDelegate([
+                    Padding(
+                      padding: EdgeInsets.only(bottom: r.spaceSm),
+                      child: CupertinoSearchTextField(
+                        placeholder: 'Buscar doctor, especialidad o fecha...',
+                        style: TextStyle(color: AppColors.textPrimaryC(isDark)),
+                        onChanged: (val) => setState(() => _searchQuery = val),
+                      ),
+                    ),
                     _buildFilterBar(isDark),
                     FadeSlideIn(
                       duration: AppDurations.slow,
                       delay: const Duration(milliseconds: 100),
                       offsetY: 10,
-                      child: _sectionHeader(
-                          context, 'HISTORIAL DE ATENCIONES'),
+                      child: Padding(
+                        padding: EdgeInsets.only(top: r.spaceMd),
+                        child: _sectionHeader(context, 'HISTORIAL DE ATENCIONES'),
+                      ),
                     ),
                   ]),
                 ),
@@ -1350,10 +1413,19 @@ class _ReservasScreenState extends State<ReservasScreen> {
   Widget _buildStatusChip(String label, bool isDark) {
     final isActive = _activeStatusFilter == label;
     return GestureDetector(
-      onTap: () => setState(() {
-        _activeStatusFilter = label;
-        _displayLimit = 10;
-      }),
+      onTap: () {
+        if (isActive) return;
+        final wasCancelado = _activeStatusFilter == 'Cancelado';
+        final isCancelado = label == 'Cancelado';
+        setState(() {
+          _activeStatusFilter = label;
+          _displayLimit = 10;
+        });
+        // Si el usuario cambia entre la vista normal y la de cancelados, recargar desde API
+        if (wasCancelado != isCancelado) {
+          _fetchReservas();
+        }
+      },
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -1472,17 +1544,93 @@ class _ReservasScreenState extends State<ReservasScreen> {
             ),
           ),
           SizedBox(width: context.r.spaceSm),
-          Text(
-            text,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: TextStyle(
-              fontWeight: FontWeight.w700,
-              color: AppColors.textSecondaryC(isDark),
-              letterSpacing: 1.0,
+          Expanded(
+            child: Text(
+              text,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                fontWeight: FontWeight.w700,
+                color: AppColors.textSecondaryC(isDark),
+                letterSpacing: 1.0,
+              ),
+            ),
+          ),
+          GestureDetector(
+            onTap: () => _showSortOptions(context),
+            child: Container(
+              padding: const EdgeInsets.all(4),
+              color: Colors.transparent,
+              child: Icon(
+                CupertinoIcons.sort_down,
+                size: 20,
+                color: AppColors.accentForTheme(isDark),
+              ),
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  void _showSortOptions(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    showCupertinoModalPopup(
+      context: context,
+      builder: (ctx) => CupertinoActionSheet(
+        title: const Text('Ordenar historial por...'),
+        actions: [
+          CupertinoActionSheetAction(
+            onPressed: () {
+              setState(() => _sortOptionIndex = 0);
+              Navigator.pop(ctx);
+            },
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                if (_sortOptionIndex == 0)
+                  const Icon(CupertinoIcons.checkmark_alt, size: 20),
+                if (_sortOptionIndex == 0) const SizedBox(width: 8),
+                Text('Fecha (recientes primero)', style: TextStyle(color: AppColors.textPrimaryC(isDark))),
+              ],
+            ),
+          ),
+          CupertinoActionSheetAction(
+            onPressed: () {
+              setState(() => _sortOptionIndex = 1);
+              Navigator.pop(ctx);
+            },
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                if (_sortOptionIndex == 1)
+                  const Icon(CupertinoIcons.checkmark_alt, size: 20),
+                if (_sortOptionIndex == 1) const SizedBox(width: 8),
+                Text('Fecha (antiguas primero)', style: TextStyle(color: AppColors.textPrimaryC(isDark))),
+              ],
+            ),
+          ),
+          CupertinoActionSheetAction(
+            onPressed: () {
+              setState(() => _sortOptionIndex = 2);
+              Navigator.pop(ctx);
+            },
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                if (_sortOptionIndex == 2)
+                  const Icon(CupertinoIcons.checkmark_alt, size: 20),
+                if (_sortOptionIndex == 2) const SizedBox(width: 8),
+                Text('Especialidad (A-Z)', style: TextStyle(color: AppColors.textPrimaryC(isDark))),
+              ],
+            ),
+          ),
+        ],
+        cancelButton: CupertinoActionSheetAction(
+          isDestructiveAction: true,
+          onPressed: () => Navigator.pop(ctx),
+          child: const Text('Cancelar'),
+        ),
       ),
     );
   }

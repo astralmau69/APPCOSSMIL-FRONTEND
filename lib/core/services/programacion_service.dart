@@ -82,6 +82,63 @@ class ProgramacionService {
 
   // ── Médicos con agenda por especialidad (nuevo flujo CEX) ──────────────
 
+  /// Lista de médicos disponibles para una especialidad sin fecha (flujo Agenda).
+  /// El endpoint medsuc-buscar filtra por el prefijo de nombre de especialidad (campo `esp`).
+  /// Endpoint: medsuc-buscar
+  Future<List<DoctorAgendaModel>> getMedicosPorEspecialidad({
+    required int idins,
+    required int idsuc,
+    required String espNombre,
+  }) async {
+    // El backend filtra con el inicio del nombre de la especialidad (ej: "CARDI", "DERMA").
+    // Se mandan los primeros 5 caracteres del nombre para que el LIKE funcione correctamente.
+    final espKey = espNombre.length > 5 ? espNombre.substring(0, 5).toUpperCase() : espNombre.toUpperCase();
+    debugPrint('🔍 medsuc-buscar esp=$espKey');
+    final response = await _api.post(
+      ApiConstants.medSucBuscar(),
+      body: {
+        'idins': idins,
+        'idsuc': idsuc,
+        'pat': '',
+        'mat': '',
+        'nom': '',
+        'esp': espKey,
+      },
+    );
+    return switch (response) {
+      ApiSuccess(:final data) => () {
+        final list = data is List ? data : (data is Map ? data['data'] as List? ?? [] : []);
+        return list
+            .whereType<Map<String, dynamic>>()
+            .map(DoctorAgendaModel.fromJson)
+            .toList();
+      }(),
+      ApiError(:final message) => throw Exception(message),
+    };
+  }
+
+  /// Lista de fechas de la agenda para un médico específico.
+  /// Endpoint: agenda-medico-movil/{idins}/{idsuc}/{idmed}
+  Future<List<DoctorAgendaModel>> getAgendaMedicoMovil({
+    required int idins,
+    required int idsuc,
+    required String idmed,
+  }) async {
+    final response = await _api.get(
+      ApiConstants.agendaMedicoMovil(idins, idsuc, idmed),
+    );
+    return switch (response) {
+      ApiSuccess(:final data) => () {
+        final list = data is List ? data : (data is Map ? data['data'] as List? ?? [] : []);
+        return list
+            .whereType<Map<String, dynamic>>()
+            .map(DoctorAgendaModel.fromJson)
+            .toList();
+      }(),
+      ApiError(:final message) => throw Exception(message),
+    };
+  }
+
   /// Lista de médicos disponibles para una especialidad y fecha.
   /// Endpoint: medico-agenda-especialidad-cex/{idins}/{idsuc}/{fecha}/{idesp}
   Future<List<DoctorAgendaModel>> getMedicosAgenda({
@@ -461,6 +518,43 @@ class ProgramacionService {
     };
   }
 
+  /// Obtiene el historial de citas CANCELADAS del asegurado (paginado).
+  ///
+  /// Retorna un record con la lista de reservas y los datos de paginación.
+  Future<({List<ReservaModel> reservas, int totalElements, int totalPages})>
+      getHistorialCitasCanceladas(int idper, {int pagina = 1, int cantidad = 10}) async {
+    if (AppConfig.useMockData) {
+      await Future.delayed(const Duration(milliseconds: 400));
+      // Filtramos o devolvemos una sublista simulada
+      return (
+        reservas: <ReservaModel>[],
+        totalElements: 0,
+        totalPages: 0,
+      );
+    }
+
+    final response = await _api.get(
+      ApiConstants.historialCitasCanceladas(idper, pagina, cantidad),
+    );
+
+    return switch (response) {
+      ApiSuccess(:final data) => () {
+        debugPrint('📦 historial-citas-canceladas raw response: $data');
+        final List<ReservaModel> reservas = _parseReservas(data);
+        // Extraer paginación
+        int totalElements = 0;
+        int totalPages = 0;
+        if (data is Map<String, dynamic> && data['pagination'] is Map) {
+          final pag = data['pagination'] as Map<String, dynamic>;
+          totalElements = pag['totalElements'] as int? ?? 0;
+          totalPages = pag['totalPages'] as int? ?? 0;
+        }
+        return (reservas: reservas, totalElements: totalElements, totalPages: totalPages);
+      }(),
+      ApiError(:final message) => throw Exception(message),
+    };
+  }
+
   // ── Detalle de cita médica ──────────────────────────────────────────
 
   /// Obtiene el detalle completo de una cita médica.
@@ -542,6 +636,10 @@ class ProgramacionService {
   // ── Parsers ─────────────────────────────────────────────────────────────
 
   /// Cancela una cita médica.
+  ///
+  /// El backend puede responder HTTP 200 con `{ ok: false, message: "...", errors: [...] }`
+  /// cuando la cancelación no es posible (ej. fuera del plazo de 06:00 a.m.).
+  /// En ese caso se lanza una excepción con el mensaje exacto del servidor.
   Future<bool> cancelarCita({
     required int gestion,
     required int idins,
@@ -554,13 +652,21 @@ class ProgramacionService {
       return true;
     }
 
-    // El servidor requiere método PUT para cancelar, pero falla con body vacío json en Spring
     final response = await _api.put(
       ApiConstants.cancelarCitaMedica(gestion, idins, idsuc, idtran, dr),
     );
 
     return switch (response) {
-      ApiSuccess() => () {
+      ApiSuccess(:final data) => () {
+        // El backend puede devolver HTTP 200 con { ok: false, message: "..." }
+        if (data is Map<String, dynamic> && data['ok'] == false) {
+          // Preferir el primer error del arreglo errors, o el campo message
+          final errors = data['errors'];
+          final apiMsg = (errors is List && errors.isNotEmpty)
+              ? errors.first.toString()
+              : (data['message'] as String? ?? 'No se pudo cancelar la cita.');
+          throw Exception(apiMsg);
+        }
         localCanceledIds.add('${idtran}_$dr');
         return true;
       }(),

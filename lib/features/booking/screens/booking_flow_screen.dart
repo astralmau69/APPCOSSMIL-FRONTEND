@@ -6,8 +6,8 @@ import '../../../core/widgets/booking_stepper.dart';
 import '../../../shell/tab_shell.dart';
 import 'regional_screen.dart';
 import 'specialty_screen.dart';
-import 'date_picker_screen.dart';
 import 'doctor_screen.dart';
+import 'agenda_screen.dart';
 import 'schedule_screen.dart';
 import 'summary_screen.dart';
 
@@ -33,8 +33,8 @@ class BookingFlowScreenState extends State<BookingFlowScreen> {
   static const _titles = [
     'Establecimiento',
     'Especialidad',
-    'Elige tu Fecha',
     'Elige tu Médico',
+    'Agenda',
     'Horas Disponibles',
     'Confirmar Reserva',
   ];
@@ -160,12 +160,13 @@ class BookingFlowScreenState extends State<BookingFlowScreen> {
         tabShell: widget.tabShell,
         onNext: _nextStep,
       ),
-      2 => DatePickerScreen(
+      2 => DoctorScreen(
         key: const ValueKey(2),
         tabShell: widget.tabShell,
         onNext: _nextStep,
+        onBack: _prevStep,
       ),
-      3 => DoctorScreen(
+      3 => AgendaScreen(
         key: const ValueKey(3),
         tabShell: widget.tabShell,
         onNext: _nextStep,

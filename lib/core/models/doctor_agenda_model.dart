@@ -22,6 +22,8 @@ class DoctorAgendaModel {
   final String foto; // bytes como string de enteros separados por coma
   final String consultorio;
   final String mtrmin;
+  final int disponibles; // New field from agenda-medico-movil
+  final int iddia; // New field from agenda-medico-movil
 
   const DoctorAgendaModel({
     required this.idagenda,
@@ -41,27 +43,46 @@ class DoctorAgendaModel {
     required this.foto,
     required this.consultorio,
     required this.mtrmin,
+    this.disponibles = 0,
+    this.iddia = 0,
   });
 
   factory DoctorAgendaModel.fromJson(Map<String, dynamic> json) {
+    int parseInt(dynamic value) {
+      if (value == null) return 0;
+      if (value is int) return value;
+      if (value is String) return int.tryParse(value) ?? 0;
+      return 0;
+    }
+
+    String fullName = json['medico'] as String? ?? '';
+    if (fullName.isEmpty) {
+      final nom = json['nom'] as String? ?? '';
+      final pat = json['pat'] as String? ?? '';
+      final mat = json['mat'] as String? ?? '';
+      fullName = '$nom $pat $mat'.trim();
+    }
+
     return DoctorAgendaModel(
       idagenda:    json['idagenda'] as String? ?? '',
       idmed:       (json['idmed'] ?? '').toString(),
-      idcon:       json['idcon'] as int? ?? 0,
-      medico:      (json['medico'] as String? ?? '').toDisplayCase,
+      idcon:       parseInt(json['idcon']),
+      medico:      fullName.toDisplayCase,
       dia:         json['dia'] as String? ?? '',
       fecha:       json['fecha'] as String? ?? '',
       horaini:     json['horaini'] as String? ?? '',
       horafin:     json['horafin'] as String? ?? '',
-      ase:         json['ase'] as int? ?? 0,
-      oferta:      json['oferta'] as int? ?? 0,
-      demanda:     json['demanda'] as int? ?? 0,
-      ope:         json['ope'] as int? ?? 0,
-      med:         json['med'] as int? ?? 0,
-      adm:         json['adm'] as int? ?? 0,
+      ase:         parseInt(json['ase']),
+      oferta:      parseInt(json['oferta']),
+      demanda:     parseInt(json['demanda']),
+      ope:         parseInt(json['ope']),
+      med:         parseInt(json['med']),
+      adm:         parseInt(json['adm']),
       foto:        json['foto'] as String? ?? '',
       consultorio: (json['consultorio'] as String? ?? '').toDisplayCase,
       mtrmin:      json['mtrmin'] as String? ?? '',
+      disponibles: parseInt(json['disponibles']),
+      iddia:       parseInt(json['iddia']),
     );
   }
 

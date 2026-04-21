@@ -75,6 +75,10 @@ class ApiConstants {
   static String historialCitas(int idper, int nroPagina, int cantidadRegistros) =>
       '/api/programacion/historial-citas/$idper/$nroPagina/$cantidadRegistros';
 
+  /// Historial de citas canceladas de un asegurado (paginado).
+  static String historialCitasCanceladas(int idper, int nroPagina, int cantidadRegistros) =>
+      '/api/programacion/historial-citas-canceladas/$idper/$nroPagina/$cantidadRegistros';
+
   /// Detalle completo de una cita médica.
   static String detalleCitaMedica(int gestion, int idins, int idsuc, int idtran, int dr) =>
       '/api/programacion/detalle-cita-medica/$gestion/$idins/$idsuc/$idtran/$dr';
@@ -115,7 +119,24 @@ class ApiConstants {
   /// Registrar calificación del médico (POST).
   static String medicoCalificacion() => '/api/programacion/medico-calificacion';
 
-  /// Actualizar datos personales del afiliado: teléfono de emergencia y referencia (POST).
+  /// Actualizar datos personales del afiliado: teléfono de emergencia y referencia (PUT).
   static String actualizaDatosPer() => '/api/safil/afiliado/actualiza-datosper';
+
+  // ─── Calendario de Atención (flujo ventanilla) ────────────────────────────
+
+  /// Especialidades disponibles en ventanilla para una regional/sucursal.
+  static String especialidadesVentanilla(int idins, int idsuc) =>
+      '/api/programacion/especialidades/ventanilla/$idins/$idsuc';
+
+  /// Buscar médicos de una sucursal por especialidad (POST).
+  static String medSucBuscar() => '/api/programacion/medsuc-buscar';
+
+  /// Horario semanal móvil de un médico (GET).
+  static String horarioMedicoMovil(int idins, int idsuc, int idMedico) =>
+      '/api/programacion/horario-medico-movil/$idins/$idsuc/$idMedico';
+
+  /// Agenda móvil de un médico (GET).
+  static String agendaMedicoMovil(int idins, int idsuc, String idmed) =>
+      '/api/programacion/agenda-medico-movil/$idins/$idsuc/$idmed';
 }
 

@@ -118,7 +118,7 @@ class _ScheduleScreenState extends State<ScheduleScreen>
   /// estrictamente posterior a la hora actual del dispositivo.
   List<TimeSlotModel> get _availableSlots {
     final base = _slots
-        .where((s) => s.isAvailable && s.statusLevel != 'none')
+        .where((s) => s.isAvailable)
         .toList();
 
     final selectedDate = widget.tabShell.bookingState.selectedDate ?? '';
@@ -145,7 +145,7 @@ class _ScheduleScreenState extends State<ScheduleScreen>
 
   Future<void> _onSlotSelected(TimeSlotModel slot) async {
     final bs = widget.tabShell.bookingState;
-    final fecha = bs.doctor?.fecha ?? '';
+    final fecha = bs.selectedDate ?? '';
     if (fecha.isNotEmpty) {
       final hasConflict = await widget.tabShell.checkActiveCitaForDate(fecha);
       if (hasConflict) return;
@@ -169,10 +169,10 @@ class _ScheduleScreenState extends State<ScheduleScreen>
   }
 
   String get _fechaReserva {
-    final serverDate = widget.tabShell.bookingState.doctor?.fecha;
-    if (serverDate != null && serverDate.isNotEmpty) {
+    final selectedDate = widget.tabShell.bookingState.selectedDate;
+    if (selectedDate != null && selectedDate.isNotEmpty) {
       try {
-        final dt = DateFormat('yyyy-MM-dd').parse(serverDate);
+        final dt = DateFormat('yyyy-MM-dd').parse(selectedDate);
         final formatter = DateFormat("EEEE, d 'de' MMMM", 'es');
         final formatted = formatter.format(dt);
         return formatted[0].toUpperCase() + formatted.substring(1);

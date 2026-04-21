@@ -41,21 +41,16 @@ class _DoctorScreenState extends State<DoctorScreen> {
     try {
       final bs = widget.tabShell.bookingState;
       final idsuc = int.tryParse(bs.hospital?.id ?? '') ?? 0;
-      final idesp = int.tryParse(bs.specialty?.id ?? '') ?? 0;
-      // La fecha ya fue elegida en DatePickerScreen
-      final fecha = bs.selectedDate ?? '';
-      if (fecha.isEmpty) throw Exception('fecha no seleccionada');
+      final espNombre = bs.specialty?.name ?? '';
 
-      final medicos = await _service.getMedicosAgenda(
+      final medicos = await _service.getMedicosPorEspecialidad(
         idins: 1,
         idsuc: idsuc,
-        fecha: fecha,
-        idesp: idesp,
+        espNombre: espNombre,
       );
 
       if (!mounted) return;
       setState(() {
-        _fechaCita = fecha;
         _medicos = medicos;
         _isLoading = false;
       });
@@ -70,11 +65,8 @@ class _DoctorScreenState extends State<DoctorScreen> {
 
   void _onDoctorSelected(DoctorAgendaModel doctor) {
     final bs = widget.tabShell.bookingState;
-    bs.doctor    = doctor.toDoctorModel();
-    bs.idagenda  = doctor.idagenda;
-    bs.idcon     = doctor.idcon;
-    bs.idcontrol = ''; // el nuevo endpoint no lo provee
-
+    bs.doctor = doctor.toDoctorModel();
+    
     if (widget.onNext != null) {
       widget.onNext!();
     }
@@ -121,8 +113,8 @@ class _DoctorScreenState extends State<DoctorScreen> {
           Expanded(
             child: AppStateWidget.empty(
               title: 'Sin médicos disponibles',
-              message: 'No hay médicos con fichas disponibles para esta especialidad'
-                  '${_fechaCita.isNotEmpty ? ' el ${_formatFecha(_fechaCita)}' : ' en la siguiente fecha disponible'}.',
+              message: 'No hay médicos con agenda abierta para esta especialidad '
+                  'en este establecimiento.',
             ),
           ),
           Padding(
@@ -172,13 +164,6 @@ class _DoctorScreenState extends State<DoctorScreen> {
                     color: AppColors.textPrimaryC(isDark),
                   ),
                 ),
-                if (_medicos.isNotEmpty)
-                  Text(
-                    _formatFecha(_medicos.first.fecha),
-                    style: context.texts.bodySmall.copyWith(
-                      color: AppColors.textSecondaryC(isDark),
-                    ),
-                  ),
               ],
             ),
           ),

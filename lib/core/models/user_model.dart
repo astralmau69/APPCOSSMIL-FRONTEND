@@ -27,6 +27,8 @@ class UserModel {
   final String emergencyPhone;
   /// Dirección o referencia domiciliaria registrada en el backend.
   final String referencia;
+  /// Celular del afiliado devuelto por el endpoint de foto/perfil (campo numcel).
+  final String numCel;
   final List<BeneficiaryModel> beneficiaries;
 
   const UserModel({
@@ -51,6 +53,7 @@ class UserModel {
     this.serviceStatus = '',
     this.emergencyPhone = '',
     this.referencia = '',
+    this.numCel = '',
     required this.beneficiaries,
   });
 
@@ -76,6 +79,7 @@ class UserModel {
     String? serviceStatus,
     String? emergencyPhone,
     String? referencia,
+    String? numCel,
     List<BeneficiaryModel>? beneficiaries,
   }) {
     return UserModel(
@@ -101,6 +105,7 @@ class UserModel {
       serviceStatus: serviceStatus ?? this.serviceStatus,
       emergencyPhone: emergencyPhone ?? this.emergencyPhone,
       referencia: referencia ?? this.referencia,
+      numCel: numCel ?? this.numCel,
       beneficiaries: beneficiaries ?? this.beneficiaries,
     );
   }
@@ -151,6 +156,7 @@ class UserModel {
       serviceStatus: json['serviceStatus'] as String? ?? json['refe4'] as String? ?? '',
       emergencyPhone: json['emergencyPhone'] as String? ?? json['telfemerg'] as String? ?? '',
       referencia: json['referencia'] as String? ?? '',
+      numCel: (json['numCel'] as String? ?? json['numcel'] as String? ?? '').trim(),
     );
   }
 
@@ -174,6 +180,7 @@ class UserModel {
         'serviceStatus': serviceStatus,
         'emergencyPhone': emergencyPhone,
         'referencia': referencia,
+        'numCel': numCel,
         'beneficiaries': beneficiaries.map((b) => b.toJson()).toList(),
       };
 

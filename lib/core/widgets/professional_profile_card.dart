@@ -360,20 +360,22 @@ class ProfessionalProfileCard extends StatelessWidget {
       label: 'Tipo de Sangre',
       value: user.bloodType.isNotEmpty ? user.bloodType : '—',
     );
-    final allergies = _InfoItem(
-      icon: CupertinoIcons.exclamationmark_triangle,
-      label: 'Alergias',
-      value: user.allergies.isNotEmpty ? user.allergies : 'Sin registrar',
+    final celular = _InfoItem(
+      icon: CupertinoIcons.phone_fill,
+      label: 'Celular',
+      value: user.numCel.isNotEmpty ? user.numCel : (user.phone.isNotEmpty ? user.phone : '—'),
     );
     final emergencyPhone = _InfoItem(
       icon: CupertinoIcons.phone_circle_fill,
       label: 'Tel. Emergencia',
-      value: user.emergencyPhone.isNotEmpty ? user.emergencyPhone : 'Sin registrar',
+      value: user.emergencyPhone.isNotEmpty 
+          ? '${user.emergencyPhone} ${user.referencia.isNotEmpty ? '(${user.referencia})' : ''}'
+          : '—',
     );
-    final referencia = _InfoItem(
-      icon: CupertinoIcons.person_2_fill,
-      label: 'Contacto Ref.',
-      value: user.referencia.isNotEmpty ? user.referencia : 'Sin registrar',
+    final allergies = _InfoItem(
+      icon: CupertinoIcons.exclamationmark_triangle,
+      label: 'Alergias',
+      value: user.allergies.isNotEmpty ? user.allergies : 'Sin registrar',
     );
 
     return Column(
@@ -382,7 +384,7 @@ class ProfessionalProfileCard extends StatelessWidget {
           children: [
             Expanded(child: _buildInfoTile(bloodType, r)),
             SizedBox(width: r.spaceMd),
-            Expanded(child: _buildInfoTile(allergies, r)),
+            Expanded(child: _buildInfoTile(celular, r)),
           ],
         ),
         SizedBox(height: r.spaceSm + 2),
@@ -390,7 +392,7 @@ class ProfessionalProfileCard extends StatelessWidget {
           children: [
             Expanded(child: _buildInfoTile(emergencyPhone, r)),
             SizedBox(width: r.spaceMd),
-            Expanded(child: _buildInfoTile(referencia, r)),
+            Expanded(child: _buildInfoTile(allergies, r)),
           ],
         ),
       ],

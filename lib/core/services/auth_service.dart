@@ -198,6 +198,7 @@ class AuthService {
             final eRefe4 = (extraData['refe4']?.toString() ?? '').trim();
             final eTelfemerg = (extraData['telfemerg'] as String? ?? '').trim();
             final eReferencia = (extraData['referencia'] as String? ?? '').trim();
+            final eNumCel = (extraData['numcel']?.toString() ?? extraData['numCel']?.toString() ?? '').trim();
 
             UserSession.currentUser = UserSession.currentUser.copyWith(
               photoBase64: titularPhoto,
@@ -208,6 +209,7 @@ class AuthService {
               serviceStatus: eRefe4.isNotEmpty ? eRefe4 : UserSession.currentUser.serviceStatus,
               emergencyPhone: eTelfemerg.isNotEmpty ? eTelfemerg : UserSession.currentUser.emergencyPhone,
               referencia: eReferencia.isNotEmpty ? eReferencia : UserSession.currentUser.referencia,
+              numCel: eNumCel.isNotEmpty ? eNumCel : UserSession.currentUser.numCel,
             );
 
             // Actualizar fallback con el grado real del endpoint de foto
@@ -416,13 +418,14 @@ class AuthService {
   ///
   /// Endpoint: POST /api/safil/afiliado/actualiza-datosper
   /// [matricula] es la matrícula del usuario que realiza el cambio (campo usuariou).
-  Future<void> actualizarDatosPer({
+  /// Retorna el mensaje de confirmación devuelto por el servidor.
+  Future<String> actualizarDatosPer({
     required int idper,
     required String telfemerg,
     required String referencia,
     required String matricula,
   }) async {
-    final response = await _api.post(
+    final response = await _api.put(
       ApiConstants.actualizaDatosPer(),
       body: {
         'idper': idper,
@@ -432,8 +435,11 @@ class AuthService {
       },
     );
     switch (response) {
-      case ApiSuccess():
-        return;
+      case ApiSuccess(:final data):
+        // El backend puede retornar texto plano (String) o JSON con campo 'message'.
+        if (data is String && data.isNotEmpty) return data;
+        return (data is Map ? data['message'] as String? : null)
+            ?? 'Datos actualizados correctamente';
       case ApiError(:final message):
         throw Exception(message);
     }
