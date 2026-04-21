@@ -82,28 +82,16 @@ class ProgramacionService {
 
   // ── Médicos con agenda por especialidad (nuevo flujo CEX) ──────────────
 
-  /// Lista de médicos disponibles para una especialidad sin fecha (flujo Agenda).
-  /// El endpoint medsuc-buscar filtra por el prefijo de nombre de especialidad (campo `esp`).
-  /// Endpoint: medsuc-buscar
+  /// Lista de médicos para una especialidad.
+  /// Endpoint: GET medico-especialidad-consulta/{idins}/{idsuc}/{idesp}
+  /// Devuelve foto en Base64 JPEG y nombre completo en campo `medico`.
   Future<List<DoctorAgendaModel>> getMedicosPorEspecialidad({
     required int idins,
     required int idsuc,
-    required String espNombre,
+    required int idesp,
   }) async {
-    // El backend filtra con el inicio del nombre de la especialidad (ej: "CARDI", "DERMA").
-    // Se mandan los primeros 5 caracteres del nombre para que el LIKE funcione correctamente.
-    final espKey = espNombre.length > 5 ? espNombre.substring(0, 5).toUpperCase() : espNombre.toUpperCase();
-    debugPrint('🔍 medsuc-buscar esp=$espKey');
-    final response = await _api.post(
-      ApiConstants.medSucBuscar(),
-      body: {
-        'idins': idins,
-        'idsuc': idsuc,
-        'pat': '',
-        'mat': '',
-        'nom': '',
-        'esp': espKey,
-      },
+    final response = await _api.get(
+      ApiConstants.medicoEspecialidadConsulta(idins, idsuc, idesp),
     );
     return switch (response) {
       ApiSuccess(:final data) => () {

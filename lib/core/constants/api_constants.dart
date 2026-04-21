@@ -138,5 +138,10 @@ class ApiConstants {
   /// Agenda móvil de un médico (GET).
   static String agendaMedicoMovil(int idins, int idsuc, String idmed) =>
       '/api/programacion/agenda-medico-movil/$idins/$idsuc/$idmed';
+
+  /// Médicos por especialidad con foto Base64 (GET).
+  /// Reemplaza a medsuc-buscar para el flujo de reserva.
+  static String medicoEspecialidadConsulta(int idins, int idsuc, int idesp) =>
+      '/api/programacion/medico-especialidad-consulta/$idins/$idsuc/$idesp';
 }
 

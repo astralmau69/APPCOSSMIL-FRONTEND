@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:typed_data';
 import '../extensions/string_extensions.dart';
 import 'doctor_model.dart';
@@ -19,7 +20,7 @@ class DoctorAgendaModel {
   final int ope;
   final int med;
   final int adm;
-  final String foto; // bytes como string de enteros separados por coma
+  final String foto; // Base64 JPEG o bytes con signo separados por coma
   final String consultorio;
   final String mtrmin;
   final int disponibles; // New field from agenda-medico-movil
@@ -86,9 +87,26 @@ class DoctorAgendaModel {
     );
   }
 
-  /// Convierte la foto (enteros con signo separados por coma) a bytes de imagen.
+  /// Convierte la foto a bytes de imagen.
+  /// Soporta dos formatos:
+  ///  - Base64 estándar (endpoint medico-especialidad-consulta)
+  ///  - Enteros con signo separados por coma (endpoint legacy)
   Uint8List? get photoBytes {
     if (foto.isEmpty) return null;
+    // Detectar si es Base64: contiene '/', '+', '=' o solo alfanumérico sin comas
+    if (!foto.contains(',')) {
+      try {
+        // Normalizar base64 (añadir padding si es necesario)
+        String normalized = foto.replaceAll('\n', '').replaceAll('\r', '');
+        while (normalized.length % 4 != 0) {
+          normalized += '=';
+        }
+        return base64Decode(normalized);
+      } catch (_) {
+        return null;
+      }
+    }
+    // Formato legacy: enteros con signo separados por coma
     try {
       final bytes = foto.split(',').map((s) {
         final v = int.parse(s.trim());

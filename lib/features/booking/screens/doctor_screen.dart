@@ -41,12 +41,12 @@ class _DoctorScreenState extends State<DoctorScreen> {
     try {
       final bs = widget.tabShell.bookingState;
       final idsuc = int.tryParse(bs.hospital?.id ?? '') ?? 0;
-      final espNombre = bs.specialty?.name ?? '';
+      final idesp = int.tryParse(bs.specialty?.id ?? '') ?? 0;
 
       final medicos = await _service.getMedicosPorEspecialidad(
         idins: 1,
         idsuc: idsuc,
-        espNombre: espNombre,
+        idesp: idesp,
       );
 
       if (!mounted) return;
@@ -233,47 +233,9 @@ class _DoctorScreenState extends State<DoctorScreen> {
                         color: AppColors.textPrimaryC(isDark),
                         height: 1.2,
                       ),
-                      maxLines: 2,
+                      maxLines: 3,
                       overflow: TextOverflow.ellipsis,
                     ),
-                    SizedBox(height: r.spaceXs),
-
-                    // Consultorio
-                    Row(
-                      children: [
-                        Icon(Icons.meeting_room_outlined, size: 13,
-                            color: AppColors.textTertiaryC(isDark)),
-                        SizedBox(width: r.spaceXs),
-                        Expanded(
-                          child: Text(
-                            doctor.consultorio,
-                            style: context.texts.bodySmall.copyWith(
-                              color: AppColors.textSecondaryC(isDark),
-                            ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                      ],
-                    ),
-                    SizedBox(height: r.spaceXs),
-
-                    // Horario
-                    Row(
-                      children: [
-                        Icon(CupertinoIcons.clock, size: 13,
-                            color: AppColors.textTertiaryC(isDark)),
-                        SizedBox(width: r.spaceXs),
-                        Text(
-                          doctor.rangoHorario,
-                          style: context.texts.bodySmall.copyWith(
-                            color: AppColors.textSecondaryC(isDark),
-                          ),
-                        ),
-                      ],
-                    ),
-
-                    SizedBox(height: r.spaceSm),
                   ],
                 ),
               ),
@@ -293,8 +255,7 @@ class _DoctorScreenState extends State<DoctorScreen> {
     Widget content;
 
     if (bytes != null) {
-      content = ClipRRect(
-        borderRadius: BorderRadius.circular(r.radiusMd),
+      content = ClipOval(
         child: Image.memory(
           bytes,
           width: size,
@@ -311,7 +272,7 @@ class _DoctorScreenState extends State<DoctorScreen> {
       width: size,
       height: size,
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(r.radiusMd),
+        shape: BoxShape.circle,
         color: isDark ? AppColors.darkElevated : AppColors.primaryLight,
       ),
       child: content,

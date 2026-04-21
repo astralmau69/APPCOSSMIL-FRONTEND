@@ -54,9 +54,43 @@ class _AgendaScreenState extends State<AgendaScreen> {
         idmed: idmed,
       );
 
+      final today = DateTime.now();
+      final List<DoctorAgendaModel> fullWeek = [];
+      for (int i = 0; i < 7; i++) {
+        final date = today.add(Duration(days: i));
+        final dateStr = DateFormat('yyyy-MM-dd').format(date);
+        final existing = days.where((d) => d.fecha == dateStr).toList();
+        if (existing.isNotEmpty) {
+          fullWeek.add(existing.first);
+        } else {
+          final diaStr = DateFormat('EEEE', 'es').format(date).toUpperCase();
+          fullWeek.add(DoctorAgendaModel(
+            idagenda: '',
+            idmed: idmed,
+            idcon: 0,
+            medico: bs.doctor?.fullName ?? '',
+            dia: diaStr,
+            fecha: dateStr,
+            horaini: '',
+            horafin: '',
+            ase: 0,
+            oferta: 0,
+            demanda: 0,
+            ope: 0,
+            med: 0,
+            adm: 0,
+            foto: '',
+            consultorio: '',
+            mtrmin: '',
+            disponibles: 0,
+            iddia: date.weekday,
+          ));
+        }
+      }
+
       if (!mounted) return;
       setState(() {
-        _agendaDays = days;
+        _agendaDays = fullWeek;
         _isLoading = false;
       });
     } catch (e) {
@@ -68,15 +102,14 @@ class _AgendaScreenState extends State<AgendaScreen> {
     }
   }
 
-  /// Cupos reales disponibles: usa `disponibles` si > 0, sino calcula oferta-demanda.
+  /// Cupos reales disponibles: usa `disponibles` si es != 0, sino calcula oferta-demanda.
   int _cuposLibres(DoctorAgendaModel day) {
-    if (day.disponibles > 0) return day.disponibles;
-    final libre = day.oferta - day.demanda;
-    return libre > 0 ? libre : 0;
+    if (day.disponibles != 0) return day.disponibles;
+    return day.oferta - day.demanda;
   }
 
   void _onDaySelected(DoctorAgendaModel day) {
-    if (_cuposLibres(day) <= 0) return;
+    if (day.idagenda.isEmpty || _cuposLibres(day) <= 0) return;
 
     final bs = widget.tabShell.bookingState;
     bs.selectedDate = day.fecha;
@@ -218,19 +251,30 @@ class _AgendaScreenState extends State<AgendaScreen> {
 
   Widget _buildDayCard(DoctorAgendaModel day, bool isDark, AppResponsive r) {
     final cupos = _cuposLibres(day);
-    final isAvailable = cupos > 0;
+    final hasAgenda = day.idagenda.isNotEmpty;
+    final isAvailable = hasAgenda && cupos > 0;
+    final isOccupied = hasAgenda && cupos <= 0;
     
-    // El usuario pidió morado para ocupado/desactivado
     final colorBg = isAvailable 
         ? AppColors.cardBg(isDark) 
-        : const Color(0xFF673AB7).withValues(alpha: isDark ? 0.2 : 0.08); // Morado suave
+        : isOccupied
+            ? const Color(0xFFE53935).withValues(alpha: isDark ? 0.25 : 0.12) // Rojo más intenso
+            : Colors.grey.withValues(alpha: isDark ? 0.2 : 0.08); // plomo
     
     final colorBorder = isAvailable
         ? AppColors.cardBorder(isDark)
-        : const Color(0xFF673AB7).withValues(alpha: 0.3);
+        : isOccupied
+            ? const Color(0xFFE53935).withValues(alpha: 0.5) // Borde rojo más intenso
+            : Colors.grey.withValues(alpha: 0.3);
+
+    final colorAccent = isAvailable 
+        ? AppColors.primary 
+        : isOccupied 
+            ? const Color(0xFFD32F2F) // Rojo fuerte para texto
+            : Colors.grey;
 
     return GestureDetector(
-      onTap: () => _onDaySelected(day),
+      onTap: () => hasAgenda && isAvailable ? _onDaySelected(day) : null,
       child: Container(
         decoration: BoxDecoration(
           color: colorBg,
@@ -239,7 +283,7 @@ class _AgendaScreenState extends State<AgendaScreen> {
             color: colorBorder,
             width: 1.0,
           ),
-          boxShadow: isDark || !isAvailable ? [] : [
+          boxShadow: isDark || (!isAvailable && !isOccupied) ? [] : [
             BoxShadow(
               color: Colors.black.withValues(alpha: 0.04),
               blurRadius: 8,
@@ -255,7 +299,9 @@ class _AgendaScreenState extends State<AgendaScreen> {
                 width: 60,
                 padding: EdgeInsets.symmetric(vertical: 8),
                 decoration: BoxDecoration(
-                  color: isAvailable ? AppColors.primary.withValues(alpha: 0.1) : const Color(0xFF673AB7).withValues(alpha: 0.15),
+                  color: isAvailable 
+                      ? AppColors.primary.withValues(alpha: 0.1) 
+                      : colorAccent.withValues(alpha: 0.15),
                   borderRadius: BorderRadius.circular(r.radiusSm),
                 ),
                 child: Column(
@@ -265,7 +311,7 @@ class _AgendaScreenState extends State<AgendaScreen> {
                       day.dia.substring(0, 3).toUpperCase(),
                       style: context.texts.labelSmall.copyWith(
                         fontWeight: FontWeight.w700,
-                        color: isAvailable ? AppColors.primary : const Color(0xFF673AB7),
+                        color: isAvailable ? AppColors.primary : colorAccent,
                       ),
                     ),
                     SizedBox(height: 4),
@@ -273,7 +319,7 @@ class _AgendaScreenState extends State<AgendaScreen> {
                       day.fecha.split('-').last,
                       style: context.texts.titleLarge.copyWith(
                         fontWeight: FontWeight.w800,
-                        color: isAvailable ? AppColors.textPrimaryC(isDark) : const Color(0xFF673AB7),
+                        color: isAvailable ? AppColors.textPrimaryC(isDark) : colorAccent,
                         height: 1.0,
                       ),
                     ),
@@ -298,11 +344,26 @@ class _AgendaScreenState extends State<AgendaScreen> {
                         Icon(CupertinoIcons.clock, size: 14, color: AppColors.textTertiaryC(isDark)),
                         SizedBox(width: 4),
                         Text(
-                          day.rangoHorario,
+                          hasAgenda ? day.rangoHorario : 'Sin horario',
                           style: context.texts.bodySmall.copyWith(
                             color: AppColors.textSecondaryC(isDark),
                           ),
                         ),
+                        if (hasAgenda && day.consultorio.isNotEmpty) ...[
+                          SizedBox(width: 12),
+                          Icon(Icons.meeting_room_outlined, size: 14, color: AppColors.textTertiaryC(isDark)),
+                          SizedBox(width: 4),
+                          Expanded(
+                            child: Text(
+                              day.consultorio,
+                              style: context.texts.bodySmall.copyWith(
+                                color: AppColors.textSecondaryC(isDark),
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ],
                       ],
                     ),
                   ],
@@ -314,14 +375,14 @@ class _AgendaScreenState extends State<AgendaScreen> {
                   Container(
                     padding: EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                     decoration: BoxDecoration(
-                      color: isAvailable ? AppColors.success.withValues(alpha: 0.1) : const Color(0xFF673AB7).withValues(alpha: 0.15),
+                      color: isAvailable ? AppColors.success.withValues(alpha: 0.1) : colorAccent.withValues(alpha: 0.15),
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Text(
-                      isAvailable ? '$cupos libres' : 'Ocupado',
+                      isAvailable ? '$cupos libres' : isOccupied ? 'Ocupado' : 'No atención',
                       style: context.texts.labelSmall.copyWith(
                         fontWeight: FontWeight.bold,
-                        color: isAvailable ? AppColors.success : const Color(0xFF673AB7),
+                        color: isAvailable ? AppColors.success : colorAccent,
                       ),
                     ),
                   ),
