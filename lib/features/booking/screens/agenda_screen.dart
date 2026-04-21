@@ -121,7 +121,7 @@ class _AgendaScreenState extends State<AgendaScreen> {
       bs.doctor = DoctorModel(
         id: bs.doctor!.id,
         fullName: bs.doctor!.fullName,
-        office: bs.doctor!.office,
+        office: day.consultorio,
         fecha: day.fecha,
         dia: day.dia,
         foto: bs.doctor!.foto,
@@ -252,25 +252,25 @@ class _AgendaScreenState extends State<AgendaScreen> {
   Widget _buildDayCard(DoctorAgendaModel day, bool isDark, AppResponsive r) {
     final cupos = _cuposLibres(day);
     final hasAgenda = day.idagenda.isNotEmpty;
-    final isAvailable = hasAgenda && cupos > 0;
-    final isOccupied = hasAgenda && cupos <= 0;
+    final isAvailable = hasAgenda && day.estado;
+    final isOccupied = hasAgenda && !day.estado;
     
     final colorBg = isAvailable 
-        ? AppColors.cardBg(isDark) 
+        ? AppColors.success.withValues(alpha: isDark ? 0.3 : 0.15) 
         : isOccupied
-            ? const Color(0xFFE53935).withValues(alpha: isDark ? 0.25 : 0.12) // Rojo más intenso
+            ? const Color(0xFFE53935).withValues(alpha: isDark ? 0.3 : 0.15) // Rojo intenso
             : Colors.grey.withValues(alpha: isDark ? 0.2 : 0.08); // plomo
     
     final colorBorder = isAvailable
-        ? AppColors.cardBorder(isDark)
+        ? AppColors.success
         : isOccupied
-            ? const Color(0xFFE53935).withValues(alpha: 0.5) // Borde rojo más intenso
+            ? const Color(0xFFE53935) // Borde rojo sólido (no transparente)
             : Colors.grey.withValues(alpha: 0.3);
 
     final colorAccent = isAvailable 
-        ? AppColors.primary 
+        ? AppColors.success 
         : isOccupied 
-            ? const Color(0xFFD32F2F) // Rojo fuerte para texto
+            ? const Color(0xFFD32F2F) // Rojo fuerte
             : Colors.grey;
 
     return GestureDetector(
@@ -375,14 +375,14 @@ class _AgendaScreenState extends State<AgendaScreen> {
                   Container(
                     padding: EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                     decoration: BoxDecoration(
-                      color: isAvailable ? AppColors.success.withValues(alpha: 0.1) : colorAccent.withValues(alpha: 0.15),
+                      color: isAvailable ? AppColors.success.withValues(alpha: 0.1) : isOccupied ? const Color(0xFFD32F2F) : colorAccent.withValues(alpha: 0.15),
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Text(
-                      isAvailable ? '$cupos libres' : isOccupied ? 'Ocupado' : 'No atención',
+                      isAvailable ? 'Disponible' : isOccupied ? 'Ocupado' : 'No atención',
                       style: context.texts.labelSmall.copyWith(
                         fontWeight: FontWeight.bold,
-                        color: isAvailable ? AppColors.success : colorAccent,
+                        color: isAvailable ? AppColors.success : isOccupied ? Colors.white : colorAccent,
                       ),
                     ),
                   ),
@@ -393,12 +393,12 @@ class _AgendaScreenState extends State<AgendaScreen> {
                         Text(
                           'Tomar ficha',
                           style: context.texts.labelSmall.copyWith(
-                            color: AppColors.primary,
+                            color: colorAccent,
                             fontWeight: FontWeight.w600,
                           ),
                         ),
                         SizedBox(width: 2),
-                        Icon(CupertinoIcons.chevron_right, size: 12, color: AppColors.primary),
+                        Icon(CupertinoIcons.chevron_right, size: 12, color: colorAccent),
                       ],
                     ),
                   ],

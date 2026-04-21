@@ -40,17 +40,8 @@ class _DoctorSelectionScreenState extends State<DoctorSelectionScreen> {
     });
 
     try {
-      String rawName = widget.specialty.name.toUpperCase();
-      rawName = rawName.replaceAll('Á', 'A')
-                       .replaceAll('É', 'E')
-                       .replaceAll('Í', 'I')
-                       .replaceAll('Ó', 'O')
-                       .replaceAll('Ú', 'U');
-      // Enviar substring (ej. 'DERMA' en vez de 'DERMATOLOGIA') para asegurar matches
-      if (rawName.length > 5) {
-        rawName = rawName.substring(0, 5);
-      }
-      final list = await _service.getMedicos(espName: rawName);
+      final idesp = int.tryParse(widget.specialty.id) ?? 0;
+      final list = await _service.getMedicos(idesp: idesp);
       if (!mounted) return;
       setState(() {
         _doctors = list;
@@ -295,7 +286,7 @@ class _DoctorSelectionScreenState extends State<DoctorSelectionScreen> {
 
   Widget _buildAvatar(MedicoSucModel doc, bool isDark, AppResponsive r) {
     final photo = doc.photoBytes;
-    final radius = 22.0;
+    final radius = 32.0;
 
     return Container(
       width: radius * 2,

@@ -486,8 +486,8 @@ class _ScheduleScreenState extends State<ScheduleScreen>
       child: Row(
         children: [
           GestureDetector(
-            onTap: doctor.foto.isNotEmpty
-                ? () => _showDoctorPhotoEnlarged(doctor.foto, initial)
+            onTap: doctor.photoBytes != null
+                ? () => _showDoctorPhotoEnlarged(doctor.photoBytes!, initial)
                 : null,
             child: Container(
               width: context.r.listAvatarSize,
@@ -497,7 +497,7 @@ class _ScheduleScreenState extends State<ScheduleScreen>
                 borderRadius: BorderRadius.circular(14),
               ),
               alignment: Alignment.center,
-              child: _buildAvatarFromFoto(doctor.foto, initial, isDark),
+              child: _buildAvatarFromFoto(doctor.photoBytes, initial, isDark),
             ),
           ),
           SizedBox(width: context.r.spaceMd),
@@ -561,32 +561,21 @@ class _ScheduleScreenState extends State<ScheduleScreen>
     );
   }
 
-  /// Decodifica el formato de bytes con signo y abre el modal de foto ampliada.
-  void _showDoctorPhotoEnlarged(String foto, String initial) {
-    if (foto.isEmpty) return;
+  /// Muestra el modal de foto ampliada usando los photoBytes pre-procesados.
+  void _showDoctorPhotoEnlarged(Uint8List bytes, String initial) {
     try {
-      final bytes = foto.split(',').map((s) {
-        final v = int.parse(s.trim());
-        return v < 0 ? v + 256 : v;
-      }).toList();
-      final photoBytes = Uint8List.fromList(bytes);
       ImageEnlargedModal.showFromBytes(
         context: context,
-        bytes: photoBytes,
+        bytes: bytes,
         fallbackText: initial,
       );
     } catch (_) {}
   }
 
-  /// Renders avatar from the comma-separated signed-byte string stored in DoctorModel.foto.
-  Widget _buildAvatarFromFoto(String foto, String initial, bool isDark) {
-    if (foto.isNotEmpty) {
+  /// Renders avatar from the photoBytes.
+  Widget _buildAvatarFromFoto(Uint8List? photoBytes, String initial, bool isDark) {
+    if (photoBytes != null) {
       try {
-        final bytes = foto.split(',').map((s) {
-          final v = int.parse(s.trim());
-          return v < 0 ? v + 256 : v;
-        }).toList();
-        final photoBytes = Uint8List.fromList(bytes);
         return ClipRRect(
           borderRadius: BorderRadius.circular(14),
           child: Image.memory(

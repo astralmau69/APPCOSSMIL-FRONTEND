@@ -25,6 +25,7 @@ class DoctorAgendaModel {
   final String mtrmin;
   final int disponibles; // New field from agenda-medico-movil
   final int iddia; // New field from agenda-medico-movil
+  final bool estado; // Indicates if the day is available (true) or occupied (false)
 
   const DoctorAgendaModel({
     required this.idagenda,
@@ -46,6 +47,7 @@ class DoctorAgendaModel {
     required this.mtrmin,
     this.disponibles = 0,
     this.iddia = 0,
+    this.estado = false,
   });
 
   factory DoctorAgendaModel.fromJson(Map<String, dynamic> json) {
@@ -84,6 +86,7 @@ class DoctorAgendaModel {
       mtrmin:      json['mtrmin'] as String? ?? '',
       disponibles: parseInt(json['disponibles']),
       iddia:       parseInt(json['iddia']),
+      estado:      json['estado'] == true || json['estado'] == 'true',
     );
   }
 

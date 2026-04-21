@@ -1,9 +1,10 @@
+import 'dart:convert';
 import 'dart:typed_data';
 import 'package:intl/intl.dart';
 import '../extensions/string_extensions.dart';
 
 // ─── MedicoSucModel ───────────────────────────────────────────────────────────
-// Respuesta del endpoint POST /api/programacion/medsuc-buscar
+// Respuesta del endpoint GET /api/programacion/medico-especialidad-consulta/...
 
 class MedicoSucModel {
   final int idmed;
@@ -66,9 +67,27 @@ class MedicoSucModel {
     return '${words[0][0]}${words[1][0]}'.toUpperCase();
   }
 
-  /// Decodifica la foto (enteros con signo separados por coma) a bytes.
+  /// Decodifica la foto a bytes.
+  /// Soporta dos formatos:
+  ///  - Base64 estándar
+  ///  - Enteros con signo separados por coma (endpoint legacy)
   Uint8List? get photoBytes {
     if (foto.isEmpty) return null;
+    
+    // Detectar si es Base64: contiene '/', '+', '=' o solo alfanumérico sin comas
+    if (!foto.contains(',')) {
+      try {
+        String normalized = foto.replaceAll('\n', '').replaceAll('\r', '');
+        while (normalized.length % 4 != 0) {
+          normalized += '=';
+        }
+        return base64Decode(normalized);
+      } catch (_) {
+        return null;
+      }
+    }
+    
+    // Formato legacy: enteros con signo separados por coma
     try {
       final bytes = foto.split(',').map((s) {
         final v = int.parse(s.trim());

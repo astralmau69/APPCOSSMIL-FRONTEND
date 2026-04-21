@@ -41,18 +41,10 @@ class CalendarioService {
   // ── Médicos por Especialidad ──────────────────────────────────────────────
 
   /// Retorna los médicos disponibles para la especialidad indicada.
-  /// Endpoint: POST /api/programacion/medsuc-buscar
-  Future<List<MedicoSucModel>> getMedicos({required String espName}) async {
-    final response = await _api.post(
-      ApiConstants.medSucBuscar(),
-      body: {
-        'idins': _idins,
-        'idsuc': _idsuc,
-        'pat': '',
-        'mat': '',
-        'nom': '',
-        'esp': espName,
-      },
+  /// Endpoint: GET /api/programacion/medico-especialidad-consulta/1/1/{idesp}
+  Future<List<MedicoSucModel>> getMedicos({required int idesp}) async {
+    final response = await _api.get(
+      ApiConstants.medicoEspecialidadConsulta(_idins, _idsuc, idesp),
     );
     return switch (response) {
       ApiSuccess(:final data) => () {

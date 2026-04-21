@@ -8,6 +8,7 @@ import '../../../core/models/specialty_model.dart';
 import '../../../core/services/calendario_service.dart';
 import '../../../core/animations/optimized_animations.dart';
 import '../../../core/widgets/app_state_widget.dart';
+import '../../../core/widgets/image_enlarged_modal.dart';
 
 class DoctorScheduleScreen extends StatefulWidget {
   final MedicoSucModel doctor;
@@ -170,27 +171,38 @@ class _DoctorScheduleScreenState extends State<DoctorScheduleScreen> {
       ),
       child: Row(
         children: [
-          Container(
-            width: 48,
-            height: 48,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: AppColors.primary.withValues(alpha: 0.1),
-              border: Border.all(color: AppColors.primary.withValues(alpha: 0.2)),
-            ),
-            child: ClipOval(
-              child: photo != null
-                  ? Image.memory(photo, fit: BoxFit.cover, width: 48, height: 48)
-                  : Center(
-                      child: Text(
-                        widget.doctor.initials,
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.w700,
-                          color: AppColors.primary,
+          GestureDetector(
+            onTap: photo != null
+                ? () {
+                    ImageEnlargedModal.showFromBytes(
+                      context: context,
+                      bytes: photo,
+                      fallbackText: widget.doctor.initials,
+                    );
+                  }
+                : null,
+            child: Container(
+              width: 64,
+              height: 64,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: AppColors.primary.withValues(alpha: 0.1),
+                border: Border.all(color: AppColors.primary.withValues(alpha: 0.2)),
+              ),
+              child: ClipOval(
+                child: photo != null
+                    ? Image.memory(photo, fit: BoxFit.cover, width: 64, height: 64)
+                    : Center(
+                        child: Text(
+                          widget.doctor.initials,
+                          style: TextStyle(
+                            fontSize: 24,
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.primary,
+                          ),
                         ),
                       ),
-                    ),
+              ),
             ),
           ),
           SizedBox(width: r.spaceMd),

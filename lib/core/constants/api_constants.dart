@@ -128,9 +128,6 @@ class ApiConstants {
   static String especialidadesVentanilla(int idins, int idsuc) =>
       '/api/programacion/especialidades/ventanilla/$idins/$idsuc';
 
-  /// Buscar médicos de una sucursal por especialidad (POST).
-  static String medSucBuscar() => '/api/programacion/medsuc-buscar';
-
   /// Horario semanal móvil de un médico (GET).
   static String horarioMedicoMovil(int idins, int idsuc, int idMedico) =>
       '/api/programacion/horario-medico-movil/$idins/$idsuc/$idMedico';
