@@ -13,6 +13,7 @@ import '../../../core/models/user_model.dart';
 import '../../../core/services/cossmil_news_service.dart';
 import '../../../core/widgets/section_header.dart';
 import '../../../core/widgets/professional_profile_card.dart';
+import 'news_detail_screen.dart';
 import '../../calendario/screens/specialty_selection_screen.dart';
 import '../../../shell/tab_shell.dart';
 import 'contactos_screen.dart';
@@ -46,8 +47,17 @@ class _HomeScreenState extends State<HomeScreen> {
     setState(() => _isLoadingNews = true);
     final items = await CossmilNewsService.fetchComunicados();
     if (!mounted) return;
+    
+    // Ordenar por fecha descendente (más recientes primero)
+    items.sort((a, b) {
+      if (a.dateTime == null && b.dateTime == null) return 0;
+      if (a.dateTime == null) return 1;
+      if (b.dateTime == null) return -1;
+      return b.dateTime!.compareTo(a.dateTime!);
+    });
+
     setState(() {
-      _news = items;
+      _news = items.take(3).toList();
       _isLoadingNews = false;
     });
   }
@@ -286,29 +296,55 @@ class _HomeScreenState extends State<HomeScreen> {
         label: 'Procedimientos COSSMIL',
         subtitle: 'Requerimientos Médicos',
         color: const Color(0xFFD97706),
-        badge: 'Próximamente',
+        badge: 'PRÓXIMAMENTE 👷',
         onTap: () => _showEnDesarrollo('Procedimientos Para Requerimientos Médicos COSSMIL'),
       ),
     ];
 
     final spacing = r.gridSpacing;
+    final cols = r.gridColumns;
+
+    final rows = <Widget>[];
+    for (int i = 0; i < items.length; i += cols) {
+      final end = (i + cols > items.length) ? items.length : i + cols;
+      final chunk = items.sublist(i, end);
+
+      final rowChildren = <Widget>[];
+      for (int j = 0; j < chunk.length; j++) {
+        rowChildren.add(
+          Expanded(
+            child: _buildActionCard(items[i + j]),
+          ),
+        );
+        if (j < chunk.length - 1) {
+          rowChildren.add(SizedBox(width: spacing));
+        }
+      }
+
+      // Si la última fila tiene menos elementos, añadimos espacios vacíos
+      if (chunk.length < cols) {
+        for (int j = chunk.length; j < cols; j++) {
+          rowChildren.add(SizedBox(width: spacing));
+          rowChildren.add(const Expanded(child: SizedBox.shrink()));
+        }
+      }
+
+      rows.add(
+        IntrinsicHeight(
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: rowChildren,
+          ),
+        ),
+      );
+
+      if (i + cols < items.length) {
+        rows.add(SizedBox(height: spacing));
+      }
+    }
 
     return Column(
-      children: [
-        for (int row = 0; row < items.length; row += 2) ...[
-          if (row > 0) SizedBox(height: spacing),
-          IntrinsicHeight(
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Expanded(child: _buildActionCard(items[row])),
-                SizedBox(width: spacing),
-                Expanded(child: _buildActionCard(items[row + 1])),
-              ],
-            ),
-          ),
-        ],
-      ],
+      children: rows,
     );
   }
 
@@ -335,104 +371,93 @@ class _HomeScreenState extends State<HomeScreen> {
     // Tamaño de ícono reducido en teléfonos pequeños para que el texto respire
     final iconBox  = r.isSmallPhone ? r.listAvatarSize * 0.85 : r.listAvatarSize;
     final iconSize = r.isSmallPhone ? r.iconSm : r.iconMd;
-    // Tamaño de fuente para el label — se escala hacia abajo en phones pequeños
-    final labelSize = r.isSmallPhone ? 12.0 : (r.isTablet ? 16.0 : 13.0);
-    final subSize   = r.isSmallPhone ? 10.0 : (r.isTablet ? 14.0 : 11.0);
+    // Tamaño de fuente ajustado para evitar overflow en anchos reducidos
+    final labelSize = r.isSmallPhone ? 11.5 : (r.isTablet ? 16.0 : 13.0);
+    final subSize   = r.isSmallPhone ? 9.5 : (r.isTablet ? 14.0 : 11.0);
     final badgeSize = r.isSmallPhone ?  8.0 : (r.isTablet ? 11.0 :  9.0);
+
+    final contentRow = Padding(
+      padding: EdgeInsets.symmetric(
+        vertical: r.tileVerticalPad,
+        horizontal: r.tileHorizontalPad,
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          // Ícono
+          Container(
+            width: iconBox,
+            height: iconBox,
+            decoration: BoxDecoration(
+              color: isDark ? action.color.withValues(alpha: 0.2) : Colors.white,
+              borderRadius: BorderRadius.circular(r.radiusMd),
+              border: Border.all(
+                color: isDark ? Colors.transparent : action.color.withValues(alpha: 0.5),
+                width: 0.5,
+              ),
+            ),
+            child: Icon(action.icon, size: iconSize, color: action.color),
+          ),
+          SizedBox(width: r.spaceSm),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  action.label,
+                  style: texts.titleMedium.copyWith(
+                    fontSize: labelSize,
+                    color: textMainColor,
+                    fontWeight: FontWeight.w900,
+                    height: 1.15,
+                  ),
+                ),
+                SizedBox(height: r.spaceXs),
+                Text(
+                  action.subtitle,
+                  style: texts.bodySmall.copyWith(
+                    fontSize: subSize,
+                    color: textSubColor,
+                    fontWeight: FontWeight.w600,
+                    height: 1.1,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
 
     return OptimizedPressButton(
       onTap: action.onTap,
       scaleDown: 0.96,
       child: Container(
-        padding: EdgeInsets.symmetric(
-          vertical: r.tileVerticalPad,
-          horizontal: r.tileHorizontalPad,
-        ),
         decoration: BoxDecoration(
           color: cardBgColor,
           borderRadius: BorderRadius.circular(r.cardRadius),
           border: Border.all(color: cardBorderColor, width: isDark ? 0.8 : 1.0),
           boxShadow: AppColors.cardShadowFor(isDark),
         ),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            // Ícono
-            Container(
-              width: iconBox,
-              height: iconBox,
-              decoration: BoxDecoration(
-                color: isDark ? action.color.withValues(alpha: 0.2) : Colors.white,
-                borderRadius: BorderRadius.circular(r.radiusMd),
-                border: Border.all(
-                  color: isDark ? Colors.transparent : action.color.withValues(alpha: 0.5),
-                  width: 0.5,
-                ),
-              ),
-              child: Icon(action.icon, size: iconSize, color: action.color),
-            ),
-            SizedBox(width: r.spaceSm),
-            // Texto + badge integrado en el flujo (sin Positioned para evitar overlaps)
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  // Badge en línea, arriba del label, solo para cards "en desarrollo"
-                  if (hasBadge) ...[
-                    Container(
-                      padding: EdgeInsets.symmetric(
-                        horizontal: r.spaceXs + 2,
-                        vertical: 2,
-                      ),
-                      decoration: BoxDecoration(
-                        color: action.color.withValues(alpha: 0.15),
-                        borderRadius: BorderRadius.circular(r.chipRadius),
-                        border: Border.all(
-                          color: action.color.withValues(alpha: 0.45),
-                          width: 0.8,
-                        ),
-                      ),
-                      child: Text(
-                        action.badge!,
-                        style: TextStyle(
-                          fontSize: badgeSize,
-                          fontWeight: FontWeight.w700,
-                          color: action.color,
-                          letterSpacing: 0.2,
-                          height: 1.2,
-                        ),
-                      ),
-                    ),
-                    SizedBox(height: r.spaceXs),
-                  ],
-                  Text(
-                    action.label,
-                    style: texts.titleMedium.copyWith(
-                      fontSize: labelSize,
-                      color: textMainColor,
-                      fontWeight: FontWeight.w900,
-                      height: 1.15,
-                    ),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(r.cardRadius - 1),
+          child: hasBadge
+              ? Banner(
+                  message: action.badge!,
+                  location: BannerLocation.topEnd,
+                  color: const Color(0xFFF59E0B), // Amarillo/Ámbar vibrante
+                  textStyle: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 7.5,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: 0.3,
                   ),
-                  SizedBox(height: r.spaceXs),
-                  Text(
-                    action.subtitle,
-                    style: texts.bodySmall.copyWith(
-                      fontSize: subSize,
-                      color: textSubColor,
-                      fontWeight: FontWeight.w600,
-                      height: 1.1,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ],
-              ),
-            ),
-          ],
+                  child: contentRow,
+                )
+              : contentRow,
         ),
       ),
     );
@@ -477,9 +502,8 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
             )
           else ...[
-            // Mostrar hasta 3 noticias compactas
-            for (int i = 0; i < (_news.length > 3 ? 3 : _news.length); i++)
-              _buildNewsRow(_news[i], isDark, isLast: i == (_news.length > 3 ? 2 : _news.length - 1)),
+            for (int i = 0; i < _news.length; i++)
+              _buildNewsRow(_news[i], isDark, isLast: i == _news.length - 1),
           ],
           // Botón "Ver todos"
           _buildViewAllButton(isDark),
@@ -686,141 +710,9 @@ class _HomeScreenState extends State<HomeScreen> {
   // ── Modal de detalle de noticia ───────────────────────────────────────────
 
   void _showNewsDetail(NewsItemModel item) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final r = context.r;
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (ctx) => DraggableScrollableSheet(
-        initialChildSize: 0.65,
-        minChildSize: 0.4,
-        maxChildSize: 0.9,
-        builder: (_, scrollController) => Center(
-          child: ConstrainedBox(
-            constraints: BoxConstraints(maxWidth: r.maxContentWidth),
-            child: Container(
-              decoration: BoxDecoration(
-                color: AppColors.cardBg(isDark),
-                borderRadius: BorderRadius.vertical(top: Radius.circular(r.modalRadius)),
-              ),
-              child: Column(
-                children: [
-                  // Handle bar
-                  Container(
-                    margin: EdgeInsets.only(top: r.spaceMd, bottom: r.spaceSm),
-                    width: 36,
-                    height: 4,
-                    decoration: BoxDecoration(
-                      color: isDark ? AppColors.darkBorder : const Color(0xFF191C1E).withValues(alpha: 0.15),
-                      borderRadius: BorderRadius.circular(context.r.spaceXs),
-                    ),
-                  ),
-                  // Contenido scrollable
-                  Expanded(
-                    child: ListView(
-                      controller: scrollController,
-                      padding: EdgeInsets.fromLTRB(r.paddingH, 8, r.paddingH, 32),
-                  children: [
-                    // Entidad + fecha
-                    Row(
-                      children: [
-                        if (item.entity.isNotEmpty) ...[
-                          Expanded(
-                            child: Text(
-                              item.entity,
-                              style: TextStyle(
-                                fontWeight: FontWeight.w700,
-                                color: AppColors.primary,
-                                letterSpacing: 0.3,
-                              ),
-                            ),
-                          ),
-                        ],
-                        Text(
-                          item.date,
-                          style: TextStyle(
-                            fontWeight: FontWeight.w600,
-                            color: AppColors.textTertiaryC(isDark),
-                          ),
-                        ),
-                      ],
-                    ),
-                    SizedBox(height: context.r.spaceMd),
-                    // Título
-                    Text(
-                      item.title,
-                      style: TextStyle(
-                        fontWeight: FontWeight.w800,
-                        color: AppColors.textPrimaryC(isDark),
-                        height: 1.3,
-                      ),
-                    ),
-                    SizedBox(height: context.r.spaceMd),
-                    // Imagen si existe
-                    if (item.imageUrl.isNotEmpty) ...[
-                      ClipRRect(
-                        borderRadius: BorderRadius.circular(context.r.radiusMd),
-                        child: ConstrainedBox(
-                          constraints: const BoxConstraints(
-                            maxHeight: 400,
-                          ),
-                          child: Image.network(
-                            item.imageUrl,
-                            width: double.infinity,
-                            fit: BoxFit.contain,
-                            cacheWidth: 800, // Limitar tamaño máximo en memoria
-                            errorBuilder: (_, __, ___) => Container(
-                              height: 120,
-                              width: double.infinity,
-                              decoration: BoxDecoration(
-                                color: isDark ? AppColors.darkElevated : const Color(0xFFF0F2F4),
-                                borderRadius: BorderRadius.circular(r.radiusMd),
-                              ),
-                              child: Column(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Icon(CupertinoIcons.photo, size: context.r.iconLg, color: AppColors.textTertiaryC(isDark)),
-                                  SizedBox(height: context.r.spaceSm),
-                                  Text(
-                                    'No se pudo cargar la imagen',
-                                    style: context.texts.bodySmall.copyWith(color: AppColors.textTertiaryC(isDark)),
-                                  ),
-                                ],
-                              ),
-                            ),
-                            loadingBuilder: (_, child, progress) {
-                              if (progress == null) return child;
-                              return Container(
-                                height: 200,
-                                decoration: BoxDecoration(
-                                  color: isDark ? AppColors.darkElevated : const Color(0xFFF0F2F4),
-                                  borderRadius: BorderRadius.circular(r.radiusMd),
-                                ),
-                                child: const Center(child: CupertinoActivityIndicator()),
-                              );
-                            },
-                          ),
-                        ),
-                      ),
-                      SizedBox(height: r.spaceMd),
-                    ],
-                    // Descripción
-                    Text(
-                      item.description,
-                      style: TextStyle(
-                        color: AppColors.textSecondaryC(isDark),
-                        height: 1.6,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ),
-          ),
-        ),
+    Navigator.of(context).push(
+      CupertinoPageRoute(
+        builder: (_) => NewsDetailScreen(item: item),
       ),
     );
   }

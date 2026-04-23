@@ -71,11 +71,11 @@ class CustomNumpad extends StatelessWidget {
     final isDisabled = disabled;
 
     final bgColor = isDark
-        ? AppColors.darkSurface.withValues(alpha: 0.8)
-        : Colors.white.withValues(alpha: 0.9);
+        ? AppColors.darkElevated
+        : Colors.white;
     final borderColor = isDark
-        ? Colors.white.withValues(alpha: 0.1)
-        : Colors.black.withValues(alpha: 0.05);
+        ? Colors.white.withValues(alpha: 0.15)
+        : AppColors.primary.withValues(alpha: 0.12);
     final textColor = isDisabled
         ? AppColors.textTertiaryC(isDark)
         : AppColors.textPrimaryC(isDark);
@@ -86,8 +86,8 @@ class CustomNumpad extends StatelessWidget {
       child: Material(
         color: isDisabled ? bgColor.withValues(alpha: 0.3) : bgColor,
         shape: const CircleBorder(),
-        elevation: isDark ? 0 : 1,
-        shadowColor: Colors.black.withValues(alpha: 0.06),
+        elevation: isDark ? 0 : 3,
+        shadowColor: Colors.black.withValues(alpha: 0.15),
         child: InkWell(
           onTap: isDisabled ? null : () {
             HapticFeedback.lightImpact();
@@ -105,8 +105,8 @@ class CustomNumpad extends StatelessWidget {
               child: Text(
                 number.toString(),
                 style: TextStyle(
-                  fontSize: fontSize,
-                  fontWeight: FontWeight.w600,
+                  fontSize: fontSize * 1.05,
+                  fontWeight: FontWeight.w800,
                   color: textColor,
                   height: 1,
                 ),

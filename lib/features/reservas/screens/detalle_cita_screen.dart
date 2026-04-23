@@ -846,6 +846,7 @@ class _DetalleCitaScreenState extends State<DetalleCitaScreen> {
         idsuc: reserva.idsuc!,
         idtran: reserva.idtran!,
         dr: reserva.dr!,
+        matricula: UserSession.currentUser.matricula,
       );
 
       // Cancelar notificaciones programadas para esta cita

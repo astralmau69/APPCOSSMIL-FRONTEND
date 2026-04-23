@@ -45,6 +45,31 @@ class ImageEnlargedModal extends StatelessWidget {
     await _showDialog(context: context, decoded: bytes, fallbackText: fallbackText);
   }
 
+  /// Abre el modal cargando la imagen desde una URL.
+  static Future<void> showFromUrl({
+    required BuildContext context,
+    required String url,
+    String fallbackText = 'I',
+  }) async {
+    if (url.isEmpty) return;
+    await showGeneralDialog(
+      context: context,
+      barrierColor: Colors.transparent,
+      barrierDismissible: true,
+      barrierLabel: 'Cerrar',
+      transitionDuration: const Duration(milliseconds: 300),
+      transitionBuilder: (context, animation, secondaryAnimation, child) {
+        return FadeTransition(opacity: animation, child: child);
+      },
+      pageBuilder: (context, _, __) {
+        return _ImageUrlEnlargedModal(
+          url: url,
+          fallbackText: fallbackText,
+        );
+      },
+    );
+  }
+
   static Future<void> _showDialog({
     required BuildContext context,
     required Uint8List decoded,
@@ -149,6 +174,93 @@ class ImageEnlargedModal extends StatelessWidget {
                             ),
                           );
                         },
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _ImageUrlEnlargedModal extends StatelessWidget {
+  final String url;
+  final String fallbackText;
+
+  const _ImageUrlEnlargedModal({
+    required this.url,
+    required this.fallbackText,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final r = context.r;
+    final imageSize = r.screenWidth * 0.85;
+
+    return Material(
+      color: Colors.transparent,
+      child: GestureDetector(
+        onTap: () => Navigator.of(context).pop(),
+        child: Stack(
+          children: [
+            Positioned.fill(
+              child: BackdropFilter(
+                filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+                child: Container(color: isDark ? Colors.black87 : Colors.black54),
+              ),
+            ),
+            Positioned(
+              top: MediaQuery.of(context).padding.top + 16,
+              right: 16,
+              child: CupertinoButton(
+                padding: EdgeInsets.zero,
+                onPressed: () => Navigator.of(context).pop(),
+                child: Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: const BoxDecoration(color: Colors.white24, shape: BoxShape.circle),
+                  child: const Icon(CupertinoIcons.xmark, color: Colors.white, size: 24),
+                ),
+              ),
+            ),
+            Center(
+              child: Hero(
+                tag: 'enlarged-image-url',
+                child: Container(
+                  width: imageSize,
+                  height: imageSize,
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(r.radiusLg),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.3),
+                        blurRadius: 30,
+                        spreadRadius: 5,
+                      ),
+                    ],
+                  ),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(r.radiusLg),
+                    child: Image.network(
+                      url,
+                      fit: BoxFit.contain,
+                      loadingBuilder: (_, child, progress) {
+                        if (progress == null) return child;
+                        return const Center(child: CupertinoActivityIndicator(color: Colors.white));
+                      },
+                      errorBuilder: (_, __, ___) => Center(
+                        child: Text(
+                          fallbackText,
+                          style: TextStyle(
+                            fontSize: 40,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white.withValues(alpha: 0.7),
+                          ),
+                        ),
                       ),
                     ),
                   ),

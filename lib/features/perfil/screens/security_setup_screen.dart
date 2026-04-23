@@ -164,26 +164,29 @@ class _SecuritySetupScreenState extends State<SecuritySetupScreen> {
       body: _loading
           ? const Center(child: CupertinoActivityIndicator())
           : SafeArea(
-              child: ListView(
-                padding: EdgeInsets.fromLTRB(context.r.paddingH, 20, context.r.paddingH, 48),
-                children: [
-                  // ── Cabecera de estado ───────────────────────
-                  _buildStatusHeader(isDark),
-                  SizedBox(height: context.r.spaceXl),
-
-                  // ── Chips de resumen ─────────────────────────
-                  if (_hasPin) _buildStatusChips(isDark),
-                  if (_hasPin) SizedBox(height: context.r.spaceXl),
-
-                  // ── Métodos de acceso ────────────────────────
-                  _buildAccessSection(isDark),
-
-                  // ── Zona de riesgo ───────────────────────────
-                  if (_hasPin) ...[
+              child: ResponsiveBody(
+                addHorizontalPadding: false,
+                child: ListView(
+                  padding: EdgeInsets.fromLTRB(context.r.paddingH, 24, context.r.paddingH, 48),
+                  children: [
+                    // ── Cabecera de estado ───────────────────────
+                    _buildStatusHeader(isDark),
                     SizedBox(height: context.r.spaceXl),
-                    _buildDestructiveSection(isDark),
+
+                    // ── Chips de resumen ─────────────────────────
+                    if (_hasPin) _buildStatusChips(isDark),
+                    if (_hasPin) SizedBox(height: context.r.spaceXl),
+
+                    // ── Métodos de acceso ────────────────────────
+                    _buildAccessSection(isDark),
+
+                    // ── Zona de riesgo ───────────────────────────
+                    if (_hasPin) ...[
+                      SizedBox(height: context.r.spaceXl * 1.5),
+                      _buildDestructiveSection(isDark),
+                    ],
                   ],
-                ],
+                ),
               ),
             ),
     );
@@ -479,11 +482,11 @@ class _SecuritySetupScreenState extends State<SecuritySetupScreen> {
             padding: EdgeInsets.symmetric(horizontal: context.r.paddingH, vertical: 16),
             decoration: BoxDecoration(
               color: isDark
-                  ? AppColors.error.withValues(alpha: 0.08)
-                  : AppColors.errorLight,
+                  ? AppColors.error.withValues(alpha: 0.15)
+                  : AppColors.errorLight.withValues(alpha: 0.5),
               borderRadius: BorderRadius.circular(context.r.buttonRadius),
               border: Border.all(
-                color: AppColors.error.withValues(alpha: 0.2),
+                color: AppColors.error.withValues(alpha: 0.3),
               ),
             ),
             child: Row(
@@ -554,22 +557,32 @@ class _SecuritySetupScreenState extends State<SecuritySetupScreen> {
     required Widget trailing,
   }) {
     return Container(
-      padding: EdgeInsets.symmetric(horizontal: context.r.paddingH, vertical: 18),
+      padding: EdgeInsets.symmetric(horizontal: context.r.paddingH, vertical: 20),
       decoration: BoxDecoration(
         color: AppColors.cardBg(isDark),
-        borderRadius: BorderRadius.circular(context.r.buttonRadius),
-        boxShadow: isDark ? [] : AppColors.softShadow,
+        borderRadius: BorderRadius.circular(context.r.cardRadius),
+        border: Border.all(
+          color: AppColors.cardBorder(isDark),
+          width: 0.8,
+        ),
+        boxShadow: isDark ? [] : [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.04),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          )
+        ],
       ),
       child: Row(
         children: [
           Container(
-            width: 46,
-            height: 46,
+            width: 52,
+            height: 52,
             decoration: BoxDecoration(
               color: iconBg,
-              borderRadius: BorderRadius.circular(13),
+              borderRadius: BorderRadius.circular(16),
             ),
-            child: Icon(icon, size: 22, color: iconColor),
+            child: Icon(icon, size: 26, color: iconColor),
           ),
           SizedBox(width: context.r.spaceMd),
           Expanded(
@@ -578,16 +591,18 @@ class _SecuritySetupScreenState extends State<SecuritySetupScreen> {
               children: [
                 Text(
                   title,
-                  style: context.texts.titleMedium.copyWith(
-                    fontWeight: FontWeight.w600,
+                  style: context.texts.titleLarge.copyWith(
+                    fontWeight: FontWeight.w700,
                     color: AppColors.textPrimaryC(isDark),
+                    height: 1.2,
                   ),
                 ),
-                SizedBox(height: context.r.spaceXs),
+                SizedBox(height: 4),
                 Text(
                   subtitle,
                   style: context.texts.bodySmall.copyWith(
                     color: subtitleColor,
+                    fontWeight: FontWeight.w500,
                   ),
                 ),
               ],

@@ -484,6 +484,7 @@ class _SummaryScreenState extends State<SummaryScreen>
         height: double.infinity,
         fit: BoxFit.cover,
         cacheWidth: 200,
+        gaplessPlayback: true,
         errorBuilder: (_, __, ___) => fallback,
       );
     } catch (_) {
@@ -541,14 +542,19 @@ class _SummaryScreenState extends State<SummaryScreen>
                   width: 0.8,
                 ),
               ),
-              child: CupertinoButton.filled(
+              child: CupertinoButton(
+                color: AppColors.success,
                 borderRadius: BorderRadius.circular(context.r.cardRadius),
                 onPressed: _isConfirming ? null : () => _confirmBooking(),
                 child: _isConfirming
                     ? const CupertinoActivityIndicator(color: Colors.white)
                     : const Text(
                         'Confirmar Reserva',
-                        style: TextStyle(fontWeight: FontWeight.w800, letterSpacing: 0.5),
+                        style: TextStyle(
+                          fontWeight: FontWeight.w800, 
+                          letterSpacing: 0.5,
+                          color: Colors.white,
+                        ),
                       ),
               ),
             ),

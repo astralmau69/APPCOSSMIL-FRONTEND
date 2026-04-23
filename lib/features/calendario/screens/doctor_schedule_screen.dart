@@ -10,6 +10,55 @@ import '../../../core/animations/optimized_animations.dart';
 import '../../../core/widgets/app_state_widget.dart';
 import '../../../core/widgets/image_enlarged_modal.dart';
 
+// ─── Modelo de turno ─────────────────────────────────────────────────────────
+
+enum _Turno { manana, tarde, noche }
+
+extension _TurnoExt on _Turno {
+  String get label => switch (this) {
+        _Turno.manana => 'Mañana',
+        _Turno.tarde => 'Tarde',
+        _Turno.noche => 'Noche',
+      };
+
+  IconData get icon => switch (this) {
+        _Turno.manana => CupertinoIcons.sunrise_fill,
+        _Turno.tarde => CupertinoIcons.sun_max_fill,
+        _Turno.noche => CupertinoIcons.moon_stars_fill,
+      };
+
+  Color get color => switch (this) {
+        _Turno.manana => const Color(0xFFF59E0B), // ámbar
+        _Turno.tarde => const Color(0xFFEF7C34),  // naranja
+        _Turno.noche => const Color(0xFF6366F1),  // índigo
+      };
+
+  Color get bgLight => switch (this) {
+        _Turno.manana => const Color(0xFFFFFBEB),
+        _Turno.tarde => const Color(0xFFFFF3E0),
+        _Turno.noche => const Color(0xFFEEF2FF),
+      };
+
+  Color get bgDark => switch (this) {
+        _Turno.manana => const Color(0xFF2D2207),
+        _Turno.tarde => const Color(0xFF2D1800),
+        _Turno.noche => const Color(0xFF1E1B40),
+      };
+
+  Color bg(bool isDark) => isDark ? bgDark : bgLight;
+
+  /// 06:00-11:59 → Mañana / 12:00-17:59 → Tarde / 18:00+ → Noche
+  static _Turno fromHora(String hora) {
+    final parts = hora.split(':');
+    final h = int.tryParse(parts.isNotEmpty ? parts[0] : '') ?? 0;
+    if (h < 12) return _Turno.manana;
+    if (h < 18) return _Turno.tarde;
+    return _Turno.noche;
+  }
+}
+
+// ─── Screen ──────────────────────────────────────────────────────────────────
+
 class DoctorScheduleScreen extends StatefulWidget {
   final MedicoSucModel doctor;
   final SpecialtyModel specialty;
@@ -141,6 +190,8 @@ class _DoctorScheduleScreenState extends State<DoctorScheduleScreen> {
                   children: [
                     _buildDoctorBanner(isDark, r),
                     SizedBox(height: r.spaceLg),
+                    _buildLegend(isDark, r),
+                    SizedBox(height: r.spaceLg),
                     ..._buildScheduleDays(isDark, r),
                     SizedBox(height: r.spaceXl),
                   ],
@@ -152,6 +203,8 @@ class _DoctorScheduleScreenState extends State<DoctorScheduleScreen> {
       ],
     );
   }
+
+  // ── Banner del médico ─────────────────────────────────────────────────────
 
   Widget _buildDoctorBanner(bool isDark, AppResponsive r) {
     final photo = widget.doctor.photoBytes;
@@ -230,6 +283,49 @@ class _DoctorScheduleScreenState extends State<DoctorScheduleScreen> {
     );
   }
 
+  // ── Leyenda de turnos ─────────────────────────────────────────────────────
+
+  Widget _buildLegend(bool isDark, AppResponsive r) {
+    final turnos = [_Turno.manana, _Turno.tarde, _Turno.noche];
+    return Row(
+      children: turnos.map((t) {
+        return Expanded(
+          child: Container(
+            margin: EdgeInsets.only(right: t == _Turno.noche ? 0 : r.spaceSm),
+            padding: EdgeInsets.symmetric(
+              horizontal: r.spaceSm,
+              vertical: r.spaceSm - 2,
+            ),
+            decoration: BoxDecoration(
+              color: t.bg(isDark),
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(
+                color: t.color.withValues(alpha: isDark ? 0.3 : 0.25),
+              ),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(t.icon, size: 13, color: t.color),
+                const SizedBox(width: 5),
+                Text(
+                  t.label,
+                  style: context.texts.labelSmall.copyWith(
+                    color: t.color,
+                    fontWeight: FontWeight.w600,
+                    fontSize: 11,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      }).toList(),
+    );
+  }
+
+  // ── Días de la semana ─────────────────────────────────────────────────────
+
   List<Widget> _buildScheduleDays(bool isDark, AppResponsive r) {
     List<Widget> items = [];
     for (int i = 0; i < _schedule.length; i++) {
@@ -245,7 +341,7 @@ class _DoctorScheduleScreenState extends State<DoctorScheduleScreen> {
               children: [
                 _buildDayHeader(dia, isDark, r),
                 SizedBox(height: r.spaceSm),
-                _buildDaySlots(dia.slots, dia.consultorio, dia.piso, isDark, r),
+                _buildDayCard(dia, isDark, r),
               ],
             ),
           ),
@@ -281,8 +377,21 @@ class _DoctorScheduleScreenState extends State<DoctorScheduleScreen> {
     );
   }
 
-  Widget _buildDaySlots(
-      List<HorarioMovilSlot> slots, String consultorio, String piso, bool isDark, AppResponsive r) {
+  // ── Card del día con agrupaciones por turno ───────────────────────────────
+
+  Widget _buildDayCard(HorarioDia dia, bool isDark, AppResponsive r) {
+    // Agrupar slots por turno (Mañana / Tarde / Noche)
+    final Map<_Turno, List<HorarioMovilSlot>> byTurno = {};
+    for (final slot in dia.slots) {
+      final turno = _TurnoExt.fromHora(slot.horaini);
+      byTurno.putIfAbsent(turno, () => []).add(slot);
+    }
+
+    // Orden canónico de turnos
+    final turnosPresentes = [_Turno.manana, _Turno.tarde, _Turno.noche]
+        .where((t) => byTurno.containsKey(t))
+        .toList();
+
     return Container(
       decoration: BoxDecoration(
         color: AppColors.cardBg(isDark),
@@ -292,77 +401,162 @@ class _DoctorScheduleScreenState extends State<DoctorScheduleScreen> {
       ),
       child: Column(
         children: [
-          // Banner de Consultorio
-          Container(
-            padding: EdgeInsets.symmetric(horizontal: r.cardPadding, vertical: r.spaceSm),
-            decoration: BoxDecoration(
-              color: isDark ? const Color(0xFF2A2D35) : const Color(0xFFF8FAFC),
-              borderRadius: BorderRadius.vertical(top: Radius.circular(r.cardRadius - 1)),
-              border: Border(bottom: BorderSide(color: AppColors.dividerC(isDark))),
-            ),
-            child: Row(
-              children: [
-                Icon(CupertinoIcons.building_2_fill, size: 16, color: AppColors.textTertiaryC(isDark)),
-                SizedBox(width: r.spaceSm),
-                Text(
-                  'Consultorio $consultorio',
-                  style: context.texts.bodyMedium.copyWith(
-                    fontWeight: FontWeight.w600,
-                    color: AppColors.textSecondaryC(isDark),
-                  ),
-                ),
-                if (piso.isNotEmpty) ...[
-                  const Spacer(),
-                  Text(
-                    piso,
-                    style: context.texts.bodySmall.copyWith(
-                      fontWeight: FontWeight.w500,
-                      color: AppColors.textTertiaryC(isDark),
-                    ),
-                  ),
-                ],
-              ],
-            ),
-          ),
-          
-          ...List.generate(slots.length, (i) {
-            final slot = slots[i];
-            final isLast = i == slots.length - 1;
-            return Column(
-              children: [
-                Padding(
-                  padding: EdgeInsets.symmetric(
-                    horizontal: r.cardPadding,
-                    vertical: r.spaceMd,
-                  ),
-                  child: Row(
-                    children: [
-                      Icon(
-                        CupertinoIcons.clock,
-                        size: 16,
-                        color: AppColors.accentForTheme(isDark),
-                      ),
-                      SizedBox(width: r.spaceSm),
-                      Text(
-                        slot.rangoHorario,
-                        style: context.texts.bodyMedium.copyWith(
-                          fontWeight: FontWeight.w700,
-                          color: AppColors.textPrimaryC(isDark),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                if (!isLast)
-                  Padding(
-                    padding: EdgeInsets.symmetric(horizontal: r.cardPadding),
-                    child: Container(height: 0.5, color: AppColors.dividerC(isDark)),
-                  ),
-              ],
-            );
+          // Encabezado con Consultorio y Piso
+          _buildConsultorioBanner(dia.consultorio, dia.piso, isDark, r),
+
+          // Secciones por turno
+          ...List.generate(turnosPresentes.length, (ti) {
+            final turno = turnosPresentes[ti];
+            final slots = byTurno[turno]!;
+            final isLastSection = ti == turnosPresentes.length - 1;
+            return _buildTurnoSection(turno, slots, isDark, r, isLastSection);
           }),
         ],
       ),
+    );
+  }
+
+  Widget _buildConsultorioBanner(
+      String consultorio, String piso, bool isDark, AppResponsive r) {
+    return Container(
+      padding: EdgeInsets.symmetric(horizontal: r.cardPadding, vertical: r.spaceSm),
+      decoration: BoxDecoration(
+        color: isDark ? const Color(0xFF2A2D35) : const Color(0xFFF8FAFC),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(r.cardRadius - 1)),
+        border: Border(bottom: BorderSide(color: AppColors.dividerC(isDark))),
+      ),
+      child: Row(
+        children: [
+          Icon(CupertinoIcons.building_2_fill,
+              size: 16, color: AppColors.textTertiaryC(isDark)),
+          SizedBox(width: r.spaceSm),
+          Text(
+            'Consultorio $consultorio',
+            style: context.texts.bodyMedium.copyWith(
+              fontWeight: FontWeight.w600,
+              color: AppColors.textSecondaryC(isDark),
+            ),
+          ),
+          if (piso.isNotEmpty) ...[
+            const Spacer(),
+            Text(
+              piso,
+              style: context.texts.bodySmall.copyWith(
+                fontWeight: FontWeight.w500,
+                color: AppColors.textTertiaryC(isDark),
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTurnoSection(
+    _Turno turno,
+    List<HorarioMovilSlot> slots,
+    bool isDark,
+    AppResponsive r,
+    bool isLastSection,
+  ) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Encabezado del turno
+        Container(
+          padding: EdgeInsets.symmetric(
+            horizontal: r.cardPadding,
+            vertical: r.spaceSm - 2,
+          ),
+          decoration: BoxDecoration(
+            color: turno.bg(isDark),
+            border: Border(
+              bottom: BorderSide(
+                color: turno.color.withValues(alpha: isDark ? 0.2 : 0.15),
+                width: 0.5,
+              ),
+            ),
+          ),
+          child: Row(
+            children: [
+              Icon(turno.icon, size: 14, color: turno.color),
+              SizedBox(width: r.spaceSm),
+              Text(
+                turno.label,
+                style: context.texts.labelSmall.copyWith(
+                  color: turno.color,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 0.5,
+                ),
+              ),
+              const Spacer(),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                decoration: BoxDecoration(
+                  color: turno.color.withValues(alpha: isDark ? 0.2 : 0.12),
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Text(
+                  '${slots.length} ${slots.length == 1 ? 'bloque' : 'bloques'}',
+                  style: context.texts.labelSmall.copyWith(
+                    color: turno.color,
+                    fontWeight: FontWeight.w600,
+                    fontSize: 10,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+
+        // Slots del turno
+        ...List.generate(slots.length, (i) {
+          final slot = slots[i];
+          final isLast = i == slots.length - 1;
+          return Column(
+            children: [
+              Padding(
+                padding: EdgeInsets.symmetric(
+                  horizontal: r.cardPadding,
+                  vertical: r.spaceMd,
+                ),
+                child: Row(
+                  children: [
+                    Icon(
+                      CupertinoIcons.clock,
+                      size: 16,
+                      color: turno.color.withValues(alpha: isDark ? 0.85 : 0.75),
+                    ),
+                    SizedBox(width: r.spaceSm),
+                    Text(
+                      slot.rangoHorario,
+                      style: context.texts.bodyMedium.copyWith(
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.textPrimaryC(isDark),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              if (!isLast)
+                Padding(
+                  padding: EdgeInsets.symmetric(horizontal: r.cardPadding),
+                  child: Container(
+                    height: 0.5,
+                    color: AppColors.dividerC(isDark),
+                  ),
+                ),
+            ],
+          );
+        }),
+
+        // Separador entre secciones de turno (si no es la última)
+        if (!isLastSection)
+          Container(
+            height: 1,
+            color: AppColors.cardBorder(isDark),
+          ),
+      ],
     );
   }
 }

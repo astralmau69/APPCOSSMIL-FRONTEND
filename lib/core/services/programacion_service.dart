@@ -634,6 +634,7 @@ class ProgramacionService {
     required int idsuc,
     required int idtran,
     required int dr,
+    required String matricula,
   }) async {
     if (AppConfig.useMockData) {
       await Future.delayed(const Duration(milliseconds: 600));
@@ -641,7 +642,7 @@ class ProgramacionService {
     }
 
     final response = await _api.put(
-      ApiConstants.cancelarCitaMedica(gestion, idins, idsuc, idtran, dr),
+      ApiConstants.cancelarCitaMedica(gestion, idins, idsuc, idtran, dr, matricula),
     );
 
     return switch (response) {

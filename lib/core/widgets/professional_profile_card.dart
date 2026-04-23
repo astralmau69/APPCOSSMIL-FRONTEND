@@ -222,6 +222,7 @@ class ProfessionalProfileCard extends StatelessWidget {
                   height: avatarSize,
                   cacheWidth: 150,
                   fit: BoxFit.cover,
+                  gaplessPlayback: true,
                   errorBuilder: (_, __, ___) => _buildFallbackAvatar(r),
                 )
               : _buildFallbackAvatar(r),

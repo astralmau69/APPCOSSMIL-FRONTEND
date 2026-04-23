@@ -176,7 +176,6 @@ class _DoctorScreenState extends State<DoctorScreen> {
             itemCount: _medicos.length,
             itemBuilder: (context, i) {
               return FadeSlideIn(
-                delay: Duration(milliseconds: i * 60),
                 offsetY: 12,
                 child: Padding(
                   padding: EdgeInsets.only(bottom: r.spaceMd),
@@ -236,6 +235,16 @@ class _DoctorScreenState extends State<DoctorScreen> {
                       maxLines: 3,
                       overflow: TextOverflow.ellipsis,
                     ),
+                    if (doctor.mtrmin.isNotEmpty) ...[
+                      SizedBox(height: r.spaceXs),
+                      Text(
+                        'Matrícula prof.: ${doctor.mtrmin}',
+                        style: context.texts.bodySmall.copyWith(
+                          color: AppColors.textSecondaryC(isDark),
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
                   ],
                 ),
               ),
@@ -261,6 +270,7 @@ class _DoctorScreenState extends State<DoctorScreen> {
           width: size,
           height: size,
           fit: BoxFit.cover,
+          gaplessPlayback: true,
           errorBuilder: (_, __, ___) => _buildInitials(name, size, isDark, r),
         ),
       );

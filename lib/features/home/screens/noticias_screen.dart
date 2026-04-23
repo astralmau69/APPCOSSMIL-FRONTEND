@@ -6,6 +6,7 @@ import '../../../core/models/news_item_model.dart';
 import '../../../core/services/cossmil_news_service.dart';
 import '../../../core/animations/optimized_animations.dart';
 import '../../../core/utils/error_mapper.dart';
+import 'news_detail_screen.dart';
 
 /// Pantalla dedicada para comunicados y noticias de COSSMIL con paginación.
 class NoticiasScreen extends StatefulWidget {
@@ -238,127 +239,9 @@ class _NoticiasScreenState extends State<NoticiasScreen> {
   }
 
   void _showDetail(NewsItemModel item) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (ctx) => DraggableScrollableSheet(
-        initialChildSize: 0.7,
-        minChildSize: 0.4,
-        maxChildSize: 0.92,
-        builder: (_, scrollController) => Container(
-          decoration: BoxDecoration(
-            color: AppColors.cardBg(isDark),
-            borderRadius: BorderRadius.vertical(top: Radius.circular(context.r.modalRadius)),
-          ),
-          child: Column(
-            children: [
-              Container(
-                margin: EdgeInsets.only(top: context.r.spaceMd, bottom: context.r.spaceSm),
-                width: context.r.handleBarWidth,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: isDark ? AppColors.darkBorder : const Color(0xFF191C1E).withValues(alpha: 0.15),
-                  borderRadius: BorderRadius.circular(context.r.spaceXs),
-                ),
-              ),
-              Expanded(
-                child: ListView(
-                  controller: scrollController,
-                  padding: EdgeInsets.fromLTRB(context.r.paddingH, 8, context.r.paddingH, 32),
-                  children: [
-                    Row(
-                      children: [
-                        if (item.entity.isNotEmpty)
-                          Expanded(
-                            child: Text(
-                              item.entity,
-                              style: TextStyle(
-                                fontWeight: FontWeight.w700,
-                                color: AppColors.primary,
-                                letterSpacing: 0.3,
-                              ),
-                            ),
-                          ),
-                        Text(
-                          item.date,
-                          style: TextStyle(
-                            fontWeight: FontWeight.w600,
-                            color: AppColors.textTertiaryC(isDark),
-                          ),
-                        ),
-                      ],
-                    ),
-                    SizedBox(height: context.r.spaceMd),
-                    Text(
-                      item.title,
-                      style: TextStyle(
-                        fontWeight: FontWeight.w800,
-                        color: AppColors.textPrimaryC(isDark),
-                        height: 1.3,
-                      ),
-                    ),
-                    SizedBox(height: context.r.spaceMd),
-                    if (item.imageUrl.isNotEmpty) ...[
-                      ClipRRect(
-                        borderRadius: BorderRadius.circular(context.r.radiusMd),
-                        child: ConstrainedBox(
-                          constraints: const BoxConstraints(
-                            maxHeight: 400,
-                          ),
-                          child: Image.network(
-                            item.imageUrl,
-                            width: double.infinity,
-                            fit: BoxFit.contain,
-                            errorBuilder: (_, __, ___) => Container(
-                              height: 120,
-                              width: double.infinity,
-                              decoration: BoxDecoration(
-                                color: isDark ? AppColors.darkElevated : const Color(0xFFF0F2F4),
-                                borderRadius: BorderRadius.circular(context.r.radiusMd),
-                              ),
-                              child: Column(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Icon(CupertinoIcons.photo, size: 32, color: AppColors.textTertiaryC(isDark)),
-                                  SizedBox(height: context.r.spaceSm),
-                                  Text(
-                                    'No se pudo cargar la imagen',
-                                    style: context.texts.bodySmall.copyWith(color: AppColors.textTertiaryC(isDark)),
-                                  ),
-                                ],
-                              ),
-                            ),
-                            loadingBuilder: (_, child, progress) {
-                              if (progress == null) return child;
-                              return Container(
-                                height: 200,
-                                decoration: BoxDecoration(
-                                  color: isDark ? AppColors.darkElevated : const Color(0xFFF0F2F4),
-                                  borderRadius: BorderRadius.circular(context.r.radiusMd),
-                                ),
-                                child: const Center(child: CupertinoActivityIndicator()),
-                              );
-                            },
-                          ),
-                        ),
-                      ),
-                      SizedBox(height: context.r.spaceMd),
-                    ],
-                    Text(
-                      item.description,
-                      style: TextStyle(
-                        color: AppColors.textSecondaryC(isDark),
-                        height: 1.6,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ),
+    Navigator.of(context).push(
+      CupertinoPageRoute(
+        builder: (_) => NewsDetailScreen(item: item),
       ),
     );
   }

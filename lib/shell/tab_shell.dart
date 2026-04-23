@@ -1017,6 +1017,7 @@ class TabShellState extends State<TabShell>
                     idsuc: reserva.idsuc!,
                     idtran: reserva.idtran!,
                     dr: reserva.dr!,
+                    matricula: UserSession.currentUser.matricula,
                   );
                   if (success) {
                     // Cancelar notificaciones programadas para esta cita
@@ -1717,13 +1718,13 @@ class _ScheduleInfoDialog extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const SizedBox(height: 8),
-          _infoRow('🗓', 'Lunes a Viernes', 'Reserva de citas disponible para todas las especialidades habilitadas.', textColor),
+          _infoRow('🗓', 'Lunes a Viernes', 'Atención regular habilitada para todas las especialidades médicas mediante reserva previa.', textColor),
           const SizedBox(height: 10),
-          _infoRow('🚨', 'Sábados, Domingos y Feriados', 'Atención directa y exclusiva a través del área de Emergencias.', textColor),
+          _infoRow('🚨', 'Sábados, Domingos y Feriados', 'Atención médica exclusiva a través del servicio de Emergencias las 24 horas.', textColor),
           const SizedBox(height: 10),
-          _infoRow('ℹ️', 'Nota especial', 'Los días sábado contamos con atención regular únicamente para la especialidad de Ginecología.', textColor),
+          _infoRow('ℹ️', 'Nota especial', 'Los días sábado se brinda atención en consulta externa únicamente para la especialidad de Ginecología.', textColor),
           const SizedBox(height: 10),
-          _infoRow('📱', 'Reserva por App', 'Solo puedes reservar para el siguiente día hábil (ej. lunes→martes, domingo→lunes). A partir de las 00:00 AM se habilita automáticamente el turno del día siguiente. Las fichas del mismo día de la semana siguiente se habilitan a las 00:00 AM de ese mismo día (ej. martes→siguiente martes).', textColor),
+          _infoRow('📱', 'Reserva por App', 'El sistema permite programar citas médicas abarcando un ciclo semanal completo (ej. de lunes al siguiente lunes). La agenda para nuevos turnos se actualiza automáticamente todos los días a partir de las 23:59 hrs.', textColor),
         ],
       ),
       actions: [

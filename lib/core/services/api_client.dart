@@ -1,8 +1,11 @@
+import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import '../constants/api_constants.dart';
 import '../storage/token_storage.dart';
+import 'security_service.dart';
 
 /// Cliente HTTP centralizado que inyecta automáticamente
 /// el Bearer token en cada request protegido.
@@ -16,6 +19,32 @@ class ApiClient {
   static Future<bool>? _refreshInProgress;
 
   ApiClient({http.Client? httpClient}) : _http = httpClient ?? http.Client();
+
+  /// Tiempo máximo de espera para cualquier petición
+  static const Duration _globalTimeout = Duration(seconds: 15);
+  /// Número máximo de intentos antes de fallar
+  static const int _maxRetries = 3;
+
+  /// Envoltorio para reintentar peticiones en caso de microcortes de red.
+  Future<T> _withRetry<T>(Future<T> Function() action) async {
+    int attempts = 0;
+    while (true) {
+      attempts++;
+      try {
+        return await action();
+      } catch (e) {
+        final bool isNetworkError = e is SocketException || e is TimeoutException || e is http.ClientException;
+        if (isNetworkError && attempts < _maxRetries) {
+          if (kDebugMode) {
+            debugPrint('   ⚠ Fallo de red detectado ($e). Reintento $attempts de $_maxRetries en 1.5s...');
+          }
+          await Future.delayed(const Duration(milliseconds: 1500));
+          continue;
+        }
+        rethrow;
+      }
+    }
+  }
 
   /// Cierra el cliente HTTP. Llamar cuando ya no se necesite.
   void close() => _http.close();
@@ -49,36 +78,43 @@ class ApiClient {
     }
 
     try {
-      final response = await _http.get(url, headers: _headers(token));
+      return await _withRetry(() async {
+        final response = await _http.get(url, headers: _headers(token)).timeout(_globalTimeout);
 
-      if (kDebugMode) {
-        debugPrint('   ↳ ${response.statusCode}');
-      }
-
-      if (response.statusCode == 200) {
-        final body = jsonDecode(utf8.decode(response.bodyBytes));
-        return ApiClientResponse.success(body);
-      }
-
-      if (response.statusCode == 401) {
         if (kDebugMode) {
-          debugPrint('   ↳ 401 UNAUTHORIZED: Token might be invalid or expired.');
+          debugPrint('   ↳ ${response.statusCode}');
         }
-        return const ApiClientResponse.error(
-          'Sesión expirada. Inicie sesión nuevamente.',
-          statusCode: 401,
-        );
-      }
 
-      return ApiClientResponse.error(
-        'Error del servidor (${response.statusCode})',
-        statusCode: response.statusCode,
-      );
+        if (response.statusCode == 200) {
+          final body = jsonDecode(utf8.decode(response.bodyBytes));
+          return ApiClientResponse.success(body);
+        }
+
+        if (response.statusCode == 401) {
+          if (kDebugMode) {
+            debugPrint('   ↳ 401 UNAUTHORIZED: Token might be invalid or expired.');
+          }
+          return const ApiClientResponse.error(
+            'Sesión expirada. Inicie sesión nuevamente.',
+            statusCode: 401,
+          );
+        }
+
+        if (response.statusCode >= 500) {
+          // Lanzar excepción para que el sistema de retries lo intente de nuevo
+          throw SocketException('Error del servidor ${response.statusCode}');
+        }
+
+        return ApiClientResponse.error(
+          'Error del servidor (${response.statusCode})',
+          statusCode: response.statusCode,
+        );
+      });
     } on Exception catch (e) {
       if (kDebugMode) {
-        debugPrint('   ↳ ERROR: $e');
+        debugPrint('   ↳ ERROR final: $e');
       }
-      return ApiClientResponse.error(
+      return const ApiClientResponse.error(
         'No se pudo conectar al servidor.',
         statusCode: 0,
       );
@@ -114,37 +150,43 @@ class ApiClient {
     }
 
     try {
-      final response = await _http.post(
-        url,
-        headers: _headers(token),
-        body: body != null ? jsonEncode(body) : null,
-      );
+      return await _withRetry(() async {
+        final response = await _http.post(
+          url,
+          headers: _headers(token),
+          body: body != null ? jsonEncode(body) : null,
+        ).timeout(_globalTimeout);
 
-      if (kDebugMode) {
-        debugPrint('   ↳ ${response.statusCode}');
-      }
+        if (kDebugMode) {
+          debugPrint('   ↳ ${response.statusCode}');
+        }
 
-      if (response.statusCode == 200 || response.statusCode == 201) {
-        final decoded = jsonDecode(utf8.decode(response.bodyBytes));
-        return ApiClientResponse.success(decoded);
-      }
+        if (response.statusCode == 200 || response.statusCode == 201) {
+          final decoded = jsonDecode(utf8.decode(response.bodyBytes));
+          return ApiClientResponse.success(decoded);
+        }
 
-      if (response.statusCode == 401) {
-        return const ApiClientResponse.error(
-          'Sesión expirada. Inicie sesión nuevamente.',
-          statusCode: 401,
+        if (response.statusCode == 401) {
+          return const ApiClientResponse.error(
+            'Sesión expirada. Inicie sesión nuevamente.',
+            statusCode: 401,
+          );
+        }
+
+        if (response.statusCode >= 500) {
+          throw SocketException('Error del servidor ${response.statusCode}');
+        }
+
+        return ApiClientResponse.error(
+          'Error del servidor (${response.statusCode})',
+          statusCode: response.statusCode,
         );
-      }
-
-      return ApiClientResponse.error(
-        'Error del servidor (${response.statusCode})',
-        statusCode: response.statusCode,
-      );
+      });
     } on Exception catch (e) {
       if (kDebugMode) {
-        debugPrint('   ↳ ERROR: $e');
+        debugPrint('   ↳ ERROR final: $e');
       }
-      return ApiClientResponse.error(
+      return const ApiClientResponse.error(
         'No se pudo conectar al servidor.',
         statusCode: 0,
       );
@@ -180,46 +222,51 @@ class ApiClient {
     }
 
     try {
-      final response = await _http.put(
-        url,
-        headers: _headers(token),
-        body: body != null ? jsonEncode(body) : null,
-      );
+      return await _withRetry(() async {
+        final response = await _http.put(
+          url,
+          headers: _headers(token),
+          body: body != null ? jsonEncode(body) : null,
+        ).timeout(_globalTimeout);
 
-      if (kDebugMode) {
-        debugPrint('   ↳ ${response.statusCode}');
-      }
-
-      if (response.statusCode == 200 || response.statusCode == 201) {
-        final bodyStr = utf8.decode(response.bodyBytes);
-        try {
-          return ApiClientResponse.success(jsonDecode(bodyStr));
-        } on FormatException {
-          // La API retornó texto plano en lugar de JSON (ej: mensaje de confirmación).
-          // Esto es esperado para algunos endpoints como actualiza-datosper.
-          if (kDebugMode) {
-            debugPrint('   ↳ Respuesta en texto plano: "${bodyStr.trim()}"');
-          }
-          return ApiClientResponse.success(bodyStr.trim());
+        if (kDebugMode) {
+          debugPrint('   ↳ ${response.statusCode}');
         }
-      }
 
-      if (response.statusCode == 401) {
-        return const ApiClientResponse.error(
-          'Sesión expirada. Inicie sesión nuevamente.',
-          statusCode: 401,
+        if (response.statusCode == 200 || response.statusCode == 201) {
+          final bodyStr = utf8.decode(response.bodyBytes);
+          try {
+            return ApiClientResponse.success(jsonDecode(bodyStr));
+          } on FormatException {
+            // La API retornó texto plano en lugar de JSON.
+            if (kDebugMode) {
+              debugPrint('   ↳ Respuesta en texto plano: "${bodyStr.trim()}"');
+            }
+            return ApiClientResponse.success(bodyStr.trim());
+          }
+        }
+
+        if (response.statusCode == 401) {
+          return const ApiClientResponse.error(
+            'Sesión expirada. Inicie sesión nuevamente.',
+            statusCode: 401,
+          );
+        }
+
+        if (response.statusCode >= 500) {
+          throw SocketException('Error del servidor ${response.statusCode}');
+        }
+
+        return ApiClientResponse.error(
+          'Error del servidor (${response.statusCode})',
+          statusCode: response.statusCode,
         );
-      }
-
-      return ApiClientResponse.error(
-        'Error del servidor (${response.statusCode})',
-        statusCode: response.statusCode,
-      );
+      });
     } on Exception catch (e) {
       if (kDebugMode) {
-        debugPrint('   ↳ ERROR: $e');
+        debugPrint('   ↳ ERROR final: $e');
       }
-      return ApiClientResponse.error(
+      return const ApiClientResponse.error(
         'No se pudo conectar al servidor.',
         statusCode: 0,
       );
@@ -236,23 +283,29 @@ class ApiClient {
     if (kDebugMode) debugPrint('🌐 GET (bytes) $url');
 
     try {
-      final response = await _http.get(url, headers: _headers(token));
+      return await _withRetry(() async {
+        final response = await _http.get(url, headers: _headers(token)).timeout(_globalTimeout);
 
-      if (response.statusCode == 200) {
-        return response.bodyBytes;
-      }
-
-      // Si 401, intentar refresh y reintentar
-      if (response.statusCode == 401) {
-        final refreshed = await _tryRefreshToken();
-        if (refreshed) {
-          final retry = await _http.get(url, headers: _headers(await TokenStorage.getToken()));
-          if (retry.statusCode == 200) return retry.bodyBytes;
+        if (response.statusCode == 200) {
+          return response.bodyBytes;
         }
-      }
 
-      if (kDebugMode) debugPrint('   ↳ Error descargando bytes: ${response.statusCode}');
-      return null;
+        // Si 401, intentar refresh y reintentar
+        if (response.statusCode == 401) {
+          final refreshed = await _tryRefreshToken();
+          if (refreshed) {
+            final retry = await _http.get(url, headers: _headers(await TokenStorage.getToken())).timeout(_globalTimeout);
+            if (retry.statusCode == 200) return retry.bodyBytes;
+          }
+        }
+
+        if (response.statusCode >= 500) {
+          throw SocketException('Error del servidor ${response.statusCode}');
+        }
+
+        if (kDebugMode) debugPrint('   ↳ Error descargando bytes: ${response.statusCode}');
+        return null;
+      });
     } on Exception catch (e) {
       if (kDebugMode) debugPrint('   ↳ ERROR getBytes: $e');
       return null;
@@ -288,6 +341,24 @@ class ApiClient {
       debugPrint('🔄 Intentando refresh token...');
     }
 
+    // Validación Biométrica antes de consumir el refresh token
+    final useBiometrics = await SecurityService.isBiometricsEnabled();
+    if (useBiometrics) {
+      if (kDebugMode) debugPrint('🔒 Solicitando biometría para refresh token...');
+      final isAuthenticated = await SecurityService.authenticateWithBiometrics(
+        reason: 'Verifica tu identidad para mantener la sesión activa',
+      );
+      if (!isAuthenticated) {
+        if (kDebugMode) debugPrint('   ❌ Usuario canceló o falló biometría. Borrando solo tokens de sesión.');
+        await TokenStorage.deleteToken();
+        // NO borramos SecurityService.clearSecurityData() para que no pierda su PIN ni preferencias biométricas.
+        return false;
+      }
+    } else {
+      if (kDebugMode) debugPrint('   ℹ Biometría no habilitada, realizando refresh silencioso...');
+    }
+
+
     try {
       final response = await _http.post(
         ApiConstants.tokenUri,
@@ -299,7 +370,7 @@ class ApiClient {
           'grant_type': 'refresh_token',
           'refresh_token': refreshToken,
         },
-      );
+      ).timeout(const Duration(seconds: 20));
 
       if (response.statusCode == 200) {
         final json = jsonDecode(utf8.decode(response.bodyBytes)) as Map<String, dynamic>;
@@ -321,6 +392,10 @@ class ApiClient {
       if (kDebugMode) {
         debugPrint('   ❌ Refresh falló: ${response.statusCode}');
       }
+      
+      // Si el backend rechaza el refresh_token, la sesión caducó por completo.
+      await TokenStorage.deleteToken();
+      await SecurityService.clearSecurityData();
       return false;
     } on Exception catch (e) {
       if (kDebugMode) {

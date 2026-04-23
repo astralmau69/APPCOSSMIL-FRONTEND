@@ -184,15 +184,7 @@ class _PerfilScreenState extends State<PerfilScreen> {
                               onSave: _savePhone,
                               onCancel: () => setState(() { _phoneCtrl.text = _phone; _isEditingPhone = false; }),
                             ),
-                            // Celular real del afiliado (solo lectura desde el backend)
-                            if (user.numCel.isNotEmpty)
-                              _buildDetailTile(
-                                icon: CupertinoIcons.device_phone_portrait,
-                                color: const Color(0xFF8B5CF6),
-                                label: 'Celular Registrado (COSSMIL)',
-                                value: user.numCel,
-                                isDark: isDark,
-                              ),
+
                           ],
                         ),
                       ),
@@ -441,8 +433,12 @@ class _PerfilScreenState extends State<PerfilScreen> {
                         padding: EdgeInsets.all(r.spaceXs),
                         child: ClipOval(
                           child: _cachedUserPhoto != null
-                              ? Image.memory(_cachedUserPhoto!, fit: BoxFit.cover,
-                                  errorBuilder: (_, __, ___) => _avatarFallback(user, avatarSize))
+                              ? Image.memory(
+                                  _cachedUserPhoto!,
+                                  fit: BoxFit.cover,
+                                  gaplessPlayback: true,
+                                  errorBuilder: (_, __, ___) => _avatarFallback(user, avatarSize),
+                                )
                               : _avatarFallback(user, avatarSize),
                         ),
                       ),

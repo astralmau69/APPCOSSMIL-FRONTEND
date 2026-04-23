@@ -271,13 +271,8 @@ class _LoginScreenState extends State<LoginScreen>
 
         if (!mounted) return;
 
-        // Habilitar biometría automáticamente si el dispositivo la soporta.
-        // Esto permite que en el próximo arranque se ofrezca desbloqueo biométrico
-        // sin que el usuario tenga que configurar un PIN.
-        final bioStatus = await SecurityService.getDeviceBiometricStatus();
-        if (bioStatus == DeviceBiometricStatus.available) {
-          await SecurityService.setBiometricsEnabled(true);
-        }
+        // Ya NO habilitamos la biometría automáticamente. 
+        // El usuario debe hacerlo manualmente desde la configuración de seguridad.
 
         if (!mounted) return;
 

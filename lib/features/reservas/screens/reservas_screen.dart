@@ -372,6 +372,7 @@ class _ReservasScreenState extends State<ReservasScreen> {
                   idsuc: reserva.idsuc!,
                   idtran: reserva.idtran!,
                   dr: reserva.dr!,
+                  matricula: UserSession.currentUser.matricula,
                 );
 
                 if (!mounted) return;
@@ -1318,6 +1319,7 @@ class _ReservasScreenState extends State<ReservasScreen> {
       child: ClipOval(
         child: _latestDoctorPhotoBytes != null
             ? Image.memory(_latestDoctorPhotoBytes!, width: size, height: size, fit: BoxFit.cover,
+                gaplessPlayback: true,
                 errorBuilder: (_, __, ___) => Center(child: Text(initial, style: textStyle)))
             : Center(child: Text(initial, style: textStyle)),
       ),

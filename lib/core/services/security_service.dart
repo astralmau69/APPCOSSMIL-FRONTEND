@@ -2,6 +2,8 @@ import 'dart:convert';
 import 'package:crypto/crypto.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:local_auth/local_auth.dart';
+import 'package:local_auth_android/local_auth_android.dart';
+import 'package:local_auth_darwin/local_auth_darwin.dart';
 import 'package:flutter/services.dart';
 
 /// Capacidad biométrica real del dispositivo.
@@ -213,6 +215,23 @@ class SecurityService {
           stickyAuth: true,
           biometricOnly: false,
         ),
+        authMessages: const <AuthMessages>[
+          AndroidAuthMessages(
+            signInTitle: 'Seguridad COSSMIL',
+            cancelButton: 'Cancelar',
+            biometricHint: 'Verifica tu identidad',
+            biometricNotRecognized: 'No reconocido. Intenta de nuevo.',
+            biometricSuccess: '¡Verificado!',
+            deviceCredentialsRequiredTitle: 'Usa tu PIN',
+            deviceCredentialsSetupDescription: 'Configura un bloqueo de pantalla.',
+          ),
+          IOSAuthMessages(
+            cancelButton: 'Cancelar',
+            goToSettingsButton: 'Ajustes',
+            goToSettingsDescription: 'Por favor, configura la biometría en los ajustes.',
+            lockOut: 'Demasiados intentos. Usa tu PIN.',
+          ),
+        ],
       );
     } on PlatformException {
       return false;

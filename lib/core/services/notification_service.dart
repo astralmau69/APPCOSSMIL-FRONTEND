@@ -419,6 +419,7 @@ class NotificationService {
         idsuc: data['idsuc'] as int,
         idtran: data['idtran'] as int,
         dr: data['dr'] as int,
+        matricula: UserSession.currentUser.matricula,
       );
 
       // Cancelar notificaciones pendientes

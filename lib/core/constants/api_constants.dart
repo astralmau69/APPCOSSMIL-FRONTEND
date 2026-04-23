@@ -92,8 +92,11 @@ class ApiConstants {
       '/api/safil/asegurado/foto/${matricula.trim()}';
 
   /// Cancelar una cita médica.
-  static String cancelarCitaMedica(int gestion, int idins, int idsuc, int idtran, int dr) =>
-      '/api/programacion/cancelar-cita-medica/$gestion/$idins/$idsuc/$idtran/$dr';
+  /// [matricula]: matrícula del usuario que realiza la cancelación.
+  ///   - Cuenta titular  → matrícula del titular (incluso si cancela cita de un familiar).
+  ///   - Cuenta beneficiario → matrícula del beneficiario logueado.
+  static String cancelarCitaMedica(int gestion, int idins, int idsuc, int idtran, int dr, String matricula) =>
+      '/api/programacion/cancelar-cita-medica/$gestion/$idins/$idsuc/$idtran/$dr/$matricula';
 
   /// Grupo familiar de un asegurado.
   static String grupoFamiliar(int idper) =>
@@ -140,5 +143,15 @@ class ApiConstants {
   /// Reemplaza a medsuc-buscar para el flujo de reserva.
   static String medicoEspecialidadConsulta(int idins, int idsuc, int idesp) =>
       '/api/programacion/medico-especialidad-consulta/$idins/$idsuc/$idesp';
+
+  // ─── Noticias ──────────────────────────────────────────────────────────────
+  
+  /// Detalles de una publicación (imágenes adicionales).
+  static String publicationDetail(int gestion, int idpub) =>
+      '/api/publicaciondet/$gestion/$idpub';
+
+  /// Base para imágenes de publicaciones.
+  static String newsImagesBase(int gestion, int idpub, String filename) =>
+      'https://www.cossmil.mil.bo/api/publicsImg/$gestion/$idpub/$filename';
 }
 

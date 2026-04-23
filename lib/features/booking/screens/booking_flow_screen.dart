@@ -29,6 +29,7 @@ class BookingFlowScreen extends StatefulWidget {
 class BookingFlowScreenState extends State<BookingFlowScreen> {
   int _currentStep = 0;
   bool _isConfirmed = false;
+  DateTime? _lastPopTime;
 
   static const _titles = [
     'Establecimiento',
@@ -71,15 +72,17 @@ class BookingFlowScreenState extends State<BookingFlowScreen> {
     final r = context.r;
 
     return PopScope(
-      // Nunca dejar que el sistema haga pop del flujo (salvo confirmación).
-      // onPopInvokedWithResult maneja el retroceso de pasos manualmente.
-      canPop: _isConfirmed,
+      // canPop es true solo en el paso 0 (para poder salir del tab) o si está confirmado.
+      canPop: _currentStep == 0 || _isConfirmed,
       onPopInvokedWithResult: (didPop, _) {
         if (!didPop && _currentStep > 0 && !_isConfirmed) {
-          _prevStep();
+          final now = DateTime.now();
+          // Debounce de 400ms para evitar que el botón físico dispare el evento 2 veces
+          if (_lastPopTime == null || now.difference(_lastPopTime!) > const Duration(milliseconds: 400)) {
+            _lastPopTime = now;
+            _prevStep();
+          }
         }
-        // En paso 0 el botón atrás no hace nada — el usuario debe
-        // cambiar de tab o usar la navegación de la app.
       },
       child: CupertinoPageScaffold(
         backgroundColor: Theme.of(context).scaffoldBackgroundColor,

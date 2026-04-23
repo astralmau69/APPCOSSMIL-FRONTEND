@@ -25,9 +25,9 @@ class _BookingStepperState extends State<BookingStepper>
   static const _steps = [
     _StepDef(icon: CupertinoIcons.building_2_fill,      label: 'Regional'),
     _StepDef(icon: CupertinoIcons.heart_fill,            label: 'Especialidad'),
-    _StepDef(icon: CupertinoIcons.calendar,              label: 'Fecha'),
-    _StepDef(icon: CupertinoIcons.person_fill,           label: 'Médico'),
-    _StepDef(icon: CupertinoIcons.clock_fill,            label: 'Horario'),
+    _StepDef(icon: CupertinoIcons.person_fill,           label: 'Médicos'),
+    _StepDef(icon: CupertinoIcons.calendar,              label: 'Elige fecha'),
+    _StepDef(icon: CupertinoIcons.clock_fill,            label: 'Horas disp.'),
     _StepDef(icon: CupertinoIcons.checkmark_seal_fill,   label: 'Confirmar'),
   ];
 

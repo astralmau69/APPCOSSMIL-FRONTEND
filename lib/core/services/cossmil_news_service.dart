@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
+import '../constants/api_constants.dart';
 import '../models/news_item_model.dart';
 
 /// Servicio de noticias institucionales de COSSMIL.
@@ -102,5 +103,25 @@ class CossmilNewsService {
     // Limpiar Â sueltos residuales
     result = result.replaceAll('Â', '');
     return result;
+  }
+  /// Obtiene los detalles de una publicación (imágenes adicionales).
+  static Future<List<String>> fetchPublicationDetails(int gestion, int idpub) async {
+    final path = ApiConstants.publicationDetail(gestion, idpub);
+    final url = 'https://www.cossmil.mil.bo$path';
+    try {
+      final response = await http.get(Uri.parse(url)).timeout(_timeout);
+      if (response.statusCode == 200) {
+        final List<dynamic> data = jsonDecode(_smartDecode(response.bodyBytes, response.body));
+        return data
+            .where((item) => item['tipo'] == 'IMG')
+            .map((item) => ApiConstants.newsImagesBase(gestion, idpub, item['url']))
+            .toList();
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        debugPrint('CossmilNewsService: error detalles $idpub: $e');
+      }
+    }
+    return [];
   }
 }
