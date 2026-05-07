@@ -215,7 +215,11 @@ class AuthService {
               bloodType: eBloodType.isNotEmpty ? eBloodType : UserSession.currentUser.bloodType,
               allergies: eAllergies.isNotEmpty ? eAllergies : UserSession.currentUser.allergies,
               rank: eGrado.isNotEmpty ? eGrado : UserSession.currentUser.rank,
-              role: isFotoTitular ? 'Titular' : null,
+              // Si el endpoint foto envía `tipo`, mandó: 'T' → Titular, otro → Beneficiario.
+              // Si no envía nada, conservamos el role del JWT (`null` → no override).
+              role: isFotoTitular
+                  ? 'Titular'
+                  : (eTipo.isNotEmpty ? 'Beneficiario' : null),
               serviceStatus: eRefe4.isNotEmpty ? eRefe4 : UserSession.currentUser.serviceStatus,
               emergencyPhone: eTelfemerg.isNotEmpty ? eTelfemerg : UserSession.currentUser.emergencyPhone,
               referencia: eReferencia.isNotEmpty ? eReferencia : UserSession.currentUser.referencia,

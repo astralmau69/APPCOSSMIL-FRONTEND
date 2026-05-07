@@ -110,7 +110,10 @@ class _FamiliaScreenState extends State<FamiliaScreen> {
       gender: user.gender,
       matricula: user.matricula,
       photoBase64: user.photoBase64,
-      grado: user.rank,
+      // Solo el titular usa rango militar; los beneficiarios reciben Sr./Sra.
+      // según edad y género en `displayTitle`. Pasar el rank del titular aquí
+      // a un beneficiario es la fuente del bug de "rangos heredados".
+      grado: user.isTitular ? user.rank : '',
     );
   }
 

@@ -152,7 +152,11 @@ class PdfService {
               // 7. DATOS DEL PACIENTE
               _ticketRow('PACIENTE', paciente),
               _ticketRow('MATRÍCULA', user.matricula),
-              if (user.rank.isNotEmpty) _ticketRow('GRADO', user.rank),
+              // Imprimir GRADO sólo para titulares: el `rank` del UserModel
+              // puede traer el grado del titular cuando el logueado es
+              // beneficiario y eso pondría un rango heredado en el ticket.
+              if (user.isTitular && user.rank.isNotEmpty)
+                _ticketRow('GRADO', user.rank),
               
               pw.Divider(color: borderColor, thickness: 0.5),
               pw.SizedBox(height: 4),

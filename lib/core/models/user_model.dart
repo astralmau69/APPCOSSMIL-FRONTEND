@@ -185,14 +185,49 @@ class UserModel {
       };
 
   /// Nombre con rango abreviado (titular) o tratamiento (beneficiario) para UI.
+  ///
+  /// **Importante:** el campo `rank` proviene del endpoint `/asegurado/foto/{matricula}`
+  /// que en algunos casos devuelve el grado militar del TITULAR del seguro
+  /// incluso cuando el logueado es un beneficiario. Para evitar que un
+  /// beneficiario "herede" el rango del titular en su nombre/perfil, sólo
+  /// pasamos `grado` cuando el usuario es titular real. En caso contrario
+  /// `displayNameWithPrefix` aplica Sr./Sra. según edad y género.
   String get displayName => RankUtils.displayNameWithPrefix(
     fullName: fullName,
     isTitular: isTitular,
-    grado: rank,
+    grado: isTitular ? rank : '',
     age: age,
     gender: gender,
   );
 
-  /// Shortcut para verificar si el rol es Titular
-  bool get isTitular => role == 'Titular';
+  /// Grado abreviado del titular para mostrar en perfil/tarjeta.
+  /// Si no hay grado militar válido, retorna vacío.
+  String get rankDisplay {
+    if (!isTitular) return '';
+    return RankUtils.isValidRankForDisplay(rank) ? rank : '';
+  }
+
+  /// `true` si el usuario logueado es titular del seguro.
+  ///
+  /// Jerarquía de decisión:
+  ///   1. Si la lista familiar **tiene** entradas → busca el propio `id`
+  ///      y delega en `b.isTitular`. Esto evita que el campo `role` del JWT
+  ///      sobrescriba la fuente de verdad del backend.
+  ///   2. Si **no hay grupo familiar** (lista vacía) → el usuario es siempre
+  ///      titular (nunca hereda el grado de otro). Se usa `role` como
+  ///      confirmación adicional, pero si el backend no lo devuelve el usuario
+  ///      sigue siendo considerado titular de su propio seguro.
+  bool get isTitular {
+    if (beneficiaries.isNotEmpty) {
+      for (final b in beneficiaries) {
+        if (b.id == id) return b.isTitular;
+      }
+      // El id no aparece en la lista familiar → probablemente beneficiario
+      // que no fue incluido como entrada propia. Usar role como fallback.
+      return role == 'Titular';
+    }
+    // Sin grupo familiar: siempre es el titular de su propia póliza.
+    // No hay nadie de quien "heredar" el grado → mostrar el suyo propio.
+    return true;
+  }
 }

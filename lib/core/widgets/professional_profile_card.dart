@@ -180,7 +180,7 @@ class ProfessionalProfileCard extends StatelessWidget {
         
         SizedBox(height: r.spaceMd),
         
-        // Fila 2: Etiquetas (Servicio Activo, Titular, Matrícula) todas al mismo nivel
+        // Fila 2: Etiquetas (Servicio Activo, Titular, Grado, Matrícula)
         Wrap(
           spacing: r.spaceSm,
           runSpacing: r.spaceSm,
@@ -192,6 +192,13 @@ class ProfessionalProfileCard extends StatelessWidget {
               text: user.isTitular ? 'Titular' : 'Beneficiario',
               color: const Color(0xFFFFD700),
             ),
+            // Grado del titular (si tiene rango militar válido)
+            if (user.rankDisplay.isNotEmpty)
+              _buildBadge(
+                icon: CupertinoIcons.shield_fill,
+                text: user.rankDisplay,
+                color: const Color(0xFF93C5FD),
+              ),
             _buildBadge(
               icon: CupertinoIcons.number,
               text: user.matricula,

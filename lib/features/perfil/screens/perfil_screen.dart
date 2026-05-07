@@ -488,6 +488,36 @@ class _PerfilScreenState extends State<PerfilScreen> {
                     ),
                   ),
 
+                // ── Grado del Titular (para beneficiarios) ──────────────
+                // El backend emite el grado militar del titular incluso al
+                // consultar con la matrícula del beneficiario. Lo mostramos
+                // explícitamente etiquetado para que no se confunda con un
+                // grado propio del beneficiario.
+                if (!user.isTitular && RankUtils.isValidRankForDisplay(user.rank))
+                  Padding(
+                    padding: EdgeInsets.only(bottom: r.spaceXs),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          CupertinoIcons.shield_lefthalf_fill,
+                          size: 12,
+                          color: AppColors.accentForTheme(isDark).withValues(alpha: 0.65),
+                        ),
+                        SizedBox(width: r.spaceXs),
+                        Text(
+                          'GRADO DEL TITULAR · ${user.rank.toUpperCase()}',
+                          style: TextStyle(
+                            fontWeight: FontWeight.w700,
+                            letterSpacing: 1.2,
+                            fontSize: 10.5,
+                            color: AppColors.accentForTheme(isDark).withValues(alpha: 0.75),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+
                 SizedBox(height: r.spaceSm),
 
                 // ── Chips row: matricula + service status ────────────────

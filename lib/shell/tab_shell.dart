@@ -281,6 +281,8 @@ class TabShellState extends State<TabShell>
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _showScheduleInfoModalIfNeeded();
+      // Verificar citas completadas al inicio de sesión
+      _checkForCompletedAppointments();
     });
 
   }
@@ -360,6 +362,70 @@ class TabShellState extends State<TabShell>
         builder: (_) => const _ScheduleInfoDialog(),
       );
     } catch (_) {}
+  }
+
+  // ─── Detección de citas completadas (notificación de calificación) ───────
+
+  /// Consulta el historial de citas del usuario actual y emite una notificación
+  /// de calificación si detecta una cita del día en estado "Completado" que
+  /// aún no fue ofrecida.
+  ///
+  /// Corre al iniciar sesión y cada vez que la app vuelve al primer plano
+  /// (lifecycle resumed), **independientemente** de si [ReservasScreen] está montada.
+  Future<void> _checkForCompletedAppointments() async {
+    if (!UserSession.isLoggedIn) return;
+    try {
+      final idperStr = UserSession.currentUser.id;
+      if (idperStr.isEmpty) return;
+      final idper = int.tryParse(idperStr);
+      if (idper == null) return;
+
+      final result = await _programacionService.getHistorialCitas(
+        idper,
+        pagina: 1,
+        cantidad: 10,
+      );
+
+      final today = DateTime.now();
+      final todayDate = DateTime(today.year, today.month, today.day);
+      final prefs = await SharedPreferences.getInstance();
+
+      for (final r in result.reservas) {
+        if (r.status.toUpperCase() != 'COMPLETADO') continue;
+        if (r.estadoCancelacion == '1') continue;
+
+        // Solo citas de 2026 en adelante
+        final apptDate = r.appointmentDate;
+        if (apptDate == null || apptDate.year < 2026) continue;
+
+        // Solo citas del día
+        final isToday = !apptDate.isBefore(todayDate) &&
+            apptDate.isBefore(todayDate.add(const Duration(days: 1)));
+        if (!isToday) continue;
+
+        // Verificar si ya fue calificada o la notificación ya fue ofrecida
+        final ratedKey = 'rated_reserva_${r.idtran}_${r.dr}';
+        final offeredKey = 'offered_reserva_${r.idtran}_${r.dr}';
+        if (prefs.getBool(ratedKey) == true) continue;
+        if (prefs.getBool(offeredKey) == true) continue;
+
+        // Disparar notificación inmediata
+        final ticket = r.codigoReserva ?? r.id;
+        await NotificationService.showRatingReminder(
+          ticketNumber: ticket,
+          especialidad: r.specialty,
+          medico: r.doctorName,
+          paciente: r.patientName,
+          idtran: r.idtran,
+          dr: r.dr,
+        );
+
+        // Marcar como ofrecida para no repetirla en el próximo resumed
+        await prefs.setBool(offeredKey, true);
+      }
+    } catch (_) {
+      // Silencioso: no interrumpir el flujo normal si el API falla
+    }
   }
 
   /// Consulta el estado del horario al iniciar para mostrar banner en HomeScreen.
@@ -511,6 +577,17 @@ class TabShellState extends State<TabShell>
       }
 
       _checkSecurityLock();
+
+      // Refresh silencioso del historial de reservas para detectar citas
+      // que pasaron a estado "Completado" mientras la app estaba en background.
+      // Esto dispara _loadPendingRatings en ReservasScreen, que emite la
+      // notificación de calificación sin que el usuario abra el tab.
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) reservasRefreshNotifier.value++;
+      });
+
+      // Verificar directamente desde TabShell (no depende de ReservasScreen).
+      _checkForCompletedAppointments();
 
     }
 
