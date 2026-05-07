@@ -4,6 +4,7 @@ import '../../../core/constants/app_colors.dart';
 import '../../../core/extensions/responsive_extensions.dart';
 import '../../../core/models/news_item_model.dart';
 import '../../../core/services/cossmil_news_service.dart';
+import '../../../core/animations/app_page_route.dart';
 import '../../../core/animations/optimized_animations.dart';
 import '../../../core/utils/error_mapper.dart';
 import 'news_detail_screen.dart';
@@ -240,7 +241,7 @@ class _NoticiasScreenState extends State<NoticiasScreen> {
 
   void _showDetail(NewsItemModel item) {
     Navigator.of(context).push(
-      CupertinoPageRoute(
+      AppPageRoute(
         builder: (_) => NewsDetailScreen(item: item),
       ),
     );

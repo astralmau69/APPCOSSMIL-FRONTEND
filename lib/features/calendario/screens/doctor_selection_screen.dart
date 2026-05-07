@@ -6,21 +6,31 @@ import '../../../core/extensions/responsive_extensions.dart';
 import '../../../core/models/calendario_models.dart';
 import '../../../core/models/specialty_model.dart';
 import '../../../core/services/calendario_service.dart';
+import '../../../core/animations/app_page_route.dart';
 import '../../../core/animations/optimized_animations.dart';
 import '../../../core/widgets/app_state_widget.dart';
 import 'doctor_schedule_screen.dart';
 
 class DoctorSelectionScreen extends StatefulWidget {
   final SpecialtyModel specialty;
+  final int idsuc;
+  final String hospitalName;
+  final String regionalName;
 
-  const DoctorSelectionScreen({super.key, required this.specialty});
+  const DoctorSelectionScreen({
+    super.key,
+    required this.specialty,
+    required this.idsuc,
+    required this.hospitalName,
+    required this.regionalName,
+  });
 
   @override
   State<DoctorSelectionScreen> createState() => _DoctorSelectionScreenState();
 }
 
 class _DoctorSelectionScreenState extends State<DoctorSelectionScreen> {
-  final _service = CalendarioService();
+  late final CalendarioService _service;
 
   List<MedicoSucModel> _doctors = [];
   bool _isLoading = true;
@@ -30,6 +40,7 @@ class _DoctorSelectionScreenState extends State<DoctorSelectionScreen> {
   @override
   void initState() {
     super.initState();
+    _service = CalendarioService(idsuc: widget.idsuc);
     _load();
   }
 
@@ -58,8 +69,12 @@ class _DoctorSelectionScreenState extends State<DoctorSelectionScreen> {
 
   void _onTap(MedicoSucModel doctor) {
     Navigator.of(context).push(
-      CupertinoPageRoute(
-        builder: (_) => DoctorScheduleScreen(doctor: doctor, specialty: widget.specialty),
+      AppPageRoute(
+        builder: (_) => DoctorScheduleScreen(
+          doctor: doctor,
+          specialty: widget.specialty,
+          idsuc: widget.idsuc,
+        ),
       ),
     );
   }

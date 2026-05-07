@@ -52,10 +52,10 @@ class ProfessionalProfileCard extends StatelessWidget {
             children: [
               // Fondo con gradiente
               _buildGradientBackground(isDark),
-              
+
               // Patrón decorativo
               _buildDecorativePattern(isDark),
-              
+
               // Contenido principal
               Padding(
                 padding: EdgeInsets.all(r.spaceLg),
@@ -63,19 +63,42 @@ class ProfessionalProfileCard extends StatelessWidget {
                   children: [
                     // Header: Avatar + Info + Status
                     _buildHeader(context, isDark, r, texts),
-                    
+
                     SizedBox(height: r.spaceMd + 4),
-                    
+
                     // Línea divisoria con gradiente
                     _buildDivider(),
-                    
+
                     SizedBox(height: r.spaceMd + 4),
-                    
+
                     // Grid de información
                     _buildInfoGrid(context, r),
                   ],
                 ),
               ),
+
+              // Affordance: chevron en esquina superior derecha indica tappable.
+              if (onTap != null)
+                Positioned(
+                  top: r.spaceMd,
+                  right: r.spaceMd,
+                  child: Container(
+                    padding: const EdgeInsets.all(6),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.15),
+                      shape: BoxShape.circle,
+                      border: Border.all(
+                        color: Colors.white.withValues(alpha: 0.2),
+                        width: 0.5,
+                      ),
+                    ),
+                    child: Icon(
+                      CupertinoIcons.chevron_right,
+                      size: 12,
+                      color: Colors.white.withValues(alpha: 0.85),
+                    ),
+                  ),
+                ),
             ],
           ),
         ),

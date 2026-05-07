@@ -132,7 +132,7 @@ class ApiConstants {
       '/api/programacion/especialidades/ventanilla/$idins/$idsuc';
 
   /// Horario semanal móvil de un médico (GET).
-  static String horarioMedicoMovil(int idins, int idsuc, int idMedico) =>
+  static String horarioMedicoMovil(int idins, int idsuc, String idMedico) =>
       '/api/programacion/horario-medico-movil/$idins/$idsuc/$idMedico';
 
   /// Agenda móvil de un médico (GET).

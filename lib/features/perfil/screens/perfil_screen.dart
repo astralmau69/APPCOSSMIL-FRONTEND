@@ -2,7 +2,7 @@ import 'dart:convert';
 import 'dart:typed_data';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
-import '../../../core/config/app_config.dart';
+import '../../../core/utils/app_version_helper.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/extensions/responsive_extensions.dart';
 import '../../../core/session/user_session.dart';
@@ -10,6 +10,7 @@ import '../../../core/models/user_model.dart';
 import '../../../core/storage/token_storage.dart';
 import '../../../core/services/security_service.dart';
 import '../../../core/services/notification_service.dart';
+import '../../../core/animations/app_page_route.dart';
 import '../../../core/animations/optimized_animations.dart';
 import '../../../core/theme/theme_manager.dart';
 import '../../../core/services/auth_service.dart';
@@ -227,7 +228,7 @@ class _PerfilScreenState extends State<PerfilScreen> {
                                 final messenger = ScaffoldMessenger.of(context);
                                 final paddingH = context.r.paddingH;
                                 final result = await Navigator.of(context, rootNavigator: true).push<String>(
-                                  CupertinoPageRoute(
+                                  AppPageRoute(
                                     builder: (_) => const EmergencyDataScreen(),
                                   ),
                                 );
@@ -351,7 +352,7 @@ class _PerfilScreenState extends State<PerfilScreen> {
                       FadeSlideIn(delay: const Duration(milliseconds: 360), offsetY: 12,
                         child: Center(
                           child: Text(
-                            'Versión ${AppConfig.appVersion}',
+                            'Versión ${AppVersionHelper.versionSync}',
                             style: TextStyle(
                               fontSize: 12,
                               fontWeight: FontWeight.w600,
@@ -473,7 +474,7 @@ class _PerfilScreenState extends State<PerfilScreen> {
                 SizedBox(height: r.spaceSm),
 
                 // ── Rank label (full) for titulares ─────────────────────
-                if (user.isTitular && user.rank.isNotEmpty)
+                if (user.isTitular && RankUtils.isValidRankForDisplay(user.rank))
                   Padding(
                     padding: EdgeInsets.only(bottom: r.spaceXs),
                     child: Text(

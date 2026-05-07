@@ -8,6 +8,7 @@ import '../../../core/extensions/responsive_extensions.dart';
 import '../../../core/services/notification_service.dart';
 import '../../../core/theme/app_constants.dart';
 import '../../../core/utils/app_logger.dart';
+import '../../../core/utils/app_version_helper.dart';
 import '../../../core/widgets/cossmil_loader.dart';
 
 // ─── Estados internos ─────────────────────────────────────────────────────────
@@ -74,25 +75,37 @@ class _LoadingDataScreenState extends State<LoadingDataScreen> {
     _cycleLabels(gen);
 
     try {
-      // BUG 3 FIX: timeout de 20 s — si el servidor cuelga, el usuario
-      // ve el error en lugar de quedar atrapado infinitamente.
-      await InitialDataOrchestrator()
-          .loadAll()
-          .timeout(const Duration(seconds: 20));
+      // Precarga paralela: datos de sesión + versión de la app.
+      // AppVersionHelper.getVersion() lee PackageInfo una vez y cachéa el resultado
+      // → programacion_service y perfil_screen usan versionSync sin hacer otro I/O.
+      await Future.wait([
+        InitialDataOrchestrator().loadAll(),
+        AppVersionHelper.getVersion(),
+      ]).timeout(const Duration(seconds: 20));
 
       // Re-agendar notificaciones pendientes tras login/reinicio.
       // Fire-and-forget: no bloquea la navegación si el storage tarda.
       NotificationService.rescheduleNotificationsForCurrentUser()
           .catchError((_) {});
 
+      // Solicitar POST_NOTIFICATIONS (Android 13+) si no está concedido.
+      // Se hace aquí (post-login) para tener Activity activa — en main() el
+      // diálogo no aparece porque aún no hay ventana visible.
+      if (!await NotificationService.areNotificationsEnabled()) {
+        await NotificationService.requestPermissions();
+      }
+      // Solicitar exención de optimización de batería (Xiaomi, Huawei, Samsung…)
+      // solo si no está ya concedida. Fire-and-forget para no bloquear.
+      NotificationService.requestBatteryOptimizationExemption().catchError((_) {});
+
       // Verificar que esta generación sigue siendo la activa antes de navegar.
       // Sin este guard, un doble tap en "Reintentar" puede lanzar dos instancias
       // que ambas intentan hacer pushReplacementNamed.
       if (!mounted || gen != _generation) return;
 
-      await Future.delayed(const Duration(milliseconds: 350));
-      if (!mounted || gen != _generation) return;
-
+      // 0.6: El delay cosmético (350ms) era necesario cuando LoadingDataScreen
+      // era puro teatro. Ahora las llamadas HTTP reales aseguran tiempo mínimo visible.
+      // Solo añadimos un delay mínimo si la red fue extremadamente rápida (<200ms).
       Navigator.pushReplacementNamed(context, '/home');
     } catch (e, st) {
       AppLogger.error('LoadingDataScreen', 'Error en precarga de datos', e, st);

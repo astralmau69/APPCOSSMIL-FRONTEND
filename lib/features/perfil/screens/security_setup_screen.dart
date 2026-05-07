@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/extensions/responsive_extensions.dart';
 import '../../../core/services/security_service.dart';
+import '../../../core/animations/app_page_route.dart';
 import '../../../core/animations/optimized_animations.dart';
 import '../../auth/screens/pin_setup_screen.dart';
 import '../../auth/screens/pin_verify_screen.dart';
@@ -60,7 +61,7 @@ class _SecuritySetupScreenState extends State<SecuritySetupScreen> {
   /// Cambiar PIN — si ya existe, pedir el PIN actual primero.
   Future<void> _goToPinSetup() async {
     final result = await Navigator.of(context, rootNavigator: true).push<bool>(
-      CupertinoPageRoute(
+      AppPageRoute(
         builder: (_) => PinSetupScreen(requireCurrentPin: _hasPin),
       ),
     );
@@ -137,7 +138,7 @@ class _SecuritySetupScreenState extends State<SecuritySetupScreen> {
     // Pedir PIN actual
     if (!mounted) return false;
     final ok = await Navigator.of(context, rootNavigator: true).push<bool>(
-      CupertinoPageRoute(
+      AppPageRoute(
         builder: (_) => const PinVerifyScreen(
           title: 'Confirma tu identidad',
           subtitle:

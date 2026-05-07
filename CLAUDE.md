@@ -28,7 +28,7 @@ flutter build ipa        # iOS release build
 
 **Key directories:**
 - `lib/core/` — Shared code: services (HTTP), models (fromJson/toJson), constants, config, storage, mock data, theme, animations, reusable widgets
-- `lib/features/` — Feature modules, each with `screens/` subfolder (auth, splash, home, booking, reservas, familia, perfil)
+- `lib/features/` — Feature modules, each with `screens/` subfolder (auth, splash, home, booking, reservas, familia, perfil, loading, calendario)
 - `lib/shell/` — Tab navigation shell: `tab_shell.dart` (CupertinoTabScaffold, 5 tabs, owns BookingState) + `widgets/floating_nav_bar.dart`
 
 **Conventions:**
@@ -45,12 +45,18 @@ flutter build ipa        # iOS release build
 3. `SystemChrome.setPreferredOrientations()` (portrait only)
 4. `runApp(CossmilApp())`
 
+`CossmilApp` sets `home: const StartupRouter()`. `StartupRouter` (`core/routing/startup_router.dart`) resolves the entry point asynchronously (~50–200 ms) by checking `TokenStorage`, `SessionRestoreService`, and `SecurityService.hasPin()`. All paths eventually route to `SplashScreen`, which then navigates based on session state.
+
+`app.dart` also applies a proportional `TextScaler` (reference width 375 px, clamped 0.85×–1.2×) to all `Text` widgets via the `MaterialApp.builder`, respecting but capping system accessibility scale. `CossmilApp.navigatorKey` is a global key used by `NotificationService` to push modals from outside the widget tree.
+
 ## Navigation & Auth Flow
 
 - Entry: `app.dart` defines all named routes via `MaterialApp.routes`; `CossmilApp` wraps `MaterialApp` in `ValueListenableBuilder` for theme reactivity
-- Route flow: `/` (SplashScreen) → `/login` (LoginScreen) → `/local-auth` | `/pin-setup` | `/security-setup` → `/home` (TabShell)
+- Route flow: `StartupRouter` (home) → `SplashScreen` → `/login` → `/loading-data` (LoadingDataScreen) → `/home` (TabShell)
+- Local auth branches: `/local-auth` | `/pin-setup` | `/security-setup` | `/password-change` between login and home
 - CupertinoPageRoute push/pop for screen transitions within tabs
-- Multi-step booking flow: Regional → Specialty → Schedule → Summary (within tab 2)
+- Multi-step booking flow (tab 2): Regional → Hospital → Specialty → Doctor → Schedule → Summary
+- Calendario flow (tab 3 or similar): Hospital → Specialty → Doctor → Schedule (read-only, no booking)
 - Each tab has its own `NavigatorState` key for independent back stacks
 
 ## Security Layer
@@ -94,9 +100,22 @@ Two separate auth concerns:
 - Services accept optional `http.Client` / `ApiClient` parameters for testability
 - Backend response format: `{ ok, status, message, data: [...] }` wrapper — services parse via the `data` field
 
+## Session Data Layer
+
+Two static in-memory singletons, populated after login and cleared on logout:
+
+- **`UserSession`** (`core/session/user_session.dart`) — holds `UserModel` for the authenticated user. Helpers `UserSession.ageFor(beneficiary)` and `UserSession.genderFor(beneficiary)` return the correct age/gender for filtering (titular vs. beneficiary), used by specialty filters.
+- **`AppSessionCache`** (`core/data/app_session_cache.dart`) — holds four preloaded lists: `grupoFamiliar`, `regionales`, `especialidades`, and `fechaServidor`. `isLoaded` flag indicates readiness.
+
+**`InitialDataOrchestrator`** (`core/data/initial_data_orchestrator.dart`) populates `AppSessionCache` via `Future.wait` (15 s timeout) on four parallel loads. **Currently all four `_load*` methods are stubs using `Future.delayed` mock delays.** Each has a `TODO` comment showing the real `ProgramacionService` call to substitute. `LoadingDataScreen` (`features/loading/`) calls `loadAll()` and displays animated progress; on failure shows a retry button.
+
 ## Mock Data Mode
 
 `AppConfig.useMockData` in `core/config/app_config.dart` toggles between real HTTP calls and mock data with simulated delays. Set to `true` for offline development without the backend. Mock data files live in `core/mock/`.
+
+## Calendario Feature
+
+`features/calendario/` is a **read-only** doctor schedule viewer (not a booking flow). Navigation: `CalendarioHospitalScreen` → `SpecialtySelectionScreen` → `DoctorSelectionScreen` → `DoctorScheduleScreen`. Only hospital IDs `1` and `2` (`_kAllowedIdsuc`) are enabled. Uses `MedicoSucModel` and `HorarioMovilSlot` / `HorarioDia` from `core/models/calendario_models.dart`. Doctor photos support two formats: standard Base64 and a legacy signed-integer comma-separated format.
 
 ## Key Dependencies
 

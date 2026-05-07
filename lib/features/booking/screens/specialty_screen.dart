@@ -183,6 +183,8 @@ class _SpecialtyScreenState extends State<SpecialtyScreen> {
                           ],
                           if (_interconsultas.isNotEmpty) ...[
                             const SectionHeader(text: 'INTERCONSULTA (HABILITADAS)'),
+                            SizedBox(height: context.r.spaceSm),
+                            _buildInterconsultaInfo(context),
                             SizedBox(height: context.r.spaceMd),
                             _buildSpecialtyList(
                               context,
@@ -231,6 +233,48 @@ class _SpecialtyScreenState extends State<SpecialtyScreen> {
         child: Column(
           children: [
             Expanded(child: _buildBody(context)),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildInterconsultaInfo(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return Padding(
+      padding: EdgeInsets.symmetric(horizontal: context.r.paddingH),
+      child: Container(
+        padding: EdgeInsets.symmetric(
+            horizontal: context.r.spaceMd, vertical: context.r.spaceSm),
+        decoration: BoxDecoration(
+          color: isDark
+              ? AppColors.accent.withValues(alpha: 0.10)
+              : AppColors.accentLight,
+          borderRadius: BorderRadius.circular(context.r.radiusMd),
+          border: Border.all(
+            color: AppColors.accent.withValues(alpha: 0.3),
+            width: 0.8,
+          ),
+        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Padding(
+              padding: const EdgeInsets.only(top: 1),
+              child: Icon(CupertinoIcons.doc_checkmark_fill,
+                  size: context.r.iconSm, color: AppColors.accent),
+            ),
+            SizedBox(width: context.r.spaceSm),
+            Expanded(
+              child: Text(
+                'Las especialidades de interconsulta requieren autorización previa: '
+                'fueron derivadas por tu médico de cabecera y ya están habilitadas para reserva.',
+                style: context.texts.bodySmall.copyWith(
+                  color: AppColors.textSecondaryC(isDark),
+                  height: 1.35,
+                ),
+              ),
+            ),
           ],
         ),
       ),

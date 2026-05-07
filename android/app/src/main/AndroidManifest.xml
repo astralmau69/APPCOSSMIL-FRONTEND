@@ -8,6 +8,13 @@
     <uses-permission android:name="android.permission.USE_FINGERPRINT" />
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED"/>
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
+    <!-- Alarmas exactas: SCHEDULE_EXACT_ALARM para API 31-32, USE_EXACT_ALARM para API 33+ -->
+    <!-- USE_EXACT_ALARM se concede automáticamente al instalar; no requiere diálogo al usuario -->
+    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM"/>
+    <uses-permission android:name="android.permission.USE_EXACT_ALARM"/>
+    <!-- Necesario para mostrar al usuario el diálogo de exención de optimización de batería -->
+    <!-- Crítico para que las notificaciones lleguen con la app cerrada en Xiaomi, Huawei, Samsung -->
+    <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS"/>
 
     <!--
         Marcar biometría y ubicación como características OPCIONALES.

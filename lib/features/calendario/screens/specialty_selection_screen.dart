@@ -4,13 +4,23 @@ import '../../../core/constants/app_colors.dart';
 import '../../../core/extensions/responsive_extensions.dart';
 import '../../../core/models/specialty_model.dart';
 import '../../../core/services/calendario_service.dart';
+import '../../../core/animations/app_page_route.dart';
 import '../../../core/animations/optimized_animations.dart';
 import '../../../core/widgets/skeleton_loading.dart';
 import '../../../core/widgets/app_state_widget.dart';
 import 'doctor_selection_screen.dart';
 
 class SpecialtySelectionScreen extends StatefulWidget {
-  const SpecialtySelectionScreen({super.key});
+  final int idsuc;
+  final String hospitalName;
+  final String regionalName;
+
+  const SpecialtySelectionScreen({
+    super.key,
+    required this.idsuc,
+    required this.hospitalName,
+    required this.regionalName,
+  });
 
   @override
   State<SpecialtySelectionScreen> createState() =>
@@ -18,7 +28,7 @@ class SpecialtySelectionScreen extends StatefulWidget {
 }
 
 class _SpecialtySelectionScreenState extends State<SpecialtySelectionScreen> {
-  final _service = CalendarioService();
+  late final CalendarioService _service;
 
   List<SpecialtyModel> _specialties = [];
   bool _isLoading = true;
@@ -28,6 +38,7 @@ class _SpecialtySelectionScreenState extends State<SpecialtySelectionScreen> {
   @override
   void initState() {
     super.initState();
+    _service = CalendarioService(idsuc: widget.idsuc);
     _load();
   }
 
@@ -54,8 +65,13 @@ class _SpecialtySelectionScreenState extends State<SpecialtySelectionScreen> {
 
   void _onTap(SpecialtyModel specialty) {
     Navigator.of(context).push(
-      CupertinoPageRoute(
-        builder: (_) => DoctorSelectionScreen(specialty: specialty),
+      AppPageRoute(
+        builder: (_) => DoctorSelectionScreen(
+          specialty: specialty,
+          idsuc: widget.idsuc,
+          hospitalName: widget.hospitalName,
+          regionalName: widget.regionalName,
+        ),
       ),
     );
   }
@@ -68,8 +84,9 @@ class _SpecialtySelectionScreenState extends State<SpecialtySelectionScreen> {
     return CupertinoPageScaffold(
       backgroundColor: isDark ? Colors.transparent : AppColors.background,
       navigationBar: CupertinoNavigationBar(
+        previousPageTitle: 'Calendario',
         middle: Text(
-          'Calendario de Atención',
+          'Especialidades',
           style: TextStyle(
             color: AppColors.textPrimaryC(isDark),
             fontWeight: FontWeight.w600,
@@ -161,24 +178,7 @@ class _SpecialtySelectionScreenState extends State<SpecialtySelectionScreen> {
   }
 
   Widget _buildInfoBanner(bool isDark, AppResponsive r) {
-    return OptimizedPressButton(
-      onTap: () {
-        showCupertinoDialog(
-          context: context,
-          builder: (ctx) => CupertinoAlertDialog(
-            title: const Text('En Desarrollo'),
-            content: const Text('La selección de otras Regionales y Hospitales estará disponible próximamente.'),
-            actions: [
-              CupertinoDialogAction(
-                isDefaultAction: true,
-                child: const Text('Aceptar'),
-                onPressed: () => Navigator.pop(ctx),
-              ),
-            ],
-          ),
-        );
-      },
-      child: Container(
+    return Container(
         padding: EdgeInsets.all(r.cardPadding),
         decoration: BoxDecoration(
           color: isDark
@@ -212,13 +212,13 @@ class _SpecialtySelectionScreenState extends State<SpecialtySelectionScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Hospital Militar Central',
+                  widget.hospitalName,
                   style: context.texts.titleMedium.copyWith(
                     color: AppColors.textPrimaryC(isDark),
                   ),
                 ),
                 Text(
-                  'Regional La Paz · Consulta en Ventanilla',
+                  '${widget.regionalName} · Consulta en Ventanilla',
                   style: context.texts.bodySmall.copyWith(
                     color: AppColors.textSecondaryC(isDark),
                   ),
@@ -228,14 +228,13 @@ class _SpecialtySelectionScreenState extends State<SpecialtySelectionScreen> {
           ),
           SizedBox(width: r.spaceSm),
           Icon(
-            CupertinoIcons.chevron_up_chevron_down,
+            CupertinoIcons.chevron_left,
             size: 16,
             color: AppColors.textTertiaryC(isDark),
           ),
         ],
       ),
-    ), // end Container
-    ); // end OptimizedPressButton
+    ); // end Container
   }
 
   Widget _buildSectionHeader(bool isDark, AppResponsive r, int count) {

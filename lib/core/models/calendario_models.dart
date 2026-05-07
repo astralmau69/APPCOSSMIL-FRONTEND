@@ -7,7 +7,7 @@ import '../extensions/string_extensions.dart';
 // Respuesta del endpoint GET /api/programacion/medico-especialidad-consulta/...
 
 class MedicoSucModel {
-  final int idmed;
+  final String idmed;
   final String nombre;
   final int idcon;
   final String consultorio;
@@ -40,7 +40,7 @@ class MedicoSucModel {
     }
 
     return MedicoSucModel(
-      idmed: safeInt(json['idmed']),
+      idmed: (json['idmed'] ?? '').toString(),
       nombre: buildNombre().toDisplayCase,
       idcon: safeInt(json['idcon']),
       consultorio: ((json['consultorio'] ?? json['cons'] ?? '') as String? ?? '').toDisplayCase,

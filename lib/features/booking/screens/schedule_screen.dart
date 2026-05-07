@@ -14,8 +14,11 @@ import '../../../core/animations/optimized_animations.dart';
 import '../../../core/animations/app_page_route.dart';
 import '../../../shell/tab_shell.dart';
 import '../../../core/utils/error_mapper.dart';
+import '../../../core/utils/app_logger.dart';
 import '../../../core/widgets/image_enlarged_modal.dart';
 import 'summary_screen.dart';
+
+const _tag = 'ScheduleScreen';
 
 class ScheduleScreen extends StatefulWidget {
   final TabShellState tabShell;
@@ -29,7 +32,7 @@ class ScheduleScreen extends StatefulWidget {
 }
 
 class _ScheduleScreenState extends State<ScheduleScreen>
-    with SingleTickerProviderStateMixin {
+    with SingleTickerProviderStateMixin, WidgetsBindingObserver {
   final _service = ProgramacionService();
 
   List<TimeSlotModel> _slots = [];
@@ -41,20 +44,39 @@ class _ScheduleScreenState extends State<ScheduleScreen>
   final GlobalKey _slotsSectionKey = GlobalKey();
 
   Timer? _refreshTimer;
+  bool _isAppPaused = false;
   static const _refreshInterval = Duration(seconds: 15);
+  static const _bookingTabIndex = 2;
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _fetchData();
-    _refreshTimer = Timer.periodic(_refreshInterval, (_) => _silentRefresh());
+    _refreshTimer = Timer.periodic(_refreshInterval, (_) {
+      if (!mounted) return;
+      // Pausar polling cuando: app en background, o el usuario navegó a otra tab.
+      if (_isAppPaused) return;
+      if (widget.tabShell.currentTabIndex != _bookingTabIndex) return;
+      _silentRefresh();
+    });
   }
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _refreshTimer?.cancel();
     _scrollController.dispose();
     super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    _isAppPaused = state != AppLifecycleState.resumed;
+    // Al volver de background, refrescar inmediatamente sin esperar al próximo tick.
+    if (!_isAppPaused && mounted && !_isLoading) {
+      _silentRefresh();
+    }
   }
 
   Future<void> _fetchData() async {
@@ -109,7 +131,10 @@ class _ScheduleScreenState extends State<ScheduleScreen>
       final newSlots = await _service.getHorasAgenda(idagenda);
       if (!mounted) return;
       setState(() { _slots = newSlots; });
-    } catch (_) {}
+    } catch (e) {
+      // Silencioso esperado: refresh en background puede fallar por red sin afectar la UI.
+      AppLogger.warn(_tag, 'Silent refresh falló (se intentará de nuevo en 15s)', e);
+    }
   }
 
   /// Turnos disponibles, filtrando los pasados cuando la reserva es para hoy.
@@ -137,8 +162,9 @@ class _ScheduleScreenState extends State<ScheduleScreen>
         // Incluir solo si el turno empieza DESPUÉS del minuto actual.
         return slotH > now.hour ||
             (slotH == now.hour && slotM > now.minute);
-      } catch (_) {
-        return true; // Si no se puede parsear la hora, incluir el turno.
+      } catch (e) {
+        AppLogger.warn(_tag, 'No se pudo parsear hora de slot: ${slot.time}', e);
+        return true; // incluir el turno si el formato es inesperado
       }
     }).toList();
   }
@@ -176,7 +202,9 @@ class _ScheduleScreenState extends State<ScheduleScreen>
         final formatter = DateFormat("EEEE, d 'de' MMMM", 'es');
         final formatted = formatter.format(dt);
         return formatted[0].toUpperCase() + formatted.substring(1);
-      } catch (_) {}
+      } catch (e) {
+        AppLogger.warn(_tag, 'No se pudo formatear fecha seleccionada: $selectedDate', e);
+      }
     }
 
     final tomorrow = DateTime.now().add(const Duration(days: 1));
@@ -326,61 +354,65 @@ class _ScheduleScreenState extends State<ScheduleScreen>
         ),
         SizedBox(height: context.r.spaceMd),
         if (_availableSlots.isEmpty)
-          Padding(
-            padding: EdgeInsets.symmetric(horizontal: context.r.spaceXl, vertical: context.r.spaceXxl),
-            child: Center(
-              child: Column(
-                children: [
-                  Container(
-                    width: context.r.listAvatarSize * 1.4,
-                    height: context.r.listAvatarSize * 1.4,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: AppColors.warning.withValues(alpha: 0.1),
+          Builder(builder: (_) {
+            final empty = _buildEmptyState();
+            return Padding(
+              padding: EdgeInsets.symmetric(
+                  horizontal: context.r.spaceXl, vertical: context.r.spaceXxl),
+              child: Center(
+                child: Column(
+                  children: [
+                    Container(
+                      width: context.r.listAvatarSize * 1.4,
+                      height: context.r.listAvatarSize * 1.4,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: AppColors.warning.withValues(alpha: 0.1),
+                      ),
+                      child: Icon(
+                        CupertinoIcons.clock,
+                        size: context.r.iconLg,
+                        color: AppColors.warning,
+                      ),
                     ),
-                    child: Icon(
-                      CupertinoIcons.clock,
-                      size: context.r.iconLg,
-                      color: AppColors.warning,
+                    SizedBox(height: context.r.spaceMd),
+                    Text(
+                      empty.title,
+                      style: context.texts.titleMedium.copyWith(
+                        fontWeight: FontWeight.w800,
+                        color: AppColors.textPrimaryC(isDark),
+                      ),
                     ),
-                  ),
-                  SizedBox(height: context.r.spaceMd),
-                  Text(
-                    'Sin fichas disponibles',
-                    style: context.texts.titleMedium.copyWith(
-                      fontWeight: FontWeight.w800,
-                      color: AppColors.textPrimaryC(isDark),
+                    SizedBox(height: context.r.spaceSm),
+                    Text(
+                      empty.message,
+                      textAlign: TextAlign.center,
+                      style: context.texts.bodyMedium.copyWith(
+                        color: AppColors.textSecondaryC(isDark),
+                        height: 1.5,
+                      ),
                     ),
-                  ),
-                  SizedBox(height: context.r.spaceSm),
-                  Text(
-                    _buildEmptyMessage(),
-                    textAlign: TextAlign.center,
-                    style: context.texts.bodyMedium.copyWith(
-                      color: AppColors.textSecondaryC(isDark),
-                      height: 1.5,
-                    ),
-                  ),
-                  SizedBox(height: context.r.spaceLg),
-                  SizedBox(
-                    width: double.infinity,
-                    child: CupertinoButton(
-                      color: AppColors.primary,
-                      borderRadius: BorderRadius.circular(context.r.radiusMd),
-                      onPressed: widget.onBack,
-                      child: const Text(
-                        'Seleccionar otro médico',
-                        style: TextStyle(
-                          color: AppColors.white,
-                          fontWeight: FontWeight.w700,
+                    SizedBox(height: context.r.spaceLg),
+                    SizedBox(
+                      width: double.infinity,
+                      child: CupertinoButton(
+                        color: AppColors.primary,
+                        borderRadius: BorderRadius.circular(context.r.radiusMd),
+                        onPressed: widget.onBack,
+                        child: const Text(
+                          'Cambiar de fecha',
+                          style: TextStyle(
+                            color: AppColors.white,
+                            fontWeight: FontWeight.w700,
+                          ),
                         ),
                       ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
-            ),
-          )
+            );
+          })
         else
           _buildTimeGrid(context, isDark),
         SizedBox(height: context.r.spaceMd),
@@ -569,7 +601,9 @@ class _ScheduleScreenState extends State<ScheduleScreen>
         bytes: bytes,
         fallbackText: initial,
       );
-    } catch (_) {}
+    } catch (e) {
+      AppLogger.warn(_tag, 'Error al abrir foto del médico ampliada', e);
+    }
   }
 
   /// Renders avatar from the photoBytes.
@@ -586,7 +620,9 @@ class _ScheduleScreenState extends State<ScheduleScreen>
             errorBuilder: (_, __, ___) => _doctorInitial(initial, isDark),
           ),
         );
-      } catch (_) {}
+      } catch (e) {
+        AppLogger.warn(_tag, 'Error al renderizar foto del médico en agenda', e);
+      }
     }
     return _doctorInitial(initial, isDark);
   }
@@ -604,19 +640,42 @@ class _ScheduleScreenState extends State<ScheduleScreen>
     );
   }
 
-  /// Mensaje de vacío adaptado: si la reserva es para hoy y todos los turnos
-  /// restantes son pasados, indica que se agotaron los horarios de hoy.
-  String _buildEmptyMessage() {
+  /// Distingue por qué no hay slots: backend vacío, todas reservadas, o jornada
+  /// terminada (cuando la reserva es para hoy y todas las horas ya pasaron).
+  ({String title, String message}) _buildEmptyState() {
     final selectedDate = widget.tabShell.bookingState.selectedDate ?? '';
     final today = DateFormat('yyyy-MM-dd').format(DateTime.now());
     final specialty = widget.tabShell.bookingState.specialty?.name ?? 'esta especialidad';
+    final hasRawSlots = _slots.isNotEmpty;
+    final allOccupied = hasRawSlots && _slots.every((s) => !s.isAvailable);
+    final isToday = selectedDate == today;
 
-    if (selectedDate == today) {
-      return 'No quedan turnos disponibles para hoy en $specialty. '
-          'Selecciona otro médico o elige una fecha diferente.';
+    if (!hasRawSlots) {
+      return (
+        title: 'Sin horarios cargados',
+        message: 'El médico aún no tiene horarios habilitados para $specialty. '
+            'Selecciona otro médico o vuelve más tarde.',
+      );
     }
-    return 'Por el momento no hay fichas disponibles para $specialty. '
-        'Selecciona otro médico o elige otra fecha.';
+    if (allOccupied) {
+      return (
+        title: 'Fichas agotadas',
+        message: 'Todas las fichas para $specialty ya fueron reservadas. '
+            'Selecciona otro médico o elige otra fecha.',
+      );
+    }
+    if (isToday) {
+      return (
+        title: 'Jornada terminada',
+        message: 'No quedan turnos disponibles para hoy en $specialty: las horas restantes ya pasaron. '
+            'Selecciona otra fecha o elige otro médico.',
+      );
+    }
+    return (
+      title: 'Sin fichas disponibles',
+      message: 'Por el momento no hay fichas disponibles para $specialty. '
+          'Selecciona otro médico o elige otra fecha.',
+    );
   }
 
   Widget _buildTimeGrid(BuildContext context, bool isDark) {

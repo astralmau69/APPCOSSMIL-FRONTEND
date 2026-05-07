@@ -121,7 +121,11 @@ class AuthService {
           age: tokenModel.edad,
           gender: tokenModel.genero,
           matricula: tokenModel.matricula.trim(),
-          grado: tokenModel.grado.isNotEmpty ? tokenModel.grado : 'Asegurado',
+          // Titulares: preservar su grado (o 'Asegurado' como fallback).
+          // No-titulares: grado vacío para que displayTitle aplique Sr./Sra.
+          grado: userRoleIsTitular
+              ? (tokenModel.grado.isNotEmpty ? tokenModel.grado : 'Asegurado')
+              : tokenModel.grado, // puede ser vacío — correcto para beneficiarios
         );
 
         final loggedUser = UserModel(
@@ -199,6 +203,11 @@ class AuthService {
             final eTelfemerg = (extraData['telfemerg'] as String? ?? '').trim();
             final eReferencia = (extraData['referencia'] as String? ?? '').trim();
             final eNumCel = (extraData['numcel']?.toString() ?? extraData['numCel']?.toString() ?? '').trim();
+            // El endpoint /asegurado/foto/{matricula} es la fuente autoritativa
+            // del tipo de afiliado: tipo=='T' significa Titular. Algunos JWT no
+            // devuelven 'rol' = ROLE_ASETIT correctamente, así que confiamos en tipo.
+            final eTipo = (extraData['tipo']?.toString() ?? '').trim().toUpperCase();
+            final isFotoTitular = eTipo == 'T';
 
             UserSession.currentUser = UserSession.currentUser.copyWith(
               photoBase64: titularPhoto,
@@ -206,6 +215,7 @@ class AuthService {
               bloodType: eBloodType.isNotEmpty ? eBloodType : UserSession.currentUser.bloodType,
               allergies: eAllergies.isNotEmpty ? eAllergies : UserSession.currentUser.allergies,
               rank: eGrado.isNotEmpty ? eGrado : UserSession.currentUser.rank,
+              role: isFotoTitular ? 'Titular' : null,
               serviceStatus: eRefe4.isNotEmpty ? eRefe4 : UserSession.currentUser.serviceStatus,
               emergencyPhone: eTelfemerg.isNotEmpty ? eTelfemerg : UserSession.currentUser.emergencyPhone,
               referencia: eReferencia.isNotEmpty ? eReferencia : UserSession.currentUser.referencia,
@@ -215,23 +225,98 @@ class AuthService {
             // Actualizar fallback con el grado real del endpoint de foto
             BeneficiaryModel.titularRankFallback = UserSession.currentUser.rank;
 
-            // Actualizar la foto y datos extra en la lista de beneficiarios para el titular
-            final updatedBeneficiaries = UserSession.currentUser.beneficiaries.map((b) {
-              if (b.isTitular) {
-                return BeneficiaryModel(
-                  id: b.id,
-                  fullName: b.fullName,
-                  relationship: b.relationship,
-                  age: b.age,
-                  gender: b.gender.isNotEmpty ? b.gender : tokenModel.genero,
-                  matricula: b.matricula,
-                  photoBase64: titularPhoto ?? '',
+            // Extraer género del endpoint de foto si el token no lo trayó.
+            // Necesario para beneficiarios no-titulares cuyo JWT omite el campo.
+            final eGenero = (extraData['genero']?.toString() ??
+                             extraData['sexo']?.toString() ??
+                             extraData['gender']?.toString() ?? '').trim();
+            if (eGenero.isNotEmpty && UserSession.currentUser.gender.isEmpty) {
+              UserSession.currentUser = UserSession.currentUser.copyWith(
+                gender: eGenero,
+              );
+              // Actualizar también el selfAsFallback en la lista de beneficiarios
+              final updatedBensWithGender = UserSession.currentUser.beneficiaries.map((b) {
+                if (b.id == tokenModel.idper.toString() && b.gender.isEmpty) {
+                  return BeneficiaryModel(
+                    id: b.id,
+                    fullName: b.fullName,
+                    relationship: b.relationship,
+                    age: b.age,
+                    gender: eGenero,
+                    matricula: b.matricula,
+                    photoBase64: b.photoBase64,
+                    grado: b.grado,
+                    serviceStatus: b.serviceStatus,
+                  );
+                }
+                return b;
+              }).toList();
+              UserSession.currentUser = UserSession.currentUser.copyWith(
+                beneficiaries: updatedBensWithGender,
+              );
+            }
+
+            // Asegurar que exista una entrada Titular en la lista de beneficiarios.
+            // Si el JWT no marcó al usuario como ROLE_ASETIT, el self-entry quedó como
+            // 'Beneficiario' y el bloque que actualiza al titular (foto/grado) no encuentra
+            // a nadie. Detectamos al titular real comparando matrícula/idper.
+            final selfId = tokenModel.idper.toString();
+            final selfMatricula = tokenModel.matricula.trim();
+            final currentBens = UserSession.currentUser.beneficiaries;
+            final hasTitularEntry = currentBens.any((b) => b.isTitular);
+
+            List<BeneficiaryModel> updatedBeneficiaries;
+            if (isFotoTitular && !hasTitularEntry) {
+              final selfIdx = currentBens.indexWhere(
+                (b) => b.id == selfId || b.matricula.trim() == selfMatricula,
+              );
+              if (selfIdx >= 0) {
+                final existing = currentBens[selfIdx];
+                updatedBeneficiaries = List<BeneficiaryModel>.from(currentBens);
+                updatedBeneficiaries[selfIdx] = BeneficiaryModel(
+                  id: existing.id,
+                  fullName: existing.fullName,
+                  relationship: 'Titular',
+                  age: existing.age,
+                  gender: existing.gender.isNotEmpty ? existing.gender : tokenModel.genero,
+                  matricula: existing.matricula,
+                  photoBase64: titularPhoto.isNotEmpty ? titularPhoto : existing.photoBase64,
                   grado: eGrado.isNotEmpty ? eGrado : UserSession.currentUser.rank,
-                  serviceStatus: eRefe4.isNotEmpty ? eRefe4 : UserSession.currentUser.serviceStatus,
+                  serviceStatus: eRefe4.isNotEmpty ? eRefe4 : existing.serviceStatus,
                 );
+              } else {
+                final selfTitular = BeneficiaryModel(
+                  id: selfId,
+                  fullName: UserSession.currentUser.fullName,
+                  relationship: 'Titular',
+                  age: tokenModel.edad,
+                  gender: tokenModel.genero,
+                  matricula: selfMatricula,
+                  photoBase64: titularPhoto,
+                  grado: eGrado.isNotEmpty ? eGrado : UserSession.currentUser.rank,
+                  serviceStatus: eRefe4,
+                );
+                updatedBeneficiaries = [selfTitular, ...currentBens];
               }
-              return b;
-            }).toList();
+            } else {
+              // Caso normal: ya hay un titular en la lista, solo refrescamos su foto/grado.
+              updatedBeneficiaries = currentBens.map((b) {
+                if (b.isTitular) {
+                  return BeneficiaryModel(
+                    id: b.id,
+                    fullName: b.fullName,
+                    relationship: b.relationship,
+                    age: b.age,
+                    gender: b.gender.isNotEmpty ? b.gender : tokenModel.genero,
+                    matricula: b.matricula,
+                    photoBase64: titularPhoto ?? '',
+                    grado: eGrado.isNotEmpty ? eGrado : UserSession.currentUser.rank,
+                    serviceStatus: eRefe4.isNotEmpty ? eRefe4 : UserSession.currentUser.serviceStatus,
+                  );
+                }
+                return b;
+              }).toList();
+            }
             UserSession.currentUser = UserSession.currentUser.copyWith(beneficiaries: updatedBeneficiaries);
           }
 

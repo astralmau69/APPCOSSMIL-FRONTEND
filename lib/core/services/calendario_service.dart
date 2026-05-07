@@ -5,15 +5,17 @@ import 'api_client.dart';
 
 /// Servicio para el flujo de Calendario de Atención (ventanilla).
 ///
-/// Regional La Paz e Hospital Militar Central están hardcodeados como 1/1
-/// según las especificaciones del backend para este flujo.
+/// [idsuc] identifica la sucursal/hospital:
+///   1 → Hospital Militar Central N° 1 - La Paz
+///   2 → Hospital Militar N° 3 - Cochabamba
 class CalendarioService {
   static const int _idins = 1;
-  static const int _idsuc = 1;
+  final int idsuc;
 
   final ApiClient _api;
 
-  CalendarioService({ApiClient? apiClient}) : _api = apiClient ?? ApiClient();
+  CalendarioService({this.idsuc = 1, ApiClient? apiClient})
+      : _api = apiClient ?? ApiClient();
 
   // ── Especialidades Ventanilla ─────────────────────────────────────────────
 
@@ -21,7 +23,7 @@ class CalendarioService {
   /// Endpoint: GET /api/programacion/especialidades/ventanilla/1/1
   Future<List<SpecialtyModel>> getEspecialidades() async {
     final response = await _api.get(
-      ApiConstants.especialidadesVentanilla(_idins, _idsuc),
+      ApiConstants.especialidadesVentanilla(_idins, idsuc),
     );
     return switch (response) {
       ApiSuccess(:final data) => () {
@@ -44,7 +46,7 @@ class CalendarioService {
   /// Endpoint: GET /api/programacion/medico-especialidad-consulta/1/1/{idesp}
   Future<List<MedicoSucModel>> getMedicos({required int idesp}) async {
     final response = await _api.get(
-      ApiConstants.medicoEspecialidadConsulta(_idins, _idsuc, idesp),
+      ApiConstants.medicoEspecialidadConsulta(_idins, idsuc, idesp),
     );
     return switch (response) {
       ApiSuccess(:final data) => () {
@@ -67,9 +69,9 @@ class CalendarioService {
   /// agrupada por día y ordenada cronológicamente.
   ///
   /// Endpoint: GET /api/programacion/horario-medico-movil/1/1/{idMedico}
-  Future<List<HorarioDia>> getHorario({required int idMedico}) async {
+  Future<List<HorarioDia>> getHorario({required String idMedico}) async {
     final response = await _api.get(
-      ApiConstants.horarioMedicoMovil(_idins, _idsuc, idMedico),
+      ApiConstants.horarioMedicoMovil(_idins, idsuc, idMedico),
     );
     return switch (response) {
       ApiSuccess(:final data) => () {

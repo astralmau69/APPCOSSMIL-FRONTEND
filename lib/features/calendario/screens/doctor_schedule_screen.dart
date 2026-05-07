@@ -62,11 +62,13 @@ extension _TurnoExt on _Turno {
 class DoctorScheduleScreen extends StatefulWidget {
   final MedicoSucModel doctor;
   final SpecialtyModel specialty;
+  final int idsuc;
 
   const DoctorScheduleScreen({
     super.key,
     required this.doctor,
     required this.specialty,
+    required this.idsuc,
   });
 
   @override
@@ -74,7 +76,7 @@ class DoctorScheduleScreen extends StatefulWidget {
 }
 
 class _DoctorScheduleScreenState extends State<DoctorScheduleScreen> {
-  final _service = CalendarioService();
+  late final CalendarioService _service;
 
   List<HorarioDia> _schedule = [];
   bool _isLoading = true;
@@ -83,6 +85,7 @@ class _DoctorScheduleScreenState extends State<DoctorScheduleScreen> {
   @override
   void initState() {
     super.initState();
+    _service = CalendarioService(idsuc: widget.idsuc);
     _load();
   }
 
@@ -116,9 +119,9 @@ class _DoctorScheduleScreenState extends State<DoctorScheduleScreen> {
     return CupertinoPageScaffold(
       backgroundColor: isDark ? Colors.transparent : AppColors.background,
       navigationBar: CupertinoNavigationBar(
-        previousPageTitle: 'Médicos',
+        previousPageTitle: widget.specialty.name,
         middle: Text(
-          'Agenda Semanal',
+          'Agenda',
           style: TextStyle(
             color: AppColors.textPrimaryC(isDark),
             fontWeight: FontWeight.w600,

@@ -1,6 +1,5 @@
-import 'dart:convert';
 import 'package:flutter/foundation.dart';
-import 'package:http/http.dart' as http;
+import '../utils/app_version_helper.dart';
 import '../config/app_config.dart';
 import '../constants/api_constants.dart';
 import '../models/doctor_agenda_model.dart';
@@ -51,9 +50,9 @@ class ProgramacionService {
     if (AppConfig.useMockData) return true;
 
     try {
-      // Usar la versión declarada en AppConfig (siempre actualizada con pubspec.yaml)
-      // en vez de PackageInfo, que depende del APK compilado y puede quedar desfasada.
-      final version = AppConfig.appVersion;
+      // Usar AppVersionHelper para leer la versión real del APK/IPA.
+      // versionSync devuelve el valor cacheado tras el primer getVersion() en LoadingDataScreen.
+      final version = AppVersionHelper.versionSync;
 
       // ApiClient inyecta Bearer y refresca el token automáticamente en 401
       final response = await _api.get(ApiConstants.verificaVersion(version));

@@ -8,6 +8,7 @@ import '../../../core/constants/app_colors.dart';
 import '../../../core/models/detalle_cita_model.dart';
 import '../../../core/models/reserva_model.dart';
 import '../../../core/services/programacion_service.dart';
+import '../../../core/animations/app_page_route.dart';
 import '../../../core/animations/optimized_animations.dart';
 import '../../../core/widgets/app_state_widget.dart';
 import '../../../core/widgets/skeleton_loading.dart';
@@ -758,7 +759,7 @@ class _DetalleCitaScreenState extends State<DetalleCitaScreen> {
       final fileName = 'Cita_Medica_${r.gestion}-${r.idtran}-${r.dr}';
       Navigator.push(
         context,
-        CupertinoPageRoute(
+        AppPageRoute(
           builder: (_) => _PdfPreviewScreen(
             pdfBytes: pdfBytes,
             fileName: fileName,

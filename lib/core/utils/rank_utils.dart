@@ -42,8 +42,9 @@ class RankUtils {
 
   /// Abrevia un grado militar. Ej: "CORONEL" → "Cnl."
   ///
-  /// Si no se encuentra el grado en la tabla, retorna la primera palabra
-  /// capitalizada con punto. Si el grado está vacío, retorna vacío.
+  /// Retorna vacío si el grado no se encuentra en la tabla de rangos conocidos.
+  /// **No usa fallback** para evitar que códigos del backend como "EC" o "ASEGURADO"
+  /// se traten como rangos militares.
   static String abbreviateRank(String grado) {
     if (grado.isEmpty) return '';
 
@@ -59,9 +60,57 @@ class RankUtils {
       if (upper.startsWith(entry.key)) return entry.value;
     }
 
-    // Fallback: primera palabra capitalizada
-    final first = upper.split(' ').first;
-    return '${first[0]}${first.substring(1).toLowerCase()}.';
+    // Grado no reconocido → retornar vacío para que el caller use Sr./Sra.
+    return '';
+  }
+
+  /// `true` si el grado corresponde a un rango militar boliviano conocido
+  /// (busca en la tabla de nombres extensos: CORONEL, TENIENTE, etc.).
+  ///
+  /// Solo funciona con grados en extenso — para titulares cuyo backend envía
+  /// el grado ya abreviado, usar [isValidRankForDisplay].
+  static bool isKnownMilitaryRank(String grado) {
+    return abbreviateRank(grado).isNotEmpty;
+  }
+
+  /// `true` si [rank] es un valor que PUEDE mostrarse como grado en la UI.
+  ///
+  /// Aplica tanto a:
+  /// - Titulares cuyo backend envía el grado ya abreviado (ej. "CNL.", "MY.")
+  /// - Beneficiarios con grado en extenso (ej. "CORONEL")
+  ///
+  /// Retorna `false` para códigos civiles del backend ("EC", "ASEGURADO", etc.)
+  /// que no son rangos militares reales.
+  static bool isValidRankForDisplay(String rank) {
+    if (rank.isEmpty) return false;
+    if (_isCivilianCode(rank)) return false;
+    // Si es un rango conocido en extenso → válido
+    if (isKnownMilitaryRank(rank)) return true;
+    // Si tiene punto (ej. "CNL.", "TTE. CNL.") y no es código civil → asumir abreviatura válida
+    if (rank.contains('.') && !_isCivilianCode(rank.replaceAll('.', ''))) return true;
+    // Cualquier otro valor desconocido → no mostrar
+    return false;
+  }
+
+  /// `true` si el valor es un código civil del backend que NO debe usarse como
+  /// prefijo de grado militar. Aplica a titulares cuyo backend envía el grado
+  /// ya abreviado (ej. "CNL.") pero también puede enviar códigos como "EC".
+  ///
+  /// Códigos conocidos del backend de COSSMIL:
+  ///   - `EC`  → Empleado Civil
+  ///   - `ASEGURADO` → asegurado sin grado específico
+  ///   - `EMPLEADO CIVIL` → variante en extenso
+  static bool _isCivilianCode(String grado) {
+    final upper = grado.trim().toUpperCase().replaceAll(RegExp(r'\.+$'), ''); // quitar puntos finales
+    const civilianCodes = {
+      'EC',
+      'ASEGURADO',
+      'EMPLEADO CIVIL',
+      'EMP CIVIL',
+      'EMP. CIVIL',
+      'CIVIL',
+    };
+    return civilianCodes.contains(upper);
   }
 
   // ── Prefijo de tratamiento para beneficiarios ────────────────────────────
@@ -86,9 +135,21 @@ class RankUtils {
 
   // ── Nombre con prefijo combinado ─────────────────────────────────────────
 
-  /// Genera el nombre con prefijo apropiado:
-  /// - Titular: rango abreviado + nombre
-  /// - Beneficiario: Sr./Sra./Joven/Srta. + nombre
+  /// Genera el nombre con prefijo apropiado según el tipo de persona:
+  ///
+  /// **Titular** (`isTitular = true`):
+  /// - Si tiene grado militar → grado abreviado + nombre (ej: "Cnl. Juan Pérez")
+  /// - Sin grado → nombre solo
+  ///
+  /// **Beneficiario** (`isTitular = false`):
+  /// - Si el backend le asignó un `grado` propio → grado abreviado + nombre
+  ///   (caso: esposo/a que también es militar)
+  /// - Sin grado y mayor de 18 años → "Sr." / "Sra." + nombre
+  /// - Sin grado y menor de 18 años → nombre solo (sin prefijo)
+  ///
+  /// **Importante:** el grado del titular nunca se hereda al beneficiario.
+  /// El caller es responsable de pasar `grado = ''` para beneficiarios
+  /// que no tienen grado propio.
   static String displayNameWithPrefix({
     required String fullName,
     required bool isTitular,
@@ -98,20 +159,28 @@ class RankUtils {
   }) {
     if (fullName.isEmpty) return fullName;
 
-    if (isTitular && grado.isNotEmpty) {
-      if (grado.toLowerCase() == 'asegurado') return fullName;
-      // La API ya devuelve el grado abreviado (ej: "CNL.").
-      // Solo limpiamos el doble punto que podría aparecer por datos legacy.
+    // ── Titular ────────────────────────────────────────────────────────────
+    // Para titulares, el backend envía el grado ya abreviado (ej. "CNL.", "MY."),
+    // por lo que se muestra directamente sin pasar por abbreviateRank.
+    // Solo se filtra la lista negra de códigos civiles que el backend puede enviar.
+    if (isTitular) {
+      if (grado.isEmpty || _isCivilianCode(grado)) return fullName;
       final cleanGrado = grado.trim().replaceAll('..', '.');
-      return cleanGrado.isNotEmpty ? '$cleanGrado $fullName' : fullName;
+      return '$cleanGrado $fullName';
     }
 
-    if (!isTitular) {
-      final prefix = beneficiaryPrefix(age: age, gender: gender);
-      return prefix.isEmpty ? fullName : '$prefix $fullName';
+    // ── Beneficiario ───────────────────────────────────────────────────────
+    // Caso 1: tiene grado militar propio reconocido (ej. esposo/a también militar).
+    // Se valida contra la tabla de rangos conocidos: códigos como 'EC', 'ASEGURADO'
+    // o cualquier valor no militar del backend NO se usan como prefijo.
+    if (grado.isNotEmpty && isKnownMilitaryRank(grado)) {
+      final abbrev = abbreviateRank(grado);
+      return abbrev.isNotEmpty ? '$abbrev $fullName' : fullName;
     }
 
-    return fullName;
+    // Caso 2: sin grado válido → Sr./Sra. según edad
+    final prefix = beneficiaryPrefix(age: age, gender: gender);
+    return prefix.isEmpty ? fullName : '$prefix $fullName';
   }
 
   // ── Estado de servicio ───────────────────────────────────────────────────

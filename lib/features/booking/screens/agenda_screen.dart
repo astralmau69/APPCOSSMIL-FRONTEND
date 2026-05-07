@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/extensions/responsive_extensions.dart';
 import '../../../core/services/programacion_service.dart';
+import '../../../core/data/app_session_cache.dart';
 import '../../../core/models/doctor_agenda_model.dart';
 import '../../../core/models/doctor_model.dart';
 import '../../../core/widgets/breadcrumb_chips.dart';
@@ -48,9 +49,16 @@ class _AgendaScreenState extends State<AgendaScreen> {
 
       if (idmed.isEmpty) throw Exception('Doctor no seleccionado');
 
-      // 1. Obtener fecha del servidor y datos del backend en paralelo
+      // 1. Obtener fecha del servidor (caché si está disponible) y agenda del backend.
+      //    fechaServidor es estable durante la sesión: el orchestrator la pobla en
+      //    AppSessionCache y aquí evitamos la llamada redundante.
+      final cachedFecha = AppSessionCache.isLoaded ? AppSessionCache.fechaServidor : null;
+      final fechaFuture = (cachedFecha != null && cachedFecha.isNotEmpty)
+          ? Future.value(cachedFecha)
+          : _service.getFechaServidor();
+
       final results = await Future.wait([
-        _service.getFechaServidor(),
+        fechaFuture,
         _service.getAgendaMedicoMovil(idins: 1, idsuc: idsuc, idmed: idmed),
       ]);
 

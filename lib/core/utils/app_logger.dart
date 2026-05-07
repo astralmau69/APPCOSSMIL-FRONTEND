@@ -13,8 +13,11 @@ class AppLogger {
     if (kDebugMode) _log('INFO ', tag, msg);
   }
 
-  static void warn(String tag, String msg) {
-    if (kDebugMode) _log('WARN ', tag, msg);
+  static void warn(String tag, String msg, [Object? err]) {
+    if (kDebugMode) {
+      _log('WARN ', tag, msg);
+      if (err != null) debugPrint('  ↳ $err');
+    }
   }
 
   static void error(String tag, String msg, [Object? err, StackTrace? st]) {

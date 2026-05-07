@@ -40,7 +40,7 @@ import '../features/reservas/screens/reservas_screen.dart';
 
 import '../features/booking/screens/booking_flow_screen.dart';
 
-import '../features/familia/screens/familia_screen.dart';
+import '../features/calendario/screens/calendario_hospital_screen.dart';
 
 import '../features/perfil/screens/perfil_screen.dart';
 import '../features/perfil/screens/security_setup_screen.dart';
@@ -57,92 +57,92 @@ import '../core/extensions/responsive_extensions.dart';
 import '../core/models/reserva_model.dart';
 import 'widgets/active_appointment_modal.dart';
 import '../core/widgets/app_background.dart';
+import '../core/widgets/loader_with_message.dart';
+import '../core/utils/app_logger.dart';
+import '../core/animations/app_page_route.dart';
 
 
 
 /// Estado mutable del flujo de reserva, compartido entre pantallas.
-
 class BookingState {
-
   String? beneficiaryLabel;
-
   BeneficiaryModel? beneficiary;
-
   RegionalModel? regional;
-
   HospitalModel? hospital;
-
   SpecialtyModel? specialty;
 
   /// Fecha seleccionada en el calendario de reserva (formato "yyyy-MM-dd").
   String? selectedDate;
 
   DoctorModel? doctor;
-
   String? selectedTime;
 
   /// Código de horario asignado por verificar-horario-atencion.
-
   int? idhorario;
 
   /// ID de la hora seleccionada en la agenda del médico.
-
   String? idhora;
 
   /// ID de la agenda del médico asignado.
-
   String? idagenda;
 
   /// Fecha y hora real de la cita — se establece en ScheduleScreen al
-
   /// seleccionar el horario, para poder programar notificaciones locales.
-
   DateTime? appointmentDateTime;
 
   String? idcontrol;
-
   int? idcon;
-
   int? slotNumber;
 
+  // ─── Guard de mutación atómica ───────────────────────────────────────────
+  // Protege contra race conditions cuando el usuario navega rápido o cambia
+  // beneficiario mientras una petición HTTP está en vuelo.
+  bool _isMutating = false;
 
-
-  void reset() {
-
-    beneficiaryLabel = null;
-
-    beneficiary = null;
-
-    regional = null;
-
-    hospital = null;
-
-    specialty = null;
-
-    selectedDate = null;
-
-    doctor = null;
-
-    selectedTime = null;
-
-    idhorario = null;
-
-    idhora = null;
-
-    idagenda = null;
-
-    appointmentDateTime = null;
-
-    idcontrol = null;
-
-    idcon = null;
-
-    slotNumber = null;
-
+  /// Aplica [fn] de forma atómica sobre este BookingState.
+  ///
+  /// Si ya hay una mutación en progreso, espera 50ms y reintenta (hasta 10 veces).
+  /// Úsalo desde pantallas que modifican varios campos a la vez para evitar
+  /// que dos callbacks simultáneos dejen el estado en un valor intermedio.
+  ///
+  /// ```dart
+  /// await bookingState.atomicUpdate((bs) {
+  ///   bs.regional = regional;
+  ///   bs.hospital = hospital;
+  /// });
+  /// ```
+  Future<void> atomicUpdate(void Function(BookingState) fn) async {
+    int retries = 0;
+    while (_isMutating && retries < 10) {
+      await Future.delayed(const Duration(milliseconds: 50));
+      retries++;
+    }
+    _isMutating = true;
+    try {
+      fn(this);
+    } finally {
+      _isMutating = false;
+    }
   }
 
+  void reset() {
+    beneficiaryLabel = null;
+    beneficiary = null;
+    regional = null;
+    hospital = null;
+    specialty = null;
+    selectedDate = null;
+    doctor = null;
+    selectedTime = null;
+    idhorario = null;
+    idhora = null;
+    idagenda = null;
+    appointmentDateTime = null;
+    idcontrol = null;
+    idcon = null;
+    slotNumber = null;
+  }
 }
-
 
 
 class TabShell extends StatefulWidget {
@@ -164,6 +164,10 @@ class TabShellState extends State<TabShell>
     with SingleTickerProviderStateMixin, WidgetsBindingObserver {
 
   int _currentIndex = 0;
+
+  /// Índice del tab activo. Permite a las pantallas (ej. ScheduleScreen)
+  /// pausar polling cuando el usuario navega a otra tab.
+  int get currentTabIndex => _currentIndex;
 
   final bookingState = BookingState();
 
@@ -260,6 +264,20 @@ class TabShellState extends State<TabShell>
     // puedan abrir Mis Reservas directamente desde la bandeja de notificaciones.
     // Además, se muestra el aviso de horarios al iniciar sesión por primera vez.
     NotificationService.registerTabSwitcher(goToTab);
+
+    // N6 fix: registrar el handler HTTP de cancelación de citas.
+    // Esto desacopla notification_ui de ProgramacionService — la lógica HTTP
+    // vive aquí (donde ya importamos ProgramacionService) y se pasa como callback.
+    NotificationService.registerCancelCitaHandler((data) async {
+      await _programacionService.cancelarCita(
+        gestion: data['gestion'] as int,
+        idins: data['idins'] as int,
+        idsuc: data['idsuc'] as int,
+        idtran: data['idtran'] as int,
+        dr: data['dr'] as int,
+        matricula: UserSession.currentUser.matricula,
+      );
+    });
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _showScheduleInfoModalIfNeeded();
@@ -445,7 +463,7 @@ class TabShellState extends State<TabShell>
             onPressed: () {
               Navigator.pop(ctx);
               Navigator.of(context, rootNavigator: true).push(
-                CupertinoPageRoute(
+                AppPageRoute(
                   builder: (_) => const _SecuritySetupWrapper(),
                 ),
               );
@@ -559,7 +577,7 @@ class TabShellState extends State<TabShell>
 
     await Navigator.of(context, rootNavigator: true).push(
 
-      CupertinoPageRoute(
+      AppPageRoute(
 
         fullscreenDialog: true,
 
@@ -589,7 +607,14 @@ class TabShellState extends State<TabShell>
 
   // ─── Navegación ─────────────────────────────────────────────────────────
 
-
+  /// Empuja una pantalla en el navigator del tab actual.
+  ///
+  /// Centraliza el patrón `Navigator.push(...)` desde el grid de Home y otros
+  /// puntos de entrada para que toda la navegación pase por el shell y use la
+  /// transición [AppPageRoute] de forma consistente.
+  Future<T?> openSubRoute<T>(BuildContext context, WidgetBuilder builder) {
+    return Navigator.of(context).push<T>(AppPageRoute<T>(builder: builder));
+  }
 
   void goToTab(int index) {
 
@@ -688,7 +713,7 @@ class TabShellState extends State<TabShell>
       showCupertinoDialog(
         context: context,
         barrierDismissible: false,
-        builder: (context) => const Center(child: CupertinoActivityIndicator(radius: 15)),
+        builder: (context) => const LoaderWithMessage(message: 'Verificando horario de atención…'),
       );
       _loaderOpen = true;
 
@@ -876,7 +901,7 @@ class TabShellState extends State<TabShell>
       showCupertinoDialog(
         context: context,
         barrierDismissible: false,
-        builder: (_) => const Center(child: CupertinoActivityIndicator(radius: 15)),
+        builder: (_) => const LoaderWithMessage(message: 'Comprobando citas activas…'),
       );
       loaderOpen = true;
 
@@ -1025,7 +1050,9 @@ class TabShellState extends State<TabShell>
                       await NotificationService.cancelAppointmentReminders(
                         reserva.idtran.toString(),
                       );
-                    } catch (_) {}
+                    } catch (e) {
+                      AppLogger.warn('TabShell', 'No se pudieron cancelar recordatorios de notificación', e);
+                    }
                     // ignore: use_build_context_synchronously
                     if (mounted) Navigator.pop(ctx);
                     if (mounted) {
@@ -1077,7 +1104,9 @@ class TabShellState extends State<TabShell>
 
         await horarioPlayer.play(AssetSource('vof/AUDIO 4. HORARIOS HABILITADOS CON HORA.mp3'));
 
-      } catch (_) {}
+      } catch (e) {
+        AppLogger.warn('TabShell', 'Error reproduciendo audio de horarios', e);
+      }
     }
 
 
@@ -1505,7 +1534,7 @@ class TabShellState extends State<TabShell>
 
       2 => BookingFlowScreen(key: _bookingFlowKey, tabShell: this),
 
-      3 => FamiliaScreen(key: refreshKey),
+      3 => CalendarioHospitalScreen(key: refreshKey),
 
       4 => PerfilScreen(key: refreshKey),
 

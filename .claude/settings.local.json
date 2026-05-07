@@ -38,7 +38,8 @@
       "Bash(powershell.exe *)",
       "Bash(sed -n '740,760p' D:/app/Post2/lib/features/booking/screens/summary_screen.dart)",
       "Bash(sed -n '100,120p' D:/app/Post2/lib/features/splash/screens/splash_screen.dart)",
-      "Bash(sed -n '1055,1085p' D:/app/Post2/lib/shell/tab_shell.dart)"
+      "Bash(sed -n '1055,1085p' D:/app/Post2/lib/shell/tab_shell.dart)",
+      "Bash(flutter build *)"
     ]
   }
 }

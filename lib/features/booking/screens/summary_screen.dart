@@ -11,6 +11,7 @@ import '../../../core/session/user_session.dart';
 import '../../../core/services/programacion_service.dart';
 import '../../../core/utils/error_mapper.dart';
 
+import '../../../core/animations/app_page_route.dart';
 import '../../../core/animations/success_check_animation.dart';
 import '../../../shell/tab_shell.dart';
 import '../../../core/widgets/cossmil_ios_alert.dart';
@@ -50,6 +51,14 @@ class _SummaryScreenState extends State<SummaryScreen>
   int? _idsuc;
   int? _idtran;
   int? _dr;
+
+  /// Caché de fotos decodificadas (médico, paciente). Evita re-decodificar
+  /// base64/CSV en cada rebuild, que es costoso y bloquea el frame.
+  final Map<String, Uint8List?> _decodedPhotos = {};
+
+  /// PDF de la cita ya descargado (post-confirm). Evita re-descargas si el
+  /// usuario abre y cierra el preview varias veces.
+  Uint8List? _cachedPdfBytes;
 
   /// Fecha de la reserva (desde el estado o mañana como fallback).
   String get _fechaReserva {
@@ -102,25 +111,24 @@ class _SummaryScreenState extends State<SummaryScreen>
     _pulseCtrl = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 900),
-    )..repeat(reverse: true);
+    );
     _pulseScale = Tween<double>(begin: 1.0, end: 1.04).animate(
       CurvedAnimation(parent: _pulseCtrl, curve: Curves.easeInOut),
     );
-
-    // Auto-scroll al botón de confirmación después de que el layout esté completamente medido.
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      Future.delayed(const Duration(milliseconds: 450), _scrollToBottom);
-    });
+    // Pulse de llamada de atención: se dispara una vez en la primera frame
+    // (después de que MediaQuery esté disponible) para no drenar GPU/batería
+    // con `repeat(reverse: true)`. Respeta `disableAnimations`.
+    WidgetsBinding.instance.addPostFrameCallback((_) => _pulseOnce());
   }
 
-  void _scrollToBottom() {
-    if (_scrollController.hasClients) {
-      _scrollController.animateTo(
-        _scrollController.position.maxScrollExtent,
-        duration: const Duration(milliseconds: 700),
-        curve: Curves.easeOutCubic,
-      );
-    }
+  /// Un único ciclo del pulse (forward + reverse), respetando accesibilidad.
+  void _pulseOnce() {
+    if (!mounted) return;
+    final disableAnimations = MediaQuery.of(context).disableAnimations;
+    if (disableAnimations) return;
+    _pulseCtrl.forward(from: 0).then((_) {
+      if (mounted) _pulseCtrl.reverse();
+    });
   }
 
   @override
@@ -452,18 +460,18 @@ class _SummaryScreenState extends State<SummaryScreen>
     } catch (_) {}
   }
 
-  /// Decodifica la foto del médico, que puede venir en dos formatos:
+  /// Decodifica una foto que puede venir como:
   ///   - Bytes con signo separados por coma: "120,-34,56,..."  (DoctorModel.foto)
   ///   - Base64 / Data URL: "/9j/4AAQ..." o "data:image/jpeg;base64,..."
-  Widget _buildPhoto(String? foto, bool isDark, {required IconData icon}) {
-    final fallback = Icon(icon, size: context.r.iconMd,
-        color: AppColors.accentForTheme(isDark).withValues(alpha: 0.6));
-    if (foto == null || foto.isEmpty) return fallback;
+  ///
+  /// Cachea el resultado en `_decodedPhotos` para evitar repetir el trabajo
+  /// en cada rebuild del summary.
+  Uint8List? _decodePhoto(String foto) {
+    if (foto.isEmpty) return null;
+    if (_decodedPhotos.containsKey(foto)) return _decodedPhotos[foto];
 
+    Uint8List? bytes;
     try {
-      Uint8List? bytes;
-
-      // Detecta formato de bytes con signo: primer segmento es un entero
       final firstToken = foto.split(',').first.trim();
       if (int.tryParse(firstToken) != null) {
         // Bytes con signo separados por coma
@@ -477,19 +485,30 @@ class _SummaryScreenState extends State<SummaryScreen>
         final clean = foto.contains(',') ? foto.split(',').last : foto;
         bytes = base64Decode(clean.trim());
       }
-
-      return Image.memory(
-        bytes,
-        width: double.infinity,
-        height: double.infinity,
-        fit: BoxFit.cover,
-        cacheWidth: 200,
-        gaplessPlayback: true,
-        errorBuilder: (_, __, ___) => fallback,
-      );
     } catch (_) {
-      return fallback;
+      bytes = null;
     }
+    _decodedPhotos[foto] = bytes;
+    return bytes;
+  }
+
+  Widget _buildPhoto(String? foto, bool isDark, {required IconData icon}) {
+    final fallback = Icon(icon, size: context.r.iconMd,
+        color: AppColors.accentForTheme(isDark).withValues(alpha: 0.6));
+    if (foto == null || foto.isEmpty) return fallback;
+
+    final bytes = _decodePhoto(foto);
+    if (bytes == null) return fallback;
+
+    return Image.memory(
+      bytes,
+      width: double.infinity,
+      height: double.infinity,
+      fit: BoxFit.cover,
+      cacheWidth: 200,
+      gaplessPlayback: true,
+      errorBuilder: (_, __, ___) => fallback,
+    );
   }
 
   Widget _buildActionButtons(bool isDark) {
@@ -643,6 +662,23 @@ class _SummaryScreenState extends State<SummaryScreen>
       return;
     }
 
+    final fileName = 'Cita_Medica_$_gestion-$_idtran-$_dr';
+
+    // Si ya descargamos el PDF en una apertura previa, abrir el preview
+    // directamente sin volver a pedirlo al backend.
+    if (_cachedPdfBytes != null && _cachedPdfBytes!.isNotEmpty) {
+      Navigator.push(
+        context,
+        AppPageRoute(
+          builder: (_) => _PdfPreviewScreen(
+            pdfBytes: _cachedPdfBytes!,
+            fileName: fileName,
+          ),
+        ),
+      );
+      return;
+    }
+
     setState(() => _isDownloadingPdf = true);
 
     try {
@@ -656,7 +692,10 @@ class _SummaryScreenState extends State<SummaryScreen>
       );
 
       if (!mounted) return;
-      setState(() => _isDownloadingPdf = false);
+      setState(() {
+        _isDownloadingPdf = false;
+        _cachedPdfBytes = pdfBytes;
+      });
 
       if (pdfBytes == null || pdfBytes.isEmpty) {
         await CossmilIosAlert.show(
@@ -672,10 +711,10 @@ class _SummaryScreenState extends State<SummaryScreen>
       if (!mounted) return;
       Navigator.push(
         context,
-        CupertinoPageRoute(
+        AppPageRoute(
           builder: (_) => _PdfPreviewScreen(
             pdfBytes: pdfBytes,
-            fileName: 'Cita_Medica_$_gestion-$_idtran-$_dr',
+            fileName: fileName,
           ),
         ),
       );
@@ -694,7 +733,47 @@ class _SummaryScreenState extends State<SummaryScreen>
     }
   }
 
+  /// Verifica que el bookingState tenga todos los campos críticos antes de
+  /// armar el payload de `crea-cita`. Retorna `null` si todo está OK, o un
+  /// label legible del primer dato faltante para mostrar al usuario.
+  String? _missingBookingField() {
+    final bs = widget.tabShell.bookingState;
+    final user = UserSession.currentUser;
+
+    if ((int.tryParse(bs.hospital?.id ?? '') ?? 0) == 0) return 'el hospital';
+    if ((int.tryParse(bs.specialty?.id ?? '') ?? 0) == 0) return 'la especialidad';
+    if ((bs.doctor?.id ?? '').isEmpty) return 'el médico';
+    if ((bs.doctor?.fecha ?? '').isEmpty) return 'la fecha de la cita';
+    if ((bs.idagenda ?? '').isEmpty) return 'la agenda del médico';
+    if ((bs.idhora ?? '').isEmpty) return 'la hora seleccionada';
+    if ((bs.selectedTime ?? '').isEmpty) return 'la hora seleccionada';
+    if ((bs.slotNumber ?? 0) == 0) return 'el número de ficha';
+
+    final idperStr = bs.beneficiary?.id ?? user.id;
+    if ((int.tryParse(idperStr) ?? 0) == 0) return 'el paciente';
+
+    final matricula = bs.beneficiary?.matricula ?? user.matricula;
+    if (matricula.isEmpty) return 'la matrícula del paciente';
+
+    return null;
+  }
+
   Future<void> _confirmBooking() async {
+    // Validar pre-flight para no enviar un payload con datos vacíos al backend.
+    // Si falta algo, avisar al usuario con un copy claro y abortar antes del HTTP.
+    final missing = _missingBookingField();
+    if (missing != null) {
+      await CossmilIosAlert.show(
+        context: context,
+        title: 'Faltan datos',
+        message: 'No se pudo confirmar la reserva porque falta $missing. '
+            'Por favor regresa a los pasos anteriores y verifica que todo esté completo.',
+        type: AlertType.warning,
+        confirmText: 'Aceptar',
+      );
+      return;
+    }
+
     setState(() => _isConfirming = true);
 
     final bs = widget.tabShell.bookingState;
@@ -764,16 +843,22 @@ class _SummaryScreenState extends State<SummaryScreen>
       try {
         final fechaStr = bs.doctor?.fecha ?? '';
         final horaStr = bs.selectedTime ?? '';
+        // Normalizar hora: eliminar segundos si viene como "HH:mm:ss"
+        final horaNorm = (horaStr.length > 5) ? horaStr.substring(0, 5) : horaStr;
         // Parse fecha (dd/MM/yyyy) + hora (HH:mm) into DateTime
         DateTime? apptDateTime;
-        if (fechaStr.isNotEmpty && horaStr.isNotEmpty) {
+        if (fechaStr.isNotEmpty && horaNorm.isNotEmpty) {
           try {
-            apptDateTime = DateFormat('dd/MM/yyyy HH:mm').parse('$fechaStr $horaStr');
+            apptDateTime = DateFormat('dd/MM/yyyy HH:mm').parse('$fechaStr $horaNorm');
           } catch (_) {
             try {
-              apptDateTime = DateFormat('yyyy-MM-dd HH:mm').parse('$fechaStr $horaStr');
+              apptDateTime = DateFormat('yyyy-MM-dd HH:mm').parse('$fechaStr $horaNorm');
             } catch (_) {}
           }
+        }
+        if (apptDateTime == null) {
+          debugPrint('⚠️ [SummaryScreen] apptDateTime es null — notificaciones NO programadas. '
+              'fechaStr=$fechaStr, horaStr=$horaStr, horaNorm=$horaNorm');
         }
         if (apptDateTime != null) {
           final ticketNum = responseData?['idtran']?.toString() ?? '${bs.slotNumber ?? 0}';
@@ -812,23 +897,13 @@ class _SummaryScreenState extends State<SummaryScreen>
 
       // Esperar que la animación de exito (splash) finalice y ocultarla
       Future.delayed(const Duration(milliseconds: 2500), () {
-        if (mounted) {
-          setState(() {
-            _showSuccessSplash = false;
-          });
-          // Hacer scroll al botón "Ver imagen de la Cita Médica" tras la transición.
-          WidgetsBinding.instance.addPostFrameCallback((_) {
-            Future.delayed(const Duration(milliseconds: 450), () {
-              if (_scrollController.hasClients) {
-                _scrollController.animateTo(
-                  _scrollController.position.maxScrollExtent,
-                  duration: const Duration(milliseconds: 600),
-                  curve: Curves.easeOutCubic,
-                );
-              }
-            });
-          });
-        }
+        if (!mounted) return;
+        setState(() {
+          _showSuccessSplash = false;
+        });
+        // Pulse único en el nuevo botón "Ver Imagen" para señalarlo sin drenar
+        // batería con un loop infinito.
+        WidgetsBinding.instance.addPostFrameCallback((_) => _pulseOnce());
       });
     } catch (e) {
       debugPrint('❌ Error en _confirmBooking: $e');

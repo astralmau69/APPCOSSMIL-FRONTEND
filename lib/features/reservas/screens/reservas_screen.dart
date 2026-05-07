@@ -15,6 +15,8 @@ import '../../../core/widgets/app_state_widget.dart';
 import '../../../core/widgets/beneficiary_selector_modal.dart';
 import '../../../core/models/beneficiary_model.dart';
 import '../../../core/utils/error_mapper.dart';
+import '../../../core/utils/app_logger.dart';
+import '../../../core/data/app_session_cache.dart';
 import '../../../core/services/notification_service.dart';
 import 'detalle_cita_screen.dart';
 import '../widgets/doctor_rating_modal.dart';
@@ -1189,23 +1191,59 @@ class _ReservasScreenState extends State<ReservasScreen> {
 
   /// Carga las reservas que fueron ofrecidas para calificación pero no calificadas.
   /// Actualiza [_pendingRatings] para controlar el botón "Calificar" en la lista.
+  ///
+  /// Reglas:
+  ///   - Citas anteriores a 2026 → SIN opción de calificar (ni notificación).
+  ///   - Citas de 2026+ completadas → muestran botón "Calificar" si no fue calificada.
+  ///   - Notificación inmediata → SOLO si la cita es del día de hoy.
   Future<void> _loadPendingRatings() async {
     final pending = <String>{};
+    final today = DateTime.now();
+    final todayDate = DateTime(today.year, today.month, today.day);
+
     for (final r in _history) {
-      if (r.status.toUpperCase() == 'COMPLETADO' &&
-          r.estadoCancelacion != '1') {
-        if (await DoctorRatingModal.isRatable(r)) {
-          pending.add('${r.idtran}_${r.dr}');
-        }
-      }
+      if (r.status.toUpperCase() != 'COMPLETADO') continue;
+      if (r.estadoCancelacion == '1') continue;
+
+      // Excluir citas anteriores a 2026 de toda la lógica de calificación.
+      final apptDate = r.appointmentDate;
+      if (apptDate == null || apptDate.year < 2026) continue;
+
+      final isRatable = await DoctorRatingModal.isRatable(r);
+      if (!isRatable) continue;
+
+      pending.add('${r.idtran}_${r.dr}');
+
+      // ── Notificación de calificación ──────────────────────────────────────
+      // Solo se dispara si la cita es del día de hoy (estado recién cambió).
+      final isToday = !apptDate.isBefore(todayDate) &&
+          apptDate.isBefore(todayDate.add(const Duration(days: 1)));
+      if (!isToday) continue;
+
+      // Verificar que no fue ofrecida aún (evita spam al refrescar la pantalla).
+      final alreadyOffered = await DoctorRatingModal.isOfferedButNotRated(r);
+      if (alreadyOffered) continue;
+
+      final ticket = r.codigoReserva ?? r.id;
+      NotificationService.showRatingReminder(
+        ticketNumber: ticket,
+        especialidad: r.specialty,
+        medico: r.doctorName,
+        paciente: r.patientName,
+        idtran: r.idtran,
+        dr: r.dr,
+      );
     }
     if (mounted) setState(() => _pendingRatings = pending);
   }
 
-  /// Carga los nombres completos de hospitales desde la API de regionales.
+  /// Construye el mapa id→nombre de hospital desde [AppSessionCache] (sin HTTP)
+  /// o cae al API si el caché aún no fue poblado (cold start).
   Future<void> _fetchHospitalNames() async {
     try {
-      final regionales = await _service.getRegionalesPorDepartamento(1);
+      final regionales = AppSessionCache.isLoaded && AppSessionCache.regionales.isNotEmpty
+          ? AppSessionCache.regionales
+          : await _service.getRegionalesPorDepartamento(1);
       final map = <int, String>{};
       for (final regional in regionales) {
         for (final hospital in regional.hospitals) {
@@ -1214,7 +1252,9 @@ class _ReservasScreenState extends State<ReservasScreen> {
         }
       }
       if (mounted) setState(() => _hospitalNames = map);
-    } catch (_) {}
+    } catch (e) {
+      AppLogger.warn('ReservasScreen', 'No se pudo cargar nombres de hospitales', e);
+    }
   }
 
   /// Retorna el nombre completo del hospital desde la API de regionales,

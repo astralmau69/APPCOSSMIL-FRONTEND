@@ -102,9 +102,9 @@ class FloatingNavBar extends StatelessWidget {
                       inactiveColor: inactiveColor,
                     ),
                     _NavBarItem(
-                      icon: CupertinoIcons.person_2,
-                      activeIcon: CupertinoIcons.person_2_fill,
-                      label: 'Familia',
+                      icon: CupertinoIcons.calendar,
+                      activeIcon: CupertinoIcons.calendar_today,
+                      label: 'Calendario',
                       isActive: currentIndex == 3,
                       onTap: () => onTap(3),
                       activeColor: activeColor,

@@ -25,7 +25,7 @@ import '../../../core/extensions/responsive_extensions.dart';
 
 /// Uso típico:
 
-///   final ok = await Navigator.push(context, CupertinoPageRoute(
+///   final ok = await Navigator.push(context, AppPageRoute(
 
 ///     builder: (_) => PinVerifyScreen(title: 'Confirma tu PIN', subtitle: '...'),
 

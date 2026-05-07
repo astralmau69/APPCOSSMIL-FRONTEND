@@ -156,39 +156,87 @@ class SessionRestoreService {
         
         final eBloodType = (data['gruposan'] as String? ?? data['grupoSanguineo'] as String? ?? data['grupo_sanguineo'] as String? ?? '').trim();
         final eAllergies = (data['alergia'] as String? ?? data['alergias'] as String? ?? data['allergies'] as String? ?? '').trim();
-        final eGrado = (data['grado']?.toString() ?? 
-                        data['Grado']?.toString() ?? 
-                        data['rango']?.toString() ?? 
+        final eGrado = (data['grado']?.toString() ??
+                        data['Grado']?.toString() ??
+                        data['rango']?.toString() ??
                         data['Rango']?.toString() ?? '').trim();
         final eRefe4 = (data['refe4'] as String? ?? '').trim();
+        // tipo == 'T' es la fuente autoritativa para Titular (ver auth_service.dart)
+        final eTipo = (data['tipo']?.toString() ?? '').trim().toUpperCase();
+        final isFotoTitular = eTipo == 'T';
+        final shouldUpgradeToTitular = isFotoTitular && !UserSession.currentUser.isTitular;
 
-        if (cleanPhoto.isNotEmpty || eBloodType.isNotEmpty || eAllergies.isNotEmpty || eGrado.isNotEmpty || eRefe4.isNotEmpty) {
+        if (cleanPhoto.isNotEmpty || eBloodType.isNotEmpty || eAllergies.isNotEmpty || eGrado.isNotEmpty || eRefe4.isNotEmpty || shouldUpgradeToTitular) {
           UserSession.currentUser = UserSession.currentUser.copyWith(
             photoBase64: cleanPhoto.isNotEmpty ? cleanPhoto : UserSession.currentUser.photoBase64,
             bloodType: eBloodType.isNotEmpty ? eBloodType : UserSession.currentUser.bloodType,
             allergies: eAllergies.isNotEmpty ? eAllergies : UserSession.currentUser.allergies,
             rank: eGrado.isNotEmpty ? eGrado : UserSession.currentUser.rank,
+            role: shouldUpgradeToTitular ? 'Titular' : null,
             serviceStatus: eRefe4.isNotEmpty ? eRefe4 : UserSession.currentUser.serviceStatus,
           );
-          
-          // Actualizar también en la lista de beneficiarios si está el titular
-          final updatedBens = UserSession.currentUser.beneficiaries.map((b) {
-            if (b.isTitular) {
-              return BeneficiaryModel(
-                id: b.id,
-                fullName: b.fullName,
-                relationship: b.relationship,
-                age: b.age,
-                gender: b.gender,
-                matricula: b.matricula,
-                photoBase64: cleanPhoto.isNotEmpty ? cleanPhoto : b.photoBase64,
-                grado: eGrado.isNotEmpty ? eGrado : b.grado,
-                serviceStatus: eRefe4.isNotEmpty ? eRefe4 : b.serviceStatus,
+
+          // Si promovimos a Titular y no hay entrada titular en la lista, intentar
+          // convertir la entrada self existente (matchea por matrícula).
+          final currentBens = UserSession.currentUser.beneficiaries;
+          final hasTitularEntry = currentBens.any((b) => b.isTitular);
+          List<BeneficiaryModel> updatedBens;
+          if (shouldUpgradeToTitular && !hasTitularEntry) {
+            final userMatricula = UserSession.currentUser.matricula.trim();
+            final userId = UserSession.currentUser.id;
+            final selfIdx = currentBens.indexWhere(
+              (b) => b.id == userId || b.matricula.trim() == userMatricula,
+            );
+            if (selfIdx >= 0) {
+              final existing = currentBens[selfIdx];
+              updatedBens = List<BeneficiaryModel>.from(currentBens);
+              updatedBens[selfIdx] = BeneficiaryModel(
+                id: existing.id,
+                fullName: existing.fullName,
+                relationship: 'Titular',
+                age: existing.age,
+                gender: existing.gender,
+                matricula: existing.matricula,
+                photoBase64: cleanPhoto.isNotEmpty ? cleanPhoto : existing.photoBase64,
+                grado: eGrado.isNotEmpty ? eGrado : (existing.grado.isNotEmpty ? existing.grado : UserSession.currentUser.rank),
+                serviceStatus: eRefe4.isNotEmpty ? eRefe4 : existing.serviceStatus,
               );
+            } else {
+              updatedBens = [
+                BeneficiaryModel(
+                  id: userId,
+                  fullName: UserSession.currentUser.fullName,
+                  relationship: 'Titular',
+                  age: UserSession.currentUser.age,
+                  gender: UserSession.currentUser.gender,
+                  matricula: userMatricula,
+                  photoBase64: cleanPhoto,
+                  grado: eGrado.isNotEmpty ? eGrado : UserSession.currentUser.rank,
+                  serviceStatus: eRefe4,
+                ),
+                ...currentBens,
+              ];
             }
-            return b;
-          }).toList();
+          } else {
+            updatedBens = currentBens.map((b) {
+              if (b.isTitular) {
+                return BeneficiaryModel(
+                  id: b.id,
+                  fullName: b.fullName,
+                  relationship: b.relationship,
+                  age: b.age,
+                  gender: b.gender,
+                  matricula: b.matricula,
+                  photoBase64: cleanPhoto.isNotEmpty ? cleanPhoto : b.photoBase64,
+                  grado: eGrado.isNotEmpty ? eGrado : b.grado,
+                  serviceStatus: eRefe4.isNotEmpty ? eRefe4 : b.serviceStatus,
+                );
+              }
+              return b;
+            }).toList();
+          }
           UserSession.currentUser = UserSession.currentUser.copyWith(beneficiaries: List<BeneficiaryModel>.from(updatedBens));
+          BeneficiaryModel.titularRankFallback = UserSession.currentUser.rank;
 
           // Persistir la foto actualizada
           await saveUserSession(UserSession.currentUser);

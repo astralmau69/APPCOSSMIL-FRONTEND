@@ -121,12 +121,19 @@ class BeneficiaryModel {
   bool get isAtencionEnabled => atencion != 'N';
 
   /// Grado efectivo para lógica interna (valor crudo del backend).
-  /// - Titulares: usa `grado` del campo propio; si está vacío, usa `_titularRankFallback`.
-  /// - Beneficiarios: siempre vacío (no tienen rango militar propio).
+  ///
+  /// - **Titular**: usa `grado` del campo propio; si está vacío, usa `_titularRankFallback`.
+  /// - **Beneficiario**: retorna `grado` tal como lo envió el backend.
+  ///   Si el beneficiario no tiene grado propio (caso habitual), será vacío.
+  ///   Si el backend le asignó uno (ej. esposo/a militar), se conserva.
+  ///   Nunca se hereda el grado del titular.
   String get effectiveGrado {
-    if (!isTitular) return '';
-    if (grado.isNotEmpty) return grado;
-    return _titularRankFallback;
+    if (isTitular) {
+      if (grado.isNotEmpty) return grado;
+      return _titularRankFallback;
+    }
+    // Beneficiario: solo su grado propio (sin herencia del titular)
+    return grado;
   }
 
   /// Grado con primera letra en mayúscula por palabra, para mostrar en UI.

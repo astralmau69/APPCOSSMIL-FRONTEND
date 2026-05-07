@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import '../../../core/config/app_config.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/extensions/responsive_extensions.dart';
 import '../../../core/session/user_session.dart';
@@ -8,6 +9,7 @@ import '../../../core/models/regional_model.dart';
 import '../../../core/models/hospital_model.dart';
 import '../../../core/models/beneficiary_model.dart';
 import '../../../core/services/programacion_service.dart';
+import '../../../core/data/app_session_cache.dart';
 import '../../../core/widgets/beneficiary_selector_modal.dart';
 import '../../../core/animations/animated_press_button.dart';
 import '../../../core/animations/optimized_animations.dart';
@@ -16,7 +18,10 @@ import '../../../shell/tab_shell.dart';
 import '../../../core/services/location_service.dart';
 import '../../../core/helpers/distance_helper.dart';
 import '../../../core/widgets/skeleton_loading.dart';
+import '../../../core/widgets/app_state_widget.dart';
+import '../../../core/widgets/loader_with_message.dart';
 import '../../../core/utils/error_mapper.dart';
+import '../../../core/utils/app_logger.dart';
 import 'specialty_screen.dart';
 
 class RegionalScreen extends StatefulWidget {
@@ -32,13 +37,21 @@ class RegionalScreen extends StatefulWidget {
   State<RegionalScreen> createState() => _RegionalScreenState();
 }
 
+/// Item plano para la grilla unificada Regional+Hospital.
+class _HospitalEntry {
+  final RegionalModel regional;
+  final HospitalModel hospital;
+  double? distanceKm;
+
+  _HospitalEntry(this.regional, this.hospital);
+}
+
 class _RegionalScreenState extends State<RegionalScreen> {
   final _service = ProgramacionService();
-  List<RegionalModel> _regionals = [];
+  List<_HospitalEntry> _entries = [];
   List<BeneficiaryModel> _beneficiaries = [];
   bool _isLoading = true;
   String? _errorMessage;
-  int _expandedIndex = -1;
   bool _locationApplied = false;
   bool _isCheckingCita = false;
 
@@ -67,68 +80,67 @@ class _RegionalScreenState extends State<RegionalScreen> {
       _errorMessage = null;
     });
     try {
-      final rawData = await _service.getRegionalesPorDepartamento(1);
-
-      // Filtro: solo mostrar La Paz – Hospital Militar Central.
-      final data = <RegionalModel>[];
-      for (final regional in rawData) {
-        if (!regional.name.toLowerCase().contains('paz')) continue;
-        final hospitals = regional.hospitals
-            .where((h) => h.name.toLowerCase().contains('central'))
-            .toList();
-        if (hospitals.isEmpty) continue;
-        data.add(RegionalModel(
-          id: regional.id,
-          name: regional.name,
-          hospitals: hospitals,
-        ));
+      // 0.2: Consumir caché de sesión si está disponible — evita un HTTP redundante.
+      // El caché se rellena en LoadingDataScreen con InitialDataOrchestrator.
+      // Solo llama al backend si el caché está vacío (cold start).
+      List<RegionalModel> rawData;
+      if (AppSessionCache.isLoaded && AppSessionCache.regionales.isNotEmpty) {
+        AppLogger.info('RegionalScreen', 'Usando regionales desde AppSessionCache (${AppSessionCache.regionales.length} elementos)');
+        rawData = List<RegionalModel>.from(AppSessionCache.regionales);
+      } else {
+        AppLogger.info('RegionalScreen', 'Caché vacío — cargando regionales desde API');
+        rawData = await _service.getRegionalesPorDepartamento(1);
       }
+
+      // Filtro: ver `AppConfig.allowedHospitalIds` (centralizado).
+      final entries = <_HospitalEntry>[];
+      for (final regional in rawData) {
+        for (final h in regional.hospitals) {
+          if (AppConfig.allowedHospitalIds.contains(h.id)) {
+            entries.add(_HospitalEntry(regional, h));
+          }
+        }
+      }
+
+      // Orden estable por idsuc (1 → 2 → 3) cuando no hay GPS.
+      entries.sort((a, b) {
+        final ia = int.tryParse(a.hospital.id) ?? 99;
+        final ib = int.tryParse(b.hospital.id) ?? 99;
+        return ia.compareTo(ib);
+      });
 
       bool locationUsed = false;
       try {
         final locationService = LocationService();
-        // Pedir permisos si es que no los tiene (útil si el usuario se saltó el login por token guardado)
         final position = await locationService.getCurrentLocation(requestIfNotGranted: true);
 
         if (position != null) {
           locationUsed = true;
-          for (var regional in data) {
-            double minDistance = double.infinity;
-            for (var hospital in regional.hospitals) {
-              if (hospital.latitude != null && hospital.longitude != null) {
-                final d = DistanceHelper.calculateDistanceInKm(
-                  position.latitude, position.longitude,
-                  hospital.latitude!, hospital.longitude!
-                );
-                if (d < minDistance) minDistance = d;
-              }
-            }
-            if (minDistance != double.infinity) {
-              regional.distanceFromUser = minDistance;
+          for (final e in entries) {
+            final h = e.hospital;
+            if (h.latitude != null && h.longitude != null) {
+              e.distanceKm = DistanceHelper.calculateDistanceInKm(
+                position.latitude, position.longitude,
+                h.latitude!, h.longitude!,
+              );
             }
           }
-
-          // Ordenar departamentos por cercanía
-          data.sort((a, b) {
-            final dA = a.distanceFromUser ?? double.infinity;
-            final dB = b.distanceFromUser ?? double.infinity;
+          // Re-ordenar por hospital más cercano.
+          entries.sort((a, b) {
+            final dA = a.distanceKm ?? double.infinity;
+            final dB = b.distanceKm ?? double.infinity;
             return dA.compareTo(dB);
           });
-
-          // Expandir por defecto el más cercano si tenemos datos
-          if (data.isNotEmpty && data.first.distanceFromUser != null) {
-            _expandedIndex = 0;
-          }
         }
       } catch (e) {
-        debugPrint('Error getting location: $e');
+        AppLogger.warn('RegionalScreen', 'Error obteniendo ubicación del dispositivo', e);
       }
 
       if (mounted) {
         final freshBens = UserSession.currentUser.beneficiaries;
         final bs = widget.tabShell.bookingState;
         setState(() {
-          _regionals = data;
+          _entries = entries;
           _isLoading = false;
           _locationApplied = locationUsed;
           _beneficiaries = List<BeneficiaryModel>.from(freshBens);
@@ -153,6 +165,16 @@ class _RegionalScreenState extends State<RegionalScreen> {
     }
   }
 
+  /// Indica si el titular tiene al menos un beneficiario distinto de sí mismo.
+  /// Usa la fuente más fresca disponible (UserSession y caché local) para que
+  /// el botón "Cambiar" no parpadee mientras `_fetchData` aún no corre.
+  bool _hasOtherBeneficiaries() {
+    final fromSession = UserSession.currentUser.beneficiaries;
+    final list = fromSession.isNotEmpty ? fromSession : _beneficiaries;
+    if (list.length <= 1) return false;
+    return list.any((b) => !b.isTitular);
+  }
+
   Widget _buildBody(BuildContext context) {
     final bs = widget.tabShell.bookingState;
     final currentBeneficiary = bs.beneficiary;
@@ -166,69 +188,120 @@ class _RegionalScreenState extends State<RegionalScreen> {
       );
     }
     if (_errorMessage != null) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Text(_errorMessage!, textAlign: TextAlign.center),
-            SizedBox(height: r.spaceMd),
-            CupertinoButton(onPressed: _fetchData, child: const Text('Reintentar')),
-          ],
-        ),
+      return AppStateWidget.error(
+        title: 'No se pudo cargar los establecimientos',
+        message: _errorMessage,
+        onRetry: _fetchData,
       );
     }
-    return RefreshIndicator(
-      onRefresh: _fetchData,
-      child: ListView(
-        padding: EdgeInsets.only(top: r.spaceMd, bottom: r.navBarBottomSpace),
-        children: [
-          FadeSlideIn(
-            offsetY: 30,
-            child: _buildActiveProfileCard(context, currentBeneficiary, isDark),
-          ),
-          SizedBox(height: r.spaceXl),
-          Padding(
-            padding: EdgeInsets.symmetric(horizontal: r.paddingH),
-            child: Text(
-              'Seleccione la Agencia Regional de su preferencia',
-              style: context.texts.headlineMedium.copyWith(
-                color: AppColors.textPrimaryC(isDark),
+    return CustomScrollView(
+      slivers: [
+        CupertinoSliverRefreshControl(onRefresh: _fetchData),
+        SliverPadding(
+          padding: EdgeInsets.only(top: r.spaceMd, bottom: r.navBarBottomSpace),
+          sliver: SliverList(
+            delegate: SliverChildListDelegate([
+              FadeSlideIn(
+                offsetY: 30,
+                child: _buildActiveProfileCard(context, currentBeneficiary, isDark),
               ),
-            ),
-          ),
-          SizedBox(height: r.spaceSm),
-          if (_locationApplied && _regionals.isNotEmpty && _regionals.first.distanceFromUser != null)
-            Padding(
-              padding: EdgeInsets.only(left: r.paddingH, right: r.paddingH, top: 0, bottom: r.spaceMd),
-              child: Row(
-                children: [
-                  Icon(Icons.location_on, size: r.iconSm, color: AppColors.accentForTheme(isDark)),
-                  SizedBox(width: r.spaceSm),
-                  Expanded(
-                    child: Text(
-                      'Te mostramos primero el departamento más cercano a tu ubicación.',
-                      style: context.texts.bodySmall.copyWith(
-                        color: AppColors.accentForTheme(isDark),
-                        fontWeight: FontWeight.w600,
+              if (!UserSession.currentUser.isTitular) ...[
+                SizedBox(height: r.spaceMd),
+                FadeSlideIn(
+                  offsetY: 20,
+                  child: Padding(
+                    padding: EdgeInsets.symmetric(horizontal: r.paddingH),
+                    child: Container(
+                      padding: EdgeInsets.symmetric(
+                          horizontal: r.spaceMd, vertical: r.spaceSm),
+                      decoration: BoxDecoration(
+                        color: isDark
+                            ? AppColors.info.withValues(alpha: 0.12)
+                            : const Color(0xFFEFF6FF),
+                        borderRadius: BorderRadius.circular(r.radiusMd),
+                        border: Border.all(
+                          color: AppColors.info.withValues(alpha: 0.3),
+                          width: 0.8,
+                        ),
+                      ),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Padding(
+                            padding: const EdgeInsets.only(top: 1),
+                            child: Icon(CupertinoIcons.info_circle_fill,
+                                size: r.iconSm, color: AppColors.info),
+                          ),
+                          SizedBox(width: r.spaceSm),
+                          Expanded(
+                            child: Text(
+                              'Como beneficiario solo puedes reservar citas para ti mismo. '
+                              'Si necesitas reservar para otro familiar, debe hacerlo el titular del seguro.',
+                              style: context.texts.bodySmall.copyWith(
+                                color: AppColors.textSecondaryC(isDark),
+                                height: 1.35,
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                   ),
-                ],
+                ),
+              ],
+              SizedBox(height: r.spaceXl),
+              Padding(
+                padding: EdgeInsets.symmetric(horizontal: r.paddingH),
+                child: Text(
+                  'Seleccione el establecimiento de su preferencia',
+                  style: context.texts.headlineMedium.copyWith(
+                    color: AppColors.textPrimaryC(isDark),
+                  ),
+                ),
               ),
-            ),
-          for (int i = 0; i < _regionals.length; i++)
-            FadeSlideIn(
-              delay: Duration(milliseconds: 60 * (i + 1).clamp(0, 5)),
-              offsetY: 15,
-              child: _buildRegionalItem(context, _regionals[i], i, isDark),
-            ),
-          if (_regionals.isEmpty)
-            Padding(
-              padding: EdgeInsets.all(r.spaceXxl),
-              child: const Center(child: Text('No hay establecimientos disponibles.')),
-            ),
-        ],
-      ),
+              SizedBox(height: r.spaceSm),
+              if (_locationApplied && _entries.isNotEmpty && _entries.first.distanceKm != null)
+                Padding(
+                  padding: EdgeInsets.only(left: r.paddingH, right: r.paddingH, top: 0, bottom: r.spaceMd),
+                  child: Row(
+                    children: [
+                      Icon(CupertinoIcons.location_solid, size: r.iconSm, color: AppColors.accentForTheme(isDark)),
+                      SizedBox(width: r.spaceSm),
+                      Expanded(
+                        child: Text(
+                          'Te mostramos primero el hospital más cercano a tu ubicación.',
+                          style: context.texts.bodySmall.copyWith(
+                            color: AppColors.accentForTheme(isDark),
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              for (int i = 0; i < _entries.length; i++)
+                FadeSlideIn(
+                  delay: Duration(milliseconds: 60 * (i + 1).clamp(0, 5)),
+                  offsetY: 15,
+                  child: Padding(
+                    padding: EdgeInsets.fromLTRB(r.paddingH, 0, r.paddingH, r.listItemSpacing),
+                    child: _hospitalCard(
+                      context,
+                      _entries[i],
+                      isNearest: i == 0 && _locationApplied && _entries[i].distanceKm != null,
+                      isDark: isDark,
+                    ),
+                  ),
+                ),
+              if (_entries.isEmpty)
+                Padding(
+                  padding: EdgeInsets.all(r.spaceXxl),
+                  child: const Center(child: Text('No hay establecimientos disponibles.')),
+                ),
+            ]),
+          ),
+        ),
+      ],
     );
   }
 
@@ -322,7 +395,12 @@ class _RegionalScreenState extends State<RegionalScreen> {
                           ),
                         ),
                       ),
-                      if (UserSession.currentUser.isTitular)
+                      // Solo mostrar "Cambiar" si el titular tiene grupo familiar
+                      // con al menos un beneficiario distinto del titular. Si la
+                      // API no devolvió familia (cuenta sola o cuenta beneficiario),
+                      // ocultar la opción para no abrir un selector vacío.
+                      if (UserSession.currentUser.isTitular &&
+                          _hasOtherBeneficiaries())
                         AnimatedPressButton(
                           onTap: _onChangeBeneficiary,
                           child: Container(
@@ -338,7 +416,7 @@ class _RegionalScreenState extends State<RegionalScreen> {
                             child: Row(
                               mainAxisSize: MainAxisSize.min,
                               children: [
-                                Icon(Icons.swap_horiz,
+                                Icon(CupertinoIcons.arrow_2_squarepath,
                                     size: r.iconSm * 0.7, color: AppColors.accentForTheme(isDark)),
                                 SizedBox(width: r.spaceXs),
                                 Text(
@@ -447,7 +525,7 @@ class _RegionalScreenState extends State<RegionalScreen> {
       showCupertinoDialog<void>(
         context: context,
         barrierDismissible: false,
-        builder: (_) => const Center(child: CupertinoActivityIndicator(radius: 14)),
+        builder: (_) => const LoaderWithMessage(message: 'Cargando familiares…'),
       );
       loaderOpen = true;
       try {
@@ -527,106 +605,7 @@ class _RegionalScreenState extends State<RegionalScreen> {
     );
   }
 
-  // ── Regional list ────────────────────────────────────────────────────────
-
-  Widget _buildRegionalItem(BuildContext context, RegionalModel regional, int index, bool isDark) {
-    final isExpanded = _expandedIndex == index;
-    final r = context.r;
-
-    return Container(
-      margin: EdgeInsets.symmetric(horizontal: r.paddingH, vertical: r.spaceXs),
-      decoration: BoxDecoration(
-        color: AppColors.cardBg(isDark),
-        borderRadius: BorderRadius.circular(r.cardRadius),
-        boxShadow: isDark ? [] : AppColors.softShadow,
-        border: Border.all(color: AppColors.cardBorder(isDark), width: 0.5),
-      ),
-      child: Column(
-        children: [
-          GestureDetector(
-            behavior: HitTestBehavior.opaque,
-            onTap: () {
-              setState(() {
-                _expandedIndex = isExpanded ? -1 : index;
-              });
-            },
-            child: Padding(
-              padding: EdgeInsets.symmetric(
-                  horizontal: r.tileHorizontalPad, vertical: r.tileVerticalPad),
-              child: Row(
-                children: [
-                  Icon(
-                    Icons.location_on,
-                    size: r.iconMd,
-                    color: AppColors.accentForTheme(isDark),
-                  ),
-                  SizedBox(width: r.spaceSm),
-                  Expanded(
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Expanded(
-                          child: Text(
-                            regional.name,
-                            style: context.texts.titleLarge.copyWith( // Mejor jerarquía visual
-                               color: AppColors.textPrimaryC(isDark),
-                               fontWeight: FontWeight.w800,
-                            ),
-                            maxLines: 2, // Permits wrapping
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                        if (index == 0 && _locationApplied && regional.distanceFromUser != null) ...[
-                          SizedBox(width: r.spaceSm),
-                          Container(
-                            padding: EdgeInsets.symmetric(horizontal: r.chipPaddingH, vertical: r.chipPaddingV),
-                            decoration: BoxDecoration(
-                              color: AppColors.primary.withValues(alpha: 0.1),
-                              borderRadius: BorderRadius.circular(r.radiusSm),
-                            ),
-                            child: Text(
-                              'Más cercano',
-                              style: context.texts.labelSmall.copyWith(
-                                fontWeight: FontWeight.bold,
-                                color: AppColors.accentForTheme(isDark),
-                              ),
-                            ),
-                          ),
-                        ]
-                      ],
-                    ),
-                  ),
-                  Icon(
-                    isExpanded
-                        ? Icons.expand_less
-                        : Icons.expand_more,
-                    size: r.iconSm,
-                    color: AppColors.textSecondary,
-                  ),
-                ],
-              ),
-            ),
-          ),
-          if (isExpanded) _buildHospitalCards(context, regional, isDark),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildHospitalCards(BuildContext context, RegionalModel regional, bool isDark) {
-    final r = context.r;
-    return Padding(
-      padding: EdgeInsets.fromLTRB(r.paddingH, 0, r.paddingH, r.paddingH),
-      child: Column(
-        children: [
-          for (int i = 0; i < regional.hospitals.length; i++) ...[
-            if (i > 0) SizedBox(height: r.listItemSpacing),
-            _hospitalCard(context, regional, regional.hospitals[i], isDark),
-          ],
-        ],
-      ),
-    );
-  }
+  // ── Hospital list (flat) ────────────────────────────────────────────────
 
   Future<void> _onHospitalSelected(RegionalModel regional, HospitalModel hospital) async {
     debugPrint('🏥 Hospital seleccionado: ${hospital.name} (hospital.id="${hospital.id}")');
@@ -664,7 +643,7 @@ class _RegionalScreenState extends State<RegionalScreen> {
         showCupertinoDialog<void>(
           context: context,
           barrierDismissible: false,
-          builder: (_) => const Center(child: CupertinoActivityIndicator(radius: 14)),
+          builder: (_) => const LoaderWithMessage(message: 'Verificando disponibilidad…'),
         );
         loaderOpen = true;
 
@@ -700,15 +679,22 @@ class _RegionalScreenState extends State<RegionalScreen> {
     }
   }
 
-  Widget _hospitalCard(BuildContext context, RegionalModel regional, HospitalModel hospital, bool isDark) {
+  Widget _hospitalCard(
+    BuildContext context,
+    _HospitalEntry entry, {
+    required bool isNearest,
+    required bool isDark,
+  }) {
     final r = context.r;
+    final hospital = entry.hospital;
+    final regional = entry.regional;
     return AnimatedPressButton(
       onTap: () => _onHospitalSelected(regional, hospital),
       child: Container(
         width: double.infinity,
-        padding: EdgeInsets.all(r.spaceMd), // Standard spacing
+        padding: EdgeInsets.all(r.spaceMd),
         decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(r.radiusLg), // Better corner radius
+          borderRadius: BorderRadius.circular(r.radiusLg),
           color: isDark ? AppColors.primary.withValues(alpha: 0.15) : AppColors.primary.withValues(alpha: 0.05),
           border: Border.all(
               color: AppColors.primary.withValues(alpha: 0.15), width: 1.5),
@@ -723,7 +709,7 @@ class _RegionalScreenState extends State<RegionalScreen> {
                 shape: BoxShape.circle,
               ),
               child: Icon(
-                Icons.apartment,
+                CupertinoIcons.building_2_fill,
                 size: r.iconLg * 0.7,
                 color: isDark ? AppColors.white : AppColors.primary,
               ),
@@ -734,26 +720,62 @@ class _RegionalScreenState extends State<RegionalScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          hospital.name,
+                          style: context.texts.titleMedium.copyWith(
+                            fontWeight: FontWeight.w800,
+                            color: AppColors.textPrimaryC(isDark),
+                            height: 1.2,
+                          ),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      if (isNearest) ...[
+                        SizedBox(width: r.spaceSm),
+                        Container(
+                          padding: EdgeInsets.symmetric(
+                              horizontal: r.chipPaddingH, vertical: r.chipPaddingV),
+                          decoration: BoxDecoration(
+                            color: AppColors.primary.withValues(alpha: 0.1),
+                            borderRadius: BorderRadius.circular(r.radiusSm),
+                          ),
+                          child: Text(
+                            'Más cercano',
+                            style: context.texts.labelSmall.copyWith(
+                              fontWeight: FontWeight.bold,
+                              color: AppColors.accentForTheme(isDark),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                  SizedBox(height: r.spaceXs),
                   Text(
-                    hospital.name,
-                    style: context.texts.titleMedium.copyWith(
-                      fontWeight: FontWeight.w800,
-                      color: AppColors.textPrimaryC(isDark),
-                      height: 1.2,
+                    regional.name,
+                    style: context.texts.bodySmall.copyWith(
+                      color: AppColors.accentForTheme(isDark),
+                      fontWeight: FontWeight.w600,
                     ),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
                   ),
-                  SizedBox(height: r.spaceSm),
-                  Text(
-                    hospital.address,
-                    style: context.texts.bodySmall,
-                  ),
+                  if (hospital.address.isNotEmpty) ...[
+                    SizedBox(height: r.spaceXs),
+                    Text(
+                      hospital.address,
+                      style: context.texts.bodySmall,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
                 ],
               ),
             ),
             Icon(
-              Icons.chevron_right,
+              CupertinoIcons.chevron_right,
               color: isDark ? AppColors.white : AppColors.primary,
             ),
           ],

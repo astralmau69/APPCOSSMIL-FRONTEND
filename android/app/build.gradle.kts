@@ -75,6 +75,10 @@ android {
 
 dependencies {
     coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")
+    // Necesaria para enableEdgeToEdge() en MainActivity.onCreate().
+    // FlutterFragmentActivity la pulla transitivamente, pero la declaramos
+    // explícita para garantizar la versión que expone la extensión KTX.
+    implementation("androidx.activity:activity-ktx:1.9.3")
 }
 
 flutter {
