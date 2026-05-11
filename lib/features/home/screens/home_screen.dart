@@ -17,6 +17,9 @@ import '../../../core/widgets/professional_profile_card.dart';
 import 'news_detail_screen.dart';
 import '../../../shell/tab_shell.dart';
 import '../../familia/screens/familia_screen.dart';
+import '../../notificaciones/screens/notificaciones_screen.dart';
+import '../../../core/models/app_notification.dart';
+import '../../../core/services/notification_preferences.dart';
 import 'contactos_screen.dart';
 import 'noticias_screen.dart';
 
@@ -33,6 +36,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   List<NewsItemModel> _news = [];
   bool _isLoadingNews = true;
   Uint8List? _cachedUserPhoto;
+  int _unreadNotifs = 0;
 
   @override
   void initState() {
@@ -63,6 +67,18 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   Future<void> _loadNews() async {
     if (!mounted) return;
     setState(() => _isLoadingNews = true);
+    
+    // Cargar cantidad de notificaciones no leídas en background
+    try {
+      final userId = UserSession.currentUser.id;
+      if (userId.isNotEmpty) {
+        await NotificationPreferences.loadHistory(userId);
+        if (mounted) {
+          setState(() => _unreadNotifs = AppNotificationRepository.unreadCount);
+        }
+      }
+    } catch (_) {}
+
     List<NewsItemModel> items;
     try {
       items = await CossmilNewsService.fetchComunicados();
@@ -100,6 +116,50 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
             largeTitle: Text('Inicio', style: TextStyle(color: AppColors.textPrimaryC(isDark))),
             backgroundColor: AppColors.navBarBg(isDark),
             border: null,
+            trailing: Semantics(
+              label: 'Notificaciones, $_unreadNotifs no leídas',
+              button: true,
+              child: CupertinoButton(
+                padding: EdgeInsets.zero,
+                onPressed: () async {
+                  await widget.tabShell.openSubRoute(context, (_) => const NotificacionesScreen());
+                  _loadNews(); // Recargar count al volver
+                },
+                child: Stack(
+                  clipBehavior: Clip.none,
+                  alignment: Alignment.center,
+                  children: [
+                    Icon(
+                      CupertinoIcons.bell_fill,
+                      color: AppColors.primary,
+                      size: 24,
+                    ),
+                    if (_unreadNotifs > 0)
+                      Positioned(
+                        right: -2,
+                        top: 2,
+                        child: Container(
+                          padding: const EdgeInsets.all(3),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFEF4444), // Rojo alerta
+                            shape: BoxShape.circle,
+                            border: Border.all(color: AppColors.navBarBg(isDark), width: 1.5),
+                          ),
+                          child: Text(
+                            _unreadNotifs > 9 ? '9+' : _unreadNotifs.toString(),
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 9,
+                              fontWeight: FontWeight.w800,
+                              height: 1,
+                            ),
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+            ),
           ),
           CupertinoSliverRefreshControl(
             onRefresh: _loadNews,
@@ -676,48 +736,6 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     );
   }
 
-  Widget _buildViewAllButton(bool isDark) {
-    return Semantics(
-      label: 'Ver todos los comunicados',
-      hint: 'Toca para ver todos los comunicados de COSSMIL',
-      button: true,
-      child: OptimizedPressButton(
-        onTap: () => widget.tabShell.openSubRoute(
-          context,
-          (_) => const NoticiasScreen(),
-        ),
-        scaleDown: 0.98,
-        child: Container(
-          padding: EdgeInsets.symmetric(vertical: context.r.spaceMd),
-          decoration: BoxDecoration(
-            border: Border(
-              top: BorderSide(
-                color: isDark ? AppColors.darkDivider : const Color(0xFF191C1E).withValues(alpha: 0.06),
-                width: 0.5,
-              ),
-            ),
-          ),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Text(
-                'Ver todos los comunicados',
-                style: context.texts.labelLarge.copyWith(
-                  color: isDark ? AppColors.white : AppColors.primary,
-                ),
-              ),
-              SizedBox(width: context.r.spaceXs),
-              Icon(
-                CupertinoIcons.arrow_right,
-                size: context.r.iconSm * 0.65,
-                color: isDark ? AppColors.white : AppColors.primary,
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
 
   /// Formato de fecha corta: "17 Mar"
   String _shortDate(DateTime? dt) {

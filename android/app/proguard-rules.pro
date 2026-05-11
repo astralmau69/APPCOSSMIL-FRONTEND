@@ -15,7 +15,30 @@
 -keep class androidx.biometric.** { *; }
 
 # ─── flutter_local_notifications ─────────────────────────────────────────────
+# El plugin serializa el payload del schedule a JSON con Gson y lo guarda en
+# SharedPreferences. Cuando el AlarmManager despierta la app para disparar la
+# notificación, deserializa el payload de vuelta. R8 ofusca las clases internas
+# del plugin y de Gson, lo que rompe la deserialización en RELEASE (en debug
+# todo funciona porque R8 está desactivado).
 -keep class com.dexterous.** { *; }
+-keep class com.dexterous.flutterlocalnotifications.** { *; }
+-keep class com.dexterous.flutterlocalnotifications.models.** { *; }
+
+# ─── Gson ────────────────────────────────────────────────────────────────────
+# Necesario para que flutter_local_notifications pueda serializar/deserializar
+# los payloads de notificaciones programadas. SIN ESTAS REGLAS, los reminders
+# se programan pero nunca se disparan en builds release.
+-keepattributes Signature
+-keepattributes *Annotation*
+-keepattributes InnerClasses, EnclosingMethod
+-keep class com.google.gson.** { *; }
+-keep class * extends com.google.gson.TypeAdapter
+-keep class * implements com.google.gson.TypeAdapterFactory
+-keep class * implements com.google.gson.JsonSerializer
+-keep class * implements com.google.gson.JsonDeserializer
+-keepclassmembers,allowobfuscation class * {
+    @com.google.gson.annotations.SerializedName <fields>;
+}
 
 # ─── audioplayers ────────────────────────────────────────────────────────────
 -keep class xyz.luan.audioplayers.** { *; }

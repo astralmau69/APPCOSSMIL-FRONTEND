@@ -10,6 +10,7 @@ import '../../../core/models/user_model.dart';
 import '../../../core/storage/token_storage.dart';
 import '../../../core/services/security_service.dart';
 import '../../../core/services/notification_service.dart';
+import '../../../core/services/notification_preferences.dart';
 import '../../../core/animations/app_page_route.dart';
 import '../../../core/animations/optimized_animations.dart';
 import '../../../core/theme/theme_manager.dart';
@@ -18,6 +19,7 @@ import '../../../core/widgets/cossmil_ios_alert.dart';
 import '../../../core/theme/sound_manager.dart';
 import '../../../core/utils/rank_utils.dart';
 import '../../../core/widgets/image_enlarged_modal.dart';
+import '../../notificaciones/screens/notificaciones_screen.dart';
 import 'emergency_data_screen.dart';
 
 class PerfilScreen extends StatefulWidget {
@@ -44,6 +46,11 @@ class _PerfilScreenState extends State<PerfilScreen> {
   DeviceBiometricStatus _bioStatus = DeviceBiometricStatus.unavailable;
   String _bioLabel = 'Biometría';
 
+  // ── Preferencias de notificación ───────────────────────────────────
+  bool _notifReminders = true;
+  bool _notifConfirmations = true;
+  bool _notifRatings = true;
+
   Uint8List? _cachedUserPhoto;
 
   late final TextEditingController _emailCtrl;
@@ -64,6 +71,7 @@ class _PerfilScreenState extends State<PerfilScreen> {
       try { _cachedUserPhoto = base64Decode(photo); } catch (_) {}
     }
     _loadSecurityStatus();
+    _loadNotifPrefs();
   }
 
   Future<void> _loadSecurityStatus() async {
@@ -88,6 +96,20 @@ class _PerfilScreenState extends State<PerfilScreen> {
       // Valores por defecto ya están asignados en la declaración del estado.
       // En dispositivos incompatibles simplemente no se muestra la sección biométrica.
     }
+  }
+
+  Future<void> _loadNotifPrefs() async {
+    final userId = UserSession.currentUser.id;
+    if (userId.isEmpty) return;
+    final r = await NotificationPreferences.getReminders(userId);
+    final c = await NotificationPreferences.getConfirmations(userId);
+    final rt = await NotificationPreferences.getRatings(userId);
+    if (!mounted) return;
+    setState(() {
+      _notifReminders = r;
+      _notifConfirmations = c;
+      _notifRatings = rt;
+    });
   }
 
   @override
@@ -308,6 +330,66 @@ class _PerfilScreenState extends State<PerfilScreen> {
                           ],
                         ),
                       ),
+                      // Notificaciones
+                      FadeSlideIn(delay: const Duration(milliseconds: 220), offsetY: 12,
+                        child: _buildSection(
+                          isDark: isDark,
+                          header: 'NOTIFICACIONES',
+                          children: [
+                            _buildToggleTile(
+                              isDark: isDark,
+                              icon: CupertinoIcons.clock_fill,
+                              iconColor: AppColors.primary,
+                              title: 'Recordatorios de citas',
+                              subtitle: '2 días, 1 día, 3 h y 30 min antes',
+                              value: _notifReminders,
+                              onChanged: (v) async {
+                                setState(() => _notifReminders = v);
+                                await NotificationPreferences.setReminders(
+                                    UserSession.currentUser.id, v);
+                              },
+                            ),
+                            _buildToggleTile(
+                              isDark: isDark,
+                              icon: CupertinoIcons.checkmark_seal_fill,
+                              iconColor: AppColors.success,
+                              title: 'Confirmación de reserva',
+                              subtitle: 'Notificación 5 min tras reservar',
+                              value: _notifConfirmations,
+                              onChanged: (v) async {
+                                setState(() => _notifConfirmations = v);
+                                await NotificationPreferences.setConfirmations(
+                                    UserSession.currentUser.id, v);
+                              },
+                            ),
+                            _buildToggleTile(
+                              isDark: isDark,
+                              icon: CupertinoIcons.star_fill,
+                              iconColor: const Color(0xFFF59E0B),
+                              title: 'Solicitar calificación',
+                              subtitle: 'Tras ser atendido por el médico',
+                              value: _notifRatings,
+                              onChanged: (v) async {
+                                setState(() => _notifRatings = v);
+                                await NotificationPreferences.setRatings(
+                                    UserSession.currentUser.id, v);
+                              },
+                            ),
+                            _buildNavTile(
+                              isDark: isDark,
+                              icon: CupertinoIcons.bell_fill,
+                              iconColor: AppColors.accent,
+                              title: 'Ver todas mis notificaciones',
+                              subtitle: 'Historial de los últimos 30 días',
+                              onTap: () => Navigator.of(context, rootNavigator: true).push(
+                                AppPageRoute(builder: (_) => const NotificacionesScreen()),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      SizedBox(height: r.spaceLg),
+
                       // Identificación (Temporalmente deshabilitado)
                       /*
                       FadeSlideIn(delay: const Duration(milliseconds: 240), offsetY: 12,
@@ -1026,6 +1108,58 @@ class _PerfilScreenState extends State<PerfilScreen> {
               size: 14, color: AppColors.textTertiaryC(isDark)),
           ],
         ),
+      ),
+    );
+  }
+
+  // ──────────────────────────────────────────────────────────────────────────
+  //  TOGGLE TILE (fila con switch on/off para preferencias)
+  // ──────────────────────────────────────────────────────────────────────────
+
+  Widget _buildToggleTile({
+    required bool isDark,
+    required IconData icon,
+    required Color iconColor,
+    required String title,
+    required String subtitle,
+    required bool value,
+    required ValueChanged<bool> onChanged,
+  }) {
+    final r = context.r;
+    return Padding(
+      padding: EdgeInsets.symmetric(horizontal: r.tileHorizontalPad, vertical: r.tileVerticalPad),
+      child: Row(
+        children: [
+          Container(
+            width: 32, height: 32,
+            decoration: BoxDecoration(
+              color: iconColor.withValues(alpha: 0.13),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Icon(icon, size: 16, color: iconColor),
+          ),
+          SizedBox(width: r.spaceMd),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(title,
+                  style: TextStyle(fontWeight: FontWeight.w600,
+                    color: AppColors.textPrimaryC(isDark), fontSize: 14)),
+                SizedBox(height: 2),
+                Text(subtitle,
+                  maxLines: 2,
+                  style: TextStyle(fontWeight: FontWeight.w500, fontSize: 12,
+                    color: AppColors.textSecondaryC(isDark))),
+              ],
+            ),
+          ),
+          CupertinoSwitch(
+            value: value,
+            onChanged: onChanged,
+            activeColor: AppColors.primary,
+          ),
+        ],
       ),
     );
   }

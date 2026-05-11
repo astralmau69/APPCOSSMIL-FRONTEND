@@ -209,17 +209,23 @@ class AuthService {
             final eTipo = (extraData['tipo']?.toString() ?? '').trim().toUpperCase();
             final isFotoTitular = eTipo == 'T';
 
+            // Regla JWT-first: si el JWT clasificó explícitamente al usuario como
+            // beneficiario (rol distinto de ROLE_ASETIT y no vacío), no promover
+            // a Titular aunque el endpoint foto diga tipo='T'.
+            final jwtExplicitlyBeneficiary =
+                !userRoleIsTitular && tokenModel.rol.isNotEmpty;
+
             UserSession.currentUser = UserSession.currentUser.copyWith(
               photoBase64: titularPhoto,
               birthDate: extraData['fecnac'] as String? ?? '',
               bloodType: eBloodType.isNotEmpty ? eBloodType : UserSession.currentUser.bloodType,
               allergies: eAllergies.isNotEmpty ? eAllergies : UserSession.currentUser.allergies,
               rank: eGrado.isNotEmpty ? eGrado : UserSession.currentUser.rank,
-              // Si el endpoint foto envía `tipo`, mandó: 'T' → Titular, otro → Beneficiario.
-              // Si no envía nada, conservamos el role del JWT (`null` → no override).
-              role: isFotoTitular
-                  ? 'Titular'
-                  : (eTipo.isNotEmpty ? 'Beneficiario' : null),
+              role: jwtExplicitlyBeneficiary
+                  ? null // conservar el rol del JWT, no promover
+                  : isFotoTitular
+                      ? 'Titular'
+                      : (eTipo.isNotEmpty ? 'Beneficiario' : null),
               serviceStatus: eRefe4.isNotEmpty ? eRefe4 : UserSession.currentUser.serviceStatus,
               emergencyPhone: eTelfemerg.isNotEmpty ? eTelfemerg : UserSession.currentUser.emergencyPhone,
               referencia: eReferencia.isNotEmpty ? eReferencia : UserSession.currentUser.referencia,

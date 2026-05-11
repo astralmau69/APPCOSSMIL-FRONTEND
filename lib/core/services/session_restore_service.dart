@@ -164,7 +164,15 @@ class SessionRestoreService {
         // tipo == 'T' es la fuente autoritativa para Titular (ver auth_service.dart)
         final eTipo = (data['tipo']?.toString() ?? '').trim().toUpperCase();
         final isFotoTitular = eTipo == 'T';
-        final shouldUpgradeToTitular = isFotoTitular && !UserSession.currentUser.isTitular;
+        // Regla JWT-first (igual que auth_service.dart):
+        // Solo promover a Titular si el rol guardado es 'Titular' (coincidencia) o
+        // estaba vacío/ambiguo. Si el rol guardado es explícitamente un rol de
+        // beneficiario (ej. 'ROLE_ASEBEN'), respetamos eso y NO promovemos.
+        final savedRoleIsExplicitBeneficiary =
+            !UserSession.currentUser.isTitular &&
+            UserSession.currentUser.role.isNotEmpty;
+        final shouldUpgradeToTitular =
+            isFotoTitular && !UserSession.currentUser.isTitular && !savedRoleIsExplicitBeneficiary;
 
         if (cleanPhoto.isNotEmpty || eBloodType.isNotEmpty || eAllergies.isNotEmpty || eGrado.isNotEmpty || eRefe4.isNotEmpty || shouldUpgradeToTitular) {
           UserSession.currentUser = UserSession.currentUser.copyWith(

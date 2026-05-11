@@ -3,7 +3,9 @@ import 'package:flutter/material.dart' show Color;
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:timezone/timezone.dart' as tz;
+import '../models/app_notification.dart';
 import '../session/user_session.dart';
+import '../services/notification_preferences.dart';
 import '../utils/app_logger.dart';
 import 'notification_initializer.dart';
 
@@ -52,6 +54,14 @@ class NotificationScheduler {
   }) async {
     try {
       await NotificationInitializer.initialize();
+
+      // Guard: preferencia de confirmaciones
+      final userId = UserSession.currentUser.id;
+      final canSend = await NotificationPreferences.getConfirmations(userId);
+      if (!canSend) {
+        AppLogger.debug(_tag, 'Confirmación omitida por preferencia del usuario');
+        return;
+      }
 
       final payload = jsonEncode({
         'especialidad': especialidad,
@@ -104,6 +114,20 @@ class NotificationScheduler {
         payload: payload,
         preferredMode: AndroidScheduleMode.alarmClock,
       );
+
+      // Registrar en historial
+      await NotificationPreferences.addToHistory(
+        userId,
+        AppNotification(
+          id: 'booking_${ticketNumber}_${DateTime.now().millisecondsSinceEpoch}',
+          type: AppNotificationType.booking,
+          title: 'Cita Médica Confirmada — $especialidad',
+          body: 'Dr. $medico · $fecha $hora · Ficha $ticketNumber · $paciente',
+          createdAt: DateTime.now(),
+          payload: {'ticket': ticketNumber, 'especialidad': especialidad},
+        ),
+      );
+
       AppLogger.info(
           _tag, 'Booking confirmed notification scheduled in 5 min — $ticketNumber');
     } catch (e, st) {
@@ -134,12 +158,19 @@ class NotificationScheduler {
     try {
       await NotificationInitializer.initialize();
 
+      // Guard: preferencia de recordatorios
+      final userId = UserSession.currentUser.id;
+      final canSend = await NotificationPreferences.getReminders(userId);
+      if (!canSend) {
+        AppLogger.debug(_tag, 'Recordatorios omitidos por preferencia del usuario');
+        return;
+      }
+
       final appt = appointmentDateTime;
       final now = tz.TZDateTime.now(tz.local);
       final fechaStr = fecha ??
           '${appt.day.toString().padLeft(2, '0')}/${appt.month.toString().padLeft(2, '0')}/${appt.year}';
       final horaStr = hora ?? _hhmm(appt);
-      final userId = UserSession.currentUser.id;
 
       // ── Payload con datos de cancelación (recordatorios lejanos) ────────────
       final payload = jsonEncode({
@@ -264,6 +295,22 @@ class NotificationScheduler {
       AppLogger.info(
           _tag, '$scheduled/${reminders.length} reminders scheduled for ticket $ticketNumber');
 
+      // Registrar en historial (solo primer schedule, no re-schedule)
+      if (!rescheduleOnly) {
+        final userId = UserSession.currentUser.id;
+        await NotificationPreferences.addToHistory(
+          userId,
+          AppNotification(
+            id: 'reminder_${ticketNumber}_${DateTime.now().millisecondsSinceEpoch}',
+            type: AppNotificationType.reminder,
+            title: 'Recordatorio agendado — $especialidad',
+            body: 'Cita con Dr. $medico · $paciente · $scheduled recordatorio(s) programado(s)',
+            createdAt: DateTime.now(),
+            payload: {'ticket': ticketNumber, 'especialidad': especialidad},
+          ),
+        );
+      }
+
       // ── Persistir para re-agendar tras login/reinicio ──────────────────────
       if (!rescheduleOnly) {
         await _saveAppointmentData(userId, ticketNumber, {
@@ -387,6 +434,13 @@ class NotificationScheduler {
       await NotificationInitializer.initialize();
       final userId = UserSession.currentUser.id;
 
+      // Guard: preferencia de calificaciones
+      final canSend = await NotificationPreferences.getRatings(userId);
+      if (!canSend) {
+        AppLogger.debug(_tag, 'Rating reminder omitido por preferencia del usuario');
+        return;
+      }
+
       final payload = jsonEncode({
         'userId': userId,
         'type': 'rating',
@@ -424,6 +478,20 @@ class NotificationScheduler {
         details,
         payload: payload,
       );
+
+      // Registrar en historial
+      await NotificationPreferences.addToHistory(
+        userId,
+        AppNotification(
+          id: 'rating_${ticketNumber}_${DateTime.now().millisecondsSinceEpoch}',
+          type: AppNotificationType.rating,
+          title: '¿Cómo fue tu atención? — $paciente',
+          body: 'Califica tu cita de $especialidad con el Dr. $medico.',
+          createdAt: DateTime.now(),
+          payload: {'ticket': ticketNumber, 'idtran': idtran, 'dr': dr},
+        ),
+      );
+
       AppLogger.info(
           _tag, 'Rating reminder shown for ticket=$ticketNumber (estado=Completado)');
     } catch (e, st) {

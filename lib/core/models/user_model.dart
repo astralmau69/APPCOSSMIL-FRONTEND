@@ -200,11 +200,16 @@ class UserModel {
     gender: gender,
   );
 
-  /// Grado abreviado del titular para mostrar en perfil/tarjeta.
-  /// Si no hay grado militar válido, retorna vacío.
+  /// Grado para mostrar en chips del perfil/tarjeta.
+  ///
+  /// - Titular → su rango (ej. "Cnl.").
+  /// - Beneficiario con rango heredado del backend → mismo rango con prefijo
+  ///   "Tit. " para dejar explícito que pertenece al titular del seguro y no
+  ///   al beneficiario logueado (ej. "Tit. Cnl.").
+  /// - Sin rango militar válido → vacío.
   String get rankDisplay {
-    if (!isTitular) return '';
-    return RankUtils.isValidRankForDisplay(rank) ? rank : '';
+    if (!RankUtils.isValidRankForDisplay(rank)) return '';
+    return isTitular ? rank : 'Tit. $rank';
   }
 
   /// `true` si el usuario logueado es titular del seguro.
@@ -222,12 +227,12 @@ class UserModel {
       for (final b in beneficiaries) {
         if (b.id == id) return b.isTitular;
       }
-      // El id no aparece en la lista familiar → probablemente beneficiario
-      // que no fue incluido como entrada propia. Usar role como fallback.
+      // El id no aparece en la lista familiar → usar role como fallback.
       return role == 'Titular';
     }
-    // Sin grupo familiar: siempre es el titular de su propia póliza.
-    // No hay nadie de quien "heredar" el grado → mostrar el suyo propio.
-    return true;
+    // Sin grupo familiar: usar el role del JWT como fuente de verdad.
+    // Un beneficiario cuyo endpoint gpo-familiar devuelve [] también llega aquí,
+    // y su role es 'ROLE_ASEBEN' (u otro rol de beneficiario), no 'Titular'.
+    return role == 'Titular';
   }
 }
