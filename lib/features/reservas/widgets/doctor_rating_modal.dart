@@ -209,6 +209,7 @@ class _DoctorRatingModalState extends State<DoctorRatingModal>
   int _selectedScore = 0;
   bool _isSubmitting = false;
   String _errorMessage = '';
+  bool _alreadyRated = false;
   late AnimationController _appearController;
   final _obsController = TextEditingController();
 
@@ -274,12 +275,13 @@ class _DoctorRatingModalState extends State<DoctorRatingModal>
 
       // Mensaje informativo (ej: "Ya existe una calificación registrada").
       if (mensaje != null) {
+        await _markRated();
+        if (!mounted) return;
         setState(() {
           _isSubmitting = false;
           _errorMessage = mensaje;
+          _alreadyRated = true;
         });
-        await _markRated();
-        if (mounted) widget.onDismiss();
         return;
       }
 
@@ -553,7 +555,7 @@ class _DoctorRatingModalState extends State<DoctorRatingModal>
                                 : const SizedBox.shrink(),
                           ),
 
-                          // ── Error ────────────────────────────────────────
+                          // ── Error / Info ──────────────────────────────────
                           AnimatedSize(
                             duration: const Duration(milliseconds: 250),
                             alignment: Alignment.topCenter,
@@ -563,16 +565,21 @@ class _DoctorRatingModalState extends State<DoctorRatingModal>
                                     child: Row(
                                       children: [
                                         Icon(
-                                            CupertinoIcons
-                                                .exclamationmark_circle_fill,
+                                            _alreadyRated
+                                                ? CupertinoIcons.info_circle_fill
+                                                : CupertinoIcons.exclamationmark_circle_fill,
                                             size: r.iconSm,
-                                            color: AppColors.warning),
+                                            color: _alreadyRated
+                                                ? AppColors.primary
+                                                : AppColors.warning),
                                         SizedBox(width: r.spaceXs),
                                         Expanded(
                                           child: Text(
                                             _errorMessage,
                                             style: texts.bodySmall.copyWith(
-                                                color: AppColors.warning,
+                                                color: _alreadyRated
+                                                    ? AppColors.primary
+                                                    : AppColors.warning,
                                                 fontWeight: FontWeight.w600),
                                           ),
                                         ),
@@ -585,73 +592,91 @@ class _DoctorRatingModalState extends State<DoctorRatingModal>
                           SizedBox(height: r.spaceXl),
 
                           // ── Acciones ─────────────────────────────────────
-                          Row(
-                            children: [
-                              Expanded(
-                                child: Container(
-                                  decoration: BoxDecoration(
-                                    borderRadius:
-                                        BorderRadius.circular(r.buttonRadius),
-                                    border: Border.all(
-                                      color: isDark
-                                          ? AppColors.darkBorder
-                                          : const Color(0xFF191C1E)
-                                              .withValues(alpha: 0.15),
-                                      width: 0.8,
-                                    ),
+                          if (_alreadyRated)
+                            SizedBox(
+                              width: double.infinity,
+                              child: CupertinoButton(
+                                padding: EdgeInsets.symmetric(vertical: r.spaceMd),
+                                color: AppColors.primary,
+                                borderRadius: BorderRadius.circular(r.buttonRadius),
+                                onPressed: widget.onDismiss,
+                                child: Text(
+                                  'Cerrar',
+                                  style: texts.titleMedium.copyWith(
+                                    fontWeight: FontWeight.w700,
+                                    color: Colors.white,
                                   ),
-                                  child: CupertinoButton(
-                                    padding: EdgeInsets.symmetric(
-                                        vertical: r.spaceMd),
-                                    color: isDark
-                                        ? AppColors.darkElevated
-                                        : AppColors.divider,
-                                    borderRadius:
-                                        BorderRadius.circular(r.buttonRadius),
-                                    onPressed:
-                                        _isSubmitting ? null : widget.onDismiss,
-                                    child: Text(
-                                      'Omitir',
-                                      style: texts.titleMedium.copyWith(
-                                        fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                            )
+                          else
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: Container(
+                                    decoration: BoxDecoration(
+                                      borderRadius:
+                                          BorderRadius.circular(r.buttonRadius),
+                                      border: Border.all(
                                         color: isDark
-                                            ? AppColors.white
-                                            : AppColors.textSecondary,
+                                            ? AppColors.darkBorder
+                                            : const Color(0xFF191C1E)
+                                                .withValues(alpha: 0.15),
+                                        width: 0.8,
+                                      ),
+                                    ),
+                                    child: CupertinoButton(
+                                      padding: EdgeInsets.symmetric(
+                                          vertical: r.spaceMd),
+                                      color: isDark
+                                          ? AppColors.darkElevated
+                                          : AppColors.divider,
+                                      borderRadius:
+                                          BorderRadius.circular(r.buttonRadius),
+                                      onPressed:
+                                          _isSubmitting ? null : widget.onDismiss,
+                                      child: Text(
+                                        'Omitir',
+                                        style: texts.titleMedium.copyWith(
+                                          fontWeight: FontWeight.w700,
+                                          color: isDark
+                                              ? AppColors.white
+                                              : AppColors.textSecondary,
+                                        ),
                                       ),
                                     ),
                                   ),
                                 ),
-                              ),
-                              SizedBox(width: r.spaceSm),
-                              Expanded(
-                                flex: 2,
-                                child: CupertinoButton(
-                                  padding: EdgeInsets.symmetric(
-                                      vertical: r.spaceMd),
-                                  color: _selectedScore > 0
-                                      ? AppColors.primary
-                                      : AppColors.textSecondary
-                                          .withValues(alpha: 0.5),
-                                  borderRadius:
-                                      BorderRadius.circular(r.buttonRadius),
-                                  onPressed:
-                                      (_isSubmitting || _selectedScore == 0)
-                                          ? null
-                                          : _submitRating,
-                                  child: _isSubmitting
-                                      ? const CupertinoActivityIndicator(
-                                          color: Colors.white)
-                                      : Text(
-                                          'Enviar Evaluación',
-                                          style: texts.titleMedium.copyWith(
-                                            fontWeight: FontWeight.w700,
-                                            color: Colors.white,
+                                SizedBox(width: r.spaceSm),
+                                Expanded(
+                                  flex: 2,
+                                  child: CupertinoButton(
+                                    padding: EdgeInsets.symmetric(
+                                        vertical: r.spaceMd),
+                                    color: _selectedScore > 0
+                                        ? AppColors.primary
+                                        : AppColors.textSecondary
+                                            .withValues(alpha: 0.5),
+                                    borderRadius:
+                                        BorderRadius.circular(r.buttonRadius),
+                                    onPressed:
+                                        (_isSubmitting || _selectedScore == 0)
+                                            ? null
+                                            : _submitRating,
+                                    child: _isSubmitting
+                                        ? const CupertinoActivityIndicator(
+                                            color: Colors.white)
+                                        : Text(
+                                            'Enviar Evaluación',
+                                            style: texts.titleMedium.copyWith(
+                                              fontWeight: FontWeight.w700,
+                                              color: Colors.white,
+                                            ),
                                           ),
-                                        ),
+                                  ),
                                 ),
-                              ),
-                            ],
-                          ),
+                              ],
+                            ),
                         ],
                       ),
                     ),
