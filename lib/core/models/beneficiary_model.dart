@@ -95,21 +95,18 @@ class BeneficiaryModel {
   /// Whether this beneficiary is the account holder.
   bool get isTitular => relationship.toUpperCase() == 'TITULAR';
 
-  /// Nombre con prefijo de rango (titular) o tratamiento (beneficiario).
-  String get displayTitle {
-    // Para titulares, si grado está vacío, usar el fallback global
-    String effectiveGrado = grado;
-    if (isTitular && effectiveGrado.isEmpty && _titularRankFallback.isNotEmpty) {
-      effectiveGrado = _titularRankFallback;
-    }
-    return RankUtils.displayNameWithPrefix(
-      fullName: fullName,
-      isTitular: isTitular,
-      grado: effectiveGrado,
-      age: age,
-      gender: effectiveGender,
-    );
-  }
+  /// Nombre con tratamiento Sr./Sra.
+  ///
+  /// El grado militar nunca se aplica como prefijo del nombre (ni para
+  /// titulares ni para beneficiarios). Se muestra aparte como label
+  /// "Grado del titular · …" en las pantallas que lo necesiten.
+  String get displayTitle => RankUtils.displayNameWithPrefix(
+        fullName: fullName,
+        isTitular: isTitular,
+        grado: '',
+        age: age,
+        gender: effectiveGender,
+      );
 
   /// Etiqueta de estado de servicio.
   String get serviceLabel => RankUtils.serviceStatusLabel(serviceStatus);

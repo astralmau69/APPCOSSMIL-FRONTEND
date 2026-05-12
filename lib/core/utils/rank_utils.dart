@@ -113,6 +113,18 @@ class RankUtils {
     return civilianCodes.contains(upper);
   }
 
+  /// Versión pública de [_isCivilianCode] para uso en pantallas.
+  /// `true` si el `rank` corresponde a un empleado civil (EC, EMPLEADO CIVIL,
+  /// CIVIL, etc.), valor que no es un rango militar pero sí información del
+  /// titular que conviene mostrar como label separado.
+  static bool isCivilianRank(String rank) => _isCivilianCode(rank);
+
+  /// Texto legible para mostrar como label cuando el `rank` es un código civil.
+  /// Normaliza todas las variantes ("EC", "EMP. CIVIL", etc.) a "Empleado Civil".
+  /// Retorna vacío si el rank no es un código civil.
+  static String civilianLabel(String rank) =>
+      _isCivilianCode(rank) ? 'Empleado Civil' : '';
+
   // ── Prefijo de tratamiento para beneficiarios ────────────────────────────
 
   /// Retorna el prefijo de tratamiento para un beneficiario (no titular).
@@ -170,15 +182,23 @@ class RankUtils {
     }
 
     // ── Beneficiario ───────────────────────────────────────────────────────
-    // Caso 1: tiene grado militar propio reconocido (ej. esposo/a también militar).
-    // Se valida contra la tabla de rangos conocidos: códigos como 'EC', 'ASEGURADO'
-    // o cualquier valor no militar del backend NO se usan como prefijo.
+    // Caso 1: grado en extenso reconocido (ej. "CORONEL") → abreviar y usar.
+    //   Aplica tanto al esposo/a también militar como al grado heredado del
+    //   titular cuando viene en extenso desde el backend.
     if (grado.isNotEmpty && isKnownMilitaryRank(grado)) {
       final abbrev = abbreviateRank(grado);
       return abbrev.isNotEmpty ? '$abbrev $fullName' : fullName;
     }
 
-    // Caso 2: sin grado válido → Sr./Sra. según edad
+    // Caso 2: grado ya abreviado y válido (ej. "Cnl.", "Tte. Cnl.") heredado
+    //   del titular asociado al beneficiario. Se filtran códigos civiles ('EC',
+    //   'ASEGURADO', etc.) para no usarlos como prefijo.
+    if (grado.isNotEmpty && isValidRankForDisplay(grado)) {
+      final cleanGrado = grado.trim().replaceAll('..', '.');
+      return '$cleanGrado $fullName';
+    }
+
+    // Caso 3: sin grado válido → Sr./Sra. según edad
     final prefix = beneficiaryPrefix(age: age, gender: gender);
     return prefix.isEmpty ? fullName : '$prefix $fullName';
   }

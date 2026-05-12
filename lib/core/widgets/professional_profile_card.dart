@@ -148,57 +148,65 @@ class ProfessionalProfileCard extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Fila 1: Avatar y Nombre
+        // Fila 1: Avatar + (label de grado arriba del nombre + Nombre)
         Row(
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
             _buildAvatar(r),
             SizedBox(width: r.spaceMd),
             Expanded(
-              child: FittedBox(
-                fit: BoxFit.scaleDown,
-                alignment: Alignment.centerLeft,
-                child: Text(
-                  user.displayName,
-                  style: texts.headlineMedium.copyWith(
-                    color: Colors.white,
-                    fontWeight: FontWeight.w800,
-                    height: 1.2,
-                    shadows: [
-                      Shadow(
-                        color: Colors.black.withValues(alpha: 0.3),
-                        blurRadius: 4,
-                        offset: const Offset(0, 2),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // Label arriba del nombre: grado del titular o "Empleado Civil"
+                  // según corresponda. Se omite si el backend no devolvió rank.
+                  if (RankUtils.isValidRankForDisplay(user.rank))
+                    _buildRankLabel(
+                      icon: CupertinoIcons.shield_fill,
+                      text: 'Grado del titular · ${user.rank}',
+                    ),
+                  if (RankUtils.isCivilianRank(user.rank))
+                    _buildRankLabel(
+                      icon: CupertinoIcons.person_badge_minus_fill,
+                      text: 'Titular · ${RankUtils.civilianLabel(user.rank)}',
+                    ),
+                  // Nombre del usuario
+                  FittedBox(
+                    fit: BoxFit.scaleDown,
+                    alignment: Alignment.centerLeft,
+                    child: Text(
+                      user.displayName,
+                      style: texts.headlineMedium.copyWith(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w800,
+                        height: 1.2,
+                        shadows: [
+                          Shadow(
+                            color: Colors.black.withValues(alpha: 0.3),
+                            blurRadius: 4,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
                       ),
-                    ],
+                    ),
                   ),
-                ),
+                ],
               ),
             ),
           ],
         ),
-        
+
         SizedBox(height: r.spaceMd),
-        
-        // Fila 2: Etiquetas (Servicio Activo, Titular, Grado, Matrícula)
+
+        // Fila 2: Etiquetas restantes (Servicio Activo, Matrícula).
+        // El grado se movió arriba del nombre, ya no aparece aquí.
         Wrap(
           spacing: r.spaceSm,
           runSpacing: r.spaceSm,
           crossAxisAlignment: WrapCrossAlignment.center,
           children: [
             if (user.isTitular) _buildStatusChip(r),
-            _buildBadge(
-              icon: CupertinoIcons.star_fill,
-              text: user.isTitular ? 'Titular' : 'Beneficiario',
-              color: const Color(0xFFFFD700),
-            ),
-            // Grado del titular (si tiene rango militar válido)
-            if (user.rankDisplay.isNotEmpty)
-              _buildBadge(
-                icon: CupertinoIcons.shield_fill,
-                text: user.rankDisplay,
-                color: const Color(0xFF93C5FD),
-              ),
             _buildBadge(
               icon: CupertinoIcons.number,
               text: user.matricula,
@@ -270,6 +278,45 @@ class ProfessionalProfileCard extends StatelessWidget {
           fontWeight: FontWeight.w900,
           fontSize: r.avatarLg * 0.45,
         ),
+      ),
+    );
+  }
+
+  /// Label compacto que aparece encima del nombre en la tarjeta.
+  /// Diseño minimalista: ícono pequeño + texto en mayúsculas con letter-spacing.
+  Widget _buildRankLabel({required IconData icon, required String text}) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 4),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            icon,
+            size: 11,
+            color: Colors.white.withValues(alpha: 0.85),
+          ),
+          const SizedBox(width: 5),
+          Flexible(
+            child: Text(
+              text.toUpperCase(),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                color: Colors.white.withValues(alpha: 0.85),
+                fontSize: 10.5,
+                fontWeight: FontWeight.w700,
+                letterSpacing: 1.0,
+                shadows: [
+                  Shadow(
+                    color: Colors.black.withValues(alpha: 0.25),
+                    blurRadius: 3,
+                    offset: const Offset(0, 1),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }

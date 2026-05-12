@@ -184,18 +184,15 @@ class UserModel {
         'beneficiaries': beneficiaries.map((b) => b.toJson()).toList(),
       };
 
-  /// Nombre con rango abreviado (titular) o tratamiento (beneficiario) para UI.
+  /// Nombre con tratamiento Sr./Sra. para UI.
   ///
-  /// **Importante:** el campo `rank` proviene del endpoint `/asegurado/foto/{matricula}`
-  /// que en algunos casos devuelve el grado militar del TITULAR del seguro
-  /// incluso cuando el logueado es un beneficiario. Para evitar que un
-  /// beneficiario "herede" el rango del titular en su nombre/perfil, sólo
-  /// pasamos `grado` cuando el usuario es titular real. En caso contrario
-  /// `displayNameWithPrefix` aplica Sr./Sra. según edad y género.
+  /// El grado militar NO se aplica como prefijo del nombre — se muestra como
+  /// label separado "Grado del titular · …" en home y perfil. Esto vale tanto
+  /// para titulares como para beneficiarios.
   String get displayName => RankUtils.displayNameWithPrefix(
     fullName: fullName,
     isTitular: isTitular,
-    grado: isTitular ? rank : '',
+    grado: '',
     age: age,
     gender: gender,
   );

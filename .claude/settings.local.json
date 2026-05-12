@@ -39,7 +39,8 @@
       "Bash(sed -n '740,760p' D:/app/Post2/lib/features/booking/screens/summary_screen.dart)",
       "Bash(sed -n '100,120p' D:/app/Post2/lib/features/splash/screens/splash_screen.dart)",
       "Bash(sed -n '1055,1085p' D:/app/Post2/lib/shell/tab_shell.dart)",
-      "Bash(flutter build *)"
+      "Bash(flutter build *)",
+      "Bash(curl -s \"http://10.150.10.13:9999/programacion/sucursales-regional/1\" --max-time 5)"
     ]
   }
 }

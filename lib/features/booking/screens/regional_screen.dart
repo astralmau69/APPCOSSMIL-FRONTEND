@@ -55,6 +55,11 @@ class _RegionalScreenState extends State<RegionalScreen> {
   bool _locationApplied = false;
   bool _isCheckingCita = false;
 
+  /// Estado de expansión por departamento (true = abierto).
+  /// Por defecto el primer departamento (con el hospital más cercano o el
+  /// primero en orden) queda expandido y los demás colapsados.
+  final Map<String, bool> _expandedDeptos = {};
+
   @override
   void initState() {
     super.initState();
@@ -279,20 +284,7 @@ class _RegionalScreenState extends State<RegionalScreen> {
                     ],
                   ),
                 ),
-              for (int i = 0; i < _entries.length; i++)
-                FadeSlideIn(
-                  delay: Duration(milliseconds: 60 * (i + 1).clamp(0, 5)),
-                  offsetY: 15,
-                  child: Padding(
-                    padding: EdgeInsets.fromLTRB(r.paddingH, 0, r.paddingH, r.listItemSpacing),
-                    child: _hospitalCard(
-                      context,
-                      _entries[i],
-                      isNearest: i == 0 && _locationApplied && _entries[i].distanceKm != null,
-                      isDark: isDark,
-                    ),
-                  ),
-                ),
+              ..._buildSectionedHospitalList(context, isDark, r),
               if (_entries.isEmpty)
                 Padding(
                   padding: EdgeInsets.all(r.spaceXxl),
@@ -446,26 +438,32 @@ class _RegionalScreenState extends State<RegionalScreen> {
                       ),
                     ),
                   ),
-                  SizedBox(height: r.spaceSm),
-                  Container(
-                    padding: EdgeInsets.symmetric(
-                        horizontal: r.chipPaddingH, vertical: r.chipPaddingV),
-                    decoration: BoxDecoration(
-                      color: isTitular
-                          ? AppColors.primary.withValues(alpha: 0.1)
-                          : AppColors.accent.withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(r.radiusSm),
-                    ),
-                    child: Text(
-                      label,
-                      style: context.texts.bodySmall.copyWith(
-                        fontWeight: FontWeight.w700,
+                  // Chip de etiqueta:
+                  //   - Beneficiario: siempre muestra el parentesco (Esposa, Hijo…)
+                  //   - Titular: solo si tiene grupo familiar. Sin familia el chip
+                  //     "Titular" es redundante (no hay con quién distinguirse).
+                  if (!isTitular || _hasOtherBeneficiaries()) ...[
+                    SizedBox(height: r.spaceSm),
+                    Container(
+                      padding: EdgeInsets.symmetric(
+                          horizontal: r.chipPaddingH, vertical: r.chipPaddingV),
+                      decoration: BoxDecoration(
                         color: isTitular
-                            ? AppColors.accentForTheme(isDark)
-                            : AppColors.accentDark,
+                            ? AppColors.primary.withValues(alpha: 0.1)
+                            : AppColors.accent.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(r.radiusSm),
+                      ),
+                      child: Text(
+                        label,
+                        style: context.texts.bodySmall.copyWith(
+                          fontWeight: FontWeight.w700,
+                          color: isTitular
+                              ? AppColors.accentForTheme(isDark)
+                              : AppColors.accentDark,
+                        ),
                       ),
                     ),
-                  ),
+                  ],
                 ],
               ),
             ),
@@ -677,6 +675,179 @@ class _RegionalScreenState extends State<RegionalScreen> {
         ),
       );
     }
+  }
+
+  /// Construye la lista de hospitales agrupada en desplegables por departamento.
+  ///
+  /// Cada `RegionalModel.name` representa un departamento (La Paz, Cochabamba,
+  /// Santa Cruz, etc.). El primer departamento queda expandido por defecto
+  /// (es el del hospital más cercano si hay GPS) y los demás colapsados.
+  List<Widget> _buildSectionedHospitalList(
+    BuildContext context,
+    bool isDark,
+    AppResponsive r,
+  ) {
+    if (_entries.isEmpty) return const [];
+
+    // Agrupar respetando el orden de aparición en _entries.
+    final byDepto = <String, List<_HospitalEntry>>{};
+    for (final e in _entries) {
+      final depto = e.regional.name.trim().isEmpty
+          ? 'Otros'
+          : e.regional.name;
+      byDepto.putIfAbsent(depto, () => []).add(e);
+    }
+
+    final widgets = <Widget>[];
+    int globalIndex = 0;
+    bool firstDepto = true;
+
+    for (final entry in byDepto.entries) {
+      final depto = entry.key;
+      final hospitals = entry.value;
+
+      // Inicializar el primer depto como expandido si nunca fue tocado.
+      if (firstDepto && !_expandedDeptos.containsKey(depto)) {
+        _expandedDeptos[depto] = true;
+      }
+      firstDepto = false;
+
+      final isExpanded = _expandedDeptos[depto] ?? false;
+
+      // Capturar el globalIndex de inicio del depto para el badge "Más cercano".
+      final deptoStartIndex = globalIndex;
+
+      widgets.add(_buildDeptoHeader(
+        depto: depto,
+        count: hospitals.length,
+        isExpanded: isExpanded,
+        isDark: isDark,
+        r: r,
+        onTap: () {
+          setState(() {
+            _expandedDeptos[depto] = !isExpanded;
+          });
+        },
+      ));
+
+      widgets.add(
+        AnimatedSize(
+          duration: const Duration(milliseconds: 220),
+          curve: Curves.easeOutCubic,
+          alignment: Alignment.topCenter,
+          child: ClipRect(
+            child: AnimatedOpacity(
+              duration: const Duration(milliseconds: 180),
+              opacity: isExpanded ? 1.0 : 0.0,
+              child: !isExpanded
+                  ? const SizedBox(width: double.infinity, height: 0)
+                  : Column(
+                      children: [
+                        for (int i = 0; i < hospitals.length; i++)
+                          Padding(
+                            padding: EdgeInsets.fromLTRB(
+                                r.paddingH, 0, r.paddingH, r.listItemSpacing),
+                            child: _hospitalCard(
+                              context,
+                              hospitals[i],
+                              isNearest: (deptoStartIndex + i) == 0 &&
+                                  _locationApplied &&
+                                  hospitals[i].distanceKm != null,
+                              isDark: isDark,
+                            ),
+                          ),
+                      ],
+                    ),
+            ),
+          ),
+        ),
+      );
+
+      globalIndex += hospitals.length;
+    }
+    return widgets;
+  }
+
+  /// Header desplegable del departamento. Toca para expandir/colapsar.
+  Widget _buildDeptoHeader({
+    required String depto,
+    required int count,
+    required bool isExpanded,
+    required bool isDark,
+    required AppResponsive r,
+    required VoidCallback onTap,
+  }) {
+    return Padding(
+      padding: EdgeInsets.fromLTRB(
+          r.paddingH, r.spaceMd, r.paddingH, r.spaceSm),
+      child: AnimatedPressButton(
+        onTap: onTap,
+        child: Container(
+          padding: EdgeInsets.symmetric(
+              horizontal: r.spaceMd, vertical: r.spaceSm),
+          decoration: BoxDecoration(
+            color: isDark
+                ? AppColors.primary.withValues(alpha: 0.15)
+                : AppColors.primary.withValues(alpha: 0.06),
+            borderRadius: BorderRadius.circular(r.radiusMd),
+            border: Border.all(
+              color: AppColors.primary.withValues(alpha: 0.2),
+              width: 1,
+            ),
+          ),
+          child: Row(
+            children: [
+              Container(
+                width: 4,
+                height: 18,
+                decoration: BoxDecoration(
+                  color: AppColors.accentForTheme(isDark),
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              SizedBox(width: r.spaceSm),
+              Expanded(
+                child: Text(
+                  depto.toUpperCase(),
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: 1.2,
+                    color: AppColors.accentForTheme(isDark),
+                  ),
+                ),
+              ),
+              Container(
+                padding: EdgeInsets.symmetric(
+                    horizontal: r.chipPaddingH, vertical: 2),
+                margin: EdgeInsets.only(right: r.spaceSm),
+                decoration: BoxDecoration(
+                  color: AppColors.accentForTheme(isDark).withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(r.radiusSm),
+                ),
+                child: Text(
+                  '$count',
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w800,
+                    color: AppColors.accentForTheme(isDark),
+                  ),
+                ),
+              ),
+              AnimatedRotation(
+                turns: isExpanded ? 0.5 : 0.0,
+                duration: const Duration(milliseconds: 200),
+                child: Icon(
+                  CupertinoIcons.chevron_down,
+                  size: r.iconSm,
+                  color: AppColors.accentForTheme(isDark),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 
   Widget _hospitalCard(

@@ -555,27 +555,13 @@ class _PerfilScreenState extends State<PerfilScreen> {
 
                 SizedBox(height: r.spaceSm),
 
-                // ── Rank label (full) for titulares ─────────────────────
-                if (user.isTitular && RankUtils.isValidRankForDisplay(user.rank))
-                  Padding(
-                    padding: EdgeInsets.only(bottom: r.spaceXs),
-                    child: Text(
-                      user.rank.toUpperCase(),
-                      style: TextStyle(
-                        fontWeight: FontWeight.w700,
-                        letterSpacing: 1.5,
-                        fontSize: 11,
-                        color: AppColors.accentForTheme(isDark).withValues(alpha: 0.75),
-                      ),
-                    ),
-                  ),
-
-                // ── Grado del Titular (para beneficiarios) ──────────────
-                // El backend emite el grado militar del titular incluso al
-                // consultar con la matrícula del beneficiario. Lo mostramos
-                // explícitamente etiquetado para que no se confunda con un
-                // grado propio del beneficiario.
-                if (!user.isTitular && RankUtils.isValidRankForDisplay(user.rank))
+                // ── Grado del Titular (para todos los usuarios) ─────────
+                // El grado militar nunca aparece como prefijo del nombre —
+                // se muestra aquí como label explícito, tanto si el usuario
+                // logueado es titular como beneficiario. El campo `rank` del
+                // endpoint /asegurado/foto/{matricula} devuelve el grado del
+                // titular del seguro en ambos casos.
+                if (RankUtils.isValidRankForDisplay(user.rank))
                   Padding(
                     padding: EdgeInsets.only(bottom: r.spaceXs),
                     child: Row(
@@ -600,6 +586,38 @@ class _PerfilScreenState extends State<PerfilScreen> {
                     ),
                   ),
 
+                // ── Empleado Civil ──────────────────────────────────────
+                // El titular puede ser empleado civil (códigos del backend:
+                // "EC", "EMPLEADO CIVIL", etc.). Se muestra como label,
+                // no como prefijo del nombre. Para beneficiarios se prefija
+                // con "TITULAR ·" igual que el grado militar.
+                if (RankUtils.isCivilianRank(user.rank))
+                  Padding(
+                    padding: EdgeInsets.only(bottom: r.spaceXs),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          CupertinoIcons.person_badge_minus_fill,
+                          size: 12,
+                          color: AppColors.accentForTheme(isDark).withValues(alpha: 0.65),
+                        ),
+                        SizedBox(width: r.spaceXs),
+                        Text(
+                          user.isTitular
+                              ? RankUtils.civilianLabel(user.rank).toUpperCase()
+                              : 'TITULAR · ${RankUtils.civilianLabel(user.rank).toUpperCase()}',
+                          style: TextStyle(
+                            fontWeight: FontWeight.w700,
+                            letterSpacing: 1.2,
+                            fontSize: 10.5,
+                            color: AppColors.accentForTheme(isDark).withValues(alpha: 0.75),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+
                 SizedBox(height: r.spaceSm),
 
                 // ── Chips row: matricula + service status ────────────────
@@ -613,12 +631,6 @@ class _PerfilScreenState extends State<PerfilScreen> {
                       icon: CupertinoIcons.number,
                       label: 'Mat. ${user.matricula}',
                       color: AppColors.accentForTheme(isDark),
-                    ),
-                    _headerChip(
-                      isDark: isDark,
-                      icon: user.isTitular ? CupertinoIcons.star_fill : CupertinoIcons.person_fill,
-                      label: user.isTitular ? 'Titular' : 'Beneficiario',
-                      color: AppColors.primary,
                     ),
                     if (user.isTitular && user.serviceStatus.isNotEmpty)
                       _headerChip(
