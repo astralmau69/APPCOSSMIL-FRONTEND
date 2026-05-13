@@ -33,7 +33,7 @@ class ApiConstants {
 
   /// Regionales por departamento.
   static String regionalesPorDepartamento(int idins) =>
-      '/api/programacion/regionales/departamento/$idins';
+      '     $idins';
 
   /// Todas las regionales.
   static String regionales(int idins) =>

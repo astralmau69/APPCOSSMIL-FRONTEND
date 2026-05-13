@@ -158,25 +158,23 @@ El `notification_scheduler.dart` consultará estas preferencias antes de cada `_
 ```
 lib/features/notificaciones/screens/notificaciones_screen.dart  → [NUEVO]
 lib/core/models/app_notification.dart                            → [NUEVO]
-lib/core/services/notification_preferences.dart                  → [NUEVO]
-lib/features/perfil/screens/perfil_screen.dart                   → sección Notificaciones
-lib/features/home/screens/home_screen.dart                       → badge campana
+lib/core/serviceana
 lib/core/services/notification_scheduler.dart                    → consumir prefs
 ```
 
 ---
 
-### Fase 3 — Notificaciones Push (FCM)
-**Duración estimada: 5-7 días | ⚠️ Requiere soporte en backend**
+  ### Fase 3 — Notificaciones Push (FCM)
+  **Duración estimada: 5-7 días | ⚠️ Requiere soporte en backend**
 
-> Objetivo: Notificaciones que llegan aunque la app esté cerrada o sin instalar en primer plano.
+  > Objetivo: Notificaciones que llegan aunque la app esté cerrada o sin instalar en primer plano.
 
-> ⚠️ **BLOQUEANTE:** El backend debe implementar:
-> - `POST /api/notificaciones/register-device` — recibir y guardar FCM token
-> - `DELETE /api/notificaciones/unregister-device` — limpiar al logout
-> - Infraestructura de envío (Firebase Admin SDK o similar)
+  > ⚠️ **BLOQUEANTE:** El backend debe implementar:
+  > - `POST /api/notificaciones/register-device` — recibir y guardar FCM token
+  > - `DELETE /api/notificaciones/unregister-device` — limpiar al logout
+  > - Infraestructura de envío (Firebase Admin SDK o similar)
 
-#### 3.1 Dependencias a agregar
+  #### 3.1 Dependencias a agregar
 
 ```yaml
 # pubspec.yaml
@@ -200,7 +198,9 @@ android/app/src/main/AndroidManifest.xml          → receptor de push
 3. `firebase_messaging` recibe → muestra notificación local vía `notification_ui.dart`
 4. Logout → `PushNotificationService.unregisterToken()` → limpiar token del servidor
 
----
+---s/notification_preferences.dart                  → [NUEVO]
+lib/features/perfil/screens/perfil_screen.dart                   → sección Notificaciones
+lib/features/home/screens/home_screen.dart                       → badge camp
 
 ### Fase 4 — Cazador de Fichas
 **Duración estimada: 4-5 días | Sin dependencia de backend**
