@@ -159,6 +159,11 @@ class ProfessionalProfileCard extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisSize: MainAxisSize.min,
                 children: [
+                  // Fuerza (rama militar) — siempre visible encima del grado
+                  _buildRankLabel(
+                    icon: CupertinoIcons.flag_fill,
+                    text: 'Fuerza · ${user.fuerza.isNotEmpty ? user.fuerza : "—"}',
+                  ),
                   // Label arriba del nombre: grado del titular o "Empleado Civil"
                   // según corresponda. Se omite si el backend no devolvió rank.
                   if (RankUtils.isValidRankForDisplay(user.rank))

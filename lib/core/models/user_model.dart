@@ -29,6 +29,8 @@ class UserModel {
   final String referencia;
   /// Celular del afiliado devuelto por el endpoint de foto/perfil (campo numcel).
   final String numCel;
+  /// Fuerza/rama militar (ej. "EJERCITO", "ARMADA", "FUERZA AÉREA").
+  final String fuerza;
   final List<BeneficiaryModel> beneficiaries;
 
   const UserModel({
@@ -54,6 +56,7 @@ class UserModel {
     this.emergencyPhone = '',
     this.referencia = '',
     this.numCel = '',
+    this.fuerza = '',
     required this.beneficiaries,
   });
 
@@ -80,6 +83,7 @@ class UserModel {
     String? emergencyPhone,
     String? referencia,
     String? numCel,
+    String? fuerza,
     List<BeneficiaryModel>? beneficiaries,
   }) {
     return UserModel(
@@ -106,6 +110,7 @@ class UserModel {
       emergencyPhone: emergencyPhone ?? this.emergencyPhone,
       referencia: referencia ?? this.referencia,
       numCel: numCel ?? this.numCel,
+      fuerza: fuerza ?? this.fuerza,
       beneficiaries: beneficiaries ?? this.beneficiaries,
     );
   }
@@ -157,6 +162,7 @@ class UserModel {
       emergencyPhone: json['emergencyPhone'] as String? ?? json['telfemerg'] as String? ?? '',
       referencia: json['referencia'] as String? ?? '',
       numCel: (json['numCel'] as String? ?? json['numcel'] as String? ?? '').trim(),
+      fuerza: (json['fuerza'] as String? ?? '').trim(),
     );
   }
 
@@ -181,6 +187,7 @@ class UserModel {
         'emergencyPhone': emergencyPhone,
         'referencia': referencia,
         'numCel': numCel,
+        'fuerza': fuerza,
         'beneficiaries': beneficiaries.map((b) => b.toJson()).toList(),
       };
 

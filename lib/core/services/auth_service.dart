@@ -203,6 +203,7 @@ class AuthService {
             final eTelfemerg = (extraData['telfemerg'] as String? ?? '').trim();
             final eReferencia = (extraData['referencia'] as String? ?? '').trim();
             final eNumCel = (extraData['numcel']?.toString() ?? extraData['numCel']?.toString() ?? '').trim();
+            final eFuerza = (extraData['fuerza'] as String? ?? '').trim();
             // El endpoint /asegurado/foto/{matricula} es la fuente autoritativa
             // del tipo de afiliado: tipo=='T' significa Titular. Algunos JWT no
             // devuelven 'rol' = ROLE_ASETIT correctamente, así que confiamos en tipo.
@@ -230,6 +231,7 @@ class AuthService {
               emergencyPhone: eTelfemerg.isNotEmpty ? eTelfemerg : UserSession.currentUser.emergencyPhone,
               referencia: eReferencia.isNotEmpty ? eReferencia : UserSession.currentUser.referencia,
               numCel: eNumCel.isNotEmpty ? eNumCel : UserSession.currentUser.numCel,
+              fuerza: eFuerza.isNotEmpty ? eFuerza : UserSession.currentUser.fuerza,
             );
 
             // Actualizar fallback con el grado real del endpoint de foto

@@ -161,6 +161,7 @@ class SessionRestoreService {
                         data['rango']?.toString() ??
                         data['Rango']?.toString() ?? '').trim();
         final eRefe4 = (data['refe4'] as String? ?? '').trim();
+        final eFuerza = (data['fuerza'] as String? ?? '').trim();
         // tipo == 'T' es la fuente autoritativa para Titular (ver auth_service.dart)
         final eTipo = (data['tipo']?.toString() ?? '').trim().toUpperCase();
         final isFotoTitular = eTipo == 'T';
@@ -174,7 +175,7 @@ class SessionRestoreService {
         final shouldUpgradeToTitular =
             isFotoTitular && !UserSession.currentUser.isTitular && !savedRoleIsExplicitBeneficiary;
 
-        if (cleanPhoto.isNotEmpty || eBloodType.isNotEmpty || eAllergies.isNotEmpty || eGrado.isNotEmpty || eRefe4.isNotEmpty || shouldUpgradeToTitular) {
+        if (cleanPhoto.isNotEmpty || eBloodType.isNotEmpty || eAllergies.isNotEmpty || eGrado.isNotEmpty || eRefe4.isNotEmpty || eFuerza.isNotEmpty || shouldUpgradeToTitular) {
           UserSession.currentUser = UserSession.currentUser.copyWith(
             photoBase64: cleanPhoto.isNotEmpty ? cleanPhoto : UserSession.currentUser.photoBase64,
             bloodType: eBloodType.isNotEmpty ? eBloodType : UserSession.currentUser.bloodType,
@@ -182,6 +183,7 @@ class SessionRestoreService {
             rank: eGrado.isNotEmpty ? eGrado : UserSession.currentUser.rank,
             role: shouldUpgradeToTitular ? 'Titular' : null,
             serviceStatus: eRefe4.isNotEmpty ? eRefe4 : UserSession.currentUser.serviceStatus,
+            fuerza: eFuerza.isNotEmpty ? eFuerza : UserSession.currentUser.fuerza,
           );
 
           // Si promovimos a Titular y no hay entrada titular en la lista, intentar

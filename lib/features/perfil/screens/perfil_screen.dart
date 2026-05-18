@@ -555,6 +555,31 @@ class _PerfilScreenState extends State<PerfilScreen> {
 
                 SizedBox(height: r.spaceSm),
 
+                // ── Fuerza — siempre visible encima del grado ──────────
+                Padding(
+                  padding: EdgeInsets.only(bottom: r.spaceXs),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(
+                        CupertinoIcons.flag_fill,
+                        size: 12,
+                        color: AppColors.accentForTheme(isDark).withValues(alpha: 0.65),
+                      ),
+                      SizedBox(width: r.spaceXs),
+                      Text(
+                        'FUERZA · ${user.fuerza.isNotEmpty ? user.fuerza.toUpperCase() : "—"}',
+                        style: TextStyle(
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: 1.2,
+                          fontSize: 10.5,
+                          color: AppColors.accentForTheme(isDark).withValues(alpha: 0.75),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+
                 // ── Grado del Titular (para todos los usuarios) ─────────
                 // El grado militar nunca aparece como prefijo del nombre —
                 // se muestra aquí como label explícito, tanto si el usuario
@@ -775,6 +800,16 @@ class _PerfilScreenState extends State<PerfilScreen> {
         value: user.bloodType.isNotEmpty ? user.bloodType : 'Sin registrar',
         isDark: isDark,
       ),
+      if (user.fuerza.isNotEmpty) ...[
+        _divider(isDark),
+        _buildDetailTile(
+          icon: CupertinoIcons.flag_fill,
+          color: const Color(0xFF10B981),
+          label: 'Fuerza',
+          value: user.fuerza,
+          isDark: isDark,
+        ),
+      ],
       _divider(isDark),
       _buildDetailTile(
         icon: CupertinoIcons.exclamationmark_triangle_fill,
