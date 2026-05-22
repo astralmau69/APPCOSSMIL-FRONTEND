@@ -859,99 +859,163 @@ class _RegionalScreenState extends State<RegionalScreen> {
     final r = context.r;
     final hospital = entry.hospital;
     final regional = entry.regional;
+    final cardColor = isDark
+        ? AppColors.primary.withValues(alpha: 0.15)
+        : AppColors.primary.withValues(alpha: 0.05);
+    // Ancho de la tira fotográfica — escala con el tamaño de pantalla
+    final photoW = r.isSmallPhone ? 78.0 : r.isTablet ? 128.0 : 100.0;
+    final hasPhoto = hospital.photoBase64.isNotEmpty;
     return AnimatedPressButton(
       onTap: () => _onHospitalSelected(regional, hospital),
-      child: Container(
-        width: double.infinity,
-        padding: EdgeInsets.all(r.spaceMd),
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(r.radiusLg),
-          color: isDark ? AppColors.primary.withValues(alpha: 0.15) : AppColors.primary.withValues(alpha: 0.05),
-          border: Border.all(
-              color: AppColors.primary.withValues(alpha: 0.15), width: 1.5),
-        ),
-        child: Row(
-          children: [
-            Container(
-              width: r.listAvatarSize,
-              height: r.listAvatarSize,
-              decoration: BoxDecoration(
-                color: AppColors.primary.withValues(alpha: 0.1),
-                shape: BoxShape.circle,
-              ),
-              child: Icon(
-                CupertinoIcons.building_2_fill,
-                size: r.iconLg * 0.7,
-                color: isDark ? AppColors.white : AppColors.primary,
-              ),
-            ),
-            SizedBox(width: r.spaceMd),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Text(
-                          hospital.name,
-                          style: context.texts.titleMedium.copyWith(
-                            fontWeight: FontWeight.w800,
-                            color: AppColors.textPrimaryC(isDark),
-                            height: 1.2,
-                          ),
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                        ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(r.radiusLg),
+        child: Container(
+          width: double.infinity,
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(r.radiusLg),
+            color: cardColor,
+            border: Border.all(
+                color: AppColors.primary.withValues(alpha: 0.15), width: 1.5),
+          ),
+          child: Stack(
+            children: [
+              // ── Foto del hospital con desvanecido en borde izquierdo ─────
+              if (hasPhoto)
+                Positioned(
+                  top: 0,
+                  bottom: 0,
+                  right: 0,
+                  width: photoW,
+                  child: _buildPhotoStrip(hospital.photoBase64, isDark),
+                ),
+
+              // ── Contenido — padding derecho reserva la zona de la foto ───
+              Padding(
+                padding: EdgeInsets.fromLTRB(
+                  r.spaceMd,
+                  r.spaceMd,
+                  hasPhoto ? photoW + 8 : r.spaceMd,
+                  r.spaceMd,
+                ),
+                child: Row(
+                  children: [
+                    Container(
+                      width: r.listAvatarSize,
+                      height: r.listAvatarSize,
+                      decoration: BoxDecoration(
+                        color: AppColors.primary.withValues(alpha: 0.1),
+                        shape: BoxShape.circle,
                       ),
-                      if (isNearest) ...[
-                        SizedBox(width: r.spaceSm),
-                        Container(
-                          padding: EdgeInsets.symmetric(
-                              horizontal: r.chipPaddingH, vertical: r.chipPaddingV),
-                          decoration: BoxDecoration(
-                            color: AppColors.primary.withValues(alpha: 0.1),
-                            borderRadius: BorderRadius.circular(r.radiusSm),
+                      child: Icon(
+                        CupertinoIcons.building_2_fill,
+                        size: r.iconLg * 0.7,
+                        color: isDark ? AppColors.white : AppColors.primary,
+                      ),
+                    ),
+                    SizedBox(width: r.spaceMd),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Row(
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  hospital.name,
+                                  style: context.texts.titleMedium.copyWith(
+                                    fontWeight: FontWeight.w800,
+                                    color: AppColors.textPrimaryC(isDark),
+                                    height: 1.2,
+                                  ),
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                              if (isNearest) ...[
+                                SizedBox(width: r.spaceSm),
+                                Container(
+                                  padding: EdgeInsets.symmetric(
+                                      horizontal: r.chipPaddingH,
+                                      vertical: r.chipPaddingV),
+                                  decoration: BoxDecoration(
+                                    color: AppColors.primary.withValues(alpha: 0.1),
+                                    borderRadius: BorderRadius.circular(r.radiusSm),
+                                  ),
+                                  child: Text(
+                                    'Más cercano',
+                                    style: context.texts.labelSmall.copyWith(
+                                      fontWeight: FontWeight.bold,
+                                      color: AppColors.accentForTheme(isDark),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ],
                           ),
-                          child: Text(
-                            'Más cercano',
-                            style: context.texts.labelSmall.copyWith(
-                              fontWeight: FontWeight.bold,
+                          SizedBox(height: r.spaceXs),
+                          Text(
+                            regional.name,
+                            style: context.texts.bodySmall.copyWith(
                               color: AppColors.accentForTheme(isDark),
+                              fontWeight: FontWeight.w600,
                             ),
                           ),
-                        ),
-                      ],
-                    ],
-                  ),
-                  SizedBox(height: r.spaceXs),
-                  Text(
-                    regional.name,
-                    style: context.texts.bodySmall.copyWith(
-                      color: AppColors.accentForTheme(isDark),
-                      fontWeight: FontWeight.w600,
+                          if (hospital.address.isNotEmpty) ...[
+                            SizedBox(height: r.spaceXs),
+                            Text(
+                              hospital.address,
+                              style: context.texts.bodySmall,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ],
+                        ],
+                      ),
                     ),
-                  ),
-                  if (hospital.address.isNotEmpty) ...[
-                    SizedBox(height: r.spaceXs),
-                    Text(
-                      hospital.address,
-                      style: context.texts.bodySmall,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
+                    SizedBox(width: r.spaceSm),
+                    Icon(
+                      CupertinoIcons.chevron_right,
+                      color: isDark ? AppColors.white : AppColors.primary,
                     ),
                   ],
-                ],
+                ),
               ),
-            ),
-            Icon(
-              CupertinoIcons.chevron_right,
-              color: isDark ? AppColors.white : AppColors.primary,
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
+  }
+
+  Widget _buildPhotoStrip(String base64, bool isDark) {
+    // Usa el mismo color sólido que _buildFadedHospitalPhoto del Calendario
+    // para que el desvanecido blanco/oscuro sea idéntico.
+    final fadeColor = AppColors.cardBg(isDark);
+    try {
+      return Stack(
+        fit: StackFit.expand,
+        children: [
+          Image.memory(
+            base64Decode(base64),
+            fit: BoxFit.cover,
+            alignment: Alignment.center,
+            errorBuilder: (_, __, ___) => const SizedBox(),
+          ),
+          DecoratedBox(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.centerLeft,
+                end: Alignment.centerRight,
+                colors: [fadeColor, fadeColor.withValues(alpha: 0.0)],
+                stops: const [0.0, 0.45],
+              ),
+            ),
+          ),
+        ],
+      );
+    } catch (_) {
+      return const SizedBox();
+    }
   }
 }

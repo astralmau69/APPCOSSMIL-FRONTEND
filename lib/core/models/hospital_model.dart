@@ -8,6 +8,7 @@ class HospitalModel {
   final String address;
   final double? latitude;
   final double? longitude;
+  final String photoBase64;
 
   const HospitalModel({
     required this.id,
@@ -17,6 +18,7 @@ class HospitalModel {
     required this.address,
     this.latitude,
     this.longitude,
+    this.photoBase64 = '',
   });
 
   factory HospitalModel.fromJson(Map<String, dynamic> json) {
@@ -43,6 +45,7 @@ class HospitalModel {
       address: (json['direccion'] as String? ?? json['address'] as String? ?? '').toDisplayCase,
       latitude: rawLat,
       longitude: rawLng,
+      photoBase64: json['foto'] as String? ?? '',
     );
   }
 
@@ -57,5 +60,6 @@ class HospitalModel {
         'address': address,
         'latitude': latitude,
         'longitude': longitude,
+        'foto': photoBase64,
       };
 }

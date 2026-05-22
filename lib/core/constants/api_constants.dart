@@ -91,6 +91,10 @@ class ApiConstants {
   static String aseguradoFoto(String matricula) =>
       '/api/safil/asegurado/foto/${matricula.trim()}';
 
+  /// Datos enriquecidos del asegurado (foto2, tipopersonal, fuerza, tipo, etc.)
+  static String aseguradoTipoGpo(String matricula) =>
+      '/api/safil/asegurado/aseg-tipo-gpo/${matricula.trim()}';
+
   /// Cancelar una cita médica.
   /// [matricula]: matrícula del usuario que realiza la cancelación.
   ///   - Cuenta titular  → matrícula del titular (incluso si cancela cita de un familiar).

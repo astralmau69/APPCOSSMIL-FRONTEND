@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import '../../../core/config/app_config.dart';
@@ -191,11 +192,12 @@ class _CalendarioHospitalScreenState extends State<CalendarioHospitalScreen> {
                     // ── Cards de hospitales ─────────────────────────────────
                     ...List.generate(_hospitals.length, (i) {
                       final h = _hospitals[i];
-                      // Color por sucursal: 1=azul (LPZ), 2=verde (CBBA), 3=naranja (SCZ)
+                      // Color por sucursal: 1=azul (LPZ), 2=verde (CBBA), 3=naranja (SCZ), 11=rojo (TJA)
                       final color = switch (h.id) {
                         '1' => const Color(0xFF3B82F6),
                         '2' => const Color(0xFF10B981),
                         '3' => const Color(0xFFF59E0B),
+                        '11' => const Color(0xFFEF4444),
                         _ => const Color(0xFF3B82F6),
                       };
                       return FadeSlideIn(
@@ -321,88 +323,146 @@ class _HospitalCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final r = context.r;
+    final cardColor = AppColors.cardBg(isDark);
+    // Ancho de la tira fotográfica — escala con el tamaño de pantalla
+    final photoW = r.isSmallPhone ? 78.0 : r.isTablet ? 128.0 : 100.0;
+    final hasPhoto = hospital.photoBase64.isNotEmpty;
 
     return CupertinoButton(
       padding: EdgeInsets.zero,
       onPressed: onTap,
-      child: Container(
-        width: double.infinity,
-        padding: EdgeInsets.all(r.cardPadding),
-        decoration: BoxDecoration(
-          color: AppColors.cardBg(isDark),
-          borderRadius: BorderRadius.circular(r.cardRadius),
-          border: Border.all(
-            color: AppColors.cardBorder(isDark),
-            width: 0.5,
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(r.cardRadius),
+        child: Container(
+          width: double.infinity,
+          decoration: BoxDecoration(
+            color: cardColor,
+            borderRadius: BorderRadius.circular(r.cardRadius),
+            border: Border.all(
+              color: AppColors.cardBorder(isDark),
+              width: 0.5,
+            ),
+            boxShadow: AppColors.cardShadowFor(isDark),
           ),
-          boxShadow: AppColors.cardShadowFor(isDark),
-        ),
-        child: Row(
-          children: [
-            // Ícono del hospital
-            Container(
-              width: 52,
-              height: 52,
-              decoration: BoxDecoration(
-                color: accentColor.withValues(alpha: 0.12),
-                borderRadius: BorderRadius.circular(r.radiusMd),
-              ),
-              child: Icon(
-                CupertinoIcons.building_2_fill,
-                color: accentColor,
-                size: 24,
-              ),
-            ),
-            SizedBox(width: r.spaceMd),
+          child: Stack(
+            children: [
+              // ── Foto del hospital con sombreado (desvanecido en borde) ──
+              if (hasPhoto)
+                Positioned(
+                  top: 0,
+                  bottom: 0,
+                  right: 0,
+                  width: photoW,
+                  child: _buildFadedHospitalPhoto(hospital.photoBase64, cardColor),
+                ),
 
-            // Nombre + regional + dirección
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    hospital.name,
-                    style: context.texts.titleMedium.copyWith(
-                      color: AppColors.textPrimaryC(isDark),
-                      fontWeight: FontWeight.w700,
-                    ),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  if (hospital.city.isNotEmpty) ...[
-                    const SizedBox(height: 2),
-                    Text(
-                      'Regional ${hospital.city}',
-                      style: context.texts.bodySmall.copyWith(
+              // ── Contenido — padding derecho reserva la zona de la foto ──
+              Padding(
+                padding: EdgeInsets.fromLTRB(
+                  r.cardPadding,
+                  r.cardPadding,
+                  hasPhoto ? photoW + 8 : r.cardPadding,
+                  r.cardPadding,
+                ),
+                child: Row(
+                  children: [
+                    // Ícono del hospital
+                    Container(
+                      width: 52,
+                      height: 52,
+                      decoration: BoxDecoration(
+                        color: accentColor.withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(r.radiusMd),
+                      ),
+                      child: Icon(
+                        CupertinoIcons.building_2_fill,
                         color: accentColor,
-                        fontWeight: FontWeight.w600,
+                        size: 24,
                       ),
                     ),
-                  ],
-                  if (hospital.address.isNotEmpty) ...[
-                    const SizedBox(height: 2),
-                    Text(
-                      hospital.address,
-                      style: context.texts.bodySmall.copyWith(
-                        color: AppColors.textTertiaryC(isDark),
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ],
-                ],
-              ),
-            ),
+                    SizedBox(width: r.spaceMd),
 
-            SizedBox(width: r.spaceSm),
-            Icon(
-              CupertinoIcons.chevron_right,
-              size: 16,
-              color: AppColors.textTertiaryC(isDark),
-            ),
-          ],
+                    // Nombre + regional + dirección
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            hospital.name,
+                            style: context.texts.titleMedium.copyWith(
+                              color: AppColors.textPrimaryC(isDark),
+                              fontWeight: FontWeight.w700,
+                            ),
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          if (hospital.city.isNotEmpty) ...[
+                            const SizedBox(height: 2),
+                            Text(
+                              'Regional ${hospital.city}',
+                              style: context.texts.bodySmall.copyWith(
+                                color: accentColor,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ],
+                          if (hospital.address.isNotEmpty) ...[
+                            const SizedBox(height: 2),
+                            Text(
+                              hospital.address,
+                              style: context.texts.bodySmall.copyWith(
+                                color: AppColors.textTertiaryC(isDark),
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ],
+                        ],
+                      ),
+                    ),
+
+                    SizedBox(width: r.spaceSm),
+                    Icon(
+                      CupertinoIcons.chevron_right,
+                      size: 16,
+                      color: AppColors.textTertiaryC(isDark),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
+  }
+}
+
+Widget _buildFadedHospitalPhoto(String base64, Color cardColor) {
+  try {
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        Image.memory(
+          base64Decode(base64),
+          fit: BoxFit.cover,
+          alignment: Alignment.center,
+          errorBuilder: (_, __, ___) => const SizedBox(),
+        ),
+        // Desvanecido sutil en el borde izquierdo para fusionar con la card
+        DecoratedBox(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.centerLeft,
+              end: Alignment.centerRight,
+              colors: [cardColor, cardColor.withValues(alpha: 0.0)],
+              stops: const [0.0, 0.45],
+            ),
+          ),
+        ),
+      ],
+    );
+  } catch (_) {
+    return const SizedBox();
   }
 }

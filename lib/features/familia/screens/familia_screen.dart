@@ -11,6 +11,7 @@ import '../../../core/extensions/responsive_extensions.dart';
 import '../../../core/widgets/beneficiary_details_modal.dart';
 import '../../../core/widgets/cossmil_loader.dart';
 import '../../../core/widgets/image_enlarged_modal.dart';
+import '../../../core/widgets/adaptive_sliver_nav_bar.dart';
 
 class FamiliaScreen extends StatefulWidget {
   const FamiliaScreen({super.key});
@@ -150,7 +151,7 @@ class _FamiliaScreenState extends State<FamiliaScreen> {
           parent: AlwaysScrollableScrollPhysics(),
         ),
         slivers: [
-          CupertinoSliverNavigationBar(
+          AdaptiveSliverNavBar(
             largeTitle: Text(
               _isTitular ? 'Mi Grupo Familiar' : 'Mi Perfil',
               style: TextStyle(

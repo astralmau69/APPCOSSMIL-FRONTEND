@@ -8,6 +8,7 @@ import '../../../core/animations/app_page_route.dart';
 import '../../../core/animations/optimized_animations.dart';
 import '../../../core/utils/error_mapper.dart';
 import 'news_detail_screen.dart';
+import '../../../core/widgets/adaptive_sliver_nav_bar.dart';
 
 /// Pantalla dedicada para comunicados y noticias de COSSMIL con paginación.
 class NoticiasScreen extends StatefulWidget {
@@ -99,7 +100,7 @@ class _NoticiasScreenState extends State<NoticiasScreen> {
           parent: AlwaysScrollableScrollPhysics(),
         ),
         slivers: [
-          CupertinoSliverNavigationBar(
+          AdaptiveSliverNavBar(
             largeTitle: Text(
               'COSSMIL te informa',
               style: TextStyle(color: AppColors.textPrimaryC(isDark)),

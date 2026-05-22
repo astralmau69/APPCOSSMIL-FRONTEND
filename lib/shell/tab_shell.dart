@@ -46,6 +46,7 @@ import '../features/perfil/screens/perfil_screen.dart';
 import '../features/perfil/screens/security_setup_screen.dart';
 
 import 'widgets/floating_nav_bar.dart';
+import 'widgets/side_nav_bar.dart';
 
 import '../core/data/app_session_cache.dart';
 import '../core/storage/token_storage.dart';
@@ -347,12 +348,11 @@ class TabShellState extends State<TabShell>
 
 
 
-  /// Muestra el aviso de días/horarios de atención una vez por día.
+  /// Muestra el aviso de días/horarios de atención solo la primera vez.
   Future<void> _showScheduleInfoModalIfNeeded() async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      final today = DateTime.now();
-      final key = 'schedule_info_shown_${today.year}_${today.month}_${today.day}';
+      const key = 'schedule_info_shown_v1';
       if (prefs.getBool(key) == true) return;
       await prefs.setBool(key, true);
       if (!mounted) return;
@@ -1719,60 +1719,66 @@ class TabShellState extends State<TabShell>
 
         onPointerDown: (_) => _onUserInteraction(),
 
-        child: AppBackground(
+        child: Builder(builder: (context) {
 
-          isDark: Theme.of(context).brightness == Brightness.dark,
+          final r = context.r;
+          final bool useSideNav =
+              r.isDesktop || (r.isTablet && r.isLandscape);
 
-          child: Scaffold(
+          // Callback compartido de navegación por tap
+          void handleNavTap(int index) {
+            if (index == _currentIndex) {
+              _tabNavKeys[index]
+                  .currentState
+                  ?.popUntil((route) => route.isFirst);
+              setState(() => _tabRefreshCounters[index]++);
+            } else {
+              goToTab(index);
+            }
+          }
 
-          backgroundColor: Colors.transparent,
-
-          extendBody: true,
-
-          body: IndexedStack(
-
+          final tabs = IndexedStack(
             index: _currentIndex,
-
             children: List.generate(5, (index) {
-
               return CupertinoTabView(
-
                 navigatorKey: _tabNavKeys[index],
-
                 builder: (context) => _screenForIndex(index),
-
               );
-
             }),
+          );
+
+          return AppBackground(
+
+            isDark: Theme.of(context).brightness == Brightness.dark,
+
+            child: Scaffold(
+
+              backgroundColor: Colors.transparent,
+
+              extendBody: !useSideNav,
+
+              body: useSideNav
+                  ? Row(children: [
+                      SideNavBar(
+                        currentIndex: _currentIndex,
+                        onTap: handleNavTap,
+                      ),
+                      Expanded(child: tabs),
+                    ])
+                  : tabs,
+
+              bottomNavigationBar: useSideNav
+                  ? null
+                  : FloatingNavBar(
+                      currentIndex: _currentIndex,
+                      onTap: handleNavTap,
+                    ),
 
           ),
 
-          bottomNavigationBar: FloatingNavBar(
+          );
 
-            currentIndex: _currentIndex,
-
-            onTap: (index) {
-
-              if (index == _currentIndex) {
-
-                // Pop hasta la raíz
-                _tabNavKeys[index].currentState?.popUntil((route) => route.isFirst);
-                // Forzar recarga completa de la pantalla
-                setState(() => _tabRefreshCounters[index]++);
-
-              } else {
-
-                goToTab(index);
-
-              }
-
-            },
-
-          ),
-
-        ),
-
-        ),
+        }),
 
       ),
 
@@ -1802,62 +1808,130 @@ class _ScheduleInfoDialog extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final r = context.r;
+    final texts = context.texts;
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final surfaceColor = isDark ? const Color(0xFF2C2C2E) : CupertinoColors.white;
     final textColor = isDark ? CupertinoColors.white : CupertinoColors.black;
+    final subtleColor = isDark ? const Color(0xFF8E8E93) : const Color(0xFF6C6C70);
+    final dividerColor = isDark ? const Color(0xFF38383A) : const Color(0xFFE5E5EA);
+    final buttonColor = CupertinoColors.activeBlue;
 
-    return CupertinoAlertDialog(
-      title: Padding(
-        padding: const EdgeInsets.only(bottom: 8),
-        child: Column(
-          children: [
-            Image.asset('assets/images/cossmil_logo.png', width: context.r.avatarSm, height: context.r.avatarSm),
-            const SizedBox(height: 8),
-            Text(
-              'Horarios y Modalidades de Atención Médica',
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, height: 1.2, color: textColor),
-              textAlign: TextAlign.center,
-            ),
-          ],
+    final dialogWidth = (MediaQuery.of(context).size.width * r.modalWidthFactor)
+        .clamp(280.0, r.modalMaxWidth);
+
+    return Dialog(
+      backgroundColor: Colors.transparent,
+      insetPadding: EdgeInsets.symmetric(horizontal: r.paddingH, vertical: r.spaceLg),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(r.modalRadius),
+        child: Container(
+          width: dialogWidth,
+          color: surfaceColor,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // ── Cabecera ──────────────────────────────────────────────────
+              Padding(
+                padding: EdgeInsets.fromLTRB(r.modalPadding, r.spaceLg, r.modalPadding, r.spaceMd),
+                child: Column(
+                  children: [
+                    Image.asset(
+                      'assets/images/cossmil_logo.png',
+                      width: r.avatarMd,
+                      height: r.avatarMd,
+                    ),
+                    SizedBox(height: r.spaceSm),
+                    Text(
+                      'Horarios y Modalidades\nde Atención Médica',
+                      style: texts.titleLarge.copyWith(color: textColor, height: 1.25),
+                      textAlign: TextAlign.center,
+                    ),
+                  ],
+                ),
+              ),
+
+              Divider(height: 1, thickness: 1, color: dividerColor),
+
+                      // ── Contenido (scrollable para no desbordar en web/pantalla pequeña) ──
+              Flexible(
+                child: SingleChildScrollView(
+                  child: Padding(
+                    padding: EdgeInsets.fromLTRB(r.modalPadding, r.spaceMd, r.modalPadding, r.spaceLg),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        _infoRow('🗓', 'Lunes a Viernes',
+                            'Atención regular para todas las especialidades médicas mediante reserva previa.',
+                            textColor, subtleColor, r, texts),
+                        SizedBox(height: r.spaceMd),
+                        _infoRow('🚨', 'Sábados, Domingos y Feriados',
+                            'Atención exclusiva a través de Emergencias, disponible las 24 horas.',
+                            textColor, subtleColor, r, texts),
+                        SizedBox(height: r.spaceMd),
+                        _infoRow('📱', 'Reserva 24/7',
+                            'Podés sacar su ficha en cualquier momento del día. La agenda se renueva cada mañana a las 6:00 a.m. para habilitar nuevos turnos.\n\nEjemplo: si hoy es viernes y desea reservar para el próximo viernes, ese turno estará disponible desde las 6:00 a.m. de ese día.',
+                            textColor, subtleColor, r, texts),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+
+              // ── Botón ─────────────────────────────────────────────────────
+              Divider(height: 1, thickness: 1, color: dividerColor),
+              SizedBox(
+                width: double.infinity,
+                child: CupertinoButton(
+                  padding: EdgeInsets.symmetric(vertical: r.spaceMd),
+                  onPressed: () => Navigator.of(context).pop(),
+                  child: Text(
+                    'Entendido',
+                    style: texts.labelLarge.copyWith(
+                      color: buttonColor,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
-      content: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const SizedBox(height: 8),
-          _infoRow('🗓', 'Lunes a Viernes', 'Atención regular habilitada para todas las especialidades médicas mediante reserva previa.', textColor),
-          const SizedBox(height: 10),
-          _infoRow('🚨', 'Sábados, Domingos y Feriados', 'Atención médica exclusiva a través del servicio de Emergencias las 24 horas.', textColor),
-          const SizedBox(height: 10),
-          _infoRow('ℹ️', 'Nota especial', 'Los días sábado se brinda atención en consulta externa únicamente para la especialidad de Ginecología.', textColor),
-          const SizedBox(height: 10),
-          _infoRow('📱', 'Reserva por App', 'El sistema permite programar citas médicas abarcando un ciclo semanal completo (ej. de lunes al siguiente lunes). La agenda para nuevos turnos se actualiza automáticamente todos los días a partir de las 23:59 hrs.', textColor),
-        ],
-      ),
-      actions: [
-        CupertinoDialogAction(
-          isDefaultAction: true,
-          onPressed: () => Navigator.of(context).pop(),
-          child: const Text('Entendido'),
-        ),
-      ],
     );
   }
 
-  Widget _infoRow(String icon, String day, String detail, Color textColor) {
+  Widget _infoRow(
+    String icon,
+    String label,
+    String detail,
+    Color textColor,
+    Color subtleColor,
+    AppResponsive r,
+    ResponsiveTypography texts,
+  ) {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(icon, style: const TextStyle(fontSize: 14)),
-        const SizedBox(width: 6),
+        Text(icon, style: TextStyle(fontSize: r.iconSm - 2)),
+        SizedBox(width: r.spaceSm),
         Expanded(
-          child: RichText(
-            text: TextSpan(
-              style: TextStyle(fontSize: 13, height: 1.4, color: textColor),
-              children: [
-                TextSpan(text: '$day: ', style: const TextStyle(fontWeight: FontWeight.w700)),
-                TextSpan(text: detail),
-              ],
-            ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                label,
+                style: texts.bodyMedium.copyWith(
+                  color: textColor,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              SizedBox(height: r.spaceXs),
+              Text(
+                detail,
+                style: texts.bodySmall.copyWith(color: subtleColor, height: 1.45),
+              ),
+            ],
           ),
         ),
       ],

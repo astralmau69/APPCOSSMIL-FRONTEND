@@ -73,7 +73,7 @@ class SessionRestoreService {
         debugPrint('💾 SessionRestore: sesión guardada (${jsonStr.length} chars)');
       }
     } catch (e) {
-      debugPrint('❌ SessionRestore: error al guardar sesión: $e');
+      if (kDebugMode) debugPrint('❌ SessionRestore: error al guardar sesión: $e');
     }
   }
 
@@ -139,7 +139,7 @@ class SessionRestoreService {
       }
       return true;
     } catch (e) {
-      debugPrint('❌ SessionRestore: error al restaurar sesión: $e');
+      if (kDebugMode) debugPrint('❌ SessionRestore: error al restaurar sesión: $e');
       return false;
     }
   }
@@ -148,7 +148,7 @@ class SessionRestoreService {
   static Future<void> _tryRefreshPhoto(String matricula) async {
     final api = ApiClient();
     try {
-      final response = await api.get(ApiConstants.aseguradoFoto(matricula));
+      final response = await api.get(ApiConstants.aseguradoTipoGpo(matricula));
       if (response is ApiSuccess && response.data is Map<String, dynamic>) {
         final data = response.data as Map<String, dynamic>;
         final rawPhoto = data['foto2'] as String? ?? '';
@@ -161,7 +161,9 @@ class SessionRestoreService {
                         data['rango']?.toString() ??
                         data['Rango']?.toString() ?? '').trim();
         final eRefe4 = (data['refe4'] as String? ?? '').trim();
-        final eFuerza = (data['fuerza'] as String? ?? '').trim();
+        final eFuerza = (data['fuerza'] as String? ?? data['desfue'] as String? ?? '').trim();
+        final eAbrgra = (data['abrgra']?.toString() ?? '').trim();
+        final eTipopersonal = (data['tipopersonal'] as String? ?? '').trim();
         // tipo == 'T' es la fuente autoritativa para Titular (ver auth_service.dart)
         final eTipo = (data['tipo']?.toString() ?? '').trim().toUpperCase();
         final isFotoTitular = eTipo == 'T';
@@ -175,15 +177,17 @@ class SessionRestoreService {
         final shouldUpgradeToTitular =
             isFotoTitular && !UserSession.currentUser.isTitular && !savedRoleIsExplicitBeneficiary;
 
-        if (cleanPhoto.isNotEmpty || eBloodType.isNotEmpty || eAllergies.isNotEmpty || eGrado.isNotEmpty || eRefe4.isNotEmpty || eFuerza.isNotEmpty || shouldUpgradeToTitular) {
+        if (cleanPhoto.isNotEmpty || eBloodType.isNotEmpty || eAllergies.isNotEmpty || eGrado.isNotEmpty || eRefe4.isNotEmpty || eFuerza.isNotEmpty || eTipopersonal.isNotEmpty || shouldUpgradeToTitular) {
           UserSession.currentUser = UserSession.currentUser.copyWith(
             photoBase64: cleanPhoto.isNotEmpty ? cleanPhoto : UserSession.currentUser.photoBase64,
             bloodType: eBloodType.isNotEmpty ? eBloodType : UserSession.currentUser.bloodType,
             allergies: eAllergies.isNotEmpty ? eAllergies : UserSession.currentUser.allergies,
-            rank: eGrado.isNotEmpty ? eGrado : UserSession.currentUser.rank,
+            // tipo='B': guardar abrgra como rank para combinar con fuerza en UI ("SOF.1RO. - EJERCITO").
+            rank: (eTipo == 'B') ? eAbrgra : (eGrado.isNotEmpty ? eGrado : UserSession.currentUser.rank),
             role: shouldUpgradeToTitular ? 'Titular' : null,
             serviceStatus: eRefe4.isNotEmpty ? eRefe4 : UserSession.currentUser.serviceStatus,
             fuerza: eFuerza.isNotEmpty ? eFuerza : UserSession.currentUser.fuerza,
+            tipopersonal: eTipopersonal.isNotEmpty ? eTipopersonal : UserSession.currentUser.tipopersonal,
           );
 
           // Si promovimos a Titular y no hay entrada titular en la lista, intentar

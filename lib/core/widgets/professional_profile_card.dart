@@ -159,14 +159,32 @@ class ProfessionalProfileCard extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  // Fuerza (rama militar) — siempre visible encima del grado
-                  _buildRankLabel(
-                    icon: CupertinoIcons.flag_fill,
-                    text: 'Fuerza · ${user.fuerza.isNotEmpty ? user.fuerza : "—"}',
-                  ),
-                  // Label arriba del nombre: grado del titular o "Empleado Civil"
-                  // según corresponda. Se omite si el backend no devolvió rank.
-                  if (RankUtils.isValidRankForDisplay(user.rank))
+                  // tipo='B': tipopersonal arriba + abrgra-fuerza/civil abajo
+                  if (user.tipopersonal.toUpperCase().contains('BENEFICIARIO') &&
+                      (user.tipopersonal.isNotEmpty || user.fuerza.isNotEmpty)) ...[
+                    if (user.tipopersonal.isNotEmpty)
+                      _buildRankLabel(
+                        icon: CupertinoIcons.shield_fill,
+                        text: 'BENEFICIARIO',
+                      ),
+                    if (user.fuerza.isNotEmpty)
+                      _buildRankLabel(
+                        icon: CupertinoIcons.person_badge_plus_fill,
+                        text: user.fuerza.trim().toUpperCase() == 'CIVIL'
+                            ? 'Ref. Titular · Personal con Ítem'
+                            : (user.rank.isNotEmpty
+                                ? 'Grado del titular · ${user.rank} - ${user.fuerza}'
+                                : user.fuerza),
+                      ),
+                  // tipo='T': ramo institucional con acentuación correcta
+                  ] else if (user.fuerza.isNotEmpty || user.tipopersonal.isNotEmpty)
+                    _buildRankLabel(
+                      icon: CupertinoIcons.shield_fill,
+                      text: user.fuerza.isNotEmpty ? 'Fuerza: ${user.displayFuerza}' : user.tipopersonal,
+                    ),
+                  // Grado del titular — solo para tipo='T' (no para tipo='B' que usa abrgra+fuerza)
+                  if (RankUtils.isValidRankForDisplay(user.rank) &&
+                      !user.tipopersonal.toUpperCase().contains('BENEFICIARIO'))
                     _buildRankLabel(
                       icon: CupertinoIcons.shield_fill,
                       text: 'Grado del titular · ${user.rank}',

@@ -56,6 +56,7 @@ class SoundManager {
   /// Returns true if the Android device ringer is in silent (0) or vibrate (1) mode.
   /// Always returns false on iOS (handled by AVAudioSession ambient category in main.dart).
   static Future<bool> isDeviceSilentOrVibrate() async {
+    if (kIsWeb) return false;
     if (!Platform.isAndroid) return false;
     try {
       const ch = MethodChannel('cossmil.audio/ringer');

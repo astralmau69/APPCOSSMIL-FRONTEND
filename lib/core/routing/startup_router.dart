@@ -55,10 +55,14 @@ class _StartupRouterState extends State<StartupRouter> {
       if (hasPin) {
         _goSplash();
       } else {
-        // Sin PIN/biométrico configurado → no mantener sesión abierta
-        await NotificationService.cancelAllReminders();
-        await TokenStorage.deleteToken();
-        await SessionRestoreService.clearUserSession();
+        // Sin PIN: solo borrar sesión si tampoco hay biometría activa.
+        // Usuarios con huella pero sin PIN deben conservar su sesión.
+        final bioEnabled = await SecurityService.isBiometricsEnabled();
+        if (!bioEnabled) {
+          await NotificationService.cancelAllReminders();
+          await TokenStorage.deleteToken();
+          await SessionRestoreService.clearUserSession();
+        }
         _goSplash();
       }
     } catch (_) {

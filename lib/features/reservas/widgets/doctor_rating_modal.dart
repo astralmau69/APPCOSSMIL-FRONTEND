@@ -73,7 +73,7 @@ class DoctorRatingModal extends StatefulWidget {
       'offered_reserva_${r.idtran}_${r.dr}';
 
   /// Se persiste cuando el usuario envió exitosamente una calificación.
-  static String _ratedKey(ReservaModel r) =>
+  static String ratedKey(ReservaModel r) =>
       'rated_reserva_${r.idtran}_${r.dr}';
 
   // ── Guardia de sesión ─────────────────────────────────────────────────────
@@ -92,7 +92,7 @@ class DoctorRatingModal extends StatefulWidget {
     final prefs = await SharedPreferences.getInstance();
     final offered = prefs.getBool(_offeredKey(reserva)) == true ||
         _offeredThisSession.contains(_offeredKey(reserva));
-    final rated = prefs.getBool(_ratedKey(reserva)) == true;
+    final rated = prefs.getBool(ratedKey(reserva)) == true;
     return offered && !rated;
   }
 
@@ -100,7 +100,14 @@ class DoctorRatingModal extends StatefulWidget {
   /// Usado para mostrar el botón "Calificar" en el historial.
   static Future<bool> isRatable(ReservaModel reserva) async {
     final prefs = await SharedPreferences.getInstance();
-    return prefs.getBool(_ratedKey(reserva)) != true;
+    return prefs.getBool(ratedKey(reserva)) != true;
+  }
+
+  /// Marca la reserva como ya calificada en SharedPreferences.
+  /// Llamar cuando el backend confirma que ya fue calificada.
+  static Future<void> markAsRated(ReservaModel reserva) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(ratedKey(reserva), true);
   }
 
   /// Muestra el modal automáticamente si la cita ya pasó (15 min de gracia)
@@ -114,10 +121,10 @@ class DoctorRatingModal extends StatefulWidget {
 
     final prefs = await SharedPreferences.getInstance();
     final offeredKey = _offeredKey(reserva);
-    final ratedKey = _ratedKey(reserva);
+    final ratedKeyStr = ratedKey(reserva);
 
     // Ya calificada o ya ofrecida anteriormente → no auto-mostrar de nuevo.
-    if (prefs.getBool(ratedKey) == true) return;
+    if (prefs.getBool(ratedKeyStr) == true) return;
     if (prefs.getBool(offeredKey) == true) return;
     if (_offeredThisSession.contains(offeredKey)) return;
 
@@ -308,7 +315,7 @@ class _DoctorRatingModalState extends State<DoctorRatingModal>
   /// Persiste la calificación exitosa. El botón "Calificar" desaparecerá.
   Future<void> _markRated() async {
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool(DoctorRatingModal._ratedKey(widget.reserva), true);
+    await prefs.setBool(DoctorRatingModal.ratedKey(widget.reserva), true);
   }
 
   @override

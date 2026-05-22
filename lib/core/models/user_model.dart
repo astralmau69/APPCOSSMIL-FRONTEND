@@ -31,6 +31,8 @@ class UserModel {
   final String numCel;
   /// Fuerza/rama militar (ej. "EJERCITO", "ARMADA", "FUERZA AÉREA").
   final String fuerza;
+  /// Tipo de personal (ej. "Personal - Militar", "Personal - Civil").
+  final String tipopersonal;
   final List<BeneficiaryModel> beneficiaries;
 
   const UserModel({
@@ -57,6 +59,7 @@ class UserModel {
     this.referencia = '',
     this.numCel = '',
     this.fuerza = '',
+    this.tipopersonal = '',
     required this.beneficiaries,
   });
 
@@ -84,6 +87,7 @@ class UserModel {
     String? referencia,
     String? numCel,
     String? fuerza,
+    String? tipopersonal,
     List<BeneficiaryModel>? beneficiaries,
   }) {
     return UserModel(
@@ -111,6 +115,7 @@ class UserModel {
       referencia: referencia ?? this.referencia,
       numCel: numCel ?? this.numCel,
       fuerza: fuerza ?? this.fuerza,
+      tipopersonal: tipopersonal ?? this.tipopersonal,
       beneficiaries: beneficiaries ?? this.beneficiaries,
     );
   }
@@ -163,6 +168,7 @@ class UserModel {
       referencia: json['referencia'] as String? ?? '',
       numCel: (json['numCel'] as String? ?? json['numcel'] as String? ?? '').trim(),
       fuerza: (json['fuerza'] as String? ?? '').trim(),
+      tipopersonal: (json['tipopersonal'] as String? ?? '').trim(),
     );
   }
 
@@ -188,6 +194,7 @@ class UserModel {
         'referencia': referencia,
         'numCel': numCel,
         'fuerza': fuerza,
+        'tipopersonal': tipopersonal,
         'beneficiaries': beneficiaries.map((b) => b.toJson()).toList(),
       };
 
@@ -203,6 +210,20 @@ class UserModel {
     age: age,
     gender: gender,
   );
+
+  /// Etiqueta formateada de la fuerza/ramo institucional para mostrar en UI.
+  ///
+  /// - "EJERCITO"/"ARMADA"/"FUERZA AEREA" → nombre largo de la institución militar
+  /// - "CIVIL" → "Trabajador Ítem · Titular"
+  /// - Cualquier otro valor → tal cual viene del backend
+  String get displayFuerza {
+    final f = fuerza.trim().toUpperCase();
+    if (f.isEmpty) return '';
+    if (f == 'CIVIL') return 'Trabajador Ítem · Titular';
+    if (f == 'EJERCITO') return 'EJÉRCITO';
+    if (f.contains('AERE')) return 'FUERZA AÉREA';
+    return fuerza.trim();
+  }
 
   /// Grado para mostrar en chips del perfil/tarjeta.
   ///

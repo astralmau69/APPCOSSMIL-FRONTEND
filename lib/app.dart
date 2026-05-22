@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'core/constants/app_colors.dart';
 import 'core/theme/app_theme.dart';
@@ -22,7 +23,6 @@ class CossmilApp extends StatefulWidget {
 }
 
 class _CossmilAppState extends State<CossmilApp> {
-
   @override
   Widget build(BuildContext context) {
     return ValueListenableBuilder<ThemeMode>(
@@ -30,35 +30,44 @@ class _CossmilAppState extends State<CossmilApp> {
       builder: (context, currentThemeMode, child) {
         return MaterialApp(
           builder: (context, appChild) {
-            final mediaQueryData = MediaQuery.of(context);
-            final screenWidth = mediaQueryData.size.width;
+            final mq = MediaQuery.of(context);
+            final screenWidth = mq.size.width;
+            final isDark = currentThemeMode == ThemeMode.dark;
+            final defaultColor =
+                isDark ? AppColors.darkTextPrimary : AppColors.textPrimary;
 
-            // Escalado proporcional al ancho de pantalla
-            // 320px → 0.88x | 375px → 1.0x | 428px → 1.08x | 600px → 1.15x
-            const double referenceWidth = 375.0;
-            final double widthScale = (screenWidth / referenceWidth).clamp(0.85, 1.2);
+            // Web: escala fija 1:1 — el sistema responsive (AppResponsive)
+            // se encarga del tamaño de fuentes y espaciado según el ancho real.
+            if (kIsWeb) {
+              return MediaQuery(
+                data: mq.copyWith(textScaler: const TextScaler.linear(1.0)),
+                child: DefaultTextStyle(
+                  style: TextStyle(
+                      decoration: TextDecoration.none, color: defaultColor),
+                  child: appChild!,
+                ),
+              );
+            }
 
-            // Respetar accesibilidad del sistema pero limitar para no romper layouts
-            final double systemScale = mediaQueryData.textScaler.scale(1.0).clamp(0.8, 2.0);
+            // Móvil nativo: escala proporcional al ancho (375 px = referencia).
+            // 320px → 0.85x | 375px → 1.0x | 428px → 1.08x | 600px → 1.2x
+            const double refW = 375.0;
+            final double wScale = (screenWidth / refW).clamp(0.85, 1.2);
+            final double sysScale =
+                mq.textScaler.scale(1.0).clamp(0.8, 2.0);
 
-            final TextScaler customTextScaler = TextScaler.linear(widthScale * systemScale);
-
-            // Ensures ALL Text widgets have decoration:none by default.
-            final defaultColor = currentThemeMode == ThemeMode.dark ? AppColors.darkTextPrimary : AppColors.textPrimary;
-            
             return MediaQuery(
-              data: mediaQueryData.copyWith(textScaler: customTextScaler),
+              data: mq.copyWith(
+                  textScaler: TextScaler.linear(wScale * sysScale)),
               child: DefaultTextStyle(
                 style: TextStyle(
-                  decoration: TextDecoration.none,
-                  color: defaultColor,
-                ),
+                    decoration: TextDecoration.none, color: defaultColor),
                 child: appChild!,
               ),
             );
           },
           navigatorKey: CossmilApp.navigatorKey,
-          title: 'COSSMIL Flow',
+          title: 'COSSMIL',
           debugShowCheckedModeBanner: false,
           theme: AppTheme.light(context),
           darkTheme: AppTheme.dark(context),

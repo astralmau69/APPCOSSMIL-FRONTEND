@@ -6,6 +6,7 @@ import '../../../core/models/news_item_model.dart';
 import '../../../core/services/cossmil_news_service.dart';
 import '../../../core/animations/optimized_animations.dart';
 import '../../../core/widgets/image_enlarged_modal.dart';
+import '../../../core/widgets/adaptive_sliver_nav_bar.dart';
 
 class NewsDetailScreen extends StatefulWidget {
   final NewsItemModel item;
@@ -48,7 +49,7 @@ class _NewsDetailScreenState extends State<NewsDetailScreen> {
       child: CustomScrollView(
         physics: const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
         slivers: [
-          CupertinoSliverNavigationBar(
+          AdaptiveSliverNavBar(
             largeTitle: const Text('Comunicado'),
             backgroundColor: AppColors.navBarBg(isDark),
             previousPageTitle: 'Volver',

@@ -14,6 +14,7 @@ import '../../../core/models/user_model.dart';
 import '../../../core/services/cossmil_news_service.dart';
 import '../../../core/widgets/section_header.dart';
 import '../../../core/widgets/professional_profile_card.dart';
+import '../../../core/widgets/adaptive_sliver_nav_bar.dart';
 import 'news_detail_screen.dart';
 import '../../../shell/tab_shell.dart';
 import '../../familia/screens/familia_screen.dart';
@@ -112,7 +113,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       child: CustomScrollView(
         physics: const AlwaysScrollableScrollPhysics(),
         slivers: [
-          CupertinoSliverNavigationBar(
+          AdaptiveSliverNavBar(
             largeTitle: Text('Inicio', style: TextStyle(color: AppColors.textPrimaryC(isDark))),
             backgroundColor: AppColors.navBarBg(isDark),
             border: null,

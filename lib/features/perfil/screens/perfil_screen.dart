@@ -19,6 +19,7 @@ import '../../../core/widgets/cossmil_ios_alert.dart';
 import '../../../core/theme/sound_manager.dart';
 import '../../../core/utils/rank_utils.dart';
 import '../../../core/widgets/image_enlarged_modal.dart';
+import '../../../core/widgets/adaptive_sliver_nav_bar.dart';
 import '../../notificaciones/screens/notificaciones_screen.dart';
 import 'emergency_data_screen.dart';
 
@@ -135,7 +136,7 @@ class _PerfilScreenState extends State<PerfilScreen> {
         physics: const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
         slivers: [
           // ── Navigation Bar ──────────────────────────────────────────────
-          CupertinoSliverNavigationBar(
+          AdaptiveSliverNavBar(
             largeTitle: Text('Mi Perfil', style: TextStyle(color: AppColors.textPrimaryC(isDark))),
             backgroundColor: isDark
                 ? AppColors.darkSurface.withValues(alpha: 0.92)
@@ -555,6 +556,32 @@ class _PerfilScreenState extends State<PerfilScreen> {
 
                 SizedBox(height: r.spaceSm),
 
+                // ── Tipo de asegurado (solo para beneficiarios) ─────────
+                if (user.tipopersonal.toUpperCase().contains('BENEFICIARIO'))
+                  Padding(
+                    padding: EdgeInsets.only(bottom: r.spaceXs),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          CupertinoIcons.shield_fill,
+                          size: 12,
+                          color: AppColors.accentForTheme(isDark).withValues(alpha: 0.65),
+                        ),
+                        SizedBox(width: r.spaceXs),
+                        Text(
+                          'BENEFICIARIO',
+                          style: TextStyle(
+                            fontWeight: FontWeight.w700,
+                            letterSpacing: 1.2,
+                            fontSize: 10.5,
+                            color: AppColors.accentForTheme(isDark).withValues(alpha: 0.75),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+
                 // ── Fuerza — siempre visible encima del grado ──────────
                 Padding(
                   padding: EdgeInsets.only(bottom: r.spaceXs),
@@ -568,7 +595,10 @@ class _PerfilScreenState extends State<PerfilScreen> {
                       ),
                       SizedBox(width: r.spaceXs),
                       Text(
-                        'FUERZA · ${user.fuerza.isNotEmpty ? user.fuerza.toUpperCase() : "—"}',
+                        user.tipopersonal.toUpperCase().contains('BENEFICIARIO') &&
+                                user.fuerza.trim().toUpperCase() == 'CIVIL'
+                            ? 'REF. TITULAR · PERSONAL CON ÍTEM'
+                            : 'FUERZA · ${user.fuerza.isNotEmpty ? user.fuerza.toUpperCase() : "—"}',
                         style: TextStyle(
                           fontWeight: FontWeight.w700,
                           letterSpacing: 1.2,
@@ -1204,7 +1234,7 @@ class _PerfilScreenState extends State<PerfilScreen> {
           CupertinoSwitch(
             value: value,
             onChanged: onChanged,
-            activeColor: AppColors.primary,
+            activeTrackColor: AppColors.primary,
           ),
         ],
       ),

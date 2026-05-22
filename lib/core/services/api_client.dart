@@ -393,9 +393,10 @@ class ApiClient {
         debugPrint('   ❌ Refresh falló: ${response.statusCode}');
       }
       
-      // Si el backend rechaza el refresh_token, la sesión caducó por completo.
+      // Si el backend rechaza el refresh_token solo borramos los tokens del servidor.
+      // El PIN y la biometría son locales y NO dependen del ciclo de vida del token:
+      // el usuario conserva su desbloqueo configurado para la próxima sesión.
       await TokenStorage.deleteToken();
-      await SecurityService.clearSecurityData();
       return false;
     } on Exception catch (e) {
       if (kDebugMode) {
