@@ -5,6 +5,7 @@ import 'package:local_auth/local_auth.dart';
 import 'package:local_auth_android/local_auth_android.dart';
 import 'package:local_auth_darwin/local_auth_darwin.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter/foundation.dart';
 
 /// Capacidad biométrica real del dispositivo.
 ///
@@ -146,6 +147,7 @@ class SecurityService {
 
   /// Retorna el estado real de biometría del dispositivo.
   static Future<DeviceBiometricStatus> getDeviceBiometricStatus() async {
+    if (kIsWeb) return DeviceBiometricStatus.unavailable;
     try {
       final isDeviceSupported = await _localAuth.isDeviceSupported();
       if (!isDeviceSupported) return DeviceBiometricStatus.unavailable;
@@ -168,6 +170,7 @@ class SecurityService {
 
   /// Lista de tipos biométricos disponibles en el dispositivo.
   static Future<List<BiometricType>> getAvailableBiometrics() async {
+    if (kIsWeb) return <BiometricType>[];
     try {
       return await _localAuth.getAvailableBiometrics();
     } on PlatformException {
@@ -208,6 +211,7 @@ class SecurityService {
   static Future<bool> authenticateWithBiometrics({
     String reason = 'Desbloquea tu aplicación COSSMIL',
   }) async {
+    if (kIsWeb) return false;
     try {
       return await _localAuth.authenticate(
         localizedReason: reason,

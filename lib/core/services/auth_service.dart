@@ -65,7 +65,7 @@ class AuthService {
         headers: {
           'Authorization': ApiConstants.basicAuthHeader,
           'Content-Type': 'application/x-www-form-urlencoded',
-          'User-Agent': 'insomnia/2023.5.8',
+          if (!kIsWeb) 'User-Agent': 'insomnia/2023.5.8',
         },
         body: {
           'grant_type': 'password',
