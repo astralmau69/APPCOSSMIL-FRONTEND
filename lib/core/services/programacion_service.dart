@@ -182,7 +182,7 @@ class ProgramacionService {
 
     return switch (response) {
       ApiSuccess(:final data) => () {
-        debugPrint('📦 regionales raw response: $data');
+        if (kDebugMode) debugPrint('📦 regionales raw response: $data');
         return _parseRegionales(data);
       }(),
       ApiError(:final message) => throw Exception(message),
@@ -298,8 +298,8 @@ class ProgramacionService {
     return switch (response) {
       ApiSuccess(:final data) => () {
         final result = _extractDataValue(data);
-        debugPrint('🔎 verificarHorario raw data: $data');
-        debugPrint('🔎 verificarHorario parsed result: $result');
+        if (kDebugMode) debugPrint('🔎 verificarHorario raw data: $data');
+        if (kDebugMode) debugPrint('🔎 verificarHorario parsed result: $result');
         return result;
       }(),
       ApiError(:final message) => throw Exception(message),
@@ -337,7 +337,7 @@ class ProgramacionService {
 
     return switch (response) {
       ApiSuccess(:final data) => () {
-        debugPrint('📦 horarios-atencion raw response: $data');
+        if (kDebugMode) debugPrint('📦 horarios-atencion raw response: $data');
         return _parseHorariosAtencion(data);
       }(),
       ApiError(:final message) => throw Exception(message),
@@ -489,7 +489,7 @@ class ProgramacionService {
 
     return switch (response) {
       ApiSuccess(:final data) => () {
-        debugPrint('📦 historial-citas raw response: $data');
+        if (kDebugMode) debugPrint('📦 historial-citas raw response: $data');
         final List<ReservaModel> reservas = _parseReservas(data);
         // Extraer paginación
         int totalElements = 0;
@@ -526,7 +526,7 @@ class ProgramacionService {
 
     return switch (response) {
       ApiSuccess(:final data) => () {
-        debugPrint('📦 historial-citas-canceladas raw response: $data');
+        if (kDebugMode) debugPrint('📦 historial-citas-canceladas raw response: $data');
         final List<ReservaModel> reservas = _parseReservas(data);
         // Extraer paginación
         int totalElements = 0;
@@ -610,7 +610,7 @@ class ProgramacionService {
 
     return switch (response) {
       ApiSuccess(:final data) => () {
-        debugPrint('📦 grupo-familiar raw response: $data');
+        if (kDebugMode) debugPrint('📦 grupo-familiar raw response: $data');
         final list = _extractDataList(data);
         return list
             .map((e) => BeneficiaryModel.fromJson(e as Map<String, dynamic>))
@@ -747,7 +747,7 @@ class ProgramacionService {
   int? _extractDataValue(dynamic body) {
     if (body is Map<String, dynamic>) {
       final data = body['data'];
-      debugPrint('🔎 _extractDataValue: body es Map, data=$data (${data.runtimeType})');
+      if (kDebugMode) debugPrint('🔎 _extractDataValue: body es Map, data=$data (${data.runtimeType})');
       if (data is int) return data;
       if (data is num) return data.toInt();
       // Intentar parsear desde String
@@ -758,7 +758,7 @@ class ProgramacionService {
     // Si body YA es el valor escalar directamente
     if (body is int) return body;
     if (body is num) return body.toInt();
-    debugPrint('🔎 _extractDataValue: no se pudo extraer valor de $body (${body.runtimeType})');
+    if (kDebugMode) debugPrint('🔎 _extractDataValue: no se pudo extraer valor de $body (${body.runtimeType})');
     return null;
   }
 
@@ -770,20 +770,20 @@ class ProgramacionService {
   }
 
   MedicoAsignadoModel _parseMedicoAsignado(dynamic body) {
-    debugPrint('📦 Parsing medico-asignado body: $body');
+    if (kDebugMode) debugPrint('📦 Parsing medico-asignado body: $body');
     if (body is Map<String, dynamic>) {
       final data = body['data'];
-      debugPrint('   ↳ data field: $data');
+      if (kDebugMode) debugPrint('   ↳ data field: $data');
       if (data is Map<String, dynamic>) {
         return MedicoAsignadoModel.fromJson(data);
       }
       // Si data es una lista, tomar el primer elemento
       if (data is List && data.isNotEmpty && data.first is Map<String, dynamic>) {
-        debugPrint('   ↳ data is a list, taking first element');
+        if (kDebugMode) debugPrint('   ↳ data is a list, taking first element');
         return MedicoAsignadoModel.fromJson(data.first as Map<String, dynamic>);
       }
     }
-    debugPrint('   ⚠️ No hay datos válidos en la respuesta de médico asignado');
+    if (kDebugMode) debugPrint('   ⚠️ No hay datos válidos en la respuesta de médico asignado');
     throw Exception('Sin médico asignado para esta especialidad');
   }
 

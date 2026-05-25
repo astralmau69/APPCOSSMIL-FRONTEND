@@ -13,6 +13,7 @@ import '../../../core/services/programacion_service.dart';
 import '../../../core/session/user_session.dart';
 import '../../../core/widgets/app_state_widget.dart';
 import '../../../core/widgets/beneficiary_selector_modal.dart';
+import '../../../core/widgets/adaptive_sliver_nav_bar.dart';
 import '../../../core/models/beneficiary_model.dart';
 import '../../../core/utils/error_mapper.dart';
 import '../../../core/utils/app_logger.dart';
@@ -552,7 +553,7 @@ class _ReservasScreenState extends State<ReservasScreen> {
               parent: AlwaysScrollableScrollPhysics(),
             ),
             slivers: [
-              CupertinoSliverNavigationBar(
+              AdaptiveSliverNavBar(
                 largeTitle: Text('Mis Reservas',
                     style: TextStyle(color: AppColors.textPrimaryC(isDark))),
                 backgroundColor: isDark
@@ -1197,6 +1198,22 @@ class _ReservasScreenState extends State<ReservasScreen> {
   ///   - Citas de 2026+ completadas → muestran botón "Calificar" si no fue calificada.
   ///   - Notificación inmediata → SOLO si la cita es del día de hoy.
   Future<void> _loadPendingRatings() async {
+    // Consulta las últimas 10 citas al backend para sincronizar estado de calificación.
+    // Esto detecta las ya calificadas sin depender únicamente de SharedPreferences local.
+    final idper = int.tryParse(UserSession.currentUser.id) ?? 0;
+    if (idper > 0) {
+      try {
+        final result = await _service.getHistorialCitas(idper, pagina: 1, cantidad: 10);
+        for (final r in result.reservas) {
+          if (r.calificado) {
+            await DoctorRatingModal.markAsRated(r);
+          }
+        }
+      } catch (_) {
+        // Error de red: continuar con el estado local de SharedPreferences.
+      }
+    }
+
     final pending = <String>{};
     final today = DateTime.now();
     final todayDate = DateTime(today.year, today.month, today.day);
@@ -1208,6 +1225,12 @@ class _ReservasScreenState extends State<ReservasScreen> {
       // Excluir citas anteriores a 2026 de toda la lógica de calificación.
       final apptDate = r.appointmentDate;
       if (apptDate == null || apptDate.year < 2026) continue;
+
+      // Si el backend ya indica que fue calificada, marcar en SP y saltar.
+      if (r.calificado) {
+        await DoctorRatingModal.markAsRated(r);
+        continue;
+      }
 
       final isRatable = await DoctorRatingModal.isRatable(r);
       if (!isRatable) continue;
@@ -1697,7 +1720,7 @@ class _ReservasScreenState extends State<ReservasScreen> {
               parent: AlwaysScrollableScrollPhysics(),
             ),
             slivers: [
-              CupertinoSliverNavigationBar(
+              AdaptiveSliverNavBar(
                 largeTitle: Text('Mis Reservas',
                     style: TextStyle(color: AppColors.textPrimaryC(isDark))),
                 backgroundColor: isDark

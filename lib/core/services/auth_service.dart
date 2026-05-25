@@ -75,11 +75,13 @@ class AuthService {
       );
 
       // ── DEBUG TEMPORAL: ver exactamente qué responde el servidor ──────────
-      debugPrint('🌐 LOGIN HTTP ${response.statusCode}');
-      debugPrint('   URL: ${ApiConstants.tokenUri}');
-      debugPrint('   username: "$username" | password: "$password"');
-      if (response.statusCode != 200) {
-        debugPrint('   ❌ Body: ${utf8.decode(response.bodyBytes)}');
+      if (kDebugMode) {
+        debugPrint('🌐 LOGIN HTTP ${response.statusCode}');
+        debugPrint('   URL: ${ApiConstants.tokenUri}');
+        debugPrint('   username: "$username" | password: "$password"');
+        if (response.statusCode != 200) {
+          debugPrint('   ❌ Body: ${utf8.decode(response.bodyBytes)}');
+        }
       }
       // ── FIN DEBUG ─────────────────────────────────────────────────────────
 
@@ -112,7 +114,10 @@ class AuthService {
         }
 
         // Mapear datos básicos a UserSession.currentUser
-        final userRoleIsTitular = tokenModel.rol == 'ROLE_ASETIT';
+        // ROLE_ASEBEN = beneficiario familiar. Todo otro rol (militar, civil, etc.)
+        // es el titular de su propia cuenta COSSMIL — incluyendo empleados civiles
+        // que tienen roles distintos de ROLE_ASETIT pero son igualmente titulares.
+        final userRoleIsTitular = tokenModel.rol.toUpperCase() != 'ROLE_ASEBEN';
         
         final selfAsFallback = BeneficiaryModel(
           id: tokenModel.idper.toString(),
@@ -178,8 +183,10 @@ class AuthService {
         // Fallback global para que displayTitle siempre encuentre el rango del titular
         BeneficiaryModel.titularRankFallback = loggedUser.rank;
 
-        debugPrint('✅ UserSession poblada: ${UserSession.currentUser.fullName}');
-        debugPrint('👨‍👩‍👧‍👦 Beneficiarios en sesión: ${UserSession.currentUser.beneficiaries.length}');
+        if (kDebugMode) {
+          debugPrint('✅ UserSession poblada: ${UserSession.currentUser.fullName}');
+          debugPrint('👨‍👩‍👧‍👦 Beneficiarios en sesión: ${UserSession.currentUser.beneficiaries.length}');
+        }
 
         // Guardar nombre de usuario para la pantalla de desbloqueo local
         await SecurityService.saveDisplayName(
@@ -203,33 +210,37 @@ class AuthService {
             final eTelfemerg = (extraData['telfemerg'] as String? ?? '').trim();
             final eReferencia = (extraData['referencia'] as String? ?? '').trim();
             final eNumCel = (extraData['numcel']?.toString() ?? extraData['numCel']?.toString() ?? '').trim();
-            // El endpoint /asegurado/foto/{matricula} es la fuente autoritativa
+            final eFuerza = (extraData['fuerza'] as String? ?? extraData['desfue'] as String? ?? '').trim();
+            final eAbrgra = (extraData['abrgra']?.toString() ?? '').trim();
+            final eTipopersonal = (extraData['tipopersonal'] as String? ?? '').trim();
+            // El endpoint /aseg-tipo-gpo/{matricula} es la fuente autoritativa
             // del tipo de afiliado: tipo=='T' significa Titular. Algunos JWT no
             // devuelven 'rol' = ROLE_ASETIT correctamente, así que confiamos en tipo.
             final eTipo = (extraData['tipo']?.toString() ?? '').trim().toUpperCase();
             final isFotoTitular = eTipo == 'T';
 
-            // Regla JWT-first: si el JWT clasificó explícitamente al usuario como
-            // beneficiario (rol distinto de ROLE_ASETIT y no vacío), no promover
-            // a Titular aunque el endpoint foto diga tipo='T'.
-            final jwtExplicitlyBeneficiary =
-                !userRoleIsTitular && tokenModel.rol.isNotEmpty;
+            // El campo tipo='B' del endpoint foto-gpo clasifica el tipo de afiliado
+            // al sistema militar (civil/militar), NO si es titular de la cuenta COSSMIL.
+            // Por eso no usamos isFotoTitular para decidir el rol: la fuente de verdad
+            // es el JWT. Solo ROLE_ASEBEN indica un beneficiario familiar real.
+            final jwtExplicitlyBeneficiary = !userRoleIsTitular;
 
             UserSession.currentUser = UserSession.currentUser.copyWith(
               photoBase64: titularPhoto,
               birthDate: extraData['fecnac'] as String? ?? '',
               bloodType: eBloodType.isNotEmpty ? eBloodType : UserSession.currentUser.bloodType,
               allergies: eAllergies.isNotEmpty ? eAllergies : UserSession.currentUser.allergies,
-              rank: eGrado.isNotEmpty ? eGrado : UserSession.currentUser.rank,
+              // tipo='B': guardar abrgra como rank para combinar con fuerza en UI ("SOF.1RO. - EJERCITO").
+              rank: (eTipo == 'B') ? eAbrgra : (eGrado.isNotEmpty ? eGrado : UserSession.currentUser.rank),
               role: jwtExplicitlyBeneficiary
-                  ? null // conservar el rol del JWT, no promover
-                  : isFotoTitular
-                      ? 'Titular'
-                      : (eTipo.isNotEmpty ? 'Beneficiario' : null),
+                  ? null    // beneficiario: conservar rol del JWT
+                  : 'Titular', // titular (militar o civil): siempre 'Titular'
               serviceStatus: eRefe4.isNotEmpty ? eRefe4 : UserSession.currentUser.serviceStatus,
               emergencyPhone: eTelfemerg.isNotEmpty ? eTelfemerg : UserSession.currentUser.emergencyPhone,
               referencia: eReferencia.isNotEmpty ? eReferencia : UserSession.currentUser.referencia,
               numCel: eNumCel.isNotEmpty ? eNumCel : UserSession.currentUser.numCel,
+              fuerza: eFuerza.isNotEmpty ? eFuerza : UserSession.currentUser.fuerza,
+              tipopersonal: eTipopersonal.isNotEmpty ? eTipopersonal : UserSession.currentUser.tipopersonal,
             );
 
             // Actualizar fallback con el grado real del endpoint de foto
@@ -374,7 +385,7 @@ class AuthService {
             UserSession.currentUser = UserSession.currentUser.copyWith(beneficiaries: finalBeneficiaries);
           }
         } catch (e) {
-          debugPrint('❌ Error cargando fotos de familia: $e');
+          if (kDebugMode) debugPrint('❌ Error cargando fotos de familia: $e');
         }
 
         // Re-guardar el displayName CON rango militar (el primer save fue antes de fetchProfileExtraData)
@@ -429,7 +440,7 @@ class AuthService {
       debugPrint('📸 Fetching foto para matrícula: "$cleanMat"');
     }
 
-    final response = await _api.get(ApiConstants.aseguradoFoto(cleanMat));
+    final response = await _api.get(ApiConstants.aseguradoTipoGpo(cleanMat));
 
     if (response is ApiSuccess) {
       final data = response.data;

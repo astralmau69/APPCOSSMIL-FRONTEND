@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 
 /// Helpers y extensiones para layouts responsive sin código duplicado.
@@ -57,6 +58,7 @@ class AppResponsive {
   }
 
   static DeviceType _getDeviceType(double width) {
+    if (width >= 1280) return DeviceType.desktop;
     if (width >= 1024) return DeviceType.tabletLarge;
     if (width >= 768) return DeviceType.tabletMedium;
     if (width >= 600) return DeviceType.tabletSmall;
@@ -66,7 +68,8 @@ class AppResponsive {
   }
 
   bool get isPhone => deviceType.index < 3;
-  bool get isTablet => deviceType.index >= 3;
+  bool get isTablet => deviceType.index >= 3 && deviceType != DeviceType.desktop;
+  bool get isDesktop => deviceType == DeviceType.desktop;
   bool get isLandscape => orientation == Orientation.landscape;
   bool get isSmallPhone => deviceType == DeviceType.phoneSmall;
   bool get isMediumPhone => deviceType == DeviceType.phoneMedium;
@@ -85,7 +88,8 @@ class AppResponsive {
       DeviceType.phoneLarge => phoneLarge,
       DeviceType.tabletSmall ||
       DeviceType.tabletMedium ||
-      DeviceType.tabletLarge => tablet,
+      DeviceType.tabletLarge ||
+      DeviceType.desktop => tablet,
     };
   }
 
@@ -108,13 +112,16 @@ class AppResponsive {
   // ── CARD PADDING ──────────────────────────────────────────────────────────
   double get cardPadding => _select(phoneSmall: 12, phoneMedium: 14, phoneLarge: 16, tablet: 20);
 
-  // ── MAX CONTENT WIDTH (limita el ancho en tablets) ─────────────────────────
-  double get maxContentWidth => _select(
-    phoneSmall: double.infinity,
-    phoneMedium: double.infinity,
-    phoneLarge: double.infinity,
-    tablet: 680,
-  );
+  // ── MAX CONTENT WIDTH (limita el ancho en tablets y escritorio) ─────────────
+  double get maxContentWidth {
+    if (isDesktop) return 1100;
+    return _select(
+      phoneSmall: double.infinity,
+      phoneMedium: double.infinity,
+      phoneLarge: double.infinity,
+      tablet: 680,
+    );
+  }
 
   // ── RADII ─────────────────────────────────────────────────────────────────
   double get radiusSm => _select(phoneSmall: 6, phoneMedium: 8, phoneLarge: 8, tablet: 10);
@@ -136,10 +143,16 @@ class AppResponsive {
   double get buttonHeight => _select(phoneSmall: 48, phoneMedium: 52, phoneLarge: 56, tablet: 56);
 
   // ── BOTTOM NAV PADDING (espacio para el floating nav bar) ─────────────────
-  // Incluye el viewPadding.bottom para adaptarse a gestos vs botones de navegación.
-  double get navBarBottomSpace =>
-      _select(phoneSmall: 95, phoneMedium: 100, phoneLarge: 105, tablet: 112)
-      + viewPaddingBottom;
+  // Cero en escritorio/landscape-tablet porque el SideNavBar reemplaza al FloatingNavBar.
+  double get navBarBottomSpace {
+    if (isDesktop || (isTablet && isLandscape)) return 0;
+    // En web el inset del navbar es 4px (sin home indicator), por eso se
+    // usa una base menor que en móvil físico.
+    final base = kIsWeb
+        ? _select(phoneSmall: 80, phoneMedium: 84, phoneLarge: 88, tablet: 96)
+        : _select(phoneSmall: 95, phoneMedium: 100, phoneLarge: 105, tablet: 112);
+    return base + viewPaddingBottom;
+  }
 
   // ── PIN KEY SIZE ──────────────────────────────────────────────────────────
   double get pinKeySize => _select(phoneSmall: 64, phoneMedium: 72, phoneLarge: 82, tablet: 82);
@@ -281,6 +294,7 @@ class ResponsiveData {
   }
 
   static DeviceType _getDeviceType(double width) {
+    if (width >= 1280) return DeviceType.desktop;
     if (width >= 1024) return DeviceType.tabletLarge;
     if (width >= 768) return DeviceType.tabletMedium;
     if (width >= 600) return DeviceType.tabletSmall;
@@ -290,7 +304,8 @@ class ResponsiveData {
   }
 
   bool get isPhone => deviceType.index < 3;
-  bool get isTablet => deviceType.index >= 3;
+  bool get isTablet => deviceType.index >= 3 && deviceType != DeviceType.desktop;
+  bool get isDesktop => deviceType == DeviceType.desktop;
   bool get isLandscape => orientation == Orientation.landscape;
   bool get isPortrait => orientation == Orientation.portrait;
   bool get isSmallPhone => deviceType == DeviceType.phoneSmall;
@@ -318,7 +333,10 @@ class ResponsiveTypography {
       DeviceType.phoneSmall => small,
       DeviceType.phoneMedium => medium,
       DeviceType.phoneLarge => large,
-      DeviceType.tabletSmall || DeviceType.tabletMedium || DeviceType.tabletLarge => tablet,
+      DeviceType.tabletSmall ||
+      DeviceType.tabletMedium ||
+      DeviceType.tabletLarge ||
+      DeviceType.desktop => tablet,
     };
   }
 
@@ -359,7 +377,8 @@ enum DeviceType {
   phoneLarge,      // 428-600
   tabletSmall,     // 600-768
   tabletMedium,    // 768-1024
-  tabletLarge,     // >= 1024
+  tabletLarge,     // 1024-1280
+  desktop,         // >= 1280
 }
 
 /// Helper para contenedores responsive con ancho máximo en tablets.

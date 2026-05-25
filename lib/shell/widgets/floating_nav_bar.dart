@@ -1,5 +1,6 @@
 import 'dart:ui';
 import 'package:flutter/cupertino.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 
 import '../../core/constants/app_colors.dart';
@@ -22,7 +23,8 @@ class FloatingNavBar extends StatelessWidget {
     // Responsive sizing via centralized tokens
     final barHeight = r.navBarHeight;
     final hPadding = r.paddingH;
-    final bottomPadding = r.navBarBottomInset;
+    // En web no hay home indicator — el navbar se pega al borde inferior.
+    final bottomPadding = kIsWeb ? 4.0 : r.navBarBottomInset;
     final navRadius = r.navBarRadius;
 
     final backgroundColor = isDark

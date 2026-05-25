@@ -6,6 +6,7 @@ import '../../../core/theme/app_theme.dart';
 import '../../../core/extensions/responsive_extensions.dart';
 import '../../../core/animations/optimized_animations.dart';
 import 'package:url_launcher/url_launcher.dart';
+import '../../../core/widgets/adaptive_sliver_nav_bar.dart';
 
 // ── Data Model ──────────────────────────────────────────────────────────────
 
@@ -183,7 +184,7 @@ class _ContactosScreenState extends State<ContactosScreen> {
           parent: AlwaysScrollableScrollPhysics(),
         ),
         slivers: [
-          CupertinoSliverNavigationBar(
+          AdaptiveSliverNavBar(
             largeTitle: Text(
               'Contactos COSSMIL',
               style: TextStyle(color: AppColors.textPrimaryC(isDark)),

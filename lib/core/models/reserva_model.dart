@@ -34,6 +34,9 @@ class ReservaModel {
   /// Estado de cancelación del backend: "0" = no cancelada, "1" = cancelada.
   final String estadoCancelacion;
 
+  /// Si la cita ya fue calificada según el backend (campo del historial).
+  final bool calificado;
+
   const ReservaModel({
     required this.id,
     required this.patientName,
@@ -55,6 +58,7 @@ class ReservaModel {
     this.idmed,
     this.idesp,
     this.estadoCancelacion = '0',
+    this.calificado = false,
   });
 
   /// Parsea la respuesta real del endpoint historial-citas.
@@ -113,6 +117,17 @@ class ReservaModel {
       idmed: (json['idmed'] ?? json['idMed'] ?? json['id_medico'])?.toString(),
       idesp: json['idesp'] as int? ?? json['idEsp'] as int?,
       estadoCancelacion: estadoCancelacionVal,
+      calificado: () {
+        if (json['calificado'] is bool) return json['calificado'] as bool;
+        if (json['yaCalificado'] is bool) return json['yaCalificado'] as bool;
+        // Calificación numérica presente y no cero → ya fue calificada.
+        final v = json['calificacion'] ?? json['calif'];
+        if (v != null) {
+          final s = v.toString().trim();
+          return s.isNotEmpty && s != '0' && s.toLowerCase() != 'null';
+        }
+        return false;
+      }(),
     );
   }
 
@@ -259,6 +274,7 @@ class ReservaModel {
   ReservaModel copyWith({
     String? status,
     String? estadoCancelacion,
+    bool? calificado,
   }) {
     return ReservaModel(
       id: id,
@@ -281,6 +297,7 @@ class ReservaModel {
       idmed: idmed,
       idesp: idesp,
       estadoCancelacion: estadoCancelacion ?? this.estadoCancelacion,
+      calificado: calificado ?? this.calificado,
     );
   }
 }

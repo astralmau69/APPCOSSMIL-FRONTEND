@@ -1,4 +1,5 @@
 import 'package:flutter/cupertino.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import 'package:flutter/services.dart';
@@ -301,7 +302,7 @@ class _SplashScreenState extends State<SplashScreen>
       _versionCheckFuture = _checkVersionEarly();
     }
 
-    if (!widget.isOverlay && mounted && SoundManager.isEnabled && !await SoundManager.isDeviceSilentOrVibrate()) {
+    if (!kIsWeb && !widget.isOverlay && mounted && SoundManager.isEnabled && !await SoundManager.isDeviceSilentOrVibrate()) {
 
       try {
 
@@ -412,7 +413,7 @@ class _SplashScreenState extends State<SplashScreen>
   /// Verifica permisos tras una actualización de versión.
   /// Si falta alguno, muestra un diálogo explicativo antes de continuar.
   Future<void> _checkPermissionsOnUpdate() async {
-    if (!mounted) return;
+    if (kIsWeb || !mounted) return;
 
     final notifStatus   = await Permission.notification.status;
     final locationStatus = await Permission.location.status;
@@ -618,8 +619,7 @@ class _SplashScreenState extends State<SplashScreen>
         try {
 
           await TokenStorage.deleteToken();
-
-          await SecurityService.clearSecurityData();
+          // No borrar clearSecurityData(): el PIN/biometría es local y debe sobrevivir errores de red.
 
         } catch (_) {}
 
@@ -745,7 +745,11 @@ class _SplashScreenState extends State<SplashScreen>
 
     final size = MediaQuery.of(context).size;
 
-    final logoSize = (size.width * 0.55).clamp(200.0, 320.0);
+    // Clamp también por altura para que el splash no desborde en viewports bajos (web/landscape).
+    // En móvil portrait el height*0.40 supera siempre el límite por ancho → sin cambio visual.
+    final logoSize = (size.width * 0.55)
+        .clamp(140.0, 320.0)
+        .clamp(0.0, size.height * 0.40);
 
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
