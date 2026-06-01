@@ -2,8 +2,8 @@ import 'dart:convert';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
-import 'package:flutter_application_1/core/services/programacion_service.dart';
-import 'package:flutter_application_1/core/services/api_client.dart';
+import 'package:com.cossmil.citamedicapp/core/services/programacion_service.dart';
+import 'package:com.cossmil.citamedicapp/core/services/api_client.dart';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
