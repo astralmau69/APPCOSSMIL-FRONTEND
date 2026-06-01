@@ -95,15 +95,14 @@ class BeneficiaryModel {
   /// Whether this beneficiary is the account holder.
   bool get isTitular => relationship.toUpperCase() == 'TITULAR';
 
-  /// Nombre con tratamiento Sr./Sra.
-  ///
-  /// El grado militar nunca se aplica como prefijo del nombre (ni para
-  /// titulares ni para beneficiarios). Se muestra aparte como label
-  /// "Grado del titular · …" en las pantallas que lo necesiten.
+  /// Nombre con tratamiento apropiado:
+  /// - **Titular**: grado militar como prefijo si lo tiene (ej. "Cnl. Juan Pérez"),
+  ///   o solo nombre si es civil / sin grado.
+  /// - **Beneficiario**: "Sr." / "Sra." según edad y género (niños sin prefijo).
   String get displayTitle => RankUtils.displayNameWithPrefix(
         fullName: fullName,
         isTitular: isTitular,
-        grado: '',
+        grado: isTitular ? effectiveGrado : '',
         age: age,
         gender: effectiveGender,
       );

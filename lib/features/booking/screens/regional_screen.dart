@@ -267,18 +267,22 @@ class _RegionalScreenState extends State<RegionalScreen> {
               SizedBox(height: r.spaceSm),
               if (_locationApplied && _entries.isNotEmpty && _entries.first.distanceKm != null)
                 Padding(
-                  padding: EdgeInsets.only(left: r.paddingH, right: r.paddingH, top: 0, bottom: r.spaceMd),
-                  child: Row(
+                  padding: EdgeInsets.only(
+                      left: r.paddingH, right: r.paddingH, top: 0, bottom: r.spaceMd),
+                  child: Wrap(
+                    spacing: r.spaceSm,
+                    crossAxisAlignment: WrapCrossAlignment.center,
                     children: [
-                      Icon(CupertinoIcons.location_solid, size: r.iconSm, color: AppColors.accentForTheme(isDark)),
-                      SizedBox(width: r.spaceSm),
-                      Expanded(
-                        child: Text(
-                          'Te mostramos primero el hospital más cercano a tu ubicación.',
-                          style: context.texts.bodySmall.copyWith(
-                            color: AppColors.accentForTheme(isDark),
-                            fontWeight: FontWeight.w600,
-                          ),
+                      Icon(
+                        CupertinoIcons.location_solid,
+                        size: r.iconSm,
+                        color: AppColors.accentForTheme(isDark),
+                      ),
+                      Text(
+                        'Ordenado por cercanía a tu ubicación',
+                        style: context.texts.bodySmall.copyWith(
+                          color: AppColors.accentForTheme(isDark),
+                          fontWeight: FontWeight.w600,
                         ),
                       ),
                     ],
@@ -932,8 +936,19 @@ class _RegionalScreenState extends State<RegionalScreen> {
                                   overflow: TextOverflow.ellipsis,
                                 ),
                               ),
-                              if (isNearest) ...[
-                                SizedBox(width: r.spaceSm),
+                            ],
+                          ),
+                          if (isNearest) ...[
+                            SizedBox(height: r.spaceXs),
+                            Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  CupertinoIcons.location_fill,
+                                  size: 11,
+                                  color: AppColors.accentForTheme(isDark),
+                                ),
+                                SizedBox(width: 4),
                                 Container(
                                   padding: EdgeInsets.symmetric(
                                       horizontal: r.chipPaddingH,
@@ -943,7 +958,7 @@ class _RegionalScreenState extends State<RegionalScreen> {
                                     borderRadius: BorderRadius.circular(r.radiusSm),
                                   ),
                                   child: Text(
-                                    'Más cercano',
+                                    'Más cercano a ti',
                                     style: context.texts.labelSmall.copyWith(
                                       fontWeight: FontWeight.bold,
                                       color: AppColors.accentForTheme(isDark),
@@ -951,8 +966,8 @@ class _RegionalScreenState extends State<RegionalScreen> {
                                   ),
                                 ),
                               ],
-                            ],
-                          ),
+                            ),
+                          ],
                           SizedBox(height: r.spaceXs),
                           Text(
                             regional.name,
