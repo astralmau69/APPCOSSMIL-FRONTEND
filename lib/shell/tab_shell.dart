@@ -1870,7 +1870,7 @@ class _ScheduleInfoDialog extends StatelessWidget {
                             textColor, subtleColor, r, texts),
                         SizedBox(height: r.spaceMd),
                         _infoRow('📱', 'Reserva 24/7',
-                            'Podés sacar su ficha en cualquier momento del día. La agenda se renueva cada mañana a las 6:00 a.m. para habilitar nuevos turnos.\n\nEjemplo: si hoy es viernes y desea reservar para el próximo viernes, ese turno estará disponible desde las 6:00 a.m. de ese día.',
+                            'Puedes reservar tu cita médica en cualquier momento del día. La agenda se renueva cada mañana a las 6:00 a.m. para habilitar nuevos turnos.\n\nEjemplo: Si hoy es viernes y desea reservar para el próximo viernes, ese turno estará disponible desde las 6:00 a.m. de ese día.',
                             textColor, subtleColor, r, texts),
                       ],
                     ),
