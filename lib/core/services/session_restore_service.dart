@@ -8,6 +8,7 @@ import 'security_service.dart';
 import 'auth_service.dart';
 import 'api_client.dart';
 import '../constants/api_constants.dart';
+import '../utils/web_local_storage.dart';
 
 /// Persiste y restaura los datos esenciales del usuario autenticado
 /// en [FlutterSecureStorage] para que la app pueda arrancar sin re-login.
@@ -68,7 +69,11 @@ class SessionRestoreService {
   static Future<void> saveUserSession(UserModel user) async {
     try {
       final jsonStr = jsonEncode(user.toJson());
-      await _storage.write(key: _keyUserData, value: jsonStr);
+      if (kIsWeb) {
+        webLsSet(_keyUserData, jsonStr);
+      } else {
+        await _storage.write(key: _keyUserData, value: jsonStr);
+      }
       if (kDebugMode) {
         debugPrint('💾 SessionRestore: sesión guardada (${jsonStr.length} chars)');
       }
@@ -86,7 +91,9 @@ class SessionRestoreService {
   /// re-fetch silencioso del endpoint de foto para actualizarla.
   static Future<bool> restoreUserSession() async {
     try {
-      final jsonStr = await _storage.read(key: _keyUserData);
+      final jsonStr = kIsWeb
+          ? webLsGet(_keyUserData)
+          : await _storage.read(key: _keyUserData);
       if (jsonStr == null || jsonStr.isEmpty) return false;
 
       final jsonMap = jsonDecode(jsonStr) as Map<String, dynamic>;
@@ -320,7 +327,9 @@ class SessionRestoreService {
   /// Retorna la matrícula guardada sin restaurar toda la sesión.
   static Future<String?> getMatricula() async {
     try {
-      final jsonStr = await _storage.read(key: _keyUserData);
+      final jsonStr = kIsWeb
+          ? webLsGet(_keyUserData)
+          : await _storage.read(key: _keyUserData);
       if (jsonStr == null) return null;
       final jsonMap = jsonDecode(jsonStr) as Map<String, dynamic>;
       return jsonMap['matricula'] as String?;
@@ -333,6 +342,7 @@ class SessionRestoreService {
 
   /// Borra la sesión persistida. Llamar siempre en logout.
   static Future<void> clearUserSession() async {
+    if (kIsWeb) { webLsDel(_keyUserData); return; }
     await _storage.delete(key: _keyUserData);
   }
 }

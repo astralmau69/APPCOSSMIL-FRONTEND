@@ -2,12 +2,12 @@ import 'dart:convert';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
-import 'package:flutter_application_1/core/data/initial_data_orchestrator.dart';
-import 'package:flutter_application_1/core/data/app_session_cache.dart';
-import 'package:flutter_application_1/core/services/programacion_service.dart';
-import 'package:flutter_application_1/core/services/api_client.dart';
-import 'package:flutter_application_1/core/session/user_session.dart';
-import 'package:flutter_application_1/core/models/user_model.dart';
+import 'package:com.cossmil.citamedicapp/core/data/initial_data_orchestrator.dart';
+import 'package:com.cossmil.citamedicapp/core/data/app_session_cache.dart';
+import 'package:com.cossmil.citamedicapp/core/services/programacion_service.dart';
+import 'package:com.cossmil.citamedicapp/core/services/api_client.dart';
+import 'package:com.cossmil.citamedicapp/core/session/user_session.dart';
+import 'package:com.cossmil.citamedicapp/core/models/user_model.dart';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
