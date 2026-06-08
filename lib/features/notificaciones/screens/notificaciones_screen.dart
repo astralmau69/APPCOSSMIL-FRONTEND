@@ -108,17 +108,19 @@ class _NotificacionesScreenState extends State<NotificacionesScreen> {
               )
             : null,
       ),
-      child: _loading
-          ? const Center(child: CupertinoActivityIndicator())
-          : _items.isEmpty
-              ? _buildEmpty(isDark, r)
-              : ListView.builder(
-                  padding: EdgeInsets.fromLTRB(
-                    r.paddingH, r.spaceMd, r.paddingH, r.navBarBottomSpace,
+      child: SafeArea(
+        child: _loading
+            ? const Center(child: CupertinoActivityIndicator())
+            : _items.isEmpty
+                ? _buildEmpty(isDark, r)
+                : ListView.builder(
+                    padding: EdgeInsets.fromLTRB(
+                      r.paddingH, r.spaceMd, r.paddingH, r.navBarBottomSpace,
+                    ),
+                    itemCount: _items.length,
+                    itemBuilder: (_, i) => _buildCard(_items[i], isDark, r),
                   ),
-                  itemCount: _items.length,
-                  itemBuilder: (_, i) => _buildCard(_items[i], isDark, r),
-                ),
+      ),
     );
   }
 

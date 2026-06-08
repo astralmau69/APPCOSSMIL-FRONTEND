@@ -1,7 +1,10 @@
 import 'dart:convert';
+import 'dart:math';
+import 'dart:typed_data';
 import 'package:crypto/crypto.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:local_auth/local_auth.dart';
+import 'package:local_auth/error_codes.dart' as auth_error;
 import 'package:local_auth_android/local_auth_android.dart';
 import 'package:local_auth_darwin/local_auth_darwin.dart';
 import 'package:flutter/services.dart';
@@ -13,6 +16,16 @@ import 'package:flutter/foundation.dart';
 /// [notEnrolled] → hardware presente pero sin huellas/face registradas en el sistema.
 /// [unavailable] → sin hardware biométrico o dispositivo no compatible.
 enum DeviceBiometricStatus { available, notEnrolled, unavailable }
+
+/// Resultado granular de un intento de autenticación biométrica.
+///
+/// Permite a la UI reaccionar de forma distinta según el motivo:
+///   - [success]   → identidad verificada.
+///   - [cancelled] → el usuario canceló o tocó el botón negativo del prompt.
+///   - [lockedOut] → el SO bloqueó el sensor por demasiados intentos fallidos
+///                   (temporal o permanente). Debe forzarse el PIN de la app.
+///   - [failure]   → error de plataforma, sin hardware, no enrollado, etc.
+enum BiometricAuthResult { success, cancelled, lockedOut, failure }
 
 /// Gestiona la seguridad local: PIN de 4 dígitos, biometría y cooldown.
 ///
@@ -30,10 +43,39 @@ class SecurityService {
       encryptedSharedPreferences: true,
       sharedPreferencesName: 'cossmil_secure_prefs',
     ),
+    iOptions: IOSOptions(
+      // first_unlock: el dato sobrevive reinicios y queda accesible tras el
+      // primer desbloqueo del día. Sin esto (default 'unlocked') una lectura
+      // en momentos sensibles tras el boot puede fallar.
+      accessibility: KeychainAccessibility.first_unlock,
+    ),
   );
   static final _localAuth = LocalAuthentication();
 
+  /// Lee una clave del almacenamiento seguro con reintentos.
+  ///
+  /// Tras reiniciar el dispositivo, la primera lectura del Keystore puede
+  /// fallar de forma transitoria (Keystore aún no listo / Direct Boot) en
+  /// varios dispositivos Android. Reintentar evita que ese fallo pasajero se
+  /// interprete como "sin credenciales" y termine reseteando el PIN/huella.
+  ///
+  /// Importante: una clave inexistente devuelve `null` SIN lanzar excepción,
+  /// por lo que el caso normal "sin PIN" no reintenta ni se ralentiza. Solo se
+  /// reintenta ante un error real de descifrado/lectura. Si tras los reintentos
+  /// el error persiste, se relanza para que el llamador NO asuma "sin PIN".
+  static Future<String?> _readResilient(String key, {int retries = 2}) async {
+    for (int attempt = 0; ; attempt++) {
+      try {
+        return await _storage.read(key: key);
+      } catch (e) {
+        if (attempt >= retries) rethrow;
+        await Future.delayed(Duration(milliseconds: 150 * (attempt + 1)));
+      }
+    }
+  }
+
   static const _keyPin            = 'local_pin_hash';
+  static const _keyPinSalt        = 'local_pin_salt';
   static const _keyUseBiometrics  = 'use_biometrics';
   static const _keyCooldownUntil  = 'pin_cooldown_until';
   static const _keyFailedAttempts = 'pin_failed_attempts';
@@ -41,7 +83,7 @@ class SecurityService {
   static const _keyLastBackground = 'last_background_ts';
   static const _keyLastActivity   = 'last_activity_ts';
 
-  // Salt estático de app — evita que hashes idénticos entre distintas apps.
+  // Salt estático de app — evita que hashes idénticos entre distintas apps (usado como fallback heredado).
   static const _pinSalt = 'cossmil_sec_v1_';
 
   // ─── Constantes configurables ──────────────────────────────────────────────
@@ -54,7 +96,7 @@ class SecurityService {
 
   /// Ventana de gracia al volver desde background: si la app vuelve
   /// en menos de este tiempo, NO se pide desbloqueo.
-  static const graceWindowDuration = Duration.zero;
+  static const graceWindowDuration = Duration(seconds: 15);
 
   /// Tiempo de inactividad del usuario antes de bloquear la app (usuarios con PIN).
   static const inactivityTimeout = Duration(minutes: 2);
@@ -65,32 +107,103 @@ class SecurityService {
 
   // ─── PIN ───────────────────────────────────────────────────────────────────
 
-  /// Deriva un hash SHA-256 del PIN. Nunca se persiste en texto plano.
-  static String _hashPin(String pin) {
+  /// Deriva una clave usando PBKDF2 con HMAC-SHA256.
+  static Uint8List _pbkdf2(String password, Uint8List salt, int iterations, int keyLength) {
+    final mac = Hmac(sha256, utf8.encode(password));
+    final numBlocks = (keyLength + 31) ~/ 32;
+    final result = BytesBuilder();
+
+    for (int i = 1; i <= numBlocks; i++) {
+      final blockIndexBytes = ByteData(4)..setInt32(0, i, Endian.big);
+      final saltWithBlockIndex = Uint8List(salt.length + 4)
+        ..setAll(0, salt)
+        ..setAll(salt.length, blockIndexBytes.buffer.asUint8List());
+
+      var u = mac.convert(saltWithBlockIndex).bytes;
+      var t = Uint8List.fromList(u);
+
+      for (int j = 2; j <= iterations; j++) {
+        u = mac.convert(u).bytes;
+        for (int k = 0; k < 32; k++) {
+          t[k] ^= u[k];
+        }
+      }
+      result.add(t);
+    }
+
+    return result.toBytes().sublist(0, keyLength);
+  }
+
+  /// Genera un Salt dinámico aleatorio y seguro para criptografía.
+  static Uint8List _generateSecureSalt([int length = 16]) {
+    final random = Random.secure();
+    final salt = Uint8List(length);
+    for (int i = 0; i < length; i++) {
+      salt[i] = random.nextInt(256);
+    }
+    return salt;
+  }
+
+  /// Deriva un hash SHA-256 legacy del PIN (para migración transparente).
+  static String _hashPinLegacy(String pin) {
     final bytes = utf8.encode('$_pinSalt$pin');
     return sha256.convert(bytes).toString();
   }
 
   /// true si ya hay un PIN configurado.
+  ///
+  /// Si la lectura del Keystore falla de forma persistente (no es que falte el
+  /// PIN, sino que no se pudo leer), se relanza la excepción a propósito: el
+  /// llamador debe tratarlo como "no se pudo verificar" y caer en su ruta
+  /// segura (login conservando el PIN), nunca como "no hay PIN" (que resetearía
+  /// el patrón/huella del usuario).
   static Future<bool> hasPin() async {
-    final value = await _storage.read(key: _keyPin);
+    final value = await _readResilient(_keyPin);
     return value != null && value.isNotEmpty;
   }
 
-  /// Guarda el PIN como hash SHA-256.
+  /// Guarda el PIN derivando una clave con PBKDF2 y un salt dinámico único.
   /// Lanza [Exception] si el PIN no tiene exactamente 4 dígitos numéricos.
   static Future<void> savePin(String pin) async {
     if (pin.length != 4 || !RegExp(r'^\d{4}$').hasMatch(pin)) {
       throw Exception('El PIN debe contener exactamente 4 dígitos numéricos');
     }
-    await _storage.write(key: _keyPin, value: _hashPin(pin));
+    
+    // Generar un salt dinámico nuevo
+    final salt = _generateSecureSalt();
+    final derivedBytes = _pbkdf2(pin, salt, 10000, 32);
+    
+    // Almacenar el Salt dinámico en Base64 y el hash derivado en Secure Storage
+    await _storage.write(key: _keyPinSalt, value: base64.encode(salt));
+    await _storage.write(key: _keyPin, value: base64.encode(derivedBytes));
   }
 
-  /// Compara el PIN ingresado contra el hash guardado.
+  /// Compara el PIN ingresado contra el hash guardado, soportando migración desde hash legacy.
   static Future<bool> verifyPin(String pin) async {
-    final savedHash = await _storage.read(key: _keyPin);
+    final savedHash = await _readResilient(_keyPin);
     if (savedHash == null || savedHash.isEmpty) return false;
-    return savedHash == _hashPin(pin);
+
+    final savedSaltBase64 = await _readResilient(_keyPinSalt);
+    
+    // Si no hay salt almacenado, pero sí hay hash, es un PIN legacy (SHA-256 estático)
+    if (savedSaltBase64 == null || savedSaltBase64.isEmpty) {
+      final legacyHash = _hashPinLegacy(pin);
+      if (savedHash == legacyHash) {
+        // Migración automática al nuevo estándar PBKDF2 + Salt dinámico
+        await savePin(pin);
+        return true;
+      }
+      return false;
+    }
+
+    try {
+      final salt = base64.decode(savedSaltBase64);
+      final derivedBytes = _pbkdf2(pin, salt, 10000, 32);
+      final calculatedHash = base64.encode(derivedBytes);
+      return savedHash == calculatedHash;
+    } catch (_) {
+      return false;
+    }
   }
 
   // ─── Cooldown / Intentos fallidos ─────────────────────────────────────────
@@ -201,23 +314,26 @@ class SecurityService {
   }
 
   /// true si el usuario tiene biometría habilitada como método de desbloqueo.
+  ///
+  /// Usa lectura con reintentos para no perder la preferencia de huella por un
+  /// fallo transitorio del Keystore tras reiniciar el dispositivo.
   static Future<bool> isBiometricsEnabled() async {
-    final value = await _storage.read(key: _keyUseBiometrics);
+    final value = await _readResilient(_keyUseBiometrics);
     return value == 'true';
   }
 
   /// Lanza el prompt nativo de biometría.
-  /// Retorna true si la autenticación fue exitosa.
-  static Future<bool> authenticateWithBiometrics({
+  /// Retorna un [BiometricAuthResult] que representa el resultado o error granular.
+  static Future<BiometricAuthResult> authenticateWithBiometrics({
     String reason = 'Desbloquea tu aplicación COSSMIL',
   }) async {
-    if (kIsWeb) return false;
+    if (kIsWeb) return BiometricAuthResult.failure;
     try {
-      return await _localAuth.authenticate(
+      final authenticated = await _localAuth.authenticate(
         localizedReason: reason,
         options: const AuthenticationOptions(
           stickyAuth: true,
-          biometricOnly: false,
+          biometricOnly: true, // Forzar fallback al PIN de nuestra app
         ),
         authMessages: const <AuthMessages>[
           AndroidAuthMessages(
@@ -237,8 +353,15 @@ class SecurityService {
           ),
         ],
       );
-    } on PlatformException {
-      return false;
+      return authenticated ? BiometricAuthResult.success : BiometricAuthResult.cancelled;
+    } on PlatformException catch (e) {
+      if (e.code == auth_error.lockedOut || 
+          e.code == auth_error.permanentlyLockedOut ||
+          e.code == 'LockedOut' ||
+          e.code == 'PermanentlyLockedOut') {
+        return BiometricAuthResult.lockedOut;
+      }
+      return BiometricAuthResult.failure;
     }
   }
 
@@ -252,7 +375,7 @@ class SecurityService {
 
   /// Retorna el nombre guardado del usuario, o null si no existe.
   static Future<String?> getDisplayName() async {
-    final v = await _storage.read(key: _keyDisplayName);
+    final v = await _readResilient(_keyDisplayName);
     return (v != null && v.trim().isNotEmpty) ? v.trim() : null;
   }
 
@@ -326,10 +449,11 @@ class SecurityService {
 
   // ─── Limpieza total ────────────────────────────────────────────────────────
 
-  /// Elimina PIN, preferencia biométrica, datos de cooldown, nombre y timestamps.
+  /// Elimina PIN, salt, preferencia biométrica, datos de cooldown, nombre y timestamps.
   /// Se llama siempre al hacer logout.
   static Future<void> clearSecurityData() async {
     await _storage.delete(key: _keyPin);
+    await _storage.delete(key: _keyPinSalt);
     await _storage.delete(key: _keyUseBiometrics);
     await _storage.delete(key: _keyCooldownUntil);
     await _storage.delete(key: _keyFailedAttempts);

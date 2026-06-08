@@ -53,6 +53,7 @@ import '../core/storage/token_storage.dart';
 
 import '../core/services/session_restore_service.dart';
 import '../core/services/notification_service.dart';
+import '../core/services/update_service.dart';
 import '../core/extensions/responsive_extensions.dart';
 
 import '../core/models/reserva_model.dart';
@@ -284,8 +285,33 @@ class TabShellState extends State<TabShell>
       _showScheduleInfoModalIfNeeded();
       // Verificar citas completadas al inicio de sesión
       _checkForCompletedAppointments();
+      // Actualizaciones pequeñas (flexible) vía Google Play. No bloquea ni
+      // consulta el backend; solo descarga en segundo plano y avisa al terminar.
+      _checkForFlexibleUpdate();
     });
 
+  }
+
+  /// Descarga en segundo plano una actualización menor de Play (si existe) y,
+  /// al terminar, muestra un aviso no intrusivo para reiniciar y aplicarla.
+  void _checkForFlexibleUpdate() {
+    UpdateService.checkFlexible(
+      onReadyToInstall: () {
+        if (!mounted) return;
+        final messenger = ScaffoldMessenger.maybeOf(context);
+        messenger?.showSnackBar(
+          SnackBar(
+            content: const Text('Hay una actualización lista. Reinicia para aplicarla.'),
+            duration: const Duration(seconds: 10),
+            behavior: SnackBarBehavior.floating,
+            action: SnackBarAction(
+              label: 'Reiniciar',
+              onPressed: UpdateService.completeFlexibleUpdate,
+            ),
+          ),
+        );
+      },
+    );
   }
 
 

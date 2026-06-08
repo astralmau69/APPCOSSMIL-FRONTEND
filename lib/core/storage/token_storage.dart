@@ -10,9 +10,26 @@ class TokenStorage {
       encryptedSharedPreferences: true,
       sharedPreferencesName: 'cossmil_secure_prefs',
     ),
+    iOptions: IOSOptions(
+      accessibility: KeychainAccessibility.first_unlock,
+    ),
   );
   static const _keyAccessToken = 'access_token';
   static const _keyRefreshToken = 'refresh_token';
+
+  /// Lee una clave con reintentos: tras reiniciar el dispositivo la primera
+  /// lectura del Keystore puede fallar de forma transitoria. Evita que un
+  /// fallo pasajero se interprete como "sin sesión" y fuerce un re-login.
+  static Future<String?> _readResilient(String key, {int retries = 2}) async {
+    for (int attempt = 0; ; attempt++) {
+      try {
+        return await _storage.read(key: key);
+      } catch (e) {
+        if (attempt >= retries) rethrow;
+        await Future.delayed(Duration(milliseconds: 150 * (attempt + 1)));
+      }
+    }
+  }
 
   /// Guarda ambos tokens tras un login exitoso.
   static Future<void> saveToken(String token) async {
@@ -29,13 +46,13 @@ class TokenStorage {
   /// Lee el access token guardado. Retorna null si no existe.
   static Future<String?> getToken() async {
     if (kIsWeb) return webLsGet(_keyAccessToken);
-    return _storage.read(key: _keyAccessToken);
+    return _readResilient(_keyAccessToken);
   }
 
   /// Lee el refresh token guardado. Retorna null si no existe.
   static Future<String?> getRefreshToken() async {
     if (kIsWeb) return webLsGet(_keyRefreshToken);
-    return _storage.read(key: _keyRefreshToken);
+    return _readResilient(_keyRefreshToken);
   }
 
   /// Borra ambos tokens (logout).

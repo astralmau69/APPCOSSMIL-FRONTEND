@@ -1,7 +1,6 @@
 import 'dart:typed_data';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/extensions/responsive_extensions.dart';
 import '../../../core/animations/optimized_animations.dart';
@@ -10,6 +9,8 @@ import '../../../core/services/programacion_service.dart';
 import '../../../core/widgets/app_state_widget.dart';
 import '../../../core/widgets/breadcrumb_chips.dart';
 import '../../../shell/tab_shell.dart';
+import '../../../core/services/favorites_service.dart';
+import '../../../core/services/push_notification_service.dart';
 
 class DoctorScreen extends StatefulWidget {
   final TabShellState tabShell;
@@ -28,12 +29,69 @@ class _DoctorScreenState extends State<DoctorScreen> {
   List<DoctorAgendaModel> _medicos = [];
   bool _isLoading = true;
   String? _errorMessage;
-  String _fechaCita = '';
+  List<String> _favoriteDoctorIds = [];
 
   @override
   void initState() {
     super.initState();
     _loadMedicos();
+    _loadFavorites();
+  }
+
+  Future<void> _loadFavorites() async {
+    final favs = await FavoritesService.getFavoriteDoctorIds();
+    if (mounted) {
+      setState(() {
+        _favoriteDoctorIds = favs;
+      });
+    }
+  }
+
+  Future<void> _toggleFavorite(DoctorAgendaModel doctor) async {
+    final doctorId = doctor.idmed;
+    if (doctorId.isEmpty) return;
+    try {
+      final bs = widget.tabShell.bookingState;
+      final specialtyName = bs.specialty?.name ?? '';
+
+      final details = {
+        'idmed': doctor.idmed,
+        'medico': doctor.medico,
+        'especialidad': specialtyName,
+        'foto': doctor.foto,
+        'mtrmin': doctor.mtrmin,
+      };
+
+      final isAdded = await FavoritesService.toggleFavorite(doctorId, details: details);
+      
+      if (isAdded) {
+        await PushNotificationService.subscribeToDoctor(doctorId);
+      } else {
+        await PushNotificationService.unsubscribeFromDoctor(doctorId);
+      }
+
+      await _loadFavorites();
+
+      if (mounted) {
+        showCupertinoDialog(
+          context: context,
+          builder: (ctx) => CupertinoAlertDialog(
+            title: Text(isAdded ? 'Médico Favorito' : 'Eliminado de Favoritos'),
+            content: Text(isAdded
+                ? 'Te notificaremos cuando se libere un turno con este médico.'
+                : 'Ya no recibirás notificaciones para este médico.'),
+            actions: [
+              CupertinoDialogAction(
+                child: const Text('Aceptar'),
+                onPressed: () => Navigator.pop(ctx),
+              ),
+            ],
+          ),
+        );
+      }
+    } catch (e) {
+      debugPrint('Error toggling favorite: $e');
+    }
   }
 
   Future<void> _loadMedicos() async {
@@ -72,15 +130,7 @@ class _DoctorScreenState extends State<DoctorScreen> {
     }
   }
 
-  String _formatFecha(String fecha) {
-    try {
-      final dt = DateFormat('yyyy-MM-dd').parse(fecha);
-      final f  = DateFormat("EEEE d 'de' MMMM", 'es').format(dt);
-      return f[0].toUpperCase() + f.substring(1);
-    } catch (_) {
-      return fecha;
-    }
-  }
+
 
   @override
   Widget build(BuildContext context) {
@@ -122,6 +172,7 @@ class _DoctorScreenState extends State<DoctorScreen> {
             child: SizedBox(
               width: double.infinity,
               child: CupertinoButton(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
                 color: AppColors.primary,
                 borderRadius: BorderRadius.circular(r.radiusMd),
                 onPressed: widget.onBack,
@@ -249,6 +300,23 @@ class _DoctorScreenState extends State<DoctorScreen> {
                 ),
               ),
 
+              SizedBox(width: r.spaceSm),
+              GestureDetector(
+                behavior: HitTestBehavior.opaque,
+                onTap: () => _toggleFavorite(doctor),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                  child: Icon(
+                    _favoriteDoctorIds.contains(doctor.idmed)
+                        ? CupertinoIcons.star_fill
+                        : CupertinoIcons.star,
+                    color: _favoriteDoctorIds.contains(doctor.idmed)
+                        ? const Color(0xFFF59E0B)
+                        : AppColors.textTertiaryC(isDark),
+                    size: r.iconSm * 1.15,
+                  ),
+                ),
+              ),
               SizedBox(width: r.spaceSm),
               Icon(CupertinoIcons.chevron_right,
                   size: r.iconSm, color: AppColors.textTertiaryC(isDark)),

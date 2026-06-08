@@ -77,7 +77,9 @@ class _SecuritySetupScreenState extends State<SecuritySetupScreen> {
       final authenticated = await SecurityService.authenticateWithBiometrics(
         reason: 'Confirma tu huella para activar el desbloqueo rápido',
       );
-      if (authenticated) await SecurityService.setBiometricsEnabled(true);
+      if (authenticated == BiometricAuthResult.success) {
+        await SecurityService.setBiometricsEnabled(true);
+      }
     } else {
       // Desactivar biometría no requiere auth adicional — es reducir seguridad
       // pero la app ya está desbloqueada. Solo se pide auth para DESACTIVAR TODO.
@@ -131,7 +133,7 @@ class _SecuritySetupScreenState extends State<SecuritySetupScreen> {
       final ok = await SecurityService.authenticateWithBiometrics(
         reason: 'Confirma tu identidad para desactivar la protección',
       );
-      if (ok) return true;
+      if (ok == BiometricAuthResult.success) return true;
       // Si falla biometría, caer a PIN
     }
 

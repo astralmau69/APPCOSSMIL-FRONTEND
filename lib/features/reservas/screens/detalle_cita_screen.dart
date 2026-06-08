@@ -633,6 +633,7 @@ class _DetalleCitaScreenState extends State<DetalleCitaScreen> {
               ),
             ),
             child: CupertinoButton.filled(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
               borderRadius: BorderRadius.circular(context.r.cardRadius),
               onPressed: _isDownloadingPdf ? null : _openPdfPreview,
               child: _isDownloadingPdf
@@ -669,6 +670,7 @@ class _DetalleCitaScreenState extends State<DetalleCitaScreen> {
             ),
           ),
           child: CupertinoButton(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
             borderRadius: BorderRadius.circular(context.r.cardRadius),
             color: isDark ? AppColors.darkElevated : const Color(0xFFF3F4F6),
             onPressed: _isSharingPdf ? null : _sharePdfDirect,
@@ -787,6 +789,7 @@ class _DetalleCitaScreenState extends State<DetalleCitaScreen> {
     return SizedBox(
       width: double.infinity,
       child: CupertinoButton(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         borderRadius: BorderRadius.circular(context.r.cardRadius),
         color: CupertinoColors.destructiveRed,
         onPressed: _isCancelling ? null : _cancelCita,

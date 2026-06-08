@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "1047789419057",
+    "project_id": "fir-cossmil",
+    "storage_bucket": "fir-cossmil.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1047789419057:android:e44b53694bd5e580d7f310",
+        "android_client_info": {
+          "package_name": "com.cossmil.citamedicapp"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyA63rk00Qg9Jf3ILBrWxy8UhFV4mF71ulY"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

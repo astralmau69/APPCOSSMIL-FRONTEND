@@ -1,4 +1,4 @@
-name: com.cossmil.citamedicapp
+name: cossmil
 description: "Aplicacion para reserva de citas medicas en COSSMIL"
 # The following line prevents the package from being accidentally published to
 # pub.dev using `flutter pub publish`. This is preferred for private packages.
@@ -55,6 +55,9 @@ dependencies:
   permission_handler: ^11.3.1 # Verificar y solicitar permisos (notificaciones, ubicación)
   local_auth_android: ^1.0.56
   local_auth_darwin: ^1.6.1
+  firebase_core: ^4.10.0
+  firebase_messaging: ^16.3.0
+  in_app_update: ^4.2.3 # Actualizaciones flexibles (pequeñas) vía Google Play
 
 dev_dependencies:
   flutter_test:

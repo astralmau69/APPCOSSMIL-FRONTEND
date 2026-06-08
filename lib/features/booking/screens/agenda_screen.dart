@@ -76,10 +76,17 @@ class _AgendaScreenState extends State<AgendaScreen> {
       }
       final hoySolo = DateTime(hoy.year, hoy.month, hoy.day);
 
-      // 3. Indexar los días del backend por fecha para búsqueda O(1)
-      final Map<String, DoctorAgendaModel> byFecha = {
-        for (final d in backendDays) d.fecha: d,
-      };
+      // 3. Agrupar los días del backend por fecha. Un mismo día puede tener
+      //    varios turnos (ej. mañana 08:00–13:00 y tarde 17:00–21:00), por lo
+      //    que se conservan TODOS los registros, no solo uno por fecha.
+      final Map<String, List<DoctorAgendaModel>> byFecha = {};
+      for (final d in backendDays) {
+        byFecha.putIfAbsent(d.fecha, () => []).add(d);
+      }
+      // Ordenar los turnos de cada día por hora de inicio.
+      for (final slots in byFecha.values) {
+        slots.sort((a, b) => a.horaini.compareTo(b.horaini));
+      }
 
       // 4. Construir la semana: HOY + 7 días más (8 en total)
       //    Garantiza que el mismo día de la semana siguiente siempre aparezca
@@ -88,12 +95,12 @@ class _AgendaScreenState extends State<AgendaScreen> {
       for (int i = 0; i < 8; i++) {
         final fecha = hoySolo.add(Duration(days: i));
         final fechaStr = DateFormat('yyyy-MM-dd').format(fecha);
-        final modelo = byFecha[fechaStr];
+        final modelos = byFecha[fechaStr] ?? const <DoctorAgendaModel>[];
 
         semana.add(_DiaAgenda(
           fecha: fechaStr,
           fechaDate: fecha,
-          modelo: modelo, // null → sin agenda en el backend
+          modelos: modelos, // vacío → sin agenda en el backend
           idmed: idmed,
           medicoNombre: bs.doctor?.fullName ?? '',
         ));
@@ -113,9 +120,8 @@ class _AgendaScreenState extends State<AgendaScreen> {
     }
   }
 
-  void _onDaySelected(_DiaAgenda dia) {
-    final m = dia.modelo;
-    if (m == null || !m.estado) return;
+  void _onSlotSelected(_DiaAgenda dia, DoctorAgendaModel m) {
+    if (!m.estado) return;
 
     final bs = widget.tabShell.bookingState;
     bs.selectedDate = m.fecha;
@@ -185,6 +191,7 @@ class _AgendaScreenState extends State<AgendaScreen> {
             child: SizedBox(
               width: double.infinity,
               child: CupertinoButton(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
                 color: AppColors.primary,
                 borderRadius: BorderRadius.circular(r.radiusMd),
                 onPressed: widget.onBack,
@@ -286,178 +293,175 @@ class _AgendaScreenState extends State<AgendaScreen> {
   // ── Card de un día ───────────────────────────────────────────────────────
 
   Widget _buildDayCard(_DiaAgenda dia, bool isDark, AppResponsive r) {
-    final modelo = dia.modelo;
-    final hasAgenda = modelo != null && modelo.idagenda.isNotEmpty;
-    final isAvailable = hasAgenda && modelo.estado;
-    final isOccupied = hasAgenda && !modelo.estado;
-    // Sin agenda del backend → "Sin consulta médica"
-    final isSinConsulta = !hasAgenda;
+    final modelos = dia.modelos;
+    final hasAgenda = modelos.isNotEmpty;
+    final anyAvailable = modelos.any((m) => m.estado);
 
-    final Color colorBg;
-    final Color colorBorder;
+    // Color de acento del bloque-fecha según el "mejor" estado del día:
+    // verde si algún turno está disponible, rojo si todos están agotados,
+    // gris si no hay agenda en el backend.
     final Color colorAccent;
-    final String estadoLabel;
-
-    if (isAvailable) {
-      colorBg = AppColors.success.withValues(alpha: isDark ? 0.18 : 0.10);
-      colorBorder = AppColors.success.withValues(alpha: isDark ? 0.55 : 0.45);
+    if (anyAvailable) {
       colorAccent = AppColors.success;
-      estadoLabel = 'Disponible';
-    } else if (isOccupied) {
-      colorBg = const Color(0xFFE53935).withValues(alpha: isDark ? 0.18 : 0.09);
-      colorBorder = const Color(0xFFE53935).withValues(alpha: isDark ? 0.55 : 0.40);
+    } else if (hasAgenda) {
       colorAccent = const Color(0xFFD32F2F);
-      estadoLabel = 'Fichas agotadas';
     } else {
-      // Sin consulta / sin datos del backend
-      colorBg = Colors.grey.withValues(alpha: isDark ? 0.12 : 0.06);
-      colorBorder = Colors.grey.withValues(alpha: isDark ? 0.30 : 0.22);
       colorAccent = Colors.grey;
-      estadoLabel = 'Sin consulta médica';
     }
 
-    final tappable = isAvailable;
+    final colorBg = colorAccent.withValues(alpha: isDark ? 0.14 : 0.08);
+    final colorBorder = colorAccent.withValues(alpha: isDark ? 0.50 : 0.38);
 
-    return GestureDetector(
-      onTap: tappable ? () => _onDaySelected(dia) : null,
-      child: AnimatedOpacity(
-        opacity: isSinConsulta ? 0.65 : 1.0,
-        duration: const Duration(milliseconds: 200),
-        child: Container(
-          decoration: BoxDecoration(
-            color: colorBg,
-            borderRadius: BorderRadius.circular(r.cardRadius),
-            border: Border.all(color: colorBorder, width: 1.0),
-            boxShadow: (isAvailable && !isDark)
-                ? [
-                    BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.04),
-                      blurRadius: 8,
-                      offset: const Offset(0, 2),
-                    )
-                  ]
-                : [],
-          ),
-          child: Padding(
-            padding: EdgeInsets.all(r.cardPadding),
-            child: Row(
-              children: [
-                // ── Bloque día / número ──────────────────────────────
-                Container(
-                  width: 60,
-                  padding: const EdgeInsets.symmetric(vertical: 8),
-                  decoration: BoxDecoration(
-                    color: colorAccent.withValues(alpha: 0.12),
-                    borderRadius: BorderRadius.circular(r.radiusSm),
-                  ),
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Text(
-                        _diaNombre(dia.fechaDate).substring(0, 3).toUpperCase(),
-                        style: context.texts.labelSmall.copyWith(
-                          fontWeight: FontWeight.w700,
-                          color: colorAccent,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        dia.fechaDate.day.toString(),
-                        style: context.texts.titleLarge.copyWith(
-                          fontWeight: FontWeight.w800,
-                          color: colorAccent,
-                          height: 1.0,
-                        ),
-                      ),
-                    ],
-                  ),
+    return AnimatedOpacity(
+      opacity: hasAgenda ? 1.0 : 0.65,
+      duration: const Duration(milliseconds: 200),
+      child: Container(
+        decoration: BoxDecoration(
+          color: colorBg,
+          borderRadius: BorderRadius.circular(r.cardRadius),
+          border: Border.all(color: colorBorder, width: 1.0),
+          boxShadow: (anyAvailable && !isDark)
+              ? [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.04),
+                    blurRadius: 8,
+                    offset: const Offset(0, 2),
+                  )
+                ]
+              : [],
+        ),
+        child: Padding(
+          padding: EdgeInsets.all(r.cardPadding),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // ── Bloque día / número ──────────────────────────────
+              Container(
+                width: 60,
+                padding: const EdgeInsets.symmetric(vertical: 8),
+                decoration: BoxDecoration(
+                  color: colorAccent.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(r.radiusSm),
                 ),
-
-                SizedBox(width: r.spaceMd),
-
-                // ── Info central ─────────────────────────────────────
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        _formatFecha(dia.fechaDate),
-                        style: context.texts.titleMedium.copyWith(
-                          fontWeight: FontWeight.w800,
-                          color: isAvailable
-                              ? AppColors.textPrimaryC(isDark)
-                              : AppColors.textSecondaryC(isDark),
-                        ),
-                      ),
-                      SizedBox(height: r.spaceXs),
-                      Row(
-                        children: [
-                          Icon(CupertinoIcons.clock, size: 14, color: AppColors.textTertiaryC(isDark)),
-                          const SizedBox(width: 4),
-                          Text(
-                            hasAgenda ? modelo.rangoHorario : 'Sin horario',
-                            style: context.texts.bodySmall.copyWith(
-                              color: AppColors.textSecondaryC(isDark),
-                            ),
-                          ),
-                          if (hasAgenda && modelo.consultorio.isNotEmpty) ...[
-                            const SizedBox(width: 10),
-                            Icon(Icons.meeting_room_outlined,
-                                size: 14, color: AppColors.textTertiaryC(isDark)),
-                            const SizedBox(width: 4),
-                            Expanded(
-                              child: Text(
-                                modelo.consultorio,
-                                style: context.texts.bodySmall.copyWith(
-                                  color: AppColors.textSecondaryC(isDark),
-                                ),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ),
-                          ],
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-
-                // ── Badge de estado ──────────────────────────────────
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.end,
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: isAvailable
-                            ? AppColors.success
-                            : isOccupied
-                                ? const Color(0xFFD32F2F)
-                                : colorAccent.withValues(alpha: 0.15),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Text(
-                        estadoLabel,
-                        style: context.texts.labelSmall.copyWith(
-                          fontWeight: FontWeight.bold,
-                          color: (isAvailable || isOccupied) ? Colors.white : colorAccent,
-                        ),
+                    Text(
+                      _diaNombre(dia.fechaDate).substring(0, 3).toUpperCase(),
+                      style: context.texts.labelSmall.copyWith(
+                        fontWeight: FontWeight.w700,
+                        color: colorAccent,
                       ),
                     ),
-                    if (isAvailable) ...[
-                      const SizedBox(height: 8),
-                      Row(
-                        children: [
-                          Text(
-                            'Tomar ficha',
-                            style: context.texts.labelSmall.copyWith(
-                              color: colorAccent,
-                              fontWeight: FontWeight.w600,
-                            ),
+                    const SizedBox(height: 4),
+                    Text(
+                      dia.fechaDate.day.toString(),
+                      style: context.texts.titleLarge.copyWith(
+                        fontWeight: FontWeight.w800,
+                        color: colorAccent,
+                        height: 1.0,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
+              SizedBox(width: r.spaceMd),
+
+              // ── Info central: fecha + lista de turnos ────────────
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      _formatFecha(dia.fechaDate),
+                      style: context.texts.titleMedium.copyWith(
+                        fontWeight: FontWeight.w800,
+                        color: anyAvailable
+                            ? AppColors.textPrimaryC(isDark)
+                            : AppColors.textSecondaryC(isDark),
+                      ),
+                    ),
+                    SizedBox(height: r.spaceXs),
+                    if (!hasAgenda)
+                      _buildSinConsulta(isDark)
+                    else
+                      for (int i = 0; i < modelos.length; i++) ...[
+                        if (i > 0) Divider(
+                          height: r.spaceMd,
+                          thickness: 0.5,
+                          color: AppColors.textTertiaryC(isDark).withValues(alpha: 0.25),
+                        ),
+                        _buildSlotRow(dia, modelos[i], isDark, r),
+                      ],
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  // ── Fila "Sin consulta médica" (día sin agenda) ───────────────────────────
+  Widget _buildSinConsulta(bool isDark) {
+    return Row(
+      children: [
+        Icon(CupertinoIcons.clock, size: 14, color: AppColors.textTertiaryC(isDark)),
+        const SizedBox(width: 4),
+        Expanded(
+          child: Text(
+            'Sin consulta médica',
+            style: context.texts.bodySmall.copyWith(
+              color: AppColors.textSecondaryC(isDark),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  // ── Fila de un turno (horario + estado + acción) ──────────────────────────
+  Widget _buildSlotRow(_DiaAgenda dia, DoctorAgendaModel m, bool isDark, AppResponsive r) {
+    final isAvailable = m.estado;
+    final accent = isAvailable ? AppColors.success : const Color(0xFFD32F2F);
+    final estadoLabel = isAvailable ? 'Disponible' : 'Fichas agotadas';
+
+    return GestureDetector(
+      onTap: isAvailable ? () => _onSlotSelected(dia, m) : null,
+      behavior: HitTestBehavior.opaque,
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Icon(CupertinoIcons.clock, size: 14, color: AppColors.textTertiaryC(isDark)),
+                    const SizedBox(width: 4),
+                    Text(
+                      m.rangoHorario,
+                      style: context.texts.bodySmall.copyWith(
+                        color: AppColors.textSecondaryC(isDark),
+                      ),
+                    ),
+                    if (m.consultorio.isNotEmpty) ...[
+                      const SizedBox(width: 10),
+                      Icon(Icons.meeting_room_outlined,
+                          size: 14, color: AppColors.textTertiaryC(isDark)),
+                      const SizedBox(width: 4),
+                      Expanded(
+                        child: Text(
+                          m.consultorio,
+                          style: context.texts.bodySmall.copyWith(
+                            color: AppColors.textSecondaryC(isDark),
                           ),
-                          const SizedBox(width: 2),
-                          Icon(CupertinoIcons.chevron_right, size: 12, color: colorAccent),
-                        ],
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
                       ),
                     ],
                   ],
@@ -465,7 +469,44 @@ class _AgendaScreenState extends State<AgendaScreen> {
               ],
             ),
           ),
-        ),
+          const SizedBox(width: 8),
+          // ── Badge de estado + acción ─────────────────────────────
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(
+                  color: accent,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Text(
+                  estadoLabel,
+                  style: context.texts.labelSmall.copyWith(
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                  ),
+                ),
+              ),
+              if (isAvailable) ...[
+                const SizedBox(height: 6),
+                Row(
+                  children: [
+                    Text(
+                      'Tomar ficha',
+                      style: context.texts.labelSmall.copyWith(
+                        color: accent,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(width: 2),
+                    Icon(CupertinoIcons.chevron_right, size: 12, color: accent),
+                  ],
+                ),
+              ],
+            ],
+          ),
+        ],
       ),
     );
   }
@@ -486,14 +527,14 @@ class _AgendaScreenState extends State<AgendaScreen> {
 class _DiaAgenda {
   final String fecha;
   final DateTime fechaDate;
-  final DoctorAgendaModel? modelo; // null = sin agenda ese día
+  final List<DoctorAgendaModel> modelos; // vacío = sin agenda ese día
   final String idmed;
   final String medicoNombre;
 
   const _DiaAgenda({
     required this.fecha,
     required this.fechaDate,
-    required this.modelo,
+    required this.modelos,
     required this.idmed,
     required this.medicoNombre,
   });

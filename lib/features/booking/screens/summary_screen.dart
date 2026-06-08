@@ -562,6 +562,7 @@ class _SummaryScreenState extends State<SummaryScreen>
                 ),
               ),
               child: CupertinoButton(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
                 color: AppColors.success,
                 borderRadius: BorderRadius.circular(context.r.cardRadius),
                 onPressed: _isConfirming ? null : () => _confirmBooking(),
@@ -600,6 +601,7 @@ class _SummaryScreenState extends State<SummaryScreen>
                 ),
               ),
               child: CupertinoButton.filled(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
                 borderRadius: BorderRadius.circular(context.r.cardRadius),
                 onPressed: _isDownloadingPdf ? null : _openPdfPreview,
                 child: _isDownloadingPdf
@@ -634,6 +636,7 @@ class _SummaryScreenState extends State<SummaryScreen>
               ),
             ),
             child: CupertinoButton(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
               borderRadius: BorderRadius.circular(context.r.cardRadius),
               onPressed: () => widget.tabShell.finishBooking(idtran: _idtran, dr: _dr),
               child: Text(

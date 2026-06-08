@@ -54,14 +54,22 @@ class NotificationUiHandler {
     final payload = response.payload;
     if (payload == null || payload.isEmpty) return;
 
+    try {
+      final data = jsonDecode(payload) as Map<String, dynamic>;
+      handleNotificationData(data);
+    } catch (e, st) {
+      AppLogger.error(_tag, 'Failed to parse notification payload', e, st);
+    }
+  }
+
+  /// Procesa los datos de una notificación (local o push) redirigiendo a la pantalla correspondiente.
+  static void handleNotificationData(Map<String, dynamic> data) {
     if (!UserSession.isLoggedIn) {
-      AppLogger.debug(_tag, 'Notification tapped but no active session — ignoring');
+      AppLogger.debug(_tag, 'Notification received but no active session — ignoring');
       return;
     }
 
     try {
-      final data = jsonDecode(payload) as Map<String, dynamic>;
-
       // Verificar que la notificación pertenece al usuario actual.
       final notifUserId = data['userId'] as String?;
       if (notifUserId != null &&
@@ -79,9 +87,15 @@ class NotificationUiHandler {
         return;
       }
 
+      // Cazador de fichas → abrir Reservar Cita (tab 2)
+      if (data['type'] == 'cazador') {
+        _onSwitchTab?.call(2);
+        return;
+      }
+
       _showAppointmentModal(data);
     } catch (e, st) {
-      AppLogger.error(_tag, 'Failed to parse notification payload', e, st);
+      AppLogger.error(_tag, 'Failed to handle notification data', e, st);
     }
   }
 

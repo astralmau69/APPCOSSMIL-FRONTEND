@@ -348,7 +348,7 @@ class ApiClient {
       final isAuthenticated = await SecurityService.authenticateWithBiometrics(
         reason: 'Verifica tu identidad para mantener la sesión activa',
       );
-      if (!isAuthenticated) {
+      if (isAuthenticated != BiometricAuthResult.success) {
         if (kDebugMode) debugPrint('   ❌ Usuario canceló o falló biometría. Borrando solo tokens de sesión.');
         await TokenStorage.deleteToken();
         // NO borramos SecurityService.clearSecurityData() para que no pierda su PIN ni preferencias biométricas.

@@ -236,8 +236,8 @@ class NotificationScheduler {
           id: _idFromTicket(ticketNumber, 3),
           time: appt.subtract(const Duration(minutes: 30)),
           title: 'Cita médica en 30 minutos — $paciente',
-          body: 'Su cita de $especialidad con Dr. $medico es a las $horaStr. '
-              'Diríjase al centro médico y ubique su consultorio. Ficha $ticketNumber.',
+          body: 'Su cita de $especialidad con el Dr. $medico es a las $horaStr. '
+              'Recuerde que debe presentarse en el consultorio 15 minutos antes de su hora de atención. Ficha $ticketNumber.',
           payload: payloadNoCancel,
           scheduleMode: AndroidScheduleMode.alarmClock,
         ),

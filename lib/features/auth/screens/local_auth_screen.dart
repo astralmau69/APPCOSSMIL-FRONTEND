@@ -110,8 +110,9 @@ class _LocalAuthScreenState extends State<LocalAuthScreen>
       // Si hay biometría configurada, dispararla primero siempre.
       // Si falla/cancela y hay PIN, el teclado queda visible como fallback.
       // Si falla/cancela y no hay PIN, aparece el botón de login con contraseña.
-      await Future.delayed(const Duration(milliseconds: 300));
-      if (mounted) _tryBiometrics();
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _tryBiometrics();
+      });
     }
   }
 
@@ -140,14 +141,38 @@ class _LocalAuthScreenState extends State<LocalAuthScreen>
   Future<void> _tryBiometrics() async {
     if (_biometricInProgress) return;
     _biometricInProgress = true;
-    if (mounted) setState(() => _biometricFailed = false);
+    if (mounted) {
+      setState(() {
+        _biometricFailed = false;
+        _errorMessage = null;
+      });
+    }
     try {
-      final authenticated = await SecurityService.authenticateWithBiometrics();
-      if (authenticated && mounted) {
-        _onSuccess();
-      } else if (!_hasPin && mounted) {
-        // Sin PIN: mostrar botón de fallback a login con contraseña.
-        setState(() => _biometricFailed = true);
+      final result = await SecurityService.authenticateWithBiometrics();
+      if (!mounted) return;
+
+      switch (result) {
+        case BiometricAuthResult.success:
+          _onSuccess();
+          break;
+        case BiometricAuthResult.lockedOut:
+          setState(() {
+            _errorMessage = 'Sensor bloqueado. Por favor, usa tu PIN de seguridad.';
+          });
+          break;
+        case BiometricAuthResult.cancelled:
+          if (!_hasPin) {
+            setState(() => _biometricFailed = true);
+          }
+          break;
+        case BiometricAuthResult.failure:
+          setState(() {
+            _errorMessage = 'Error en autenticación biométrica. Usa tu PIN.';
+          });
+          if (!_hasPin) {
+            setState(() => _biometricFailed = true);
+          }
+          break;
       }
     } finally {
       _biometricInProgress = false;
