@@ -24,11 +24,29 @@ class SessionRestoreService {
       encryptedSharedPreferences: true,
       sharedPreferencesName: 'cossmil_secure_prefs',
     ),
+    iOptions: IOSOptions(
+      accessibility: KeychainAccessibility.first_unlock,
+    ),
   );
 
   static const _keyUserData = 'user_session_data';
   static const _keyStoredUsername = 'stored_login_username';
   static const _keyStoredPassword = 'stored_login_password';
+
+  /// Lee una clave con reintentos. Tras reiniciar el dispositivo la primera
+  /// lectura del Keystore puede fallar de forma transitoria; reintentar evita
+  /// que la sesión/credenciales se vean como inexistentes y se fuerce un login
+  /// completo (matrícula + contraseña) aunque ya estén configurados.
+  static Future<String?> _readResilient(String key, {int retries = 2}) async {
+    for (int attempt = 0; ; attempt++) {
+      try {
+        return await _storage.read(key: key);
+      } catch (e) {
+        if (attempt >= retries) rethrow;
+        await Future.delayed(Duration(milliseconds: 150 * (attempt + 1)));
+      }
+    }
+  }
 
   // ─── Credenciales para re-autenticación silenciosa ───────────────────────
 
@@ -44,8 +62,8 @@ class SessionRestoreService {
   /// Lee las credenciales almacenadas. Retorna null si no existen.
   static Future<({String username, String password})?> loadCredentials() async {
     try {
-      final u = await _storage.read(key: _keyStoredUsername);
-      final p = await _storage.read(key: _keyStoredPassword);
+      final u = await _readResilient(_keyStoredUsername);
+      final p = await _readResilient(_keyStoredPassword);
       if (u == null || p == null || u.isEmpty || p.isEmpty) return null;
       return (username: u, password: p);
     } catch (_) {
@@ -93,7 +111,7 @@ class SessionRestoreService {
     try {
       final jsonStr = kIsWeb
           ? webLsGet(_keyUserData)
-          : await _storage.read(key: _keyUserData);
+          : await _readResilient(_keyUserData);
       if (jsonStr == null || jsonStr.isEmpty) return false;
 
       final jsonMap = jsonDecode(jsonStr) as Map<String, dynamic>;
@@ -329,7 +347,7 @@ class SessionRestoreService {
     try {
       final jsonStr = kIsWeb
           ? webLsGet(_keyUserData)
-          : await _storage.read(key: _keyUserData);
+          : await _readResilient(_keyUserData);
       if (jsonStr == null) return null;
       final jsonMap = jsonDecode(jsonStr) as Map<String, dynamic>;
       return jsonMap['matricula'] as String?;

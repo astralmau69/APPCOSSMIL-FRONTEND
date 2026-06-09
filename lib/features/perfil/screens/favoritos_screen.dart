@@ -4,6 +4,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/extensions/responsive_extensions.dart';
+import '../../../core/widgets/app_background.dart';
 import '../../../core/services/favorites_service.dart';
 import '../../../core/services/push_notification_service.dart';
 import '../../../core/animations/optimized_animations.dart';
@@ -50,7 +51,7 @@ class _FavoritosScreenState extends State<FavoritosScreen> {
       await PushNotificationService.unsubscribeFromDoctor(doctorId);
       // Remove from SharedPreferences
       await FavoritesService.toggleFavorite(doctorId);
-      
+
       // Reload
       await _loadFavorites();
 
@@ -59,7 +60,9 @@ class _FavoritosScreenState extends State<FavoritosScreen> {
           context: context,
           builder: (ctx) => CupertinoAlertDialog(
             title: const Text('Médico Eliminado'),
-            content: Text('Ya no recibirás alertas de turnos libres para el Dr. $doctorName.'),
+            content: Text(
+              'Ya no recibirás alertas de turnos libres para el Dr. $doctorName.',
+            ),
             actions: [
               CupertinoDialogAction(
                 child: const Text('Aceptar'),
@@ -103,47 +106,59 @@ class _FavoritosScreenState extends State<FavoritosScreen> {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final r = context.r;
 
-    return CupertinoPageScaffold(
-      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-      navigationBar: CupertinoNavigationBar(
-        middle: const Text('Mis Médicos Favoritos'),
-        backgroundColor: isDark
-            ? AppColors.darkSurface.withValues(alpha: 0.92)
-            : AppColors.white.withValues(alpha: 0.92),
-        border: Border(
-          bottom: BorderSide(
-            color: AppColors.cardBorder(isDark).withValues(alpha: 0.5),
-            width: 0.5,
+    return AppBackground(
+      isDark: isDark,
+      child: CupertinoPageScaffold(
+        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+        navigationBar: CupertinoNavigationBar(
+          middle: const Text('Mis Médicos Favoritos'),
+          backgroundColor: isDark
+              ? AppColors.darkSurface.withValues(alpha: 0.92)
+              : AppColors.white.withValues(alpha: 0.92),
+          border: Border(
+            bottom: BorderSide(
+              color: AppColors.cardBorder(isDark).withValues(alpha: 0.5),
+              width: 0.5,
+            ),
           ),
         ),
-      ),
-      child: SafeArea(
-        child: _isLoading
-            ? const Center(child: CupertinoActivityIndicator())
-            : _favorites.isEmpty
-                ? _buildEmptyState(isDark, r)
-                : ListView.builder(
-                    padding: EdgeInsets.all(r.paddingH),
-                    itemCount: _favorites.length,
-                    itemBuilder: (context, index) {
-                      final doc = _favorites[index];
-                      final idmed = doc['idmed']?.toString() ?? '';
-                      final medico = doc['medico']?.toString() ?? 'Médico';
-                      final especialidad = doc['especialidad']?.toString() ?? 'Especialidad';
-                      final foto = doc['foto']?.toString() ?? '';
-                      final mtrmin = doc['mtrmin']?.toString() ?? '';
-                      final photoBytes = _getPhotoBytes(foto);
+        child: SafeArea(
+          child: _isLoading
+              ? const Center(child: CupertinoActivityIndicator())
+              : _favorites.isEmpty
+              ? _buildEmptyState(isDark, r)
+              : ListView.builder(
+                  padding: EdgeInsets.all(r.paddingH),
+                  itemCount: _favorites.length,
+                  itemBuilder: (context, index) {
+                    final doc = _favorites[index];
+                    final idmed = doc['idmed']?.toString() ?? '';
+                    final medico = doc['medico']?.toString() ?? 'Médico';
+                    final especialidad =
+                        doc['especialidad']?.toString() ?? 'Especialidad';
+                    final foto = doc['foto']?.toString() ?? '';
+                    final mtrmin = doc['mtrmin']?.toString() ?? '';
+                    final photoBytes = _getPhotoBytes(foto);
 
-                      return FadeSlideIn(
-                        delay: Duration(milliseconds: index * 30),
-                        offsetY: 8,
-                        child: Padding(
-                          padding: EdgeInsets.only(bottom: r.spaceMd),
-                          child: _buildDoctorCard(idmed, medico, especialidad, photoBytes, mtrmin, isDark, r),
+                    return FadeSlideIn(
+                      delay: Duration(milliseconds: index * 30),
+                      offsetY: 8,
+                      child: Padding(
+                        padding: EdgeInsets.only(bottom: r.spaceMd),
+                        child: _buildDoctorCard(
+                          idmed,
+                          medico,
+                          especialidad,
+                          photoBytes,
+                          mtrmin,
+                          isDark,
+                          r,
                         ),
-                      );
-                    },
-                  ),
+                      ),
+                    );
+                  },
+                ),
+        ),
       ),
     );
   }
@@ -208,17 +223,16 @@ class _FavoritosScreenState extends State<FavoritosScreen> {
       decoration: BoxDecoration(
         color: AppColors.cardBg(isDark),
         borderRadius: BorderRadius.circular(r.cardRadius),
-        border: Border.all(
-          color: AppColors.cardBorder(isDark),
-          width: 0.8,
-        ),
-        boxShadow: isDark ? [] : [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
-            blurRadius: 12,
-            offset: const Offset(0, 3),
-          ),
-        ],
+        border: Border.all(color: AppColors.cardBorder(isDark), width: 0.8),
+        boxShadow: isDark
+            ? []
+            : [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.05),
+                  blurRadius: 12,
+                  offset: const Offset(0, 3),
+                ),
+              ],
       ),
       child: Padding(
         padding: EdgeInsets.all(r.cardPadding),
@@ -241,7 +255,8 @@ class _FavoritosScreenState extends State<FavoritosScreen> {
                         height: avatarSize,
                         fit: BoxFit.cover,
                         gaplessPlayback: true,
-                        errorBuilder: (_, __, ___) => _buildInitials(medico, avatarSize, r),
+                        errorBuilder: (_, __, ___) =>
+                            _buildInitials(medico, avatarSize, r),
                       ),
                     )
                   : _buildInitials(medico, avatarSize, r),

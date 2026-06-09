@@ -1,1 +1,28 @@
-{"flutter":{"platforms":{"android":{"default":{"projectId":"fir-cossmil","appId":"1:1047789419057:android:e44b53694bd5e580d7f310","fileOutput":"android/app/google-services.json"}},"dart":{"lib/firebase_options.dart":{"projectId":"fir-cossmil","configurations":{"android":"1:1047789419057:android:e44b53694bd5e580d7f310","ios":"1:1047789419057:ios:4f7fc7f73613ead3d7f310","macos":"1:1047789419057:ios:4f7fc7f73613ead3d7f310","web":"1:1047789419057:web:cdeb08537fe9a318d7f310","windows":"1:1047789419057:web:3cb05ce270535dc7d7f310"}}}}}}
+{
+  "firestore": {
+    "rules": "firestore.rules"
+  },
+  "flutter": {
+    "platforms": {
+      "android": {
+        "default": {
+          "projectId": "fir-cossmil",
+          "appId": "1:1047789419057:android:e44b53694bd5e580d7f310",
+          "fileOutput": "android/app/google-services.json"
+        }
+      },
+      "dart": {
+        "lib/firebase_options.dart": {
+          "projectId": "fir-cossmil",
+          "configurations": {
+            "android": "1:1047789419057:android:e44b53694bd5e580d7f310",
+            "ios": "1:1047789419057:ios:4f7fc7f73613ead3d7f310",
+            "macos": "1:1047789419057:ios:4f7fc7f73613ead3d7f310",
+            "web": "1:1047789419057:web:cdeb08537fe9a318d7f310",
+            "windows": "1:1047789419057:web:3cb05ce270535dc7d7f310"
+          }
+        }
+      }
+    }
+  }
+}

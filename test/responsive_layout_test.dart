@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:com.cossmil.citamedicapp/features/auth/screens/login_screen.dart';
+import 'package:cossmil/features/auth/screens/login_screen.dart';
 
 void main() {
   testWidgets('LoginScreen no lanza exceptions de layout en pantallas pequeñas', (WidgetTester tester) async {

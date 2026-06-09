@@ -2,6 +2,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/extensions/responsive_extensions.dart';
+import '../../../core/widgets/app_background.dart';
 import '../../../core/animations/optimized_animations.dart';
 import '../../../core/models/app_notification.dart';
 import '../../../core/services/notification_preferences.dart';
@@ -80,46 +81,52 @@ class _NotificacionesScreenState extends State<NotificacionesScreen> {
     final r = context.r;
     final unread = _items.where((n) => !n.isRead).length;
 
-    return CupertinoPageScaffold(
-      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-      navigationBar: CupertinoNavigationBar(
-        middle: const Text('Notificaciones'),
-        backgroundColor: isDark
-            ? AppColors.darkSurface.withValues(alpha: 0.92)
-            : AppColors.white.withValues(alpha: 0.92),
-        border: Border(
-          bottom: BorderSide(
-            color: AppColors.cardBorder(isDark).withValues(alpha: 0.5),
-            width: 0.5,
+    return AppBackground(
+      isDark: isDark,
+      child: CupertinoPageScaffold(
+        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+        navigationBar: CupertinoNavigationBar(
+          middle: const Text('Notificaciones'),
+          backgroundColor: isDark
+              ? AppColors.darkSurface.withValues(alpha: 0.92)
+              : AppColors.white.withValues(alpha: 0.92),
+          border: Border(
+            bottom: BorderSide(
+              color: AppColors.cardBorder(isDark).withValues(alpha: 0.5),
+              width: 0.5,
+            ),
           ),
-        ),
-        trailing: unread > 0
-            ? CupertinoButton(
-                padding: EdgeInsets.zero,
-                onPressed: _markAllRead,
-                child: Text(
-                  'Leer todo',
-                  style: TextStyle(
-                    fontSize: 13,
-                    color: AppColors.primary,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              )
-            : null,
-      ),
-      child: SafeArea(
-        child: _loading
-            ? const Center(child: CupertinoActivityIndicator())
-            : _items.isEmpty
-                ? _buildEmpty(isDark, r)
-                : ListView.builder(
-                    padding: EdgeInsets.fromLTRB(
-                      r.paddingH, r.spaceMd, r.paddingH, r.navBarBottomSpace,
+          trailing: unread > 0
+              ? CupertinoButton(
+                  padding: EdgeInsets.zero,
+                  onPressed: _markAllRead,
+                  child: Text(
+                    'Leer todo',
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: AppColors.primary,
+                      fontWeight: FontWeight.w600,
                     ),
-                    itemCount: _items.length,
-                    itemBuilder: (_, i) => _buildCard(_items[i], isDark, r),
                   ),
+                )
+              : null,
+        ),
+        child: SafeArea(
+          child: _loading
+              ? const Center(child: CupertinoActivityIndicator())
+              : _items.isEmpty
+              ? _buildEmpty(isDark, r)
+              : ListView.builder(
+                  padding: EdgeInsets.fromLTRB(
+                    r.paddingH,
+                    r.spaceMd,
+                    r.paddingH,
+                    r.navBarBottomSpace,
+                  ),
+                  itemCount: _items.length,
+                  itemBuilder: (_, i) => _buildCard(_items[i], isDark, r),
+                ),
+        ),
       ),
     );
   }
@@ -138,7 +145,11 @@ class _NotificacionesScreenState extends State<NotificacionesScreen> {
             color: AppColors.error.withValues(alpha: 0.85),
             borderRadius: BorderRadius.circular(r.cardRadius),
           ),
-          child: const Icon(CupertinoIcons.trash_fill, color: Colors.white, size: 22),
+          child: const Icon(
+            CupertinoIcons.trash_fill,
+            color: Colors.white,
+            size: 22,
+          ),
         ),
         confirmDismiss: (_) async => true,
         onDismissed: (_) => _deleteItem(notif),
@@ -191,7 +202,9 @@ class _NotificacionesScreenState extends State<NotificacionesScreen> {
                                 notif.title,
                                 style: TextStyle(
                                   fontSize: 13.5,
-                                  fontWeight: notif.isRead ? FontWeight.w600 : FontWeight.w800,
+                                  fontWeight: notif.isRead
+                                      ? FontWeight.w600
+                                      : FontWeight.w800,
                                   color: AppColors.textPrimaryC(isDark),
                                   height: 1.3,
                                 ),

@@ -886,7 +886,13 @@ class _PerfilScreenState extends State<PerfilScreen> {
         icon: CupertinoIcons.calendar,
         color: const Color(0xFFE91E63),
         label: 'Fecha de Nacimiento',
-        value: user.birthDate.isNotEmpty ? user.birthDate.split(' ')[0] : 'No registrado',
+        // Mostrar solo la fecha "yyyy-MM-dd": el backend puede devolver
+        // "2001-03-25", "2001-03-25 00:00:00" o ISO "2001-03-25T00:00:00.000".
+        // Cortamos en 'T' (ISO) y en espacio (datetime SQL) para quedarnos
+        // únicamente con la parte de fecha.
+        value: user.birthDate.isNotEmpty
+            ? user.birthDate.split('T').first.split(' ').first
+            : 'No registrado',
         isDark: isDark,
       ),
     ];

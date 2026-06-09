@@ -53,6 +53,7 @@ import '../core/storage/token_storage.dart';
 
 import '../core/services/session_restore_service.dart';
 import '../core/services/notification_service.dart';
+import '../core/services/favorites_service.dart';
 import '../core/services/update_service.dart';
 import '../core/extensions/responsive_extensions.dart';
 
@@ -288,6 +289,8 @@ class TabShellState extends State<TabShell>
       // Actualizaciones pequeñas (flexible) vía Google Play. No bloquea ni
       // consulta el backend; solo descarga en segundo plano y avisa al terminar.
       _checkForFlexibleUpdate();
+      // Sincronizar favoritos en segundo plano silenciosamente
+      FavoritesService.syncFavoritesWithCloud();
     });
 
   }

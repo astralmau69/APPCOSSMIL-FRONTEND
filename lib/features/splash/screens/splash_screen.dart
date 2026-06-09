@@ -568,51 +568,36 @@ class _SplashScreenState extends State<SplashScreen>
 
       try {
 
-        final hasToken = await TokenStorage.hasToken();
-
+        // Restaurar la sesión persistida y leer el estado de seguridad local.
+        final restored = await SessionRestoreService.restoreUserSession();
         final hasPin = await SecurityService.hasPin();
+        final bioEnabled = await SecurityService.isBiometricsEnabled();
+        // "Seguridad local configurada" = el usuario tiene patrón/PIN o huella/
+        // rostro habilitado. Cubre los tres métodos por igual.
+        final localAuthConfigured = hasPin || bioEnabled;
 
         if (!mounted) return;
 
-        if (hasToken) {
-
-          final restored = await SessionRestoreService.restoreUserSession();
-
-          if (!mounted) return;
-
-          if (!restored) {
-            Navigator.pushReplacementNamed(context, '/login');
-            return;
-          }
-
-          if (!mounted) return;
-          if (hasPin) {
-            Navigator.pushReplacementNamed(context, '/local-auth');
-          } else {
-            // Sin PIN: intentar desbloqueo biométrico si está habilitado y disponible.
-            // Se activa automáticamente cuando el usuario inicia sesión con credenciales
-            // en un dispositivo con huella o Face ID registrado.
-            final bioEnabled = await SecurityService.isBiometricsEnabled();
-            final bioAvailable = await SecurityService.canCheckBiometrics();
-            if (!mounted) return;
-            if (bioEnabled && bioAvailable) {
-              Navigator.pushReplacementNamed(context, '/local-auth');
-            } else {
-              // Sin biometría disponible: limpiar sesión y solicitar credenciales.
-              await NotificationService.cancelAllReminders();
-              await TokenStorage.deleteToken();
-              await SessionRestoreService.clearUserSession();
-              if (!mounted) return;
-              Navigator.pushReplacementNamed(context, '/login');
-            }
-          }
-
-        } else {
-
-          if (!mounted) return;
-          Navigator.pushReplacementNamed(context, '/login');
-
+        // ── Caso 1: sesión restaurable + seguridad local configurada ──────────
+        // Ir SIEMPRE al desbloqueo local, aunque el access token haya expirado
+        // o se haya destruido tras 24h. Tras desbloquear, _silentRelogin
+        // renueva el token con las credenciales guardadas. Una vez configurado
+        // el patrón/PIN/huella/rostro, NUNCA se vuelve a pedir matrícula y
+        // contraseña.
+        if (restored && localAuthConfigured) {
+          Navigator.pushReplacementNamed(context, '/local-auth');
+          return;
         }
+
+        // ── Caso 2: sin seguridad local configurada ───────────────────────────
+        // No se mantiene sesión persistente sin un método de bloqueo local:
+        // limpiar y solicitar login (comportamiento previo). El PIN/biometría es
+        // local y no se toca aquí.
+        await NotificationService.cancelAllReminders();
+        await TokenStorage.deleteToken();
+        await SessionRestoreService.clearUserSession();
+        if (!mounted) return;
+        Navigator.pushReplacementNamed(context, '/login');
 
       } catch (e) {
 
