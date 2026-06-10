@@ -44,3 +44,6 @@ app.*.map.json
 /android/app/profile
 /android/app/release
 /.vs
+
+# Respaldo de audios originales antes de normalizar loudness
+vof_backup_original/

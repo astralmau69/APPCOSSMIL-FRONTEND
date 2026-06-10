@@ -26,6 +26,7 @@ import '../../../core/animations/animated_gradient_background.dart';
 import '../../../core/extensions/responsive_extensions.dart';
 import '../../../core/services/programacion_service.dart';
 import '../../../core/storage/version_migration_service.dart';
+import '../../../core/utils/app_logger.dart';
 
 class SplashScreen extends StatefulWidget {
 
@@ -113,6 +114,9 @@ class _SplashScreenState extends State<SplashScreen>
 
   bool _navigated = false;
   bool _wasUpdated = false;
+  /// Evita reproducir el audio de bienvenida más de una vez (autoplay en app
+  /// o primer gesto en web).
+  bool _welcomeAudioStarted = false;
   // Version check corre en paralelo con las animaciones del splash.
   bool _versionBlocked = false;
   Future<void>? _versionCheckFuture;
@@ -302,16 +306,13 @@ class _SplashScreenState extends State<SplashScreen>
       _versionCheckFuture = _checkVersionEarly();
     }
 
-    if (!kIsWeb && !widget.isOverlay && mounted && SoundManager.isEnabled && !await SoundManager.isDeviceSilentOrVibrate()) {
-
-      try {
-
-        _audioPlayer = AudioPlayer();
-
-        await _audioPlayer!.play(AssetSource('vof/AUDIO 1. BIENVENIDA.mp3'));
-
-      } catch (_) {}
-
+    // App (no web): reproducir el audio de bienvenida automáticamente.
+    // En web el navegador bloquea el autoplay y los await de audioplayers
+    // pueden colgar la secuencia → NO se reproduce aquí; se dispara con el
+    // primer gesto del usuario (ver Listener en build()). No se usa `await`
+    // para no bloquear el arranque del splash.
+    if (!kIsWeb) {
+      _playWelcomeAudio();
     }
 
     // Solicitar permisos de ubicación y notificaciones SIEMPRE durante el splash
@@ -375,6 +376,32 @@ class _SplashScreenState extends State<SplashScreen>
   }
 
 
+
+  /// Reproduce el audio de bienvenida una sola vez, respetando el toggle de
+  /// sonido y el modo silencio/vibración del dispositivo.
+  ///
+  /// En la app se llama automáticamente desde [_runSequence]; en web se llama
+  /// desde el primer gesto del usuario (Listener en build()) porque el navegador
+  /// bloquea el autoplay sin interacción previa.
+  Future<void> _playWelcomeAudio() async {
+    if (_welcomeAudioStarted || widget.isOverlay || !mounted) return;
+    if (!SoundManager.isEnabled) return;
+    if (await SoundManager.isDeviceSilentOrVibrate()) return;
+
+    _welcomeAudioStarted = true;
+    try {
+      _audioPlayer = AudioPlayer();
+      // Pre-cargar la fuente (setSource) + resume() es más confiable que
+      // play() directo para la primera reproducción tras el arranque.
+      await _audioPlayer!.setReleaseMode(ReleaseMode.stop);
+      await _audioPlayer!.setSource(AssetSource('vof/AUDIO 1. BIENVENIDA.mp3'));
+      await _audioPlayer!.resume();
+    } catch (e) {
+      // Permitir reintento en el próximo gesto (relevante en web).
+      _welcomeAudioStarted = false;
+      AppLogger.warn('Splash', 'No se pudo reproducir audio de bienvenida', e);
+    }
+  }
 
   /// Verifica la versión inmediatamente al abrir la app (en paralelo con el splash).
   /// Si está desactualizada muestra el modal de actualización de inmediato.
@@ -740,7 +767,16 @@ class _SplashScreenState extends State<SplashScreen>
 
 
 
-    return AnnotatedRegion<SystemUiOverlayStyle>(
+    return Listener(
+
+      // En web el navegador bloquea el autoplay: el primer toque/click del
+      // usuario dispara el audio de bienvenida. En la app es inocuo porque
+      // el audio ya arrancó automáticamente (guard _welcomeAudioStarted).
+      behavior: HitTestBehavior.translucent,
+
+      onPointerDown: (_) => _playWelcomeAudio(),
+
+      child: AnnotatedRegion<SystemUiOverlayStyle>(
 
       value: isDark ? SystemUiOverlayStyle.light : SystemUiOverlayStyle.dark,
 
@@ -783,6 +819,8 @@ class _SplashScreenState extends State<SplashScreen>
           ),
 
         ),
+
+      ),
 
       ),
 
