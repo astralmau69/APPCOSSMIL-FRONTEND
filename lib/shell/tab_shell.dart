@@ -61,6 +61,7 @@ import '../core/models/reserva_model.dart';
 import 'widgets/active_appointment_modal.dart';
 import '../core/widgets/app_background.dart';
 import '../core/widgets/loader_with_message.dart';
+import '../core/widgets/inasistencias_modal.dart';
 import '../core/utils/app_logger.dart';
 import '../core/animations/app_page_route.dart';
 
@@ -855,7 +856,31 @@ class TabShellState extends State<TabShell>
         }
       }
 
-      // 1. Verificar validaciones de aportes (solo para beneficiarios no titulares).
+      // 1. Verificar penalización por inasistencias (3 faltas acumuladas).
+      //    Si la API retorna data:true, el asegurado debe reservar de forma
+      //    presencial en ventanilla → se bloquea la entrada al flujo de reserva.
+      try {
+        final idperInas = int.tryParse(
+              bookingState.beneficiary?.id ?? UserSession.currentUser.id,
+            ) ??
+            0;
+        final inasistenciasMsg =
+            await _programacionService.validarInasistencias(idperInas);
+        if (inasistenciasMsg != null) {
+          if (!mounted) return;
+          _closeLoader();
+          await showInasistenciasModal(context, inasistenciasMsg);
+          if (mounted) {
+            setState(() => _currentIndex = 0);
+            _tabController.index = 0;
+          }
+          return;
+        }
+      } catch (e) {
+        debugPrint('⚠️ Error al validar inasistencias: $e');
+      }
+
+      // 2. Verificar validaciones de aportes (solo para beneficiarios no titulares).
       //    Los titulares son verificados al seleccionar hospital en RegionalScreen
       //    porque pueden cambiar el beneficiario antes de elegir sucursal.
       if (!UserSession.currentUser.isTitular) {

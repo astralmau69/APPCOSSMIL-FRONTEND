@@ -281,6 +281,45 @@ class ProgramacionService {
     }
   }
 
+  // ── Validar inasistencias (penalización por 3 faltas) ──────────────────
+
+  /// Verifica si el asegurado está penalizado por acumular 3 inasistencias.
+  ///
+  /// El backend retorna `data:true` cuando está penalizado (debe reservar de
+  /// forma presencial en ventanilla) y `data:false` cuando puede reservar
+  /// normalmente. El `message` contiene el detalle de las faltas acumuladas.
+  ///
+  /// Retorna el mensaje de penalización si está bloqueado, o `null` si puede
+  /// reservar. Ante un error de red devuelve `null` para no bloquear al usuario.
+  Future<String?> validarInasistencias(int idper) async {
+    if (AppConfig.useMockData) return null;
+    if (idper == 0) return null;
+
+    try {
+      final response = await _api.get(
+        ApiConstants.validarInasistencias(idper),
+      );
+
+      return switch (response) {
+        ApiSuccess(:final data) => () {
+            if (data is Map<String, dynamic>) {
+              final isPenalized = data['data'] == true;
+              if (isPenalized) {
+                return data['message'] as String? ??
+                    'Ha acumulado tres (3) inasistencias. La obtención de '
+                        'nuevas citas deberá realizarse de manera presencial '
+                        'en ventanilla.';
+              }
+            }
+            return null; // Sin penalización
+          }(),
+        ApiError() => null, // Error → dejar pasar
+      };
+    } catch (_) {
+      return null; // Error de red → dejar pasar
+    }
+  }
+
   // ── Verificar horario de atención ──────────────────────────────────────
 
   /// Verifica si hay horario de atención habilitado.

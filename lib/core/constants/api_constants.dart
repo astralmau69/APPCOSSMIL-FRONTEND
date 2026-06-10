@@ -111,6 +111,12 @@ class ApiConstants {
   static String verificaValidaciones(String matricula, int idper) =>
       '/api/programacion/verifica-validaciones/$matricula/$idper';
 
+  /// Validar inasistencias del asegurado (penalización por 3 faltas).
+  /// Retorna data:true si está penalizado (debe reservar en ventanilla);
+  /// data:false si no tiene penalización. El `message` detalla las faltas.
+  static String validarInasistencias(int idper) =>
+      '/api/programacion/validar-inasistencias/$idper';
+
   /// Actualizar datos de usuario (contraseña, correo, teléfono).
   static String updateUsuarioWeb(int idper) =>
       '/api/usuarioweb/update/$idper';

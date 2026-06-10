@@ -473,8 +473,17 @@ class _LoginScreenState extends State<LoginScreen>
                             r.paddingH,
                             keyboardVisible ? keyboardHeight + 24 : 0,
                           ),
-                          child: ConstrainedBox(
-                            constraints: BoxConstraints(minHeight: visibleHeight),
+                          // En web/escritorio la pantalla es muy ancha; sin un
+                          // tope de ancho el formulario (crossAxisAlignment.stretch)
+                          // se estira a toda la pantalla. Lo centramos y limitamos
+                          // a un ancho tipo móvil. En teléfonos el ancho real es
+                          // menor que maxWidth → no cambia nada.
+                          child: Center(
+                            child: ConstrainedBox(
+                            constraints: BoxConstraints(
+                              minHeight: visibleHeight,
+                              maxWidth: 440,
+                            ),
                             child: Column(
                               mainAxisAlignment: MainAxisAlignment.center,
                               mainAxisSize: MainAxisSize.min,
@@ -527,6 +536,7 @@ class _LoginScreenState extends State<LoginScreen>
                                   child: _buildLoginButton(),
                                 ),
                               ],
+                            ),
                             ),
                           ),
                         );
