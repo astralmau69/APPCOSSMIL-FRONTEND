@@ -20,6 +20,7 @@ import '../../../core/helpers/distance_helper.dart';
 import '../../../core/widgets/skeleton_loading.dart';
 import '../../../core/widgets/app_state_widget.dart';
 import '../../../core/widgets/loader_with_message.dart';
+import '../../../core/widgets/inasistencias_modal.dart';
 import '../../../core/utils/error_mapper.dart';
 import '../../../core/utils/app_logger.dart';
 import 'specialty_screen.dart';
@@ -649,6 +650,18 @@ class _RegionalScreenState extends State<RegionalScreen> {
         );
         loaderOpen = true;
 
+        // 1a. Penalización por inasistencias (3 faltas) del familiar elegido.
+        //     Se consulta con el idper de la persona que va a ser atendida; si
+        //     está penalizada (data:true) debe reservar de forma presencial.
+        final inasistenciasMsg = await _service.validarInasistencias(idper);
+        if (!mounted) return;
+        if (inasistenciasMsg != null) {
+          closeLoader();
+          await showInasistenciasModal(context, inasistenciasMsg);
+          return; // no continuar
+        }
+
+        // 1b. Validaciones de aportes (Art. 186).
         final validMsg = await _service.verificarValidaciones(matricula, idper);
         if (!mounted) return;
         closeLoader();

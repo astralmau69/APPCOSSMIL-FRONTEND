@@ -72,7 +72,8 @@ class AuthService {
           'username': username,
           'password': password,
         },
-      );
+      ).timeout(const Duration(seconds: 30)); // corta la espera en redes lentas
+                                              // (evita el cuelgue de 1-2 min del navegador)
 
       // ── DEBUG TEMPORAL: ver exactamente qué responde el servidor ──────────
       if (kDebugMode) {
@@ -417,7 +418,11 @@ class AuthService {
     } on SocketException {
       return const AuthError('Sin conexión a internet. Verifica tu red e inténtalo de nuevo.', AuthErrorType.network);
     } on TimeoutException {
-      return const AuthError('La conexión tardó demasiado. Verifica tu red e inténtalo de nuevo.', AuthErrorType.network);
+      return const AuthError('La conexión tardó demasiado. Tu internet parece lento o inestable; verifica tu red e inténtalo de nuevo.', AuthErrorType.network);
+    } on http.ClientException {
+      // En web una falla de conexión (servidor inalcanzable / red lenta) lanza
+      // ClientException ("XMLHttpRequest error"), no SocketException.
+      return const AuthError('No pudimos conectar con el servidor. Tu conexión parece lenta o inestable; verifica tu red e inténtalo de nuevo.', AuthErrorType.network);
     } on Exception catch (e) {
       return AuthError(ErrorMapper.message(e, context: ErrorContext.login));
     }

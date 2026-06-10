@@ -856,37 +856,30 @@ class TabShellState extends State<TabShell>
         }
       }
 
-      // 1. Verificar penalización por inasistencias (3 faltas acumuladas).
-      //    Si la API retorna data:true, el asegurado debe reservar de forma
-      //    presencial en ventanilla → se bloquea la entrada al flujo de reserva.
-      try {
-        final idperInas = int.tryParse(
-              bookingState.beneficiary?.id ?? UserSession.currentUser.id,
-            ) ??
-            0;
-        final inasistenciasMsg =
-            await _programacionService.validarInasistencias(idperInas);
-        if (inasistenciasMsg != null) {
-          if (!mounted) return;
-          _closeLoader();
-          await showInasistenciasModal(context, inasistenciasMsg);
-          if (mounted) {
-            setState(() => _currentIndex = 0);
-            _tabController.index = 0;
-          }
-          return;
-        }
-      } catch (e) {
-        debugPrint('⚠️ Error al validar inasistencias: $e');
-      }
-
-      // 2. Verificar validaciones de aportes (solo para beneficiarios no titulares).
-      //    Los titulares son verificados al seleccionar hospital en RegionalScreen
-      //    porque pueden cambiar el beneficiario antes de elegir sucursal.
+      // 1. Verificaciones para beneficiarios NO titulares (solo reservan para sí).
+      //    Los titulares se verifican al seleccionar el establecimiento en
+      //    RegionalScreen, porque pueden cambiar el familiar (y su idper) antes
+      //    de elegir sucursal — la consulta debe usar el idper del familiar.
       if (!UserSession.currentUser.isTitular) {
         try {
           final matricula = UserSession.currentUser.matricula;
           final idper = int.tryParse(UserSession.currentUser.id) ?? 0;
+
+          // 1a. Penalización por inasistencias (3 faltas) → reserva presencial.
+          final inasistenciasMsg =
+              await _programacionService.validarInasistencias(idper);
+          if (inasistenciasMsg != null) {
+            if (!mounted) return;
+            _closeLoader();
+            await showInasistenciasModal(context, inasistenciasMsg);
+            if (mounted) {
+              setState(() => _currentIndex = 0);
+              _tabController.index = 0;
+            }
+            return;
+          }
+
+          // 1b. Validaciones de aportes (Art. 186 Ley SSML).
           final validMsg = await _programacionService.verificarValidaciones(matricula, idper);
           if (validMsg != null) {
             if (!mounted) return;
@@ -899,7 +892,7 @@ class TabShellState extends State<TabShell>
             return;
           }
         } catch (e) {
-          debugPrint('⚠️ Error al verificar validaciones: $e');
+          debugPrint('⚠️ Error en verificaciones de beneficiario: $e');
         }
       }
 
