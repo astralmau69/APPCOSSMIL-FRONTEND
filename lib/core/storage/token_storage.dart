@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import '../utils/web_local_storage.dart';
+import '../services/accounts_store.dart';
 
 /// Gestiona el token de acceso y refresh de forma segura en el dispositivo.
 /// iOS: Keychain | Android: Keystore / EncryptedSharedPreferences | Web: localStorage
@@ -66,10 +67,23 @@ class TokenStorage {
     await _storage.delete(key: _keyRefreshToken);
   }
 
-  /// Borra TODO el almacenamiento seguro de la app.
+  /// Borra TODO el almacenamiento seguro de la app, EXCEPTO las cuentas
+  /// guardadas para el login rápido (la "cajita" multi-cuenta), que deben
+  /// sobrevivir al cierre de sesión / cambio de cuenta. Solo se borran al
+  /// quitar la cuenta explícitamente o desinstalar la app.
   static Future<void> wipeAll() async {
     if (kIsWeb) { webLsClear(); return; }
+    // Respaldar las cuentas guardadas, borrar todo, y restaurarlas.
+    Map<String, String> accountsBackup = const {};
+    try {
+      accountsBackup = await AccountsStore.exportRaw();
+    } catch (_) {}
     await _storage.deleteAll();
+    if (accountsBackup.isNotEmpty) {
+      try {
+        await AccountsStore.importRaw(accountsBackup);
+      } catch (_) {}
+    }
   }
 
   /// Verifica si el usuario tiene sesión activa.

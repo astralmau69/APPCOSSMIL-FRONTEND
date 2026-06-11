@@ -22,7 +22,8 @@ import '../../../core/widgets/image_enlarged_modal.dart';
 import '../../../core/widgets/adaptive_sliver_nav_bar.dart';
 import '../../notificaciones/screens/notificaciones_screen.dart';
 import 'emergency_data_screen.dart';
-import 'favoritos_screen.dart';
+// Favoritos OCULTO (feature aún no funcional):
+// import 'favoritos_screen.dart';
 
 class PerfilScreen extends StatefulWidget {
   const PerfilScreen({super.key});
@@ -387,21 +388,8 @@ class _PerfilScreenState extends State<PerfilScreen> {
                                 AppPageRoute(builder: (_) => const NotificacionesScreen()),
                               ),
                             ),
-                            _buildNavTile(
-                              isDark: isDark,
-                              icon: CupertinoIcons.star_fill,
-                              iconColor: const Color(0xFFF59E0B),
-                              title: 'Mis Médicos Favoritos',
-                              subtitle: 'Cazador de Fichas (FCM Topics)',
-                              onTap: () async {
-                                await Navigator.of(context, rootNavigator: true).push(
-                                  AppPageRoute(builder: (_) => const FavoritosScreen()),
-                                );
-                                if (mounted) {
-                                  setState(() {});
-                                }
-                              },
-                            ),
+                            // "Mis Médicos Favoritos" OCULTO (feature aún no
+                            // funcional). Reactivar este _buildNavTile cuando esté listo.
                           ],
                         ),
                       ),

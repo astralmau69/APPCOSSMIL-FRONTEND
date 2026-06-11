@@ -67,14 +67,30 @@ class SoundManager {
     }
   }
 
+  /// Última "voz" reproducida por [playIfAllowed]. Se usa para detenerla antes
+  /// de iniciar otra y evitar que dos clips se solapen (en web, al re-loguear o
+  /// recargar, dos LoginScreen podían reproducir el mismo audio a la vez,
+  /// produciendo un efecto "duplicado/robótico").
+  static AudioPlayer? _activeVoice;
+
   /// Plays an audio asset only if in-app sounds are enabled AND the device
   /// is not in silent/vibrate mode. Returns the AudioPlayer so the caller
   /// can stop/dispose it if needed; returns null if playback was skipped.
+  ///
+  /// Antes de reproducir, detiene cualquier voz previa lanzada por este método,
+  /// garantizando que solo suene un clip a la vez.
   static Future<AudioPlayer?> playIfAllowed(String assetPath) async {
     if (!isEnabled) return null;
     if (await isDeviceSilentOrVibrate()) return null;
+
+    // Silenciar la voz anterior para que no se solape con la nueva.
+    try {
+      await _activeVoice?.stop();
+    } catch (_) {}
+
     try {
       final player = AudioPlayer();
+      _activeVoice = player;
       await player.play(AssetSource(assetPath));
       return player;
     } catch (_) {

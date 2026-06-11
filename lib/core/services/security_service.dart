@@ -322,6 +322,28 @@ class SecurityService {
     return value == 'true';
   }
 
+  /// Retorna true si hay seguridad local configurada (PIN **o** biometría).
+  ///
+  /// CLAVE para que el PIN/huella "no se pierda nunca": si la lectura del PIN
+  /// falla (Keystore no disponible momentáneamente), se asume que SÍ existe en
+  /// vez de degradar a "sin seguridad". Así el arranque nunca cae al login
+  /// normal por un fallo de lectura cuando el usuario ya configuró su PIN/huella.
+  /// Solo se pierde al cerrar sesión o desinstalar (que borran el storage).
+  static Future<bool> isLocalAuthConfiguredSafe() async {
+    bool pin;
+    try {
+      pin = await hasPin();
+    } catch (_) {
+      return true; // no se pudo leer el PIN → asumir configurado (no degradar)
+    }
+    if (pin) return true;
+    try {
+      return await isBiometricsEnabled();
+    } catch (_) {
+      return true; // no se pudo leer la huella → asumir configurado
+    }
+  }
+
   /// Lanza el prompt nativo de biometría.
   /// Retorna un [BiometricAuthResult] que representa el resultado o error granular.
   static Future<BiometricAuthResult> authenticateWithBiometrics({

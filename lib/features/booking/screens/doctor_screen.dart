@@ -9,8 +9,9 @@ import '../../../core/services/programacion_service.dart';
 import '../../../core/widgets/app_state_widget.dart';
 import '../../../core/widgets/breadcrumb_chips.dart';
 import '../../../shell/tab_shell.dart';
-import '../../../core/services/favorites_service.dart';
-import '../../../core/services/push_notification_service.dart';
+// Favoritos OCULTO (feature aún no funcional): imports comentados.
+// import '../../../core/services/favorites_service.dart';
+// import '../../../core/services/push_notification_service.dart';
 
 class DoctorScreen extends StatefulWidget {
   final TabShellState tabShell;
@@ -29,14 +30,17 @@ class _DoctorScreenState extends State<DoctorScreen> {
   List<DoctorAgendaModel> _medicos = [];
   bool _isLoading = true;
   String? _errorMessage;
-  List<String> _favoriteDoctorIds = [];
 
   @override
   void initState() {
     super.initState();
     _loadMedicos();
-    _loadFavorites();
   }
+
+  // ── Favoritos OCULTO (feature aún no funcional) ──────────────────────────
+  // Se conserva la lógica comentada para reactivarla cuando esté lista.
+  /*
+  List<String> _favoriteDoctorIds = [];
 
   Future<void> _loadFavorites() async {
     final favs = await FavoritesService.getFavoriteDoctorIds();
@@ -63,7 +67,7 @@ class _DoctorScreenState extends State<DoctorScreen> {
       };
 
       final isAdded = await FavoritesService.toggleFavorite(doctorId, details: details);
-      
+
       if (isAdded) {
         await PushNotificationService.subscribeToDoctor(doctorId);
       } else {
@@ -93,6 +97,7 @@ class _DoctorScreenState extends State<DoctorScreen> {
       debugPrint('Error toggling favorite: $e');
     }
   }
+  */
 
   Future<void> _loadMedicos() async {
     setState(() { _isLoading = true; _errorMessage = null; });
@@ -300,23 +305,7 @@ class _DoctorScreenState extends State<DoctorScreen> {
                 ),
               ),
 
-              SizedBox(width: r.spaceSm),
-              GestureDetector(
-                behavior: HitTestBehavior.opaque,
-                onTap: () => _toggleFavorite(doctor),
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-                  child: Icon(
-                    _favoriteDoctorIds.contains(doctor.idmed)
-                        ? CupertinoIcons.star_fill
-                        : CupertinoIcons.star,
-                    color: _favoriteDoctorIds.contains(doctor.idmed)
-                        ? const Color(0xFFF59E0B)
-                        : AppColors.textTertiaryC(isDark),
-                    size: r.iconSm * 1.15,
-                  ),
-                ),
-              ),
+              // Botón de favorito OCULTO (feature aún no funcional).
               SizedBox(width: r.spaceSm),
               Icon(CupertinoIcons.chevron_right,
                   size: r.iconSm, color: AppColors.textTertiaryC(isDark)),

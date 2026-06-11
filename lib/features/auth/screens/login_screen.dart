@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/services.dart';
@@ -14,8 +15,13 @@ import '../../../core/theme/theme_manager.dart';
 import '../../../core/storage/token_storage.dart';
 import '../../../core/services/auth_service.dart';
 import '../../../core/services/programacion_service.dart';
-import '../../../core/services/security_service.dart';
 import '../../../core/services/session_restore_service.dart';
+import '../../../core/services/accounts_store.dart';
+import '../../../core/models/saved_account.dart';
+import '../../../core/session/user_session.dart';
+import '../../../core/animations/app_page_route.dart';
+import 'account_unlock_screen.dart';
+import 'save_account_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -39,6 +45,17 @@ class _LoginScreenState extends State<LoginScreen>
   AuthErrorType _errorType = AuthErrorType.unknown;
   String _appVersion = '1.0.2'; // fallback; se sobreescribe con PackageInfo
   AudioPlayer? _audioPlayer;
+
+  // ── Multi-cuenta (cajita de login estilo Facebook) ──────────────────────
+  /// OCULTO por ahora: poner en `true` para reactivar el login multi-cuenta
+  /// (selector de cuentas + guardar cuenta). Mientras esté en false, el login
+  /// se comporta como antes (solo formulario).
+  static const bool _multiAccountEnabled = false;
+
+  /// Cuentas guardadas localmente. Si hay alguna y el usuario no pidió el
+  /// formulario, se muestra el selector de cuentas en vez del formulario.
+  List<SavedAccount> _savedAccounts = [];
+  bool _forceForm = false;
 
   late final AnimationController _logoCtrl;
   late final AnimationController _floatCtrl;
@@ -109,6 +126,108 @@ class _LoginScreenState extends State<LoginScreen>
     PackageInfo.fromPlatform().then((info) {
       if (mounted) setState(() => _appVersion = info.version);
     }).catchError((_) {}); // old devices can throw here
+
+    if (_multiAccountEnabled) _loadSavedAccounts();
+  }
+
+  Future<void> _loadSavedAccounts() async {
+    try {
+      final list = await AccountsStore.list();
+      if (mounted) setState(() => _savedAccounts = list);
+    } catch (_) {}
+  }
+
+  Future<void> _openSavedAccount(SavedAccount account) async {
+    await Navigator.of(context).push(
+      AppPageRoute(builder: (_) => AccountUnlockScreen(account: account)),
+    );
+    // Si el usuario volvió sin entrar, refrescar la lista (orden/datos).
+    if (mounted) _loadSavedAccounts();
+  }
+
+  Future<void> _removeSavedAccount(SavedAccount account) async {
+    final ok = await showCupertinoDialog<bool>(
+      context: context,
+      builder: (ctx) => CupertinoAlertDialog(
+        title: const Text('Quitar cuenta'),
+        content: Text(
+            '¿Quitar la cuenta de ${account.displayName.isNotEmpty ? account.displayName : account.matricula} de este dispositivo? '
+            'Tendrás que iniciar sesión con tu contraseña la próxima vez.'),
+        actions: [
+          CupertinoDialogAction(
+            child: const Text('Cancelar'),
+            onPressed: () => Navigator.pop(ctx, false),
+          ),
+          CupertinoDialogAction(
+            isDestructiveAction: true,
+            child: const Text('Quitar'),
+            onPressed: () => Navigator.pop(ctx, true),
+          ),
+        ],
+      ),
+    );
+    if (ok == true) {
+      await AccountsStore.remove(account.matricula);
+      if (mounted) {
+        await _loadSavedAccounts();
+        // Si ya no quedan cuentas, mostrar el formulario.
+        if (_savedAccounts.isEmpty && mounted) {
+          setState(() => _forceForm = true);
+        }
+      }
+    }
+  }
+
+  /// Tras un login manual exitoso, ofrece guardar la cuenta para acceso rápido.
+  /// Si ya estaba guardada, solo refresca nombre/foto y la contraseña.
+  Future<void> _maybeOfferSaveAccount(String username, String password) async {
+    try {
+      final existing = await AccountsStore.find(username);
+      if (existing != null) {
+        await AccountsStore.upsert(
+          account: existing.copyWith(
+            displayName: UserSession.currentUser.displayName,
+            photoBase64: UserSession.currentUser.photoBase64,
+            lastUsedMs: DateTime.now().millisecondsSinceEpoch,
+          ),
+          password: password,
+        );
+        return;
+      }
+
+      if (!mounted) return;
+      final wantSave = await showCupertinoDialog<bool>(
+        context: context,
+        builder: (ctx) => CupertinoAlertDialog(
+          title: const Text('Guardar esta cuenta'),
+          content: const Text(
+              '¿Deseas guardar esta cuenta para entrar rápido con huella o un PIN la próxima vez?'),
+          actions: [
+            CupertinoDialogAction(
+              child: const Text('Ahora no'),
+              onPressed: () => Navigator.pop(ctx, false),
+            ),
+            CupertinoDialogAction(
+              isDefaultAction: true,
+              child: const Text('Guardar'),
+              onPressed: () => Navigator.pop(ctx, true),
+            ),
+          ],
+        ),
+      );
+      if (wantSave != true || !mounted) return;
+
+      await Navigator.of(context).push<bool>(
+        AppPageRoute(
+          builder: (_) => SaveAccountScreen(
+            matricula: username,
+            password: password,
+            displayName: UserSession.currentUser.displayName,
+            photoBase64: UserSession.currentUser.photoBase64,
+          ),
+        ),
+      );
+    } catch (_) {}
   }
 
   /// Pausa la animación de flotación cuando el teclado está activo y la reanuda
@@ -281,6 +400,12 @@ class _LoginScreenState extends State<LoginScreen>
         if (!token.reqReset) {
           await _showSecurityWarningModal();
         } else {
+          // Ofrecer guardar la cuenta para acceso rápido (multi-cuenta).
+          // OCULTO por ahora (ver _multiAccountEnabled).
+          if (_multiAccountEnabled) {
+            await _maybeOfferSaveAccount(username, password);
+            if (!mounted) return;
+          }
           Navigator.pushReplacementNamed(context, '/loading-data');
         }
 
@@ -429,6 +554,13 @@ class _LoginScreenState extends State<LoginScreen>
   Widget build(BuildContext context) {
     final r = context.r;
     final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    // ── Selector de cuentas guardadas (cajita de login multi-cuenta) ────────
+    // OCULTO por ahora (ver _multiAccountEnabled).
+    if (_multiAccountEnabled && _savedAccounts.isNotEmpty && !_forceForm) {
+      return _buildAccountChooser(isDark, r);
+    }
+
     final double logoSize = (r.screenHeight * 0.17).clamp(70.0, 140.0);
     final double keyboardHeight = MediaQuery.of(context).viewInsets.bottom;
     final bool keyboardVisible = keyboardHeight > 80;
@@ -606,6 +738,219 @@ class _LoginScreenState extends State<LoginScreen>
           ),
         ),
       ),
+      ),
+    );
+  }
+
+  // ── Selector de cuentas guardadas ─────────────────────────────────────────
+
+  Widget _buildAccountChooser(bool isDark, AppResponsive r) {
+    return Scaffold(
+      backgroundColor: isDark ? const Color(0xFF101214) : const Color(0xFFF7F9FB),
+      body: AnimatedGradientBackground(
+        isDark: isDark,
+        child: SafeArea(
+          child: Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 460),
+              child: Column(
+                children: [
+                  SizedBox(height: r.spaceXl),
+                  _buildLogo(
+                    (r.screenHeight * 0.12).clamp(56.0, 96.0),
+                    isDark,
+                  ),
+                  SizedBox(height: r.spaceMd),
+                  Text(
+                    '¿Con qué cuenta deseas entrar?',
+                    textAlign: TextAlign.center,
+                    style: context.texts.titleLarge.copyWith(
+                      fontWeight: FontWeight.w800,
+                      color: AppColors.textPrimaryC(isDark),
+                    ),
+                  ),
+                  SizedBox(height: r.spaceXs),
+                  Text(
+                    'Toca tu cuenta y desbloquéala con huella o PIN.',
+                    textAlign: TextAlign.center,
+                    style: context.texts.bodySmall.copyWith(
+                      color: AppColors.textSecondaryC(isDark),
+                    ),
+                  ),
+                  SizedBox(height: r.spaceLg),
+                  Expanded(
+                    child: ListView.separated(
+                      padding: EdgeInsets.symmetric(horizontal: r.paddingH),
+                      itemCount: _savedAccounts.length,
+                      separatorBuilder: (_, __) => SizedBox(height: r.spaceSm),
+                      itemBuilder: (_, i) =>
+                          _buildAccountCard(_savedAccounts[i], isDark, r),
+                    ),
+                  ),
+                  Padding(
+                    padding: EdgeInsets.fromLTRB(
+                        r.paddingH, r.spaceSm, r.paddingH, r.spaceMd),
+                    child: SizedBox(
+                      width: double.infinity,
+                      child: CupertinoButton(
+                        padding: EdgeInsets.symmetric(vertical: r.spaceMd),
+                        borderRadius: BorderRadius.circular(r.cardRadius),
+                        color: isDark ? AppColors.darkElevated : AppColors.white,
+                        onPressed: () => setState(() => _forceForm = true),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(CupertinoIcons.person_badge_plus,
+                                size: r.iconSm, color: AppColors.primary),
+                            SizedBox(width: r.spaceSm),
+                            Text(
+                              'Usar otra cuenta',
+                              style: context.texts.bodyMedium.copyWith(
+                                color: AppColors.primary,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildAccountCard(SavedAccount account, bool isDark, AppResponsive r) {
+    return OptimizedPressButton(
+      onTap: () => _openSavedAccount(account),
+      scaleDown: 0.97,
+      child: Container(
+        padding: EdgeInsets.all(r.cardPadding),
+        decoration: BoxDecoration(
+          color: AppColors.cardBg(isDark),
+          borderRadius: BorderRadius.circular(r.cardRadius),
+          border: Border.all(
+            color: isDark
+                ? AppColors.darkBorder
+                : AppColors.primary.withValues(alpha: 0.15),
+          ),
+          boxShadow: AppColors.cardShadowFor(isDark),
+        ),
+        child: Row(
+          children: [
+            _accountAvatar(account, r.avatarMd, isDark),
+            SizedBox(width: r.spaceMd),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    account.displayName.isNotEmpty
+                        ? account.displayName
+                        : account.matricula,
+                    style: context.texts.titleMedium.copyWith(
+                      fontWeight: FontWeight.w800,
+                      color: AppColors.textPrimaryC(isDark),
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  SizedBox(height: r.spaceXs),
+                  Row(
+                    children: [
+                      Icon(
+                        account.biometricEnabled
+                            ? CupertinoIcons.checkmark_shield_fill
+                            : CupertinoIcons.lock_fill,
+                        size: r.iconSm * 0.7,
+                        color: AppColors.textTertiaryC(isDark),
+                      ),
+                      SizedBox(width: r.spaceXs),
+                      Expanded(
+                        child: Text(
+                          'Mat. ${account.matricula}',
+                          style: context.texts.bodySmall.copyWith(
+                            color: AppColors.textSecondaryC(isDark),
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+            // Quitar cuenta
+            CupertinoButton(
+              padding: EdgeInsets.all(r.spaceSm),
+              minimumSize: Size.zero,
+              onPressed: () => _removeSavedAccount(account),
+              child: Icon(CupertinoIcons.xmark_circle_fill,
+                  size: r.iconMd,
+                  color: AppColors.textTertiaryC(isDark).withValues(alpha: 0.6)),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _accountAvatar(SavedAccount account, double size, bool isDark) {
+    Widget child;
+    if (account.photoBase64.isNotEmpty) {
+      try {
+        child = Image.memory(
+          base64Decode(account.photoBase64),
+          fit: BoxFit.cover,
+          width: size,
+          height: size,
+          errorBuilder: (_, __, ___) => _accountInitials(account, size, isDark),
+        );
+      } catch (_) {
+        child = _accountInitials(account, size, isDark);
+      }
+    } else {
+      child = _accountInitials(account, size, isDark);
+    }
+    return Container(
+      width: size,
+      height: size,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        color: isDark ? AppColors.darkElevated : AppColors.white,
+        border: Border.all(color: AppColors.primary.withValues(alpha: 0.2)),
+      ),
+      child: ClipOval(child: child),
+    );
+  }
+
+  Widget _accountInitials(SavedAccount account, double size, bool isDark) {
+    final src = account.displayName.trim().isNotEmpty
+        ? account.displayName.trim()
+        : account.matricula;
+    final parts = src.split(RegExp(r'\s+'));
+    final initials = parts.length >= 2
+        ? '${parts[0][0]}${parts[1][0]}'.toUpperCase()
+        : (src.isNotEmpty ? src[0].toUpperCase() : '?');
+    return Container(
+      width: size,
+      height: size,
+      color: isDark ? AppColors.primary.withValues(alpha: 0.2) : AppColors.primaryLight,
+      child: Center(
+        child: Text(
+          initials,
+          style: TextStyle(
+            fontSize: size * 0.36,
+            fontWeight: FontWeight.w700,
+            color: AppColors.primary,
+          ),
+        ),
       ),
     );
   }

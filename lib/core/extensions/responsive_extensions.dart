@@ -173,7 +173,14 @@ class AppResponsive {
   double get timeChipWidth => _select(phoneSmall: 86, phoneMedium: 96, phoneLarge: 108, tablet: 116);
 
   // ── GRID ──────────────────────────────────────────────────────────────────
-  int get gridColumns => isTablet ? (isLandscape ? 3 : 2) : 2;
+  // Escritorio/web ancho: 3 columnas para que las tarjetas llenen el ancho y no
+  // queden estiradas con espacios en blanco. `isTablet` excluye desktop, por eso
+  // se contempla explícitamente.
+  int get gridColumns {
+    if (isDesktop) return 3;
+    if (isTablet) return isLandscape ? 3 : 2;
+    return 2;
+  }
   double get gridSpacing => _select(phoneSmall: 8, phoneMedium: 10, phoneLarge: 12, tablet: 16);
 
   // ── UNIFIED RADII (single source of truth) ────────────────────────────────

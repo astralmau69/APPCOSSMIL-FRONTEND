@@ -565,7 +565,7 @@ class _SummaryScreenState extends State<SummaryScreen>
                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
                 color: AppColors.success,
                 borderRadius: BorderRadius.circular(context.r.cardRadius),
-                onPressed: _isConfirming ? null : () => _confirmBooking(),
+                onPressed: _isConfirming ? null : () => _onConfirmPressed(),
                 child: _isConfirming
                     ? const CupertinoActivityIndicator(color: Colors.white)
                     : const Text(
@@ -761,6 +761,169 @@ class _SummaryScreenState extends State<SummaryScreen>
     return null;
   }
 
+  /// Intercepta el tap de "Confirmar Reserva": muestra primero el aviso de
+  /// política de inasistencias y solo continúa si el usuario lo acepta.
+  Future<void> _onConfirmPressed() async {
+    final proceed = await _showAvisoImportanteModal();
+    if (proceed != true || !mounted) return;
+    await _confirmBooking();
+  }
+
+  /// Texto del aviso con frases clave resaltadas para mejor lectura.
+  /// Tipografía responsiva (context.texts) e interlineado amplio.
+  Widget _buildAvisoText(bool isDark) {
+    final base = context.texts.bodyLarge.copyWith(
+      height: 1.65,
+      color: AppColors.textPrimaryC(isDark),
+      fontWeight: FontWeight.w500,
+      decoration: TextDecoration.none,
+    );
+    TextStyle strong(Color c) =>
+        base.copyWith(fontWeight: FontWeight.w800, color: c);
+
+    return Text.rich(
+      TextSpan(
+        style: base,
+        children: [
+          const TextSpan(
+              text: 'Estimado asegurado, le recordamos la importancia de '
+                  'asistir a sus consultas. Si acumula '),
+          TextSpan(text: '3 inasistencias', style: strong(AppColors.warning)),
+          const TextSpan(text: ', el sistema '),
+          TextSpan(
+              text: 'suspenderá temporalmente su acceso a la plataforma web '
+                  'y móvil',
+              style: strong(AppColors.warning)),
+          const TextSpan(
+              text: '. Recuerde que puede cancelar su cita médica hasta las '),
+          TextSpan(
+              text: '06:00 a. m.',
+              style: strong(AppColors.accentForTheme(isDark))),
+          const TextSpan(text: ' del día asignado.\n\n'),
+          const TextSpan(
+              text: 'En caso de requerir el desbloqueo de su cuenta, le '
+                  'pedimos acercarse a la '),
+          TextSpan(
+              text: 'agencia regional más cercana',
+              style: strong(AppColors.textPrimaryC(isDark))),
+          const TextSpan(
+              text: ' y solicitar asistencia al responsable de '
+                  'Citas Médicas.\n\n'),
+          TextSpan(
+            text: 'Muchas gracias por su atención.',
+            style: base.copyWith(
+              fontStyle: FontStyle.italic,
+              color: AppColors.textSecondaryC(isDark),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Modal de "Aviso Importante" sobre la política de inasistencias.
+  /// Devuelve `true` si el usuario decide continuar con la reserva.
+  Future<bool?> _showAvisoImportanteModal() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final r = context.r;
+
+    return showGeneralDialog<bool>(
+      context: context,
+      barrierDismissible: true,
+      barrierLabel: 'Aviso Importante',
+      barrierColor: Colors.black54,
+      transitionDuration: const Duration(milliseconds: 300),
+      transitionBuilder: (ctx, anim, _, child) {
+        return ScaleTransition(
+          scale: CurvedAnimation(parent: anim, curve: Curves.easeOutBack),
+          child: FadeTransition(opacity: anim, child: child),
+        );
+      },
+      pageBuilder: (ctx, _, __) => Center(
+        child: Material(
+          color: Colors.transparent,
+          child: Container(
+            width: MediaQuery.of(ctx).size.width * r.modalWidthFactor,
+            constraints: BoxConstraints(
+              maxWidth: r.modalMaxWidth,
+              maxHeight: MediaQuery.of(ctx).size.height * 0.85,
+            ),
+            decoration: BoxDecoration(
+              color: AppColors.cardBg(isDark),
+              borderRadius: BorderRadius.circular(r.modalRadius),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.25),
+                  blurRadius: 30,
+                  offset: const Offset(0, 12),
+                ),
+              ],
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                SizedBox(height: r.spaceXl),
+                Container(
+                  width: r.avatarMd,
+                  height: r.avatarMd,
+                  decoration: BoxDecoration(
+                    color: AppColors.warning.withValues(alpha: 0.12),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(
+                    CupertinoIcons.exclamationmark_triangle_fill,
+                    size: r.iconLg * 0.75,
+                    color: AppColors.warning,
+                  ),
+                ),
+                SizedBox(height: r.spaceMd),
+                Text(
+                  'Aviso Importante',
+                  textAlign: TextAlign.center,
+                  style: context.texts.headlineMedium.copyWith(
+                    fontWeight: FontWeight.w900,
+                    color: AppColors.warning,
+                    letterSpacing: 0.2,
+                    decoration: TextDecoration.none,
+                  ),
+                ),
+                SizedBox(height: r.spaceMd),
+                Flexible(
+                  child: SingleChildScrollView(
+                    padding: EdgeInsets.symmetric(horizontal: r.paddingH),
+                    child: _buildAvisoText(isDark),
+                  ),
+                ),
+                SizedBox(height: r.spaceLg),
+                Padding(
+                  padding: EdgeInsets.fromLTRB(
+                      r.paddingH, 0, r.paddingH, r.modalPadding),
+                  child: SizedBox(
+                    width: double.infinity,
+                    child: CupertinoButton(
+                      padding: EdgeInsets.symmetric(vertical: r.spaceMd),
+                      borderRadius: BorderRadius.circular(r.buttonRadius),
+                      color: AppColors.success,
+                      onPressed: () => Navigator.of(ctx).pop(true),
+                      child: Text(
+                        'Entiendo, continuar con la reserva',
+                        textAlign: TextAlign.center,
+                        style: context.texts.titleMedium.copyWith(
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.white,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
   Future<void> _confirmBooking() async {
     // Validar pre-flight para no enviar un payload con datos vacíos al backend.
     // Si falta algo, avisar al usuario con un copy claro y abortar antes del HTTP.
@@ -930,7 +1093,7 @@ class _SummaryScreenState extends State<SummaryScreen>
     return Column(
       children: [
         Text(
-          _isConfirmed ? 'Cita Confirmada' : 'Resumen de su Cita Médica',
+          _isConfirmed ? 'Cita Médica Confirmada' : 'Resumen de su Cita Médica',
           style: context.texts.displayLarge.copyWith(
             color: _isConfirmed ? AppColors.accent : AppColors.accentForTheme(isDark),
           ),

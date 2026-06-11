@@ -734,10 +734,18 @@ class _RegionalScreenState extends State<RegionalScreen> {
       // Capturar el globalIndex de inicio del depto para el badge "Más cercano".
       final deptoStartIndex = globalIndex;
 
+      // El depto que contiene el hospital más cercano es el primero (entries
+      // viene ordenado por distancia). Su header muestra "Más cercano a ti".
+      final isNearestDepto = _locationApplied &&
+          deptoStartIndex == 0 &&
+          hospitals.isNotEmpty &&
+          hospitals.first.distanceKm != null;
+
       widgets.add(_buildDeptoHeader(
         depto: depto,
         count: hospitals.length,
         isExpanded: isExpanded,
+        isNearest: isNearestDepto,
         isDark: isDark,
         r: r,
         onTap: () {
@@ -767,9 +775,6 @@ class _RegionalScreenState extends State<RegionalScreen> {
                             child: _hospitalCard(
                               context,
                               hospitals[i],
-                              isNearest: (deptoStartIndex + i) == 0 &&
-                                  _locationApplied &&
-                                  hospitals[i].distanceKm != null,
                               isDark: isDark,
                             ),
                           ),
@@ -790,10 +795,12 @@ class _RegionalScreenState extends State<RegionalScreen> {
     required String depto,
     required int count,
     required bool isExpanded,
+    required bool isNearest,
     required bool isDark,
     required AppResponsive r,
     required VoidCallback onTap,
   }) {
+    final accent = AppColors.accentForTheme(isDark);
     return Padding(
       padding: EdgeInsets.fromLTRB(
           r.paddingH, r.spaceMd, r.paddingH, r.spaceSm),
@@ -815,39 +822,74 @@ class _RegionalScreenState extends State<RegionalScreen> {
           child: Row(
             children: [
               Container(
-                width: 4,
-                height: 18,
+                width: r.sectionBarWidth + 1,
+                height: r.iconSm,
                 decoration: BoxDecoration(
-                  color: AppColors.accentForTheme(isDark),
+                  color: accent,
                   borderRadius: BorderRadius.circular(2),
                 ),
               ),
               SizedBox(width: r.spaceSm),
-              Expanded(
+              // Nombre del departamento — tipografía responsiva.
+              Flexible(
                 child: Text(
                   depto.toUpperCase(),
-                  style: TextStyle(
-                    fontSize: 12,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: context.texts.labelSmall.copyWith(
                     fontWeight: FontWeight.w800,
                     letterSpacing: 1.2,
-                    color: AppColors.accentForTheme(isDark),
+                    color: accent,
                   ),
                 ),
               ),
+              // Badge "Más cercano a ti" en la barra de la regional.
+              if (isNearest) ...[
+                SizedBox(width: r.spaceSm),
+                Flexible(
+                  child: Container(
+                    padding: EdgeInsets.symmetric(
+                        horizontal: r.chipPaddingH, vertical: r.chipPaddingV),
+                    decoration: BoxDecoration(
+                      color: AppColors.primary.withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(r.radiusSm),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(CupertinoIcons.location_fill,
+                            size: r.iconSm * 0.7, color: accent),
+                        SizedBox(width: r.spaceXs),
+                        Flexible(
+                          child: Text(
+                            'Más cercano a ti',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: context.texts.labelSmall.copyWith(
+                              fontWeight: FontWeight.w700,
+                              color: accent,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+              SizedBox(width: r.spaceSm),
               Container(
                 padding: EdgeInsets.symmetric(
                     horizontal: r.chipPaddingH, vertical: 2),
                 margin: EdgeInsets.only(right: r.spaceSm),
                 decoration: BoxDecoration(
-                  color: AppColors.accentForTheme(isDark).withValues(alpha: 0.12),
+                  color: accent.withValues(alpha: 0.12),
                   borderRadius: BorderRadius.circular(r.radiusSm),
                 ),
                 child: Text(
                   '$count',
-                  style: TextStyle(
-                    fontSize: 11,
+                  style: context.texts.labelSmall.copyWith(
                     fontWeight: FontWeight.w800,
-                    color: AppColors.accentForTheme(isDark),
+                    color: accent,
                   ),
                 ),
               ),
@@ -857,7 +899,7 @@ class _RegionalScreenState extends State<RegionalScreen> {
                 child: Icon(
                   CupertinoIcons.chevron_down,
                   size: r.iconSm,
-                  color: AppColors.accentForTheme(isDark),
+                  color: accent,
                 ),
               ),
             ],
@@ -870,7 +912,6 @@ class _RegionalScreenState extends State<RegionalScreen> {
   Widget _hospitalCard(
     BuildContext context,
     _HospitalEntry entry, {
-    required bool isNearest,
     required bool isDark,
   }) {
     final r = context.r;
@@ -951,36 +992,6 @@ class _RegionalScreenState extends State<RegionalScreen> {
                               ),
                             ],
                           ),
-                          if (isNearest) ...[
-                            SizedBox(height: r.spaceXs),
-                            Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Icon(
-                                  CupertinoIcons.location_fill,
-                                  size: 11,
-                                  color: AppColors.accentForTheme(isDark),
-                                ),
-                                SizedBox(width: 4),
-                                Container(
-                                  padding: EdgeInsets.symmetric(
-                                      horizontal: r.chipPaddingH,
-                                      vertical: r.chipPaddingV),
-                                  decoration: BoxDecoration(
-                                    color: AppColors.primary.withValues(alpha: 0.1),
-                                    borderRadius: BorderRadius.circular(r.radiusSm),
-                                  ),
-                                  child: Text(
-                                    'Más cercano a ti',
-                                    style: context.texts.labelSmall.copyWith(
-                                      fontWeight: FontWeight.bold,
-                                      color: AppColors.accentForTheme(isDark),
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ],
                           SizedBox(height: r.spaceXs),
                           Text(
                             regional.name,
