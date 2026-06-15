@@ -1,7 +1,9 @@
 import 'dart:math' as math;
 import 'dart:typed_data';
+import 'dart:ui' as ui;
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:printing/printing.dart';
 
 import '../../../core/constants/app_colors.dart';
@@ -32,6 +34,10 @@ class _CarnetScreenState extends State<CarnetScreen>
   bool _working = false;
   late final AnimationController _flipCtrl;
   bool get _showingBack => _flipCtrl.value >= 0.5;
+
+  // Llaves para capturar las tarjetas reales a imagen (PDF idéntico al digital).
+  final GlobalKey _frontKey = GlobalKey();
+  final GlobalKey _backKey = GlobalKey();
 
   CarnetData get _data => CarnetData.fromUser(UserSession.currentUser);
 
@@ -71,14 +77,41 @@ class _CarnetScreenState extends State<CarnetScreen>
     }
   }
 
+  /// Captura una tarjeta (RepaintBoundary) a PNG en alta resolución.
+  Future<Uint8List?> _capture(GlobalKey key) async {
+    try {
+      final ctx = key.currentContext;
+      if (ctx == null) return null;
+      final boundary = ctx.findRenderObject() as RenderRepaintBoundary?;
+      if (boundary == null) return null;
+      final ui.Image image = await boundary.toImage(pixelRatio: 3.0);
+      final bd = await image.toByteData(format: ui.ImageByteFormat.png);
+      image.dispose();
+      return bd?.buffer.asUint8List();
+    } catch (_) {
+      return null;
+    }
+  }
+
+  /// Arma el PDF usando las imágenes reales de las tarjetas (idéntico al
+  /// carnet digital). Si la captura falla, usa el PDF dibujado como respaldo.
+  Future<Uint8List> _pdfBytes() async {
+    final front = await _capture(_frontKey);
+    final back = await _capture(_backKey);
+    if (front != null && back != null) {
+      return CarnetPdf.buildFromImages(front: front, back: back, d: _data);
+    }
+    return CarnetPdf.build(_data);
+  }
+
   Future<void> _imprimir() => _run(() async {
-        final Uint8List bytes = await CarnetPdf.build(_data);
+        final bytes = await _pdfBytes();
         await Printing.layoutPdf(
             onLayout: (_) async => bytes, name: 'Carnet_${_data.matricula}');
       });
 
   Future<void> _compartir() => _run(() async {
-        final Uint8List bytes = await CarnetPdf.build(_data);
+        final bytes = await _pdfBytes();
         await Printing.sharePdf(
             bytes: bytes, filename: 'Carnet_${_data.matricula}.pdf');
       });
@@ -94,6 +127,32 @@ class _CarnetScreenState extends State<CarnetScreen>
           isDark ? AppColors.darkBackground : const Color(0xFFEDF4FB),
       body: Stack(
         children: [
+          // Tarjetas reales renderizadas FUERA de pantalla, a tamaño fijo, para
+          // capturarlas a imagen y que el PDF sea idéntico al carnet digital.
+          Positioned(
+            left: -20000,
+            top: -20000,
+            child: RepaintBoundary(
+              key: _frontKey,
+              child: SizedBox(
+                width: kCarnetRefW,
+                height: kCarnetRefH,
+                child: CarnetCardFront(data: d),
+              ),
+            ),
+          ),
+          Positioned(
+            left: -20000,
+            top: -10000,
+            child: RepaintBoundary(
+              key: _backKey,
+              child: SizedBox(
+                width: kCarnetRefW,
+                height: kCarnetRefH,
+                child: CarnetCardBack(data: d),
+              ),
+            ),
+          ),
           Positioned.fill(child: _backdrop(isDark)),
           SafeArea(
             child: Column(
@@ -115,6 +174,7 @@ class _CarnetScreenState extends State<CarnetScreen>
                               child: HolographicCard(
                                 borderRadius: 22,
                                 shineStrength: 0.62,
+                                honeycombShimmer: true,
                                 child: AspectRatio(
                                   aspectRatio: 1.586,
                                   child: GestureDetector(

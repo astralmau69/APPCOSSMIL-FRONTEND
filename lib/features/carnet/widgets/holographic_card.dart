@@ -15,11 +15,17 @@ class HolographicCard extends StatefulWidget {
   /// Intensidad del brillo holográfico (0–1).
   final double shineStrength;
 
+  /// Si es true, superpone un brillo holográfico en forma de panal de abeja
+  /// (celdas hexagonales que cambian de color al inclinar), para integrarse con
+  /// el diseño del carnet.
+  final bool honeycombShimmer;
+
   const HolographicCard({
     super.key,
     required this.child,
     this.borderRadius = 18,
     this.shineStrength = 0.55,
+    this.honeycombShimmer = false,
   });
 
   @override
@@ -218,6 +224,20 @@ class _HolographicCardState extends State<HolographicCard>
                           ),
                         ),
                       ),
+                      // 4) Panal de abeja holográfico (celdas que cambian de
+                      //    color al inclinar) — integra el holograma con el
+                      //    diseño del carnet.
+                      if (widget.honeycombShimmer)
+                        Positioned.fill(
+                          child: IgnorePointer(
+                            child: CustomPaint(
+                              painter: _HoneycombShimmerPainter(
+                                shift: glare,
+                                strength: widget.shineStrength,
+                              ),
+                            ),
+                          ),
+                        ),
                     ],
                   ),
                 ),
@@ -272,4 +292,58 @@ class HoneycombPainter extends CustomPainter {
   @override
   bool shouldRepaint(covariant HoneycombPainter old) =>
       old.color != color || old.radius != radius;
+}
+
+/// Panal de abeja holográfico: dibuja celdas hexagonales con colores de
+/// arcoíris (mezcla aditiva) cuya tonalidad se desplaza con [shift] (la
+/// inclinación), creando un brillo tornasol con forma de panal.
+class _HoneycombShimmerPainter extends CustomPainter {
+  final double shift; // 0..1 derivado de la inclinación
+  final double strength; // 0..1
+
+  _HoneycombShimmerPainter({required this.shift, required this.strength});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    const r = 26.0;
+    final w = r * math.sqrt(3);
+    final h = r * 1.5;
+    final diag = size.width + size.height;
+
+    for (double y = -r; y < size.height + r; y += h) {
+      final rowOffset = ((y ~/ h) % 2 == 0) ? 0.0 : w / 2;
+      for (double x = -r + rowOffset; x < size.width + r; x += w) {
+        final t = (((x + y) / diag) + shift) % 1.0;
+        final hue = (t * 360.0) % 360.0;
+        final color = HSVColor.fromAHSV(1.0, hue, 0.85, 1.0)
+            .toColor()
+            .withValues(alpha: 0.30 * strength);
+        final paint = Paint()
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 1.8
+          ..blendMode = BlendMode.plus
+          ..color = color;
+        _hex(canvas, Offset(x, y), r, paint);
+      }
+    }
+  }
+
+  void _hex(Canvas canvas, Offset c, double r, Paint p) {
+    final path = Path();
+    for (int i = 0; i < 6; i++) {
+      final a = math.pi / 180 * (60 * i - 30);
+      final pt = Offset(c.dx + r * math.cos(a), c.dy + r * math.sin(a));
+      if (i == 0) {
+        path.moveTo(pt.dx, pt.dy);
+      } else {
+        path.lineTo(pt.dx, pt.dy);
+      }
+    }
+    path.close();
+    canvas.drawPath(path, p);
+  }
+
+  @override
+  bool shouldRepaint(covariant _HoneycombShimmerPainter old) =>
+      old.shift != shift || old.strength != strength;
 }

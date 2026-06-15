@@ -146,7 +146,7 @@ class ApiClient {
 
     if (kDebugMode) {
       debugPrint('🌐 POST $url');
-      debugPrint('   📤 body: ${body != null ? jsonEncode(body) : "null"}');
+      // Body NO se registra por seguridad (puede contener datos sensibles).
     }
 
     try {
@@ -218,7 +218,7 @@ class ApiClient {
 
     if (kDebugMode) {
       debugPrint('🌐 PUT $url');
-      debugPrint('   📤 body: $body');
+      // Body NO se registra por seguridad (puede contener la contraseña, etc.).
     }
 
     try {

@@ -12,7 +12,10 @@ import 'core/theme/sound_manager.dart';
 import 'core/theme/theme_manager.dart';
 
 void main() async {
-  if (kIsWeb && !kDebugMode) {
+  // Seguridad: en producción (release) silenciar TODA la consola para no
+  // filtrar datos (URLs con matrícula, tokens, datos personales, etc.).
+  // En debug se mantienen los logs para desarrollo.
+  if (!kDebugMode) {
     debugPrint = (String? message, {int? wrapWidth}) {};
   }
   WidgetsFlutterBinding.ensureInitialized();

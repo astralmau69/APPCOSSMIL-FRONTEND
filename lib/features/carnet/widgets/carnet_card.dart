@@ -64,8 +64,8 @@ class CarnetCardFront extends StatelessWidget {
                   ),
                   CustomPaint(
                       painter: HoneycombPainter(
-                          color: Colors.white.withValues(alpha: 0.10),
-                          radius: 30)),
+                          color: Colors.white.withValues(alpha: 0.16),
+                          radius: 26)),
                   // Aclarado al fondo de la banda (Matrícula/CI sobre él).
                   const DecoratedBox(
                     decoration: BoxDecoration(
@@ -90,8 +90,8 @@ class CarnetCardFront extends StatelessWidget {
               left: 0, right: 0, top: kCarnetRefH * 0.50, bottom: 0,
               child: CustomPaint(
                   painter: HoneycombPainter(
-                      color: kCarnetAzulClaro.withValues(alpha: 0.06),
-                      radius: 32)),
+                      color: kCarnetAzulClaro.withValues(alpha: 0.13),
+                      radius: 28)),
             ),
 
             // Logo.
@@ -220,8 +220,8 @@ class CarnetCardBack extends StatelessWidget {
             Positioned.fill(
               child: CustomPaint(
                   painter: HoneycombPainter(
-                      color: kCarnetAzulClaro.withValues(alpha: 0.05),
-                      radius: 32)),
+                      color: kCarnetAzulClaro.withValues(alpha: 0.11),
+                      radius: 28)),
             ),
             Padding(
               padding: const EdgeInsets.fromLTRB(48, 30, 48, 26),
@@ -234,19 +234,26 @@ class CarnetCardBack extends StatelessWidget {
                         textAlign: TextAlign.justify,
                         text: const TextSpan(
                           style: TextStyle(
-                              color: Colors.black87, fontSize: 16, height: 1.22),
+                              color: Color(0xFF1A1A1A),
+                              fontSize: 18.5,
+                              height: 1.26,
+                              fontWeight: FontWeight.w600),
                           children: [
                             TextSpan(
                                 text: 'LEY DE SEGURIDAD SOCIAL MILITAR: ',
                                 style: TextStyle(
-                                    fontWeight: FontWeight.w900, fontSize: 17)),
+                                    fontWeight: FontWeight.w900,
+                                    fontSize: 19.5,
+                                    color: kCarnetAzulOsc)),
                             TextSpan(
                                 text:
                                     'Art. 186 Inc. c) Las Prestaciones de Salud dejarán de otorgarse después de 6 meses del último aporte. '),
                             TextSpan(
                                 text: 'REGLAMENTO DE PRESTACIONES DE SALUD: ',
                                 style: TextStyle(
-                                    fontWeight: FontWeight.w900, fontSize: 17)),
+                                    fontWeight: FontWeight.w900,
+                                    fontSize: 19.5,
+                                    color: kCarnetAzulOsc)),
                             TextSpan(
                                 text:
                                     'Art. 100° (Riesgo Extraordinario) Se considera riesgo extraordinario a la lesión orgánica o trastorno funcional producido por la acción súbita y violenta de una causa externa a las cuales se exponga el asegurado o beneficiario.'),
