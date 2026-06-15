@@ -16,6 +16,9 @@ class AuthTokenModel {
   final String nom;
   final String ci;
   final String matricula;
+  /// Matrícula del titular del seguro (campo `mtrtit` del token). Para
+  /// beneficiarios apunta al titular; para titulares suele ser su propia matrícula.
+  final String mtrtit;
   final int edad;
   final String genero;
   final String rol;
@@ -42,6 +45,7 @@ class AuthTokenModel {
     this.nom = '',
     this.ci = '',
     this.matricula = '',
+    this.mtrtit = '',
     this.edad = 0,
     this.genero = '',
     this.rol = '',
@@ -91,6 +95,7 @@ class AuthTokenModel {
       nom: val('nom') as String? ?? '',
       ci: val('ci') as String? ?? '',
       matricula: val('matricula') as String? ?? '',
+      mtrtit: val('mtrtit') as String? ?? val('matriculaTit') as String? ?? '',
       edad: val('edad') as int? ?? 0,
       genero: val('genero') as String? ?? val('sexo') as String? ?? val('gender') as String? ?? '',
       rol: val('rol') as String? ?? '',

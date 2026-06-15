@@ -16,6 +16,8 @@ class UserModel {
   final String email;
   final String phone;
   final String ci;
+  /// Matrícula del titular del seguro (para el carnet). Campo `mtrtit` del login.
+  final String matriculaTitular;
   final String photoBase64;
   final String birthDate;
   final int? idseg;
@@ -49,6 +51,7 @@ class UserModel {
     this.email = '',
     this.phone = '',
     this.ci = '',
+    this.matriculaTitular = '',
     this.photoBase64 = '',
     this.birthDate = '',
     this.idseg,
@@ -77,6 +80,7 @@ class UserModel {
     String? email,
     String? phone,
     String? ci,
+    String? matriculaTitular,
     String? photoBase64,
     String? birthDate,
     int? idseg,
@@ -105,6 +109,7 @@ class UserModel {
       email: email ?? this.email,
       phone: phone ?? this.phone,
       ci: ci ?? this.ci,
+      matriculaTitular: matriculaTitular ?? this.matriculaTitular,
       photoBase64: photoBase64 ?? this.photoBase64,
       birthDate: birthDate ?? this.birthDate,
       idseg: idseg ?? this.idseg,
@@ -146,6 +151,7 @@ class UserModel {
       email: json['correo'] as String? ?? json['email'] as String? ?? '',
       phone: json['celular'] as String? ?? json['phone'] as String? ?? '',
       ci: json['ci'] as String? ?? '',
+      matriculaTitular: json['matriculaTitular'] as String? ?? json['mtrtit'] as String? ?? '',
       photoBase64: json['foto2'] as String? ??
           json['photoBase64'] as String? ??
           '',
@@ -186,6 +192,7 @@ class UserModel {
         'email': email,
         'phone': phone,
         'ci': ci,
+        'matriculaTitular': matriculaTitular,
         'photoBase64': photoBase64,
         'birthDate': birthDate,
         'allergies': allergies,

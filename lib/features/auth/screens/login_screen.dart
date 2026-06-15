@@ -369,9 +369,13 @@ class _LoginScreenState extends State<LoginScreen>
 
     switch (result) {
       case AuthSuccess(:final token):
-        // Verificar version DESPUÉS del login porque el endpoint requiere Bearer token
+        // Verificar version DESPUÉS del login porque el endpoint requiere Bearer token.
+        // Timeout corto: en conexiones débiles no debe demorar el ingreso (el
+        // splash ya verifica la versión al arrancar).
         try {
-          await ProgramacionService().verificarVersion();
+          await ProgramacionService()
+              .verificarVersion()
+              .timeout(const Duration(seconds: 8));
         } on VersionOutdatedException catch (e) {
           if (!mounted) return;
           setState(() => _isLoading = false);

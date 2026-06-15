@@ -40,6 +40,8 @@ dependencies:
   audioplayers: ^6.1.0 # Reproducción de audio (voz en off splash)
   pdf: ^3.11.1 # Generación de PDF
   printing: ^5.13.3 # Impresión/descarga de PDF
+  qr_flutter: ^4.1.0 # Render de código QR en el carnet digital
+  sensors_plus: ^6.0.1 # Giroscopio para el efecto holográfico del carnet
   path_provider: ^2.1.4 # Directorio de archivos
   open_file: ^3.5.10 # Abrir archivos generados
   intl: ^0.19.0 # Formato de fechas

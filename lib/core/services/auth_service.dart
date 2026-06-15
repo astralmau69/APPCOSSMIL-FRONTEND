@@ -149,6 +149,7 @@ class AuthService {
           email: tokenModel.correo.trim(),
           phone: tokenModel.numeroCelular.trim(),
           ci: tokenModel.ci,
+          matriculaTitular: tokenModel.mtrtit.trim(),
           idseg: tokenModel.idseg,
           uc: tokenModel.uc,
           beneficiaries: rawBeneficiarios ?? [selfAsFallback],
@@ -194,6 +195,16 @@ class AuthService {
           '${tokenModel.nom} ${tokenModel.pat} ${tokenModel.mat}'.trim().toDisplayCase,
         );
 
+        // Persistir la sesión BÁSICA de inmediato (rápido) para no depender del
+        // enriquecimiento en conexiones débiles.
+        await SessionRestoreService.saveUserSession(UserSession.currentUser);
+
+        // ── Enriquecimiento en SEGUNDO PLANO ──────────────────────────────
+        // Foto del titular, datos extra y fotos de familiares (~5 llamadas).
+        // NO se espera: el login termina apenas tiene el token, para que una
+        // conexión débil pueda entrar rápido. La sesión se re-guarda al
+        // terminar; si falla, queda la sesión básica.
+        unawaited(() async {
         // Intentar cargar la foto jefe y luego la de sus familiares
         try {
           final extraData = await fetchProfileExtraData(tokenModel.matricula);
@@ -394,6 +405,7 @@ class AuthService {
 
         // Persistir sesión completa (nombre, fotos, matrícula, etc.)
         await SessionRestoreService.saveUserSession(UserSession.currentUser);
+        }());
 
         return AuthSuccess(tokenModel);
       }

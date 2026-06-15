@@ -23,6 +23,7 @@ import '../../../core/models/app_notification.dart';
 import '../../../core/services/notification_preferences.dart';
 import 'contactos_screen.dart';
 import 'noticias_screen.dart';
+import '../../carnet/screens/carnet_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   final TabShellState tabShell;
@@ -357,6 +358,16 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         subtitle: 'Horarios Médicos',
         color: const Color(0xFF7C3AED),
         onTap: () => widget.tabShell.goToTab(3),
+      ),
+      _QuickAction(
+        icon: CupertinoIcons.creditcard_fill,
+        label: 'Mi Carnet COSSMIL',
+        subtitle: 'Carnet digital de asegurado',
+        color: const Color(0xFF0E63A6),
+        onTap: () => widget.tabShell.openSubRoute(
+          context,
+          (_) => const CarnetScreen(),
+        ),
       ),
       _QuickAction(
         icon: CupertinoIcons.doc_text,
