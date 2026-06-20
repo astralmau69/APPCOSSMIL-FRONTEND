@@ -14,6 +14,9 @@
     <!-- Necesario para mostrar al usuario el diálogo de exención de optimización de batería -->
     <!-- Crítico para que las notificaciones lleguen con la app cerrada en Xiaomi, Huawei, Samsung -->
     <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS"/>
+    <!-- Cámara: validador de carnet (escaneo del QR rotativo) -->
+    <uses-permission android:name="android.permission.CAMERA"/>
+    <uses-feature android:name="android.hardware.camera" android:required="false"/>
 
     <!--
         Marcar biometría y ubicación como características OPCIONALES.

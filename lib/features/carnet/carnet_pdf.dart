@@ -39,8 +39,12 @@ class CarnetPdf {
 
     doc.addPage(
       pw.Page(
-        pageFormat: PdfPageFormat.a4,
-        margin: const pw.EdgeInsets.all(28),
+        pageTheme: pw.PageTheme(
+          pageFormat: PdfPageFormat.a4,
+          margin: const pw.EdgeInsets.all(28),
+          // En primer plano para que la marca de agua CRUCE el carnet (anti-copia).
+          buildForeground: (ctx) => _watermark(),
+        ),
         build: (ctx) {
           return pw.Column(
             crossAxisAlignment: pw.CrossAxisAlignment.stretch,
@@ -130,8 +134,12 @@ class CarnetPdf {
 
     doc.addPage(
       pw.Page(
-        pageFormat: PdfPageFormat.a4,
-        margin: const pw.EdgeInsets.all(28),
+        pageTheme: pw.PageTheme(
+          pageFormat: PdfPageFormat.a4,
+          margin: const pw.EdgeInsets.all(28),
+          // En primer plano para que la marca de agua CRUCE el carnet (anti-copia).
+          buildForeground: (ctx) => _watermark(),
+        ),
         build: (ctx) {
           return pw.Column(
             crossAxisAlignment: pw.CrossAxisAlignment.stretch,
@@ -169,6 +177,61 @@ class CarnetPdf {
     );
 
     return doc.save();
+  }
+
+  // ── Marca de agua "COSSMIL" ─────────────────────────────────────────────
+  /// Fondo de página con el patrón "COSSMIL" en diagonal y muy tenue, igual
+  /// criterio que el holograma del carnet digital (seguridad anti-copia).
+  static pw.Widget _watermark() {
+    // ~6 líneas GRANDES de "COSSMIL" de punta a punta (esquina inferior izquierda
+    // → superior derecha). El bloque se rota con el ÁNGULO REAL de la diagonal
+    // del A4 para que las líneas crucen las esquinas; es ancho (cada línea cruza
+    // toda la hoja, recortándose en los bordes) y de alto acotado para que entren
+    // unas 6 líneas que llenen la página.
+    final pageW = PdfPageFormat.a4.width; // 595
+    final pageH = PdfPageFormat.a4.height; // 842
+    final angle = math.atan2(pageH, pageW); // ~54.7° (diagonal del A4)
+    final diag = math.sqrt(pageW * pageW + pageH * pageH); // ~1031
+
+    // Línea larga (varias palabras) que se recorta en los bordes: cruza la hoja
+    // de punta a punta. Muchas filas juntas para llenar TODO el documento como
+    // líneas de seguridad, sin grandes espacios en blanco.
+    final line = List.filled(8, 'COSSMIL').join('  ');
+    return pw.FullPage(
+      ignoreMargins: true,
+      child: pw.Opacity(
+        opacity: 0.08,
+        child: pw.Center(
+          child: pw.Transform.rotate(
+            angle: angle,
+            // Bloque cuadrado del tamaño de la diagonal → cubre las 4 esquinas.
+            child: pw.SizedBox(
+              width: diag * 1.15,
+              height: diag * 1.1,
+              child: pw.Column(
+                mainAxisAlignment: pw.MainAxisAlignment.spaceEvenly,
+                crossAxisAlignment: pw.CrossAxisAlignment.center,
+                children: List.generate(
+                  16,
+                  (_) => pw.Text(
+                    line,
+                    maxLines: 1,
+                    softWrap: false,
+                    overflow: pw.TextOverflow.clip,
+                    style: pw.TextStyle(
+                      color: _azulOsc,
+                      fontWeight: pw.FontWeight.bold,
+                      fontSize: 52,
+                      letterSpacing: 4,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
   }
 
   // ── Header de la hoja ───────────────────────────────────────────────────

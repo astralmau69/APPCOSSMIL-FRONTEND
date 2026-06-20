@@ -120,8 +120,29 @@ class _AgendaScreenState extends State<AgendaScreen> {
     }
   }
 
+  /// `true` si el turno es de HOY y su horario de fin ya pasó. En ese caso,
+  /// aunque el backend marque `estado=true` (oferta>demanda), no quedan fichas
+  /// porque la pantalla de horas oculta los turnos cuya hora ya pasó.
+  bool _shiftEndedToday(_DiaAgenda dia, DoctorAgendaModel m) {
+    final now = DateTime.now();
+    final isToday = dia.fechaDate.year == now.year &&
+        dia.fechaDate.month == now.month &&
+        dia.fechaDate.day == now.day;
+    if (!isToday) return false;
+    final p = m.horafin.split(':');
+    if (p.length < 2) return false;
+    final endH = int.tryParse(p[0]) ?? 0;
+    final endM = int.tryParse(p[1]) ?? 0;
+    return now.hour > endH || (now.hour == endH && now.minute >= endM);
+  }
+
+  /// Disponibilidad real del turno: hay fichas (estado) Y no es un turno de hoy
+  /// cuyo horario ya finalizó.
+  bool _slotAvailable(_DiaAgenda dia, DoctorAgendaModel m) =>
+      m.estado && !_shiftEndedToday(dia, m);
+
   void _onSlotSelected(_DiaAgenda dia, DoctorAgendaModel m) {
-    if (!m.estado) return;
+    if (!_slotAvailable(dia, m)) return;
 
     final bs = widget.tabShell.bookingState;
     bs.selectedDate = m.fecha;
@@ -295,7 +316,7 @@ class _AgendaScreenState extends State<AgendaScreen> {
   Widget _buildDayCard(_DiaAgenda dia, bool isDark, AppResponsive r) {
     final modelos = dia.modelos;
     final hasAgenda = modelos.isNotEmpty;
-    final anyAvailable = modelos.any((m) => m.estado);
+    final anyAvailable = modelos.any((m) => _slotAvailable(dia, m));
 
     // Color de acento del bloque-fecha según el "mejor" estado del día:
     // verde si algún turno está disponible, rojo si todos están agotados,
@@ -424,9 +445,12 @@ class _AgendaScreenState extends State<AgendaScreen> {
 
   // ── Fila de un turno (horario + estado + acción) ──────────────────────────
   Widget _buildSlotRow(_DiaAgenda dia, DoctorAgendaModel m, bool isDark, AppResponsive r) {
-    final isAvailable = m.estado;
+    final ended = _shiftEndedToday(dia, m);
+    final isAvailable = m.estado && !ended;
     final accent = isAvailable ? AppColors.success : const Color(0xFFD32F2F);
-    final estadoLabel = isAvailable ? 'Disponible' : 'Fichas agotadas';
+    final estadoLabel = isAvailable
+        ? 'Disponible'
+        : (ended ? 'Horario finalizado' : 'Fichas agotadas');
 
     return GestureDetector(
       onTap: isAvailable ? () => _onSlotSelected(dia, m) : null,

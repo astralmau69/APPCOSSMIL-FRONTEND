@@ -12,10 +12,14 @@ import '../../../core/extensions/responsive_extensions.dart';
 import '../../../core/animations/optimized_animations.dart';
 import '../../../core/widgets/app_background.dart';
 import '../../../core/session/user_session.dart';
+import '../../../core/services/screen_security_service.dart';
 import '../carnet_data.dart';
 import '../carnet_pdf.dart';
 import '../widgets/carnet_card.dart';
 import '../widgets/holographic_card.dart';
+import 'carnet_pdf_preview_screen.dart';
+import 'carnet_salud_screen.dart';
+import 'carnet_validador_screen.dart';
 
 /// Carnet de asegurado COSSMIL digital: réplica fiel del carnet físico
 /// (frente + reverso) con efecto holográfico, giro al tocar, e impresión.
@@ -39,18 +43,28 @@ class _CarnetScreenState extends State<CarnetScreen>
   final GlobalKey _frontKey = GlobalKey();
   final GlobalKey _backKey = GlobalKey();
 
-  CarnetData get _data => CarnetData.fromUser(UserSession.currentUser);
+  // Se calcula una sola vez (no cambia mientras la pantalla está abierta).
+  late final CarnetData _data = CarnetData.fromUser(UserSession.currentUser);
 
   @override
   void initState() {
     super.initState();
+    // Bloquea capturas/grabación en todo el apartado del carnet (incluye la
+    // subpantalla "Carnet Digital de Seguro", al ser FLAG_SECURE por ventana).
+    ScreenSecurityService.enable();
     _flipCtrl = AnimationController(
         vsync: this, duration: const Duration(milliseconds: 720));
-    _flipCtrl.addListener(() => setState(() {}));
+    // El giro de la tarjeta se anima con un AnimatedBuilder acotado; aquí solo
+    // refrescamos el hint al cambiar de estado (no en cada frame).
+    _flipCtrl.addStatusListener((_) {
+      if (mounted) setState(() {});
+    });
   }
 
   @override
   void dispose() {
+    // Restaura la posibilidad de captura al salir del carnet.
+    ScreenSecurityService.disable();
     _flipCtrl.dispose();
     super.dispose();
   }
@@ -106,8 +120,17 @@ class _CarnetScreenState extends State<CarnetScreen>
 
   Future<void> _imprimir() => _run(() async {
         final bytes = await _pdfBytes();
-        await Printing.layoutPdf(
-            onLayout: (_) async => bytes, name: 'Carnet_${_data.matricula}');
+        if (!mounted) return;
+        // Primero la vista previa dentro de la app (sin capturas); desde ahí el
+        // usuario imprime o comparte.
+        await Navigator.of(context).push(
+          CupertinoPageRoute(
+            builder: (_) => CarnetPdfPreviewScreen(
+              pdfBytes: bytes,
+              fileName: 'Carnet_${_data.matricula}',
+            ),
+          ),
+        );
       });
 
   Future<void> _compartir() => _run(() async {
@@ -173,13 +196,16 @@ class _CarnetScreenState extends State<CarnetScreen>
                               offsetY: 16,
                               child: HolographicCard(
                                 borderRadius: 22,
-                                shineStrength: 0.62,
+                                shineStrength: 0.48,
                                 honeycombShimmer: true,
                                 child: AspectRatio(
                                   aspectRatio: 1.586,
                                   child: GestureDetector(
                                     onTap: _flip,
-                                    child: _flipBuilder(d),
+                                    child: AnimatedBuilder(
+                                      animation: _flipCtrl,
+                                      builder: (context, _) => _flipBuilder(d),
+                                    ),
                                   ),
                                 ),
                               ),
@@ -442,7 +468,83 @@ class _CarnetScreenState extends State<CarnetScreen>
             ),
           ),
         ),
+        SizedBox(height: r.spaceSm),
+        // Terciario: Carnet de Seguro de Salud (vista oficial vertical).
+        OptimizedPressButton(
+          onTap: _working ? null : _abrirCarnetSalud,
+          scaleDown: 0.97,
+          child: Container(
+            height: 52,
+            decoration: BoxDecoration(
+              color: isDark
+                  ? Colors.white.withValues(alpha: 0.07)
+                  : Colors.white,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: _azul.withValues(alpha: 0.25)),
+              boxShadow: isDark ? null : AppColors.softShadow,
+            ),
+            child: Center(
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(CupertinoIcons.checkmark_shield_fill,
+                      size: 18, color: _azul),
+                  const SizedBox(width: 9),
+                  Text('Carnet Digital de Seguro',
+                      style: TextStyle(
+                          color: AppColors.textPrimaryC(isDark),
+                          fontWeight: FontWeight.w700,
+                          fontSize: 14.5)),
+                ],
+              ),
+            ),
+          ),
+        ),
+        SizedBox(height: r.spaceSm),
+        // Cuaternario: Validar un carnet (escanear el QR rotativo de otro).
+        OptimizedPressButton(
+          onTap: _working ? null : _abrirValidador,
+          scaleDown: 0.97,
+          child: Container(
+            height: 52,
+            decoration: BoxDecoration(
+              color: isDark
+                  ? Colors.white.withValues(alpha: 0.07)
+                  : Colors.white,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: _azul.withValues(alpha: 0.25)),
+              boxShadow: isDark ? null : AppColors.softShadow,
+            ),
+            child: Center(
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(CupertinoIcons.qrcode_viewfinder,
+                      size: 19, color: _azul),
+                  const SizedBox(width: 9),
+                  Text('Validar un carnet',
+                      style: TextStyle(
+                          color: AppColors.textPrimaryC(isDark),
+                          fontWeight: FontWeight.w700,
+                          fontSize: 14.5)),
+                ],
+              ),
+            ),
+          ),
+        ),
       ],
+    );
+  }
+
+  void _abrirCarnetSalud() {
+    Navigator.of(context).push(
+      CupertinoPageRoute(builder: (_) => const CarnetSaludScreen()),
+    );
+  }
+
+  void _abrirValidador() {
+    Navigator.of(context).push(
+      CupertinoPageRoute(builder: (_) => const CarnetValidadorScreen()),
     );
   }
 

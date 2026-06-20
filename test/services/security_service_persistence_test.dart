@@ -210,4 +210,27 @@ void main() {
       expect(await SecurityService.isLocalAuthConfiguredSafe(), isTrue);
     });
   });
+
+  group('SecurityService · bloqueo anti fuerza bruta del PIN', () {
+    test('Tras 5 intentos fallidos activa cooldown y reinicia la ventana',
+        () async {
+      for (var i = 0; i < SecurityService.maxPinAttempts; i++) {
+        await SecurityService.recordFailedAttempt();
+      }
+      final cd = await SecurityService.cooldownRemaining();
+      expect(cd, isNotNull);
+      expect(cd!.inSeconds, greaterThan(0));
+      // La ventana de intentos se reinicia (el conteo de bloqueos persiste).
+      expect(await SecurityService.getFailedAttempts(), 0);
+    });
+
+    test('resetFailedAttempts limpia intentos, cooldown y bloqueos', () async {
+      for (var i = 0; i < SecurityService.maxPinAttempts; i++) {
+        await SecurityService.recordFailedAttempt();
+      }
+      await SecurityService.resetFailedAttempts();
+      expect(await SecurityService.cooldownRemaining(), isNull);
+      expect(await SecurityService.getFailedAttempts(), 0);
+    });
+  });
 }

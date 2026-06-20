@@ -79,6 +79,7 @@ class SecurityService {
   static const _keyUseBiometrics  = 'use_biometrics';
   static const _keyCooldownUntil  = 'pin_cooldown_until';
   static const _keyFailedAttempts = 'pin_failed_attempts';
+  static const _keyLockoutCount   = 'pin_lockout_count';
   static const _keyDisplayName    = 'user_display_name';
   static const _keyLastBackground = 'last_background_ts';
   static const _keyLastActivity   = 'last_activity_ts';
@@ -95,8 +96,10 @@ class SecurityService {
   static const cooldownDuration = Duration(seconds: 30);
 
   /// Ventana de gracia al volver desde background: si la app vuelve
-  /// en menos de este tiempo, NO se pide desbloqueo.
-  static const graceWindowDuration = Duration(seconds: 15);
+  /// en menos de este tiempo, NO se pide desbloqueo. Se mantiene amplia (45 s)
+  /// para que cambiar brevemente a otra app (copiar un código, ver un mensaje)
+  /// no resulte en un bloqueo brusco al regresar.
+  static const graceWindowDuration = Duration(seconds: 45);
 
   /// Tiempo de inactividad del usuario antes de bloquear la app (usuarios con PIN).
   static const inactivityTimeout = Duration(minutes: 2);
@@ -221,32 +224,50 @@ class SecurityService {
     final next = current + 1;
     await _storage.write(key: _keyFailedAttempts, value: next.toString());
     if (next >= maxPinAttempts) {
-      final until = DateTime.now().add(cooldownDuration);
+      // Bloqueo ESCALONADO: cada bloqueo dura más que el anterior, para que la
+      // fuerza bruta de un PIN de 4 dígitos sea impracticable (anti brute-force).
+      final lockouts =
+          (int.tryParse(await _storage.read(key: _keyLockoutCount) ?? '0') ?? 0) + 1;
+      await _storage.write(key: _keyLockoutCount, value: lockouts.toString());
+      final until = DateTime.now().add(_escalatingCooldown(lockouts));
       await _storage.write(
         key: _keyCooldownUntil,
         value: until.millisecondsSinceEpoch.toString(),
       );
+      // Reiniciar la ventana de intentos; el conteo de bloqueos PERSISTE para
+      // escalar el siguiente cooldown.
+      await _storage.delete(key: _keyFailedAttempts);
     }
     return next;
   }
 
-  /// Reinicia el contador de intentos y elimina cualquier cooldown activo.
-  /// Llamar siempre tras un desbloqueo exitoso.
+  /// Duración del bloqueo según cuántas veces ya se bloqueó: 30s, 1m, 2m, 4m…
+  /// hasta un tope de 30 minutos.
+  static Duration _escalatingCooldown(int lockouts) {
+    final shift = (lockouts - 1).clamp(0, 6);
+    final secs = (cooldownDuration.inSeconds * (1 << shift)).clamp(30, 1800);
+    return Duration(seconds: secs);
+  }
+
+  /// Reinicia COMPLETAMENTE el estado de intentos (intentos, cooldown y conteo
+  /// de bloqueos). Llamar siempre tras un desbloqueo exitoso.
   static Future<void> resetFailedAttempts() async {
     await _storage.delete(key: _keyFailedAttempts);
     await _storage.delete(key: _keyCooldownUntil);
+    await _storage.delete(key: _keyLockoutCount);
   }
 
   /// Retorna el tiempo restante de cooldown, o null si no hay cooldown activo.
-  /// Auto-limpia el almacenamiento si el cooldown ya expiró.
+  /// Al expirar permite reintentar (limpia cooldown e intentos), pero CONSERVA
+  /// el conteo de bloqueos para escalar el próximo bloqueo.
   static Future<Duration?> cooldownRemaining() async {
     final v = await _storage.read(key: _keyCooldownUntil);
     if (v == null) return null;
     final until = DateTime.fromMillisecondsSinceEpoch(int.parse(v));
     final remaining = until.difference(DateTime.now());
     if (remaining.isNegative) {
-      // Cooldown expirado — auto-limpiar
-      await resetFailedAttempts();
+      await _storage.delete(key: _keyCooldownUntil);
+      await _storage.delete(key: _keyFailedAttempts);
       return null;
     }
     return remaining;

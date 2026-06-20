@@ -73,10 +73,12 @@ class _HolographicCardState extends State<HolographicCard>
   void _onTick(Duration _) {
     final tx = _dragging ? _dragX : _targetX;
     final ty = _dragging ? _dragY : _targetY;
-    // Suavizado (low-pass).
-    final nextX = _curX + (tx - _curX) * 0.12;
-    final nextY = _curY + (ty - _curY) * 0.12;
-    if ((nextX - _curX).abs() > 0.0001 || (nextY - _curY).abs() > 0.0001) {
+    // Suavizado (low-pass). Factor bajo = glide más sedoso al inclinar.
+    final nextX = _curX + (tx - _curX) * 0.085;
+    final nextY = _curY + (ty - _curY) * 0.085;
+    // Deadzone: ignorar cambios mínimos (jitter del acelerómetro) para no
+    // repintar en reposo y ahorrar batería/GPU.
+    if ((nextX - _curX).abs() > 0.0015 || (nextY - _curY).abs() > 0.0015) {
       setState(() {
         _curX = nextX;
         _curY = nextY;
@@ -125,7 +127,10 @@ class _HolographicCardState extends State<HolographicCard>
           ..rotateX(_curX)
           ..rotateY(_curY);
 
-        return GestureDetector(
+        // RepaintBoundary aísla los repintados continuos del holograma (tilt)
+        // del resto de la pantalla (header, botones, etc.).
+        return RepaintBoundary(
+          child: GestureDetector(
           onPanStart: _onPanStart,
           onPanUpdate: (d) => _onPanUpdate(d, size),
           onPanEnd: _onPanEnd,
@@ -151,7 +156,9 @@ class _HolographicCardState extends State<HolographicCard>
                   borderRadius: BorderRadius.circular(widget.borderRadius),
                   child: Stack(
                     children: [
-                      widget.child,
+                      // El contenido del carnet se cachea (RepaintBoundary): al
+                      // inclinar solo se re-compone, no se vuelve a pintar.
+                      RepaintBoundary(child: widget.child),
                       // 1) Tornasol holográfico (arcoíris) que cambia al inclinar.
                       Positioned.fill(
                         child: IgnorePointer(
@@ -244,6 +251,7 @@ class _HolographicCardState extends State<HolographicCard>
               ],
             ),
           ),
+          ),
         );
       },
     );
@@ -262,7 +270,8 @@ class HoneycombPainter extends CustomPainter {
     final paint = Paint()
       ..color = color
       ..style = PaintingStyle.stroke
-      ..strokeWidth = 1.4;
+      ..strokeWidth = 1.0
+      ..isAntiAlias = true;
 
     final w = radius * math.sqrt(3);
     final h = radius * 1.5;
@@ -305,24 +314,40 @@ class _HoneycombShimmerPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    const r = 26.0;
+    // Hexágonos pequeños para "casar" con el panal del propio carnet.
+    final r = size.width * 0.038;
     final w = r * math.sqrt(3);
     final h = r * 1.5;
     final diag = size.width + size.height;
+    // El brillo holográfico vive sobre la banda de diseño (parte superior) y se
+    // desvanece sobre el área blanca de datos, integrándose con el carnet.
+    final bandEnd = size.height * 0.50;
+    final fadeEnd = size.height * 0.74;
+
+    // Un solo Paint reutilizado (evita crear cientos de objetos por frame).
+    final paint = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.0
+      ..isAntiAlias = true
+      ..blendMode = BlendMode.plus;
 
     for (double y = -r; y < size.height + r; y += h) {
+      // Factor de desvanecimiento según la zona del carnet.
+      double zone;
+      if (y <= bandEnd) {
+        zone = 1.0;
+      } else if (y >= fadeEnd) {
+        zone = 0.12; // tenue sobre los datos, no los lava
+      } else {
+        zone = 1.0 - ((y - bandEnd) / (fadeEnd - bandEnd)) * 0.88;
+      }
       final rowOffset = ((y ~/ h) % 2 == 0) ? 0.0 : w / 2;
       for (double x = -r + rowOffset; x < size.width + r; x += w) {
         final t = (((x + y) / diag) + shift) % 1.0;
         final hue = (t * 360.0) % 360.0;
-        final color = HSVColor.fromAHSV(1.0, hue, 0.85, 1.0)
+        paint.color = HSVColor.fromAHSV(1.0, hue, 0.82, 1.0)
             .toColor()
-            .withValues(alpha: 0.30 * strength);
-        final paint = Paint()
-          ..style = PaintingStyle.stroke
-          ..strokeWidth = 1.8
-          ..blendMode = BlendMode.plus
-          ..color = color;
+            .withValues(alpha: 0.22 * strength * zone);
         _hex(canvas, Offset(x, y), r, paint);
       }
     }

@@ -257,16 +257,22 @@ class _LocalAuthScreenState extends State<LocalAuthScreen>
 
   Future<void> _onSuccess() async {
     if (widget.isOverlay) {
-      // Overlay: mostrar loading, restaurar sesión completa y volver.
+      // Overlay: mostrar loading, refrescar la sesión y volver.
       // Esto garantiza que el token y los datos del usuario estén frescos
       // antes de que el TabShell vuelva a ser visible.
       setState(() => _isLoadingHome = true);
-      await _silentRelogin();
+      final relogged = await _silentRelogin();
       if (!mounted) return;
-      try {
-        await SessionRestoreService.restoreUserSession();
-      } catch (_) {
-        // Si falla la restauración, el token existente actúa como fallback.
+      // Solo restaurar desde almacenamiento si el re-login falló (sin red o sin
+      // credenciales). Si tuvo éxito, el login ya pobló la sesión fresca y está
+      // cargando foto/datos en segundo plano (igual que el login normal); no la
+      // sobrescribimos con la copia local, que puede estar incompleta.
+      if (!relogged) {
+        try {
+          await SessionRestoreService.restoreUserSession();
+        } catch (_) {
+          // Si falla la restauración, el token existente actúa como fallback.
+        }
       }
       if (!mounted) return;
       Navigator.of(context).pop();
@@ -278,13 +284,19 @@ class _LocalAuthScreenState extends State<LocalAuthScreen>
 
     // Re-autenticar con el servidor; si falla (sin red) se usa el token
     // existente (puede estar próximo a expirar pero el ApiClient maneja 401).
-    await _silentRelogin();
+    final relogged = await _silentRelogin();
 
     if (!mounted) return;
 
     try {
-      await SessionRestoreService.restoreUserSession();
-      if (!mounted) return;
+      // Si el re-login tuvo éxito, el login ya dejó la sesión fresca y está
+      // cargando foto/datos en segundo plano (igual que el login normal). Solo
+      // restauramos desde almacenamiento como respaldo cuando el re-login falla,
+      // para no sobrescribir esos datos con una copia local incompleta.
+      if (!relogged) {
+        await SessionRestoreService.restoreUserSession();
+        if (!mounted) return;
+      }
       await ProgramacionService().verificarVersion();
     } catch (_) {
       // Si falla la verificación, navegar igual — el backend puede no estar disponible.

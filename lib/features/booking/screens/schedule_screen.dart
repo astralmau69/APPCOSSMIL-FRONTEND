@@ -337,14 +337,19 @@ class _ScheduleScreenState extends State<ScheduleScreen>
                 Container(
                   padding: EdgeInsets.symmetric(horizontal: context.r.chipPaddingH, vertical: context.r.chipPaddingV),
                   decoration: BoxDecoration(
-                    color: AppColors.success.withValues(alpha: 0.1),
+                    color: (_availableSlots.isEmpty ? AppColors.warning : AppColors.success)
+                        .withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(context.r.radiusSm),
                   ),
                   child: Text(
-                    '${_availableSlots.length} fichas disponibles',
+                    _availableSlots.isEmpty
+                        ? 'Sin fichas disponibles'
+                        : '${_availableSlots.length} fichas disponibles',
                     style: TextStyle(
                       fontWeight: FontWeight.w700,
-                      color: isDark ? AppColors.successLight : AppColors.success,
+                      color: _availableSlots.isEmpty
+                          ? AppColors.warning
+                          : (isDark ? AppColors.successLight : AppColors.success),
                     ),
                   ),
                 ),

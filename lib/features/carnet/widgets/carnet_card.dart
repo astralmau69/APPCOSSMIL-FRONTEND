@@ -64,8 +64,8 @@ class CarnetCardFront extends StatelessWidget {
                   ),
                   CustomPaint(
                       painter: HoneycombPainter(
-                          color: Colors.white.withValues(alpha: 0.16),
-                          radius: 26)),
+                          color: Colors.white.withValues(alpha: 0.10),
+                          radius: 27)),
                   // Aclarado al fondo de la banda (Matrícula/CI sobre él).
                   const DecoratedBox(
                     decoration: BoxDecoration(
@@ -90,7 +90,7 @@ class CarnetCardFront extends StatelessWidget {
               left: 0, right: 0, top: kCarnetRefH * 0.50, bottom: 0,
               child: CustomPaint(
                   painter: HoneycombPainter(
-                      color: kCarnetAzulClaro.withValues(alpha: 0.13),
+                      color: kCarnetAzulClaro.withValues(alpha: 0.09),
                       radius: 28)),
             ),
 
@@ -99,6 +99,7 @@ class CarnetCardFront extends StatelessWidget {
               left: 120, top: 26,
               child: Image.asset('assets/images/cossmil_logo.png',
                   width: 150, height: 150,
+                  filterQuality: FilterQuality.medium,
                   errorBuilder: (_, __, ___) => const Icon(
                       CupertinoIcons.shield_fill, size: 130, color: Colors.white)),
             ),
@@ -134,7 +135,8 @@ class CarnetCardFront extends StatelessWidget {
                 ),
                 clipBehavior: Clip.antiAlias,
                 child: photo != null
-                    ? Image.memory(photo, fit: BoxFit.cover)
+                    ? Image.memory(photo,
+                        fit: BoxFit.cover, filterQuality: FilterQuality.high)
                     : const Icon(CupertinoIcons.person_fill,
                         size: 120, color: Colors.grey),
               ),
@@ -220,7 +222,7 @@ class CarnetCardBack extends StatelessWidget {
             Positioned.fill(
               child: CustomPaint(
                   painter: HoneycombPainter(
-                      color: kCarnetAzulClaro.withValues(alpha: 0.11),
+                      color: kCarnetAzulClaro.withValues(alpha: 0.08),
                       radius: 28)),
             ),
             Padding(
