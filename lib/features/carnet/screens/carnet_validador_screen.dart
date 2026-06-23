@@ -27,6 +27,9 @@ class _CarnetValidadorScreenState extends State<CarnetValidadorScreen>
 
   bool _handled = false;
   bool? _valid; // null = escaneando, true/false = resultado
+  // Datos de identidad que venían en el QR (nombre, grado, tipo), para mostrarlos
+  // en la pantalla de resultado cuando el carnet es válido.
+  RotatingValidation? _result;
 
   @override
   void initState() {
@@ -61,17 +64,26 @@ class _CarnetValidadorScreenState extends State<CarnetValidadorScreen>
       final lower = raw.toLowerCase();
       if (!lower.contains('cossmil') && !lower.contains('mat=')) continue;
 
-      final ok = CarnetData.isRotatingValid(raw);
+      final res = CarnetData.validateRotating(raw);
+      if (res == null) continue; // QR sin datos de carnet COSSMIL legibles.
       _handled = true;
       _controller.stop();
-      if (mounted) setState(() => _valid = ok);
+      if (mounted) {
+        setState(() {
+          _result = res;
+          _valid = res.valid;
+        });
+      }
       return;
     }
   }
 
   void _reset() {
     _handled = false;
-    setState(() => _valid = null);
+    setState(() {
+      _valid = null;
+      _result = null;
+    });
     _startCamera();
   }
 
@@ -249,6 +261,12 @@ class _CarnetValidadorScreenState extends State<CarnetValidadorScreen>
                           ),
                         ),
                       ),
+                      // Identidad del titular del carnet (cuando es válido y el
+                      // QR trajo los datos).
+                      if (ok && _result != null) ...[
+                        SizedBox(height: r.spaceLg),
+                        _identityCard(isDark, _result!),
+                      ],
                     ],
                   ),
                 ),
@@ -299,6 +317,95 @@ class _CarnetValidadorScreenState extends State<CarnetValidadorScreen>
             ],
           ),
         ),
+      ),
+    );
+  }
+
+  // Tarjeta con los datos del titular leídos del QR (nombre, grado, tipo) y la
+  // foto. La foto NO viaja en el QR, así que se muestra un ícono; cuando exista
+  // el backend de verificación se reemplazará por la foto real del asegurado.
+  Widget _identityCard(bool isDark, RotatingValidation res) {
+    final hasName = res.nombre.trim().isNotEmpty;
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 8),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: isDark
+            ? Colors.white.withValues(alpha: 0.06)
+            : Colors.white,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(
+          color: AppColors.textTertiaryC(isDark).withValues(alpha: 0.2),
+        ),
+        boxShadow: isDark ? null : AppColors.softShadow,
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          // Foto (placeholder por ahora: el QR no la transporta).
+          Container(
+            width: 76,
+            height: 92,
+            decoration: BoxDecoration(
+              color: const Color(0xFFEDF1F5),
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: const Color(0xFFD7DEE8)),
+            ),
+            child: const Icon(
+              CupertinoIcons.person_fill,
+              size: 40,
+              color: Color(0xFFB0BAC8),
+            ),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  hasName ? res.nombre.toUpperCase() : 'NOMBRE NO DISPONIBLE',
+                  style: TextStyle(
+                    color: AppColors.textPrimaryC(isDark),
+                    fontWeight: FontWeight.w900,
+                    fontSize: 16,
+                    height: 1.1,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                _idRow(isDark, 'Grado', CarnetData.orDash(res.grado)),
+                const SizedBox(height: 4),
+                _idRow(isDark, 'Tipo', CarnetData.orDash(res.tipo)),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _idRow(bool isDark, String label, String value) {
+    return RichText(
+      maxLines: 2,
+      overflow: TextOverflow.ellipsis,
+      text: TextSpan(
+        children: [
+          TextSpan(
+            text: '$label: ',
+            style: TextStyle(
+              color: AppColors.textSecondaryC(isDark),
+              fontWeight: FontWeight.w600,
+              fontSize: 13,
+            ),
+          ),
+          TextSpan(
+            text: value,
+            style: TextStyle(
+              color: AppColors.textPrimaryC(isDark),
+              fontWeight: FontWeight.w800,
+              fontSize: 13,
+            ),
+          ),
+        ],
       ),
     );
   }

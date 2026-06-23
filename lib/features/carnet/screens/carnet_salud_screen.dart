@@ -411,6 +411,16 @@ class _CarnetSaludScreenState extends State<CarnetSaludScreen>
               letterSpacing: 2.5,
             ),
           ),
+          SizedBox(height: 2 * sc),
+          Text(
+            'MINISTERIO DE DEFENSA',
+            style: TextStyle(
+              color: const Color(0xFFB9C9DD),
+              fontWeight: FontWeight.w600,
+              fontSize: 11 * sc,
+              letterSpacing: 2.5,
+            ),
+          ),
         ],
       ),
     );
@@ -677,7 +687,7 @@ class _CarnetSaludScreenState extends State<CarnetSaludScreen>
               ),
               SizedBox(height: 3 * sc),
               Text(
-                'El código QR se renueva cada 15 s. Escanéelo con el validador COSSMIL para verificar la vigencia.',
+                'Para verificar la vigencia y veracidad escanea el código QR. El código QR se renueva cada 15 s. Escanéelo con el validador COSSMIL para verificar la vigencia.',
                 style: TextStyle(
                   color: _label,
                   fontSize: 10.5 * sc,

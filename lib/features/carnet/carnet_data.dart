@@ -120,32 +120,61 @@ class CarnetData {
     return sha256.convert(utf8.encode(raw)).toString().substring(0, 16);
   }
 
-  /// Payload del QR rotativo: lleva matrícula, código, la ventana y su hash.
+  /// Payload del QR rotativo: lleva matrícula, código, la ventana y su hash,
+  /// más los datos de identidad (nombre, grado y tipo de asegurado) para que el
+  /// validador los muestre al verificar. La foto NO viaja en el QR (no cabe en
+  /// un QR escaneable); el validador la mostrará desde el backend cuando exista.
   /// Al escanearlo, el validador recalcula el hash de la ventana actual y
   /// confirma que coincide (carnet vigente y QR fresco).
   String rotatingQrPayload([DateTime? now]) {
     final win = currentWindow(now);
     final rh = rotatingHash(matricula, codigo, win);
-    return '$verifyBaseUrl?mat=$matricula&cod=$codigo&w=$win&rh=$rh';
+    final uri = Uri.parse(verifyBaseUrl).replace(queryParameters: {
+      'mat': matricula,
+      'cod': codigo,
+      'w': '$win',
+      'rh': rh,
+      'nom': nombreCompleto,
+      'gra': grado,
+      'tip': tipoAsegurado,
+    });
+    return uri.toString();
   }
 
   /// Valida un QR rotativo escaneado: `true` si el hash coincide con la ventana
   /// actual (o ±[tolerance] ventanas, para tolerar el desfase de reloj y el
   /// tiempo de escaneo). Funciona sin red usando el secreto compartido.
-  static bool isRotatingValid(String raw, {DateTime? now, int tolerance = 1}) {
+  static bool isRotatingValid(String raw, {DateTime? now, int tolerance = 1}) =>
+      validateRotating(raw, now: now, tolerance: tolerance)?.valid ?? false;
+
+  /// Valida un QR rotativo y devuelve además los datos de identidad que lleva
+  /// (nombre, grado y tipo de asegurado), para mostrarlos en el validador.
+  /// Retorna `null` si el QR no es un carnet COSSMIL legible.
+  static RotatingValidation? validateRotating(String raw,
+      {DateTime? now, int tolerance = 1}) {
     try {
       final uri = Uri.parse(raw.trim());
       final mat = uri.queryParameters['mat'] ?? '';
       final cod = uri.queryParameters['cod'] ?? '';
       final rh = uri.queryParameters['rh'] ?? '';
-      if (mat.isEmpty || cod.isEmpty || rh.isEmpty) return false;
+      if (mat.isEmpty || cod.isEmpty || rh.isEmpty) return null;
       final cur = currentWindow(now);
+      var ok = false;
       for (var d = -tolerance; d <= tolerance; d++) {
-        if (rotatingHash(mat, cod, cur + d) == rh) return true;
+        if (rotatingHash(mat, cod, cur + d) == rh) {
+          ok = true;
+          break;
+        }
       }
-      return false;
+      return RotatingValidation(
+        valid: ok,
+        matricula: mat,
+        nombre: uri.queryParameters['nom']?.trim() ?? '',
+        grado: uri.queryParameters['gra']?.trim() ?? '',
+        tipo: uri.queryParameters['tip']?.trim() ?? '',
+      );
     } catch (_) {
-      return false;
+      return null;
     }
   }
 
@@ -209,4 +238,23 @@ class CarnetData {
     }
     return s;
   }
+}
+
+/// Resultado de validar un QR rotativo escaneado: indica si el carnet está
+/// vigente y trae los datos de identidad que viajaban en el QR para mostrarlos.
+class RotatingValidation {
+  /// `true` si el hash del QR coincide con la ventana actual (carnet vigente).
+  final bool valid;
+  final String matricula;
+  final String nombre;
+  final String grado;
+  final String tipo;
+
+  const RotatingValidation({
+    required this.valid,
+    required this.matricula,
+    required this.nombre,
+    required this.grado,
+    required this.tipo,
+  });
 }

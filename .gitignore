@@ -47,3 +47,8 @@ app.*.map.json
 
 # Respaldo de audios originales antes de normalizar loudness
 vof_backup_original/
+
+# Agent-specific directories
+.agents/
+.claude/skills/
+
