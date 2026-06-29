@@ -3,6 +3,7 @@ import 'dart:typed_data';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import '../../../core/config/app_config.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/theme/app_constants.dart';
 import '../../../core/extensions/responsive_extensions.dart';
@@ -23,6 +24,7 @@ import '../../../core/models/app_notification.dart';
 import '../../../core/services/notification_preferences.dart';
 import 'contactos_screen.dart';
 import 'noticias_screen.dart';
+import '../../carnet/screens/carnet_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   final TabShellState tabShell;
@@ -358,6 +360,19 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         color: const Color(0xFF7C3AED),
         onTap: () => widget.tabShell.goToTab(3),
       ),
+      // Carnet digital: oculto hasta autorización oficial de COSSMIL.
+      // Reactivar poniendo AppConfig.carnetDigitalEnabled = true.
+      if (AppConfig.carnetDigitalEnabled)
+        _QuickAction(
+          icon: CupertinoIcons.creditcard_fill,
+          label: 'Mi Carnet COSSMIL',
+          subtitle: 'Carnet digital de asegurado',
+          color: const Color(0xFF0E63A6),
+          onTap: () => widget.tabShell.openSubRoute(
+            context,
+            (_) => const CarnetScreen(),
+          ),
+        ),
       _QuickAction(
         icon: CupertinoIcons.doc_text,
         label: 'Procedimientos COSSMIL',

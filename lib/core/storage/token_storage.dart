@@ -1,10 +1,12 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import '../utils/web_local_storage.dart';
+import '../utils/web_secure_storage.dart';
 import '../services/accounts_store.dart';
 
 /// Gestiona el token de acceso y refresh de forma segura en el dispositivo.
-/// iOS: Keychain | Android: Keystore / EncryptedSharedPreferences | Web: localStorage
+/// iOS: Keychain | Android: Keystore / EncryptedSharedPreferences
+/// Web: memoria + sessionStorage (no localStorage) — ver [web_secure_storage].
 class TokenStorage {
   static const _storage = FlutterSecureStorage(
     aOptions: AndroidOptions(
@@ -34,32 +36,42 @@ class TokenStorage {
 
   /// Guarda ambos tokens tras un login exitoso.
   static Future<void> saveToken(String token) async {
-    if (kIsWeb) { webLsSet(_keyAccessToken, token); return; }
+    if (kIsWeb) {
+      webLsDel(_keyAccessToken); // purga copia heredada insegura en localStorage
+      webSecureSet(_keyAccessToken, token);
+      return;
+    }
     await _storage.write(key: _keyAccessToken, value: token);
   }
 
   /// Guarda el refresh token.
   static Future<void> saveRefreshToken(String token) async {
-    if (kIsWeb) { webLsSet(_keyRefreshToken, token); return; }
+    if (kIsWeb) {
+      webLsDel(_keyRefreshToken); // purga copia heredada insegura en localStorage
+      webSecureSet(_keyRefreshToken, token);
+      return;
+    }
     await _storage.write(key: _keyRefreshToken, value: token);
   }
 
   /// Lee el access token guardado. Retorna null si no existe.
   static Future<String?> getToken() async {
-    if (kIsWeb) return webLsGet(_keyAccessToken);
+    if (kIsWeb) return webSecureGet(_keyAccessToken);
     return _readResilient(_keyAccessToken);
   }
 
   /// Lee el refresh token guardado. Retorna null si no existe.
   static Future<String?> getRefreshToken() async {
-    if (kIsWeb) return webLsGet(_keyRefreshToken);
+    if (kIsWeb) return webSecureGet(_keyRefreshToken);
     return _readResilient(_keyRefreshToken);
   }
 
   /// Borra ambos tokens (logout).
   static Future<void> deleteToken() async {
     if (kIsWeb) {
-      webLsDel(_keyAccessToken);
+      webSecureDel(_keyAccessToken);
+      webSecureDel(_keyRefreshToken);
+      webLsDel(_keyAccessToken); // limpia posibles copias heredadas
       webLsDel(_keyRefreshToken);
       return;
     }
@@ -72,7 +84,12 @@ class TokenStorage {
   /// sobrevivir al cierre de sesión / cambio de cuenta. Solo se borran al
   /// quitar la cuenta explícitamente o desinstalar la app.
   static Future<void> wipeAll() async {
-    if (kIsWeb) { webLsClear(); return; }
+    if (kIsWeb) {
+      webSecureDel(_keyAccessToken); // borra token de memoria + sessionStorage
+      webSecureDel(_keyRefreshToken);
+      webLsClear();
+      return;
+    }
     // Respaldar las cuentas guardadas, borrar todo, y restaurarlas.
     Map<String, String> accountsBackup = const {};
     try {

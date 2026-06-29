@@ -160,7 +160,7 @@ class SessionRestoreService {
       }
 
       if (kDebugMode) {
-        debugPrint('✅ SessionRestore: sesión restaurada para ${user.fullName}');
+        debugPrint('✅ SessionRestore: sesión restaurada');
       }
       return true;
     } catch (e) {
@@ -327,7 +327,7 @@ class SessionRestoreService {
           UserSession.currentUser = UserSession.currentUser.copyWith(beneficiaries: List<BeneficiaryModel>.from(updatedBens));
           await saveUserSession(UserSession.currentUser);
           if (kDebugMode) {
-            debugPrint('📸 SessionRestore: foto de beneficiario ${beneficiary.fullName} actualizada');
+            debugPrint('📸 SessionRestore: foto de beneficiario actualizada');
           }
         }
       }

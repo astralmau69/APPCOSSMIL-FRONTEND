@@ -75,24 +75,9 @@ class AuthService {
       ).timeout(const Duration(seconds: 30)); // corta la espera en redes lentas
                                               // (evita el cuelgue de 1-2 min del navegador)
 
-      // ── DEBUG TEMPORAL: ver exactamente qué responde el servidor ──────────
-      if (kDebugMode) {
-        debugPrint('🌐 LOGIN HTTP ${response.statusCode}');
-        debugPrint('   URL: ${ApiConstants.tokenUri}');
-        debugPrint('   username: "$username" | password: "$password"');
-        if (response.statusCode != 200) {
-          debugPrint('   ❌ Body: ${utf8.decode(response.bodyBytes)}');
-        }
-      }
-      // ── FIN DEBUG ─────────────────────────────────────────────────────────
-
       if (response.statusCode == 200) {
         final json = jsonDecode(utf8.decode(response.bodyBytes)) as Map<String, dynamic>;
         final tokenModel = AuthTokenModel.fromJson(json);
-
-        if (kDebugMode) {
-          debugPrint('🔑 OAuth token parsed: edad=${tokenModel.edad}, genero="${tokenModel.genero}", idper=${tokenModel.idper}');
-        }
 
         // Guardar tokens para que ApiClient pueda usarlos
         await TokenStorage.saveToken(tokenModel.accessToken);
@@ -106,12 +91,7 @@ class AuthService {
             .toList();
 
         if (kDebugMode) {
-          debugPrint('👨‍👩‍👧‍👦 Beneficiarios encontrados en JSON: ${rawBeneficiarios?.length ?? 0}');
-          if (rawBeneficiarios != null) {
-            for (var b in rawBeneficiarios) {
-              debugPrint('   - ${b.fullName} (${b.relationship}) | Mat: "${b.matricula}" | Photo: ${b.photoBase64.isNotEmpty}');
-            }
-          }
+          debugPrint('👨‍👩‍👧‍👦 Beneficiarios encontrados: ${rawBeneficiarios?.length ?? 0}');
         }
 
         // Mapear datos básicos a UserSession.currentUser
@@ -149,6 +129,7 @@ class AuthService {
           email: tokenModel.correo.trim(),
           phone: tokenModel.numeroCelular.trim(),
           ci: tokenModel.ci,
+          matriculaTitular: tokenModel.mtrtit.trim(),
           idseg: tokenModel.idseg,
           uc: tokenModel.uc,
           beneficiaries: rawBeneficiarios ?? [selfAsFallback],
@@ -185,8 +166,7 @@ class AuthService {
         BeneficiaryModel.titularRankFallback = loggedUser.rank;
 
         if (kDebugMode) {
-          debugPrint('✅ UserSession poblada: ${UserSession.currentUser.fullName}');
-          debugPrint('👨‍👩‍👧‍👦 Beneficiarios en sesión: ${UserSession.currentUser.beneficiaries.length}');
+          debugPrint('✅ UserSession poblada (${UserSession.currentUser.beneficiaries.length} beneficiarios)');
         }
 
         // Guardar nombre de usuario para la pantalla de desbloqueo local
@@ -194,6 +174,16 @@ class AuthService {
           '${tokenModel.nom} ${tokenModel.pat} ${tokenModel.mat}'.trim().toDisplayCase,
         );
 
+        // Persistir la sesión BÁSICA de inmediato (rápido) para no depender del
+        // enriquecimiento en conexiones débiles.
+        await SessionRestoreService.saveUserSession(UserSession.currentUser);
+
+        // ── Enriquecimiento en SEGUNDO PLANO ──────────────────────────────
+        // Foto del titular, datos extra y fotos de familiares (~5 llamadas).
+        // NO se espera: el login termina apenas tiene el token, para que una
+        // conexión débil pueda entrar rápido. La sesión se re-guarda al
+        // terminar; si falla, queda la sesión básica.
+        unawaited(() async {
         // Intentar cargar la foto jefe y luego la de sus familiares
         try {
           final extraData = await fetchProfileExtraData(tokenModel.matricula);
@@ -365,9 +355,6 @@ class AuthService {
                 final photo = cleanBase64(data['foto2'] as String? ?? '');
                 final bGrado = (data['grado'] as String? ?? '').trim();
                 final bRefe4 = (data['refe4'] as String? ?? '').trim();
-                if (kDebugMode && photo.isNotEmpty) {
-                  debugPrint('   ✅ Foto obtenida para: ${otherBeneficiaries[idx].fullName}');
-                }
                 return BeneficiaryModel(
                   id: b.id,
                   fullName: b.fullName,
@@ -394,6 +381,7 @@ class AuthService {
 
         // Persistir sesión completa (nombre, fotos, matrícula, etc.)
         await SessionRestoreService.saveUserSession(UserSession.currentUser);
+        }());
 
         return AuthSuccess(tokenModel);
       }
@@ -440,10 +428,6 @@ class AuthService {
     // Normalizar matrícula (puede venir con espacios al final)
     final cleanMat = matricula.trim();
     if (cleanMat.isEmpty) return null;
-
-    if (kDebugMode) {
-      debugPrint('📸 Fetching foto para matrícula: "$cleanMat"');
-    }
 
     final response = await _api.get(ApiConstants.aseguradoTipoGpo(cleanMat));
 

@@ -95,7 +95,7 @@ Two separate auth concerns:
 ## API Layer
 
 - `ApiClient` — centralized HTTP client that auto-injects Bearer token from `TokenStorage` on every request. Wraps responses in `ApiClientResponse` (success/error sealed pattern). On 401, auto-retries once after token refresh; uses a `_refreshInProgress` Future to prevent concurrent refresh attempts.
-- `ApiConstants` — all endpoint paths as static methods (parameterized by IDs). Base URL: `http://10.150.10.13:9999`
+- `ApiConstants` — all endpoint paths as static methods (parameterized by IDs). Base URL: `https://api.cossmil.mil.bo` (production, HTTPS). The internal `http://10.150.10.13:9999` is kept commented out for local/VPN testing only.
 - `AuthService.login()` uses `AuthResult` sealed class (`AuthSuccess` / `AuthError`)
 - Services accept optional `http.Client` / `ApiClient` parameters for testability
 - Backend response format: `{ ok, status, message, data: [...] }` wrapper — services parse via the `data` field

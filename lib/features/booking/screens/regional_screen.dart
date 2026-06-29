@@ -1,7 +1,7 @@
+import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
-import '../../../core/config/app_config.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/extensions/responsive_extensions.dart';
 import '../../../core/session/user_session.dart';
@@ -98,13 +98,12 @@ class _RegionalScreenState extends State<RegionalScreen> {
         rawData = await _service.getRegionalesPorDepartamento(1);
       }
 
-      // Filtro: ver `AppConfig.allowedHospitalIds` (centralizado).
+      // Sin filtro local: el backend ya devuelve únicamente las regionales/
+      // hospitales habilitados. Mostramos todo lo que retorna el servicio.
       final entries = <_HospitalEntry>[];
       for (final regional in rawData) {
         for (final h in regional.hospitals) {
-          if (AppConfig.allowedHospitalIds.contains(h.id)) {
-            entries.add(_HospitalEntry(regional, h));
-          }
+          entries.add(_HospitalEntry(regional, h));
         }
       }
 
@@ -115,40 +114,15 @@ class _RegionalScreenState extends State<RegionalScreen> {
         return ia.compareTo(ib);
       });
 
-      bool locationUsed = false;
-      try {
-        final locationService = LocationService();
-        final position = await locationService.getCurrentLocation(requestIfNotGranted: true);
-
-        if (position != null) {
-          locationUsed = true;
-          for (final e in entries) {
-            final h = e.hospital;
-            if (h.latitude != null && h.longitude != null) {
-              e.distanceKm = DistanceHelper.calculateDistanceInKm(
-                position.latitude, position.longitude,
-                h.latitude!, h.longitude!,
-              );
-            }
-          }
-          // Re-ordenar por hospital más cercano.
-          entries.sort((a, b) {
-            final dA = a.distanceKm ?? double.infinity;
-            final dB = b.distanceKm ?? double.infinity;
-            return dA.compareTo(dB);
-          });
-        }
-      } catch (e) {
-        AppLogger.warn('RegionalScreen', 'Error obteniendo ubicación del dispositivo', e);
-      }
-
+      // Mostrar la lista de inmediato. La ubicación (GPS) se resuelve aparte
+      // para no bloquear el primer render: pedir permiso y obtener el fix puede
+      // tardar varios segundos, y eso retrasaba la aparición de los hospitales.
       if (mounted) {
         final freshBens = UserSession.currentUser.beneficiaries;
         final bs = widget.tabShell.bookingState;
         setState(() {
           _entries = entries;
           _isLoading = false;
-          _locationApplied = locationUsed;
           _beneficiaries = List<BeneficiaryModel>.from(freshBens);
           // Re-set default beneficiary if it was empty at initState time
           if (bs.beneficiary == null && freshBens.isNotEmpty) {
@@ -161,6 +135,9 @@ class _RegionalScreenState extends State<RegionalScreen> {
           }
         });
       }
+
+      // Reordenar por cercanía en segundo plano (sin bloquear la UI).
+      unawaited(_applyLocationSorting());
     } catch (e) {
       if (mounted) {
         setState(() {
@@ -168,6 +145,45 @@ class _RegionalScreenState extends State<RegionalScreen> {
           _isLoading = false;
         });
       }
+    }
+  }
+
+  /// Obtiene la ubicación del dispositivo y reordena los establecimientos por
+  /// cercanía. Corre en segundo plano (después de mostrar la lista) para no
+  /// retrasar el primer render esperando el permiso/fix del GPS.
+  Future<void> _applyLocationSorting() async {
+    try {
+      final locationService = LocationService();
+      // No volver a pedir permiso aquí: la ubicación se solicita una sola vez en
+      // el onboarding (primer arranque). Aquí solo se usa si ya está concedida.
+      final position =
+          await locationService.getCurrentLocation(requestIfNotGranted: false);
+      if (position == null || !mounted || _entries.isEmpty) return;
+
+      for (final e in _entries) {
+        final h = e.hospital;
+        if (h.latitude != null && h.longitude != null) {
+          e.distanceKm = DistanceHelper.calculateDistanceInKm(
+            position.latitude, position.longitude,
+            h.latitude!, h.longitude!,
+          );
+        }
+      }
+      final sorted = List<_HospitalEntry>.from(_entries)
+        ..sort((a, b) {
+          final dA = a.distanceKm ?? double.infinity;
+          final dB = b.distanceKm ?? double.infinity;
+          return dA.compareTo(dB);
+        });
+
+      if (mounted) {
+        setState(() {
+          _entries = sorted;
+          _locationApplied = true;
+        });
+      }
+    } catch (e) {
+      AppLogger.warn('RegionalScreen', 'Error obteniendo ubicación del dispositivo', e);
     }
   }
 
