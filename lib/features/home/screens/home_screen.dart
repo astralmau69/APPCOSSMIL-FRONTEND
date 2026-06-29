@@ -39,6 +39,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   List<NewsItemModel> _news = [];
   bool _isLoadingNews = true;
   Uint8List? _cachedUserPhoto;
+  String? _cachedPhotoB64; // base64 que originó _cachedUserPhoto (memo)
   int _unreadNotifs = 0;
 
   @override
@@ -47,6 +48,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     WidgetsBinding.instance.addObserver(this);
     final photo = UserSession.currentUser.photoBase64;
     if (photo.isNotEmpty) {
+      _cachedPhotoB64 = photo;
       try { _cachedUserPhoto = base64Decode(photo); } catch (_) {}
     }
     _loadNews();
@@ -106,7 +108,8 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
   @override
   Widget build(BuildContext context) {
-    final user = UserSession.currentUser;
+    // La tarjeta de perfil se construye dentro de un ValueListenableBuilder
+    // (UserSession.userNotifier), por eso aquí ya no se lee currentUser.
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final r = context.r;
 
@@ -190,7 +193,14 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                         duration: AppDurations.normal,
                         delay: const Duration(milliseconds: 0),
                         offsetY: 10,
-                        child: _buildProfileCard(user),
+                        // Reactivo: refresca la tarjeta (foto, sangre, alergias…)
+                        // apenas el enriquecimiento en segundo plano actualiza al
+                        // usuario, sin tener que reiniciar la app.
+                        child: ValueListenableBuilder<UserModel>(
+                          valueListenable: UserSession.userNotifier,
+                          builder: (context, liveUser, _) =>
+                              _buildProfileCard(liveUser),
+                        ),
                       ),
                       SizedBox(height: r.spaceLg),
                       // ── Acciones principales (prominentes) ──
@@ -284,9 +294,29 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   Widget _buildProfileCard(UserModel user) {
     return ProfessionalProfileCard(
       user: user,
-      cachedPhoto: _cachedUserPhoto,
+      cachedPhoto: _photoFor(user),
       onTap: () => widget.tabShell.goToTab(4), // Ir al perfil
     );
+  }
+
+  /// Devuelve la foto decodificada del usuario, re-decodificando SOLO cuando
+  /// el base64 cambia (evita trabajo en cada rebuild). null si no hay foto.
+  Uint8List? _photoFor(UserModel user) {
+    final b64 = user.photoBase64;
+    if (b64.isEmpty) {
+      _cachedPhotoB64 = null;
+      _cachedUserPhoto = null;
+      return null;
+    }
+    if (b64 != _cachedPhotoB64) {
+      _cachedPhotoB64 = b64;
+      try {
+        _cachedUserPhoto = base64Decode(b64);
+      } catch (_) {
+        _cachedUserPhoto = null;
+      }
+    }
+    return _cachedUserPhoto;
   }
 
   // ── Acciones rápidas (grandes y prominentes) ────────────────────────────────

@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import '../models/user_model.dart';
 import '../models/beneficiary_model.dart';
 
@@ -10,11 +11,8 @@ import '../models/beneficiary_model.dart';
 class UserSession {
   UserSession._();
 
-  /// Datos del usuario actualmente autenticado.
-  ///
-  /// Se inicializa con un usuario vacío y se reemplaza tras login o
-  /// restauración de sesión desde secure storage.
-  static UserModel currentUser = const UserModel(
+  /// Usuario vacío base (antes del login / tras logout).
+  static const UserModel _empty = UserModel(
     id: '',
     fullName: '',
     rank: '',
@@ -27,24 +25,29 @@ class UserSession {
     beneficiaries: [],
   );
 
+  /// Notificador reactivo del usuario actual.
+  ///
+  /// La UI puede escucharlo con [ValueListenableBuilder] para refrescarse
+  /// cuando datos que llegan en SEGUNDO PLANO tras el login (la foto, grupo
+  /// sanguíneo, alergias, etc.) actualizan al usuario. Cada asignación a
+  /// [currentUser] dispara la notificación automáticamente.
+  static final ValueNotifier<UserModel> userNotifier =
+      ValueNotifier<UserModel>(_empty);
+
+  /// Datos del usuario actualmente autenticado.
+  ///
+  /// Se inicializa con un usuario vacío y se reemplaza tras login o
+  /// restauración de sesión desde secure storage.
+  static UserModel get currentUser => userNotifier.value;
+  static set currentUser(UserModel user) => userNotifier.value = user;
+
   /// true si hay un usuario autenticado en memoria.
   /// Falso justo después de [clear()] o antes del primer login.
   static bool get isLoggedIn => currentUser.id.isNotEmpty;
 
   /// Limpia la sesión actual (llamar en logout).
   static void clear() {
-    currentUser = const UserModel(
-      id: '',
-      fullName: '',
-      rank: '',
-      matricula: '',
-      bloodType: '',
-      age: 0,
-      gender: '',
-      role: '',
-      isEnabled: false,
-      beneficiaries: [],
-    );
+    currentUser = _empty;
   }
 
   /// Obtiene la edad aplicable para el filtro (titular o beneficiario).
