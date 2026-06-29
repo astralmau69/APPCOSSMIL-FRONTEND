@@ -11,9 +11,6 @@
     <!-- USE_EXACT_ALARM: concedido automáticamente al instalar en API 33+. -->
     <!-- No requiere diálogo al usuario ni justificación especial en Play Store. -->
     <uses-permission android:name="android.permission.USE_EXACT_ALARM"/>
-    <!-- Necesario para mostrar al usuario el diálogo de exención de optimización de batería -->
-    <!-- Crítico para que las notificaciones lleguen con la app cerrada en Xiaomi, Huawei, Samsung -->
-    <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS"/>
     <!-- Cámara: validador de carnet (escaneo del QR rotativo) -->
     <uses-permission android:name="android.permission.CAMERA"/>
     <uses-feature android:name="android.hardware.camera" android:required="false"/>

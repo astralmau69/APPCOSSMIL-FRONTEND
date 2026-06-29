@@ -20,6 +20,13 @@
   <meta content="IE=Edge" http-equiv="X-UA-Compatible">
   <meta name="description" content="A new Flutter project.">
 
+  <!--
+    NOTA DE SEGURIDAD: la Content-Security-Policy y la capa de seguridad web
+    (flutter_security.js) NO se ponen aquí a propósito. En debug `flutter run`
+    usa eval/scripts inline y una CSP estricta deja la PANTALLA EN BLANCO.
+    Se inyectan SOLO en el build de release vía `build_release.ps1`.
+  -->
+
   <!-- iOS meta tags & icons -->
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black">

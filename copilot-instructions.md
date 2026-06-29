@@ -54,7 +54,7 @@ Two separate auth concerns:
 ## API Layer
 
 - `ApiClient` — Centralized HTTP client with auto-injected Bearer token. Returns `ApiClientResponse` sealed class (success/error). Auto-retries on 401 after token refresh.
-- `ApiConstants` — All endpoint paths as static methods. Base URL: `http://10.150.10.13:9999`
+- `ApiConstants` — All endpoint paths as static methods. Base URL: `https://api.cossmil.mil.bo` (production, HTTPS). The internal `http://10.150.10.13:9999` is kept commented out for local/VPN testing only.
 - Backend response format: `{ ok, status, message, data: [...] }` — parse via `data` field.
 
 ## Mock Data Mode

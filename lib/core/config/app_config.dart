@@ -3,6 +3,11 @@
 class AppConfig {
   static const bool useMockData = false;
 
+  /// Carnet digital de asegurado (QR rotativo, validador, exportación PDF).
+  /// OCULTO hasta recibir autorización oficial de COSSMIL para publicarlo.
+  /// Para reactivarlo: cambiar a `true` (vuelve a aparecer el acceso en Inicio).
+  static const bool carnetDigitalEnabled = false;
+
   /// Versión declarada de la app — debe coincidir con pubspec.yaml.
   /// Se usa en el chequeo de versión para que no dependa del APK compilado.
   static const String appVersion = '1.0.3';

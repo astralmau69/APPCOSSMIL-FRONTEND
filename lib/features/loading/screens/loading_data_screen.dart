@@ -6,6 +6,7 @@ import '../../../core/constants/app_colors.dart';
 import '../../../core/data/initial_data_orchestrator.dart';
 import '../../../core/extensions/responsive_extensions.dart';
 import '../../../core/services/notification_service.dart';
+import '../../../core/services/permissions_onboarding.dart';
 import '../../../core/theme/app_constants.dart';
 import '../../../core/utils/app_logger.dart';
 import '../../../core/utils/app_version_helper.dart';
@@ -88,15 +89,13 @@ class _LoadingDataScreenState extends State<LoadingDataScreen> {
       NotificationService.rescheduleNotificationsForCurrentUser()
           .catchError((_) {});
 
-      // Solicitar POST_NOTIFICATIONS (Android 13+) si no está concedido.
-      // Se hace aquí (post-login) para tener Activity activa — en main() el
-      // diálogo no aparece porque aún no hay ventana visible.
-      if (!await NotificationService.areNotificationsEnabled()) {
-        await NotificationService.requestPermissions();
-      }
-      // Solicitar exención de optimización de batería (Xiaomi, Huawei, Samsung…)
-      // solo si no está ya concedida. Fire-and-forget para no bloquear.
-      NotificationService.requestBatteryOptimizationExemption().catchError((_) {});
+      // Permisos de una sola vez (solo en el PRIMER arranque): notificaciones +
+      // ubicación. Tras pedirlos se guarda un flag y NO se vuelven a solicitar
+      // en inicios posteriores, para no molestar al usuario. Fire-and-forget:
+      // los diálogos del sistema aparecen sobre la pantalla principal sin
+      // retrasar la navegación. (La exención de batería se retiró: intrusiva y
+      // no imprescindible para los recordatorios.)
+      PermissionsOnboarding.runOnce();
 
       // Verificar que esta generación sigue siendo la activa antes de navegar.
       // Sin este guard, un doble tap en "Reintentar" puede lanzar dos instancias

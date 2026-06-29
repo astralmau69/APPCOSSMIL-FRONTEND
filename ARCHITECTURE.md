@@ -157,8 +157,10 @@ lib/
 
 ### Endpoint
 ```
-POST http://10.150.10.13:9999/api/security/oauth/token
+POST https://api.cossmil.mil.bo/api/security/oauth/token
 ```
+> Producción usa HTTPS (`https://api.cossmil.mil.bo`). La IP interna
+> `http://10.150.10.13:9999` solo se usa para pruebas en red local/VPN.
 
 ### Headers
 ```

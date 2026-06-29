@@ -136,10 +136,13 @@ class _AgendaScreenState extends State<AgendaScreen> {
     return now.hour > endH || (now.hour == endH && now.minute >= endM);
   }
 
-  /// Disponibilidad real del turno: hay fichas (estado) Y no es un turno de hoy
-  /// cuyo horario ya finalizó.
+  /// Disponibilidad real del turno: el día está habilitado (`estado`), TIENE
+  /// fichas libres (`disponibles > 0`) y no es un turno de hoy cuyo horario ya
+  /// finalizó. Sin el chequeo de `disponibles`, un día con todas sus horas
+  /// ocupadas salía como "Disponible" y daba falsa esperanza al asegurado:
+  /// entraba a la pantalla de horas y no había ni una ficha libre.
   bool _slotAvailable(_DiaAgenda dia, DoctorAgendaModel m) =>
-      m.estado && !_shiftEndedToday(dia, m);
+      m.estado && m.disponibles > 0 && !_shiftEndedToday(dia, m);
 
   void _onSlotSelected(_DiaAgenda dia, DoctorAgendaModel m) {
     if (!_slotAvailable(dia, m)) return;
@@ -446,7 +449,7 @@ class _AgendaScreenState extends State<AgendaScreen> {
   // ── Fila de un turno (horario + estado + acción) ──────────────────────────
   Widget _buildSlotRow(_DiaAgenda dia, DoctorAgendaModel m, bool isDark, AppResponsive r) {
     final ended = _shiftEndedToday(dia, m);
-    final isAvailable = m.estado && !ended;
+    final isAvailable = _slotAvailable(dia, m);
     final accent = isAvailable ? AppColors.success : const Color(0xFFD32F2F);
     final estadoLabel = isAvailable
         ? 'Disponible'

@@ -1,7 +1,6 @@
 import 'dart:convert';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
-import '../../../core/config/app_config.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/extensions/responsive_extensions.dart';
 import '../../../core/models/hospital_model.dart';
@@ -49,14 +48,11 @@ class _CalendarioHospitalScreenState extends State<CalendarioHospitalScreen> {
       AppLogger.info('CalendarioHospitalScreen',
           'Regionales desde ${AppSessionCache.isLoaded ? "caché" : "API"}: ${regionals.length}');
 
-      // Misma lógica de filtrado que RegionalScreen: solo idsuc 1 y 2.
+      // Sin filtro local: mostramos todos los establecimientos que devuelve
+      // el servicio (el backend ya entrega solo los habilitados).
       final hospitals = <HospitalModel>[];
       for (final regional in regionals) {
-        for (final h in regional.hospitals) {
-          if (AppConfig.allowedHospitalIds.contains(h.id)) {
-            hospitals.add(h);
-          }
-        }
+        hospitals.addAll(regional.hospitals);
       }
 
       // Ordenar por idsuc numérico para que La Paz (1) siempre sea primero.

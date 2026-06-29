@@ -38,6 +38,8 @@ app.*.symbols
 
 # Obfuscation related
 app.*.map.json
+# Símbolos de des-ofuscación generados por build_release.ps1 (archivar aparte)
+/symbols/
 
 # Android Studio will place build artifacts here
 /android/app/debug

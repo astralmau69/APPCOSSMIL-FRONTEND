@@ -28,6 +28,23 @@ class LocationService {
     }
   }
 
+  /// Solicita SOLO el permiso de ubicación en runtime, sin exigir que el
+  /// servicio de GPS esté activo. Útil para el onboarding de permisos: muestra
+  /// el diálogo del sistema aunque el GPS esté apagado en ese momento.
+  /// Retorna true si quedó concedido (always / whileInUse).
+  Future<bool> requestPermissionOnly() async {
+    try {
+      var permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+      }
+      return permission == LocationPermission.always ||
+          permission == LocationPermission.whileInUse;
+    } catch (_) {
+      return false;
+    }
+  }
+
   /// Gets the current location if permissions are granted.
   /// If [requestIfNotGranted] is true, it will attempt to request permission.
   Future<Position?> getCurrentLocation({bool requestIfNotGranted = true}) async {
