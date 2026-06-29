@@ -55,6 +55,7 @@ class _PerfilScreenState extends State<PerfilScreen> {
   bool _notifRatings = true;
 
   Uint8List? _cachedUserPhoto;
+  String? _cachedPhotoB64; // base64 que originó _cachedUserPhoto (memo)
 
   late final TextEditingController _emailCtrl;
   late final TextEditingController _phoneCtrl;
@@ -71,10 +72,31 @@ class _PerfilScreenState extends State<PerfilScreen> {
     _referencia = user.referencia;
     final photo = user.photoBase64;
     if (photo.isNotEmpty) {
+      _cachedPhotoB64 = photo;
       try { _cachedUserPhoto = base64Decode(photo); } catch (_) {}
     }
     _loadSecurityStatus();
     _loadNotifPrefs();
+  }
+
+  /// Decodifica la foto del usuario, re-decodificando solo cuando el base64
+  /// cambia (evita trabajo en cada rebuild). null si no hay foto.
+  Uint8List? _photoFor(UserModel user) {
+    final b64 = user.photoBase64;
+    if (b64.isEmpty) {
+      _cachedPhotoB64 = null;
+      _cachedUserPhoto = null;
+      return null;
+    }
+    if (b64 != _cachedPhotoB64) {
+      _cachedPhotoB64 = b64;
+      try {
+        _cachedUserPhoto = base64Decode(b64);
+      } catch (_) {
+        _cachedUserPhoto = null;
+      }
+    }
+    return _cachedUserPhoto;
   }
 
   Future<void> _loadSecurityStatus() async {
@@ -520,14 +542,21 @@ class _PerfilScreenState extends State<PerfilScreen> {
                       child: Padding(
                         padding: EdgeInsets.all(r.spaceXs),
                         child: ClipOval(
-                          child: _cachedUserPhoto != null
-                              ? Image.memory(
-                                  _cachedUserPhoto!,
-                                  fit: BoxFit.cover,
-                                  gaplessPlayback: true,
-                                  errorBuilder: (_, __, ___) => _avatarFallback(user, avatarSize),
-                                )
-                              : _avatarFallback(user, avatarSize),
+                          // Reactivo: la foto puede llegar en segundo plano.
+                          child: ValueListenableBuilder<UserModel>(
+                            valueListenable: UserSession.userNotifier,
+                            builder: (context, liveUser, _) {
+                              final bytes = _photoFor(liveUser);
+                              return bytes != null
+                                  ? Image.memory(
+                                      bytes,
+                                      fit: BoxFit.cover,
+                                      gaplessPlayback: true,
+                                      errorBuilder: (_, __, ___) => _avatarFallback(liveUser, avatarSize),
+                                    )
+                                  : _avatarFallback(liveUser, avatarSize);
+                            },
+                          ),
                         ),
                       ),
                     ),

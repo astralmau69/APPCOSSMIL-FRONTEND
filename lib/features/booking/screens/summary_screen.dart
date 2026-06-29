@@ -8,6 +8,8 @@ import 'package:printing/printing.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/extensions/responsive_extensions.dart';
 import '../../../core/session/user_session.dart';
+import '../../../core/models/user_model.dart';
+import '../../../core/models/beneficiary_model.dart';
 import '../../../core/services/programacion_service.dart';
 import '../../../core/utils/error_mapper.dart';
 
@@ -323,10 +325,14 @@ class _SummaryScreenState extends State<SummaryScreen>
                                   ),
                                   child: ClipRRect(
                                     borderRadius: BorderRadius.circular(context.r.radiusMd),
-                                    child: _buildPhoto(
-                                      bs.beneficiary?.photoBase64 ?? user.photoBase64,
-                                      isDark,
-                                      icon: CupertinoIcons.person_crop_circle_fill,
+                                    // Reactivo: la foto puede llegar en segundo plano.
+                                    child: ValueListenableBuilder<UserModel>(
+                                      valueListenable: UserSession.userNotifier,
+                                      builder: (context, liveUser, _) => _buildPhoto(
+                                        _patientPhotoB64(bs.beneficiary, liveUser),
+                                        isDark,
+                                        icon: CupertinoIcons.person_crop_circle_fill,
+                                      ),
                                     ),
                                   ),
                                 ),
@@ -509,6 +515,18 @@ class _SummaryScreenState extends State<SummaryScreen>
       gaplessPlayback: true,
       errorBuilder: (_, __, ___) => fallback,
     );
+  }
+
+  /// Resuelve el base64 de la foto del paciente, prefiriendo la versión más
+  /// reciente de la sesión (las fotos llegan en segundo plano tras el login).
+  String _patientPhotoB64(BeneficiaryModel? beneficiary, UserModel user) {
+    if (beneficiary != null) {
+      final fresh = user.beneficiaries
+          .where((b) => b.id == beneficiary.id && b.photoBase64.isNotEmpty);
+      if (fresh.isNotEmpty) return fresh.first.photoBase64;
+      if (beneficiary.photoBase64.isNotEmpty) return beneficiary.photoBase64;
+    }
+    return user.photoBase64;
   }
 
   Widget _buildActionButtons(bool isDark) {

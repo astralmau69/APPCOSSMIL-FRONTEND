@@ -33,6 +33,44 @@ class _FamiliaScreenState extends State<FamiliaScreen> {
   void initState() {
     super.initState();
     _fetchGrupoFamiliar();
+    // Las fotos de familiares llegan en segundo plano tras el login; nos
+    // suscribimos para rellenarlas en cuanto estén, sin reiniciar.
+    UserSession.userNotifier.addListener(_onSessionChanged);
+  }
+
+  @override
+  void dispose() {
+    UserSession.userNotifier.removeListener(_onSessionChanged);
+    super.dispose();
+  }
+
+  /// Rellena las fotos que faltaban cuando llegan en segundo plano, sin
+  /// recargar la lista de miembros.
+  void _onSessionChanged() {
+    if (!mounted || _beneficiaries.isEmpty) return;
+    if (_decodedPhotos.length != _beneficiaries.length) return;
+    final sessionBens = UserSession.currentUser.beneficiaries;
+    final selfId = UserSession.currentUser.id;
+    final selfPhoto = UserSession.currentUser.photoBase64;
+    var changed = false;
+    final newPhotos = List<Uint8List?>.from(_decodedPhotos);
+    for (var i = 0; i < _beneficiaries.length; i++) {
+      if (newPhotos[i] != null) continue; // ya tiene foto
+      final b = _beneficiaries[i];
+      var freshB64 = '';
+      final match = sessionBens.where((s) => s.id == b.id && s.photoBase64.isNotEmpty);
+      if (match.isNotEmpty) freshB64 = match.first.photoBase64;
+      if (freshB64.isEmpty && b.id == selfId && selfPhoto.isNotEmpty) {
+        freshB64 = selfPhoto;
+      }
+      if (freshB64.isNotEmpty) {
+        try {
+          newPhotos[i] = base64Decode(freshB64);
+          changed = true;
+        } catch (_) {}
+      }
+    }
+    if (changed && mounted) setState(() => _decodedPhotos = newPhotos);
   }
 
   Future<void> _fetchGrupoFamiliar() async {

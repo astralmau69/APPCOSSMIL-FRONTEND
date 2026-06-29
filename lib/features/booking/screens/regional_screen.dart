@@ -8,6 +8,7 @@ import '../../../core/session/user_session.dart';
 import '../../../core/models/regional_model.dart';
 import '../../../core/models/hospital_model.dart';
 import '../../../core/models/beneficiary_model.dart';
+import '../../../core/models/user_model.dart';
 import '../../../core/services/programacion_service.dart';
 import '../../../core/data/app_session_cache.dart';
 import '../../../core/widgets/beneficiary_selector_modal.dart';
@@ -494,28 +495,44 @@ class _RegionalScreenState extends State<RegionalScreen> {
   }
 
   Widget _buildAvatarContent(BeneficiaryModel beneficiary, bool isTitular) {
-    final r = context.r;
-    // Titular: prefer UserSession photo, fallback to beneficiary photo
-    final photoB64 = isTitular
-        ? (UserSession.currentUser.photoBase64.isNotEmpty
-            ? UserSession.currentUser.photoBase64
-            : beneficiary.photoBase64)
-        : beneficiary.photoBase64;
+    // Reactivo: la foto puede llegar en SEGUNDO PLANO después de entrar a
+    // Reservar. Escuchamos a UserSession para refrescar el avatar sin reiniciar.
+    return ValueListenableBuilder<UserModel>(
+      valueListenable: UserSession.userNotifier,
+      builder: (context, user, _) {
+        final r = context.r;
+        // Titular: preferir foto de UserSession.
+        // Beneficiario: re-resolver la versión más reciente desde la sesión
+        // (las fotos de familiares también llegan en segundo plano), con
+        // fallback al objeto recibido.
+        String photoB64;
+        if (isTitular) {
+          photoB64 = user.photoBase64.isNotEmpty
+              ? user.photoBase64
+              : beneficiary.photoBase64;
+        } else {
+          final fresh = user.beneficiaries
+              .where((b) => b.id == beneficiary.id && b.photoBase64.isNotEmpty);
+          photoB64 = fresh.isNotEmpty ? fresh.first.photoBase64 : beneficiary.photoBase64;
+        }
 
-    if (photoB64.isNotEmpty) {
-      try {
-        return Image.memory(
-          base64Decode(photoB64),
-          fit: BoxFit.cover,
-          width: r.avatarLg,
-          height: r.avatarLg,
-          errorBuilder: (_, __, ___) => _avatarInitial(beneficiary),
-        );
-      } catch (_) {
-        // Bad base64 — fall through to initial
-      }
-    }
-    return _avatarInitial(beneficiary);
+        if (photoB64.isNotEmpty) {
+          try {
+            return Image.memory(
+              base64Decode(photoB64),
+              fit: BoxFit.cover,
+              width: r.avatarLg,
+              height: r.avatarLg,
+              gaplessPlayback: true,
+              errorBuilder: (_, __, ___) => _avatarInitial(beneficiary),
+            );
+          } catch (_) {
+            // Bad base64 — fall through to initial
+          }
+        }
+        return _avatarInitial(beneficiary);
+      },
+    );
   }
 
   Widget _avatarInitial(BeneficiaryModel beneficiary) {
