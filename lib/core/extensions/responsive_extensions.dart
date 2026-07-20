@@ -146,12 +146,15 @@ class AppResponsive {
   // Cero en escritorio/landscape-tablet porque el SideNavBar reemplaza al FloatingNavBar.
   double get navBarBottomSpace {
     if (isDesktop || (isTablet && isLandscape)) return 0;
-    // En web el inset del navbar es 4px (sin home indicator), por eso se
-    // usa una base menor que en móvil físico.
-    final base = kIsWeb
-        ? _select(phoneSmall: 80, phoneMedium: 84, phoneLarge: 88, tablet: 96)
-        : _select(phoneSmall: 95, phoneMedium: 100, phoneLarge: 105, tablet: 112);
-    return base + viewPaddingBottom;
+    // Derivado de la geometría REAL del FloatingNavBar en tab_shell
+    // (Scaffold extendBody: el contenido se dibuja detrás de la barra):
+    //   altura de la barra + separación inferior + inset del sistema,
+    // más un margen de respiro (spaceLg) que también absorbe la sombra de la
+    // barra (blur 15 se extiende ~10 px hacia arriba). Con bases mágicas el
+    // margen real caía a 4-7 px en phoneLarge/tablet y el último contenido
+    // (versión en Perfil, noticias en Inicio) quedaba tapado por la barra.
+    final navInset = kIsWeb ? 4.0 : navBarBottomInset;
+    return navBarHeight + navInset + viewPaddingBottom + spaceLg;
   }
 
   // ── PIN KEY SIZE ──────────────────────────────────────────────────────────

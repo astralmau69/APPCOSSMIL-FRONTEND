@@ -2,7 +2,14 @@ import 'dart:convert';
 
 class ApiConstants {
   // ─── Servidor ──────────────────────────────────────────────────────────────
-  static const String baseUrl = 'https://api.cossmil.mil.bo';
+  // En builds normales (mobile/desktop/web directo) apunta al backend real.
+  // El build web en Docker la sobreescribe a '' vía --dart-define=API_BASE_URL=
+  // para que las peticiones salgan como rutas relativas (/api/...) y las
+  // resuelva el proxy de nginx del mismo origen, evitando CORS en el navegador.
+  static const String baseUrl = String.fromEnvironment(
+    'API_BASE_URL',
+    defaultValue: 'https://api.cossmil.mil.bo',
+  );
   //static const String baseUrl = 'http://10.150.10.13:9999';
 
   // ─── Endpoints ─────────────────────────────────────────────────────────────
@@ -149,10 +156,17 @@ class ApiConstants {
   static String agendaMedicoMovil(int idins, int idsuc, String idmed) =>
       '/api/programacion/agenda-medico-movil/$idins/$idsuc/$idmed';
 
-  /// Médicos por especialidad con foto Base64 (GET).
-  /// Reemplaza a medsuc-buscar para el flujo de reserva.
+  /// Médicos por especialidad (GET).
+  /// Reemplaza a medsuc-buscar para el flujo de reserva. OJO: en producción
+  /// este endpoint dejó de enviar el campo `foto`; las fotos se recuperan
+  /// con [medSucBuscar] como fallback.
   static String medicoEspecialidadConsulta(int idins, int idsuc, int idesp) =>
       '/api/programacion/medico-especialidad-consulta/$idins/$idsuc/$idesp';
+
+  /// Buscar médicos de una sucursal por especialidad (POST, flujo antiguo).
+  /// Se conserva SOLO como fuente de la foto del médico: es el único endpoint
+  /// que sigue devolviéndola (medico-especialidad-consulta ya no la manda).
+  static String medSucBuscar() => '/api/programacion/medsuc-buscar';
 
   // ─── Noticias ──────────────────────────────────────────────────────────────
   

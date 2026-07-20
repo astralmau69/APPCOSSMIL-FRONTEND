@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import '../theme/app_constants.dart';
 
 /// Animación de entrada fade + slide optimizada para listas (sin animate_do dependency).
@@ -128,8 +129,7 @@ class _OptimizedPressButtonState extends State<OptimizedPressButton>
     if (widget.onTap != null) {
       _controller.forward();
       if (widget.haptic) {
-        // Opcional: agregar haptic feedback
-        // HapticFeedback.selectionClick();
+        HapticFeedback.selectionClick();
       }
     }
   }

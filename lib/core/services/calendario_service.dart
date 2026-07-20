@@ -1,7 +1,10 @@
+import 'package:flutter/foundation.dart';
+
 import '../constants/api_constants.dart';
 import '../models/specialty_model.dart';
 import '../models/calendario_models.dart';
 import 'api_client.dart';
+import 'medsuc_photo_fallback.dart';
 
 /// Servicio para el flujo de Calendario de Atención (ventanilla).
 ///
@@ -44,11 +47,20 @@ class CalendarioService {
 
   /// Retorna los médicos disponibles para la especialidad indicada.
   /// Endpoint: GET /api/programacion/medico-especialidad-consulta/1/1/{idesp}
-  Future<List<MedicoSucModel>> getMedicos({required int idesp}) async {
+  ///
+  /// [especialidadNombre] es opcional pero necesario para el fallback de
+  /// fotos: este endpoint dejó de enviar `foto` en producción, así que si
+  /// viene el nombre y todas las fotos llegan vacías, se completan con una
+  /// segunda llamada a `medsuc-buscar` (el endpoint que sí las trae),
+  /// matcheando por `idmed`.
+  Future<List<MedicoSucModel>> getMedicos({
+    required int idesp,
+    String? especialidadNombre,
+  }) async {
     final response = await _api.get(
       ApiConstants.medicoEspecialidadConsulta(_idins, idsuc, idesp),
     );
-    return switch (response) {
+    var medicos = switch (response) {
       ApiSuccess(:final data) => () {
           final list = data is List
               ? data
@@ -61,6 +73,35 @@ class CalendarioService {
         }(),
       ApiError(:final message) => throw Exception(message),
     };
+
+    final fotosAusentes =
+        medicos.isNotEmpty && medicos.every((m) => m.foto.isEmpty);
+    if (fotosAusentes &&
+        especialidadNombre != null &&
+        especialidadNombre.isNotEmpty) {
+      final fotos = await fetchMedSucBuscarFotos(
+        api: _api,
+        idins: _idins,
+        idsuc: idsuc,
+        especialidadNombre: especialidadNombre,
+      );
+      if (fotos.isNotEmpty) {
+        medicos = medicos
+            .map((m) => fotos.containsKey(m.idmed)
+                ? m.copyWith(foto: fotos[m.idmed])
+                : m)
+            .toList();
+      }
+      if (kDebugMode) {
+        final completadas = medicos.where((m) => m.foto.isNotEmpty).length;
+        debugPrint(
+          '📸 Fallback medsuc-buscar ($especialidadNombre): '
+          '$completadas/${medicos.length} fotos completadas',
+        );
+      }
+    }
+
+    return medicos;
   }
 
   // ── Horario Médico (ventana móvil de 7 días) ──────────────────────────────

@@ -1,10 +1,10 @@
-import 'dart:ui';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 
 import '../../core/constants/app_colors.dart';
 import '../../core/extensions/responsive_extensions.dart';
+import '../../core/widgets/liquid_glass.dart';
 
 class FloatingNavBar extends StatelessWidget {
   final int currentIndex;
@@ -27,21 +27,41 @@ class FloatingNavBar extends StatelessWidget {
     final bottomPadding = kIsWeb ? 4.0 : r.navBarBottomInset;
     final navRadius = r.navBarRadius;
 
+    // Relleno fino: con la vibrancy (blur + saturación) el contenido detrás
+    // se percibe de verdad — la sensación "liquid glass" de iOS.
     final backgroundColor = isDark
-        ? AppColors.darkCard.withValues(alpha: 0.75)
-        : Colors.white.withValues(alpha: 0.70);
+        ? AppColors.darkCard.withValues(alpha: 0.60)
+        : Colors.white.withValues(alpha: 0.55);
 
-    final borderColor = isDark
-        ? AppColors.darkBorder.withValues(alpha: 0.9)
-        : Colors.black.withValues(alpha: 0.15);
+    // Borde especular liquid glass: brillante en top-left (donde entra la
+    // luz), hairline neutro en el resto. Se pinta con el truco de gradiente
+    // exterior + padding de 1.2 px.
+    final specularBorder = LinearGradient(
+      begin: Alignment.topLeft,
+      end: Alignment.bottomRight,
+      colors: isDark
+          ? [
+              Colors.white.withValues(alpha: 0.32),
+              Colors.white.withValues(alpha: 0.08),
+              Colors.white.withValues(alpha: 0.18),
+            ]
+          : [
+              Colors.white.withValues(alpha: 0.95),
+              Colors.black.withValues(alpha: 0.15),
+              Colors.black.withValues(alpha: 0.08),
+            ],
+      stops: const [0.0, 0.55, 1.0],
+    );
 
-    final inactiveColor =
-        isDark ? AppColors.darkTextSecondary : Colors.black.withValues(alpha: 0.5);
+    final inactiveColor = isDark
+        ? AppColors.darkTextSecondary
+        : Colors.black.withValues(alpha: 0.5);
 
     final activeColor = isDark ? const Color(0xFF5BA3E6) : Colors.black;
     // Azul institucional para el ítem Inicio
-    final homeActiveColor =
-        isDark ? const Color(0xFF60A5FA) : const Color(0xFF2563EB);
+    final homeActiveColor = isDark
+        ? const Color(0xFF60A5FA)
+        : const Color(0xFF2563EB);
 
     final shadowColor = isDark
         ? const Color(0xFF040810).withValues(alpha: 0.6)
@@ -49,11 +69,17 @@ class FloatingNavBar extends StatelessWidget {
 
     return SafeArea(
       child: Padding(
-        padding: EdgeInsets.only(left: hPadding, right: hPadding, bottom: bottomPadding),
+        padding: EdgeInsets.only(
+          left: hPadding,
+          right: hPadding,
+          bottom: bottomPadding,
+        ),
         child: Container(
           height: barHeight,
+          padding: const EdgeInsets.all(1.2),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(navRadius),
+            gradient: specularBorder,
             boxShadow: [
               BoxShadow(
                 color: shadowColor,
@@ -63,15 +89,16 @@ class FloatingNavBar extends StatelessWidget {
             ],
           ),
           child: ClipRRect(
-            borderRadius: BorderRadius.circular(navRadius),
+            borderRadius: BorderRadius.circular(navRadius - 1.2),
             child: BackdropFilter(
-              // Reduced from 35 -> 12: same glass feel, ~8x cheaper on GPU.
-              filter: ImageFilter.blur(sigmaX: 12.0, sigmaY: 12.0),
+              // Vibrancy iOS (blur 18 + saturación 1.6): más vidrio que el
+              // blur plano de 12, y aún muy por debajo del sigma 35 original
+              // que ahogaba GPUs débiles.
+              filter: liquidGlassBackdrop(sigma: 18),
               child: Container(
                 decoration: BoxDecoration(
                   color: backgroundColor,
-                  border: Border.all(color: borderColor, width: 1.5),
-                  borderRadius: BorderRadius.circular(navRadius),
+                  borderRadius: BorderRadius.circular(navRadius - 1.2),
                 ),
                 child: Row(
                   children: [
@@ -158,11 +185,14 @@ class _NavBarItem extends StatelessWidget {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final r = context.r;
     final iconSize = r.isSmallPhone ? 20.0 : r.iconMd;
-    final labelSize = r.isSmallPhone ? 9.0 : (r.isMediumPhone ? 10.0 : r.sectionLabelSize);
+    final labelSize = r.isSmallPhone
+        ? 9.0
+        : (r.isMediumPhone ? 10.0 : r.sectionLabelSize);
     // Use Expanded instead of fixed widths — let each item take equal space
 
-    final bgPillColor =
-        isDark ? const Color(0xFF1A2E45) : Colors.black.withValues(alpha: 0.08);
+    final bgPillColor = isDark
+        ? const Color(0xFF1A2E45)
+        : Colors.black.withValues(alpha: 0.08);
 
     final Widget iconWidget = Icon(
       isActive ? activeIcon : icon,
@@ -179,7 +209,10 @@ class _NavBarItem extends StatelessWidget {
           child: AnimatedContainer(
             duration: const Duration(milliseconds: 220),
             curve: Curves.easeOutCubic,
-            padding: EdgeInsets.symmetric(horizontal: r.spaceSm, vertical: r.spaceSm),
+            padding: EdgeInsets.symmetric(
+              horizontal: r.spaceSm,
+              vertical: r.spaceSm,
+            ),
             decoration: BoxDecoration(
               color: isActive ? bgPillColor : Colors.transparent,
               borderRadius: BorderRadius.circular(r.navItemPillRadius),
@@ -225,7 +258,11 @@ class _NavBarItem extends StatelessWidget {
                     fontWeight: isActive ? FontWeight.w700 : FontWeight.w500,
                     color: isActive ? activeColor : inactiveColor,
                   ),
-                  child: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis),
+                  child: Text(
+                    label,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
                 ),
               ],
             ),

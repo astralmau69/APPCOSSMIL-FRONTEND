@@ -52,7 +52,10 @@ class _DoctorSelectionScreenState extends State<DoctorSelectionScreen> {
 
     try {
       final idesp = int.tryParse(widget.specialty.id) ?? 0;
-      final list = await _service.getMedicos(idesp: idesp);
+      final list = await _service.getMedicos(
+        idesp: idesp,
+        especialidadNombre: widget.specialty.name,
+      );
       if (!mounted) return;
       setState(() {
         _doctors = list;

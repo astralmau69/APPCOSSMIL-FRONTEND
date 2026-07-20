@@ -11,6 +11,7 @@ import '../models/horario_atencion_model.dart';
 import '../models/medico_asignado_model.dart';
 import '../models/detalle_cita_model.dart';
 import '../models/reserva_model.dart';
+import 'medsuc_photo_fallback.dart';
 import '../mock/mock_regional_data.dart';
 import '../mock/mock_reservas_data.dart';
 import '../mock/mock_specialty_data.dart';
@@ -32,13 +33,12 @@ class VersionOutdatedException implements Exception {
 /// Cuando `useMockData` es false, usa [ApiClient] con Bearer token.
 class ProgramacionService {
   final ApiClient _api;
-  
+
   /// Caché en memoria de citas canceladas en la sesión actual.
   /// Previene que el historial rebote a "Pendiente" si el backend tarda en propagar el estado.
   static final Set<String> localCanceledIds = {};
 
-  ProgramacionService({ApiClient? apiClient})
-      : _api = apiClient ?? ApiClient();
+  ProgramacionService({ApiClient? apiClient}) : _api = apiClient ?? ApiClient();
 
   // ── Verificar Versión ───────────────────────────────────────────────────
 
@@ -59,18 +59,19 @@ class ProgramacionService {
 
       return switch (response) {
         ApiSuccess(:final data) => () {
-            if (data is Map<String, dynamic>) {
-              final isOk = data['data'] == true;
-              if (!isOk) {
-                final msg = data['message'] as String? ??
-                    'Es necesario actualizar la versión del aplicativo.';
-                throw VersionOutdatedException(msg);
-              }
+          if (data is Map<String, dynamic>) {
+            final isOk = data['data'] == true;
+            if (!isOk) {
+              final msg =
+                  data['message'] as String? ??
+                  'Es necesario actualizar la versión del aplicativo.';
+              throw VersionOutdatedException(msg);
             }
-            return true;
-          }(),
-          // Error de red, 401 sin refresh, etc. → no bloquear al usuario.
-          ApiError() => true,
+          }
+          return true;
+        }(),
+        // Error de red, 401 sin refresh, etc. → no bloquear al usuario.
+        ApiError() => true,
       };
     } on VersionOutdatedException {
       rethrow;
@@ -83,18 +84,28 @@ class ProgramacionService {
 
   /// Lista de médicos para una especialidad.
   /// Endpoint: GET medico-especialidad-consulta/{idins}/{idsuc}/{idesp}
-  /// Devuelve foto en Base64 JPEG y nombre completo en campo `medico`.
+  ///
+  /// [especialidadNombre] es opcional pero necesario para el fallback de
+  /// fotos: `medico-especialidad-consulta` dejó de enviar `foto` en
+  /// producción (confirmado en logs — ver `medsuc_photo_fallback.dart`), así
+  /// que si viene el nombre y todas las fotos llegan vacías, se completan
+  /// con una segunda llamada a `medsuc-buscar` (el endpoint que sí las trae),
+  /// matcheando por `idmed`. Sin nombre, o si el fallback también falla, se
+  /// devuelve la lista tal cual (los médicos igual se muestran, sin foto).
   Future<List<DoctorAgendaModel>> getMedicosPorEspecialidad({
     required int idins,
     required int idsuc,
     required int idesp,
+    String? especialidadNombre,
   }) async {
     final response = await _api.get(
       ApiConstants.medicoEspecialidadConsulta(idins, idsuc, idesp),
     );
-    return switch (response) {
+    var medicos = switch (response) {
       ApiSuccess(:final data) => () {
-        final list = data is List ? data : (data is Map ? data['data'] as List? ?? [] : []);
+        final list = data is List
+            ? data
+            : (data is Map ? data['data'] as List? ?? [] : []);
         return list
             .whereType<Map<String, dynamic>>()
             .map(DoctorAgendaModel.fromJson)
@@ -102,6 +113,35 @@ class ProgramacionService {
       }(),
       ApiError(:final message) => throw Exception(message),
     };
+
+    final fotosAusentes =
+        medicos.isNotEmpty && medicos.every((m) => m.foto.isEmpty);
+    if (fotosAusentes &&
+        especialidadNombre != null &&
+        especialidadNombre.isNotEmpty) {
+      final fotos = await fetchMedSucBuscarFotos(
+        api: _api,
+        idins: idins,
+        idsuc: idsuc,
+        especialidadNombre: especialidadNombre,
+      );
+      if (fotos.isNotEmpty) {
+        medicos = medicos
+            .map((m) => fotos.containsKey(m.idmed)
+                ? m.copyWith(foto: fotos[m.idmed])
+                : m)
+            .toList();
+      }
+      if (kDebugMode) {
+        final completadas = medicos.where((m) => m.foto.isNotEmpty).length;
+        debugPrint(
+          '📸 Fallback medsuc-buscar ($especialidadNombre): '
+          '$completadas/${medicos.length} fotos completadas',
+        );
+      }
+    }
+
+    return medicos;
   }
 
   /// Lista de fechas de la agenda para un médico específico.
@@ -116,7 +156,9 @@ class ProgramacionService {
     );
     return switch (response) {
       ApiSuccess(:final data) => () {
-        final list = data is List ? data : (data is Map ? data['data'] as List? ?? [] : []);
+        final list = data is List
+            ? data
+            : (data is Map ? data['data'] as List? ?? [] : []);
         return list
             .whereType<Map<String, dynamic>>()
             .map(DoctorAgendaModel.fromJson)
@@ -139,11 +181,15 @@ class ProgramacionService {
     );
     return switch (response) {
       ApiSuccess(:final data) => () {
-        final list = data is List ? data : (data is Map ? data['data'] as List? ?? [] : []);
+        final list = data is List
+            ? data
+            : (data is Map ? data['data'] as List? ?? [] : []);
         return list
             .whereType<Map<String, dynamic>>()
             .map(DoctorAgendaModel.fromJson)
-            .where((d) => d.oferta > d.demanda) // médicos con al menos un cupo disponible (ope o ase)
+            .where(
+              (d) => d.oferta > d.demanda,
+            ) // médicos con al menos un cupo disponible (ope o ase)
             .toList();
       }(),
       ApiError(:final message) => throw Exception(message),
@@ -158,7 +204,9 @@ class ProgramacionService {
     );
     return switch (response) {
       ApiSuccess(:final data) => () {
-        final list = data is List ? data : (data is Map ? data['data'] as List? ?? [] : []);
+        final list = data is List
+            ? data
+            : (data is Map ? data['data'] as List? ?? [] : []);
         return list
             .whereType<Map<String, dynamic>>()
             .map(TimeSlotModel.fromAgendaHora)
@@ -230,9 +278,7 @@ class ProgramacionService {
 
   // ── Especialidades de interconsulta ─────────────────────────────────────
 
-  Future<List<SpecialtyModel>> getEspecialidadesInterconsulta(
-    int idper,
-  ) async {
+  Future<List<SpecialtyModel>> getEspecialidadesInterconsulta(int idper) async {
     if (AppConfig.useMockData) {
       await Future.delayed(const Duration(milliseconds: 300));
       return MockSpecialtyData.specialties
@@ -265,15 +311,15 @@ class ProgramacionService {
 
       return switch (response) {
         ApiSuccess(:final data) => () {
-            if (data is Map<String, dynamic>) {
-              final isOk = data['data'] == true;
-              if (!isOk) {
-                return data['message'] as String? ??
-                    'No cuenta con aportes válidos para atención médica.';
-              }
+          if (data is Map<String, dynamic>) {
+            final isOk = data['data'] == true;
+            if (!isOk) {
+              return data['message'] as String? ??
+                  'No cuenta con aportes válidos para atención médica.';
             }
-            return null; // OK
-          }(),
+          }
+          return null; // OK
+        }(),
         ApiError(:final message) => message,
       };
     } catch (_) {
@@ -296,23 +342,21 @@ class ProgramacionService {
     if (idper == 0) return null;
 
     try {
-      final response = await _api.get(
-        ApiConstants.validarInasistencias(idper),
-      );
+      final response = await _api.get(ApiConstants.validarInasistencias(idper));
 
       return switch (response) {
         ApiSuccess(:final data) => () {
-            if (data is Map<String, dynamic>) {
-              final isPenalized = data['data'] == true;
-              if (isPenalized) {
-                return data['message'] as String? ??
-                    'Ha acumulado tres (3) inasistencias. La obtención de '
-                        'nuevas citas deberá realizarse de manera presencial '
-                        'en ventanilla.';
-              }
+          if (data is Map<String, dynamic>) {
+            final isPenalized = data['data'] == true;
+            if (isPenalized) {
+              return data['message'] as String? ??
+                  'Ha acumulado tres (3) inasistencias. La obtención de '
+                      'nuevas citas deberá realizarse de manera presencial '
+                      'en ventanilla.';
             }
-            return null; // Sin penalización
-          }(),
+          }
+          return null; // Sin penalización
+        }(),
         ApiError() => null, // Error → dejar pasar
       };
     } catch (_) {
@@ -338,7 +382,9 @@ class ProgramacionService {
       ApiSuccess(:final data) => () {
         final result = _extractDataValue(data);
         if (kDebugMode) debugPrint('🔎 verificarHorario raw data: $data');
-        if (kDebugMode) debugPrint('🔎 verificarHorario parsed result: $result');
+        if (kDebugMode) {
+          debugPrint('🔎 verificarHorario parsed result: $result');
+        }
         return result;
       }(),
       ApiError(:final message) => throw Exception(message),
@@ -357,13 +403,15 @@ class ProgramacionService {
       return [
         const HorarioAtencionModel(
           idhorario: 2,
-          descripcion: 'HORARIO DE ATENCION - PRIMER TURNO APP-MOVIL Y APLICATIVO WEB',
+          descripcion:
+              'HORARIO DE ATENCION - PRIMER TURNO APP-MOVIL Y APLICATIVO WEB',
           horaini: '08:00:00',
           horafin: '12:00:00',
         ),
         const HorarioAtencionModel(
           idhorario: 3,
-          descripcion: 'HORARIO DE ATENCION - SEGUNDO TURNO APP-MOVIL Y APLICATIVO WEB',
+          descripcion:
+              'HORARIO DE ATENCION - SEGUNDO TURNO APP-MOVIL Y APLICATIVO WEB',
           horaini: '13:00:00',
           horafin: '17:00:00',
         ),
@@ -392,7 +440,11 @@ class ProgramacionService {
       await Future.delayed(const Duration(milliseconds: 200));
       return {
         'fechaServidor': DateTime.now().toIso8601String(),
-        'fechaCitaMovil': DateTime.now().add(const Duration(days: 1)).toString().split(' ').first,
+        'fechaCitaMovil': DateTime.now()
+            .add(const Duration(days: 1))
+            .toString()
+            .split(' ')
+            .first,
       };
     }
 
@@ -400,7 +452,8 @@ class ProgramacionService {
 
     return switch (response) {
       ApiSuccess(:final data) => () {
-        if (data is Map<String, dynamic> && data['data'] is Map<String, dynamic>) {
+        if (data is Map<String, dynamic> &&
+            data['data'] is Map<String, dynamic>) {
           final payload = data['data'] as Map<String, dynamic>;
           return {
             'fechaServidor': payload['fechaServidor']?.toString() ?? '',
@@ -439,9 +492,24 @@ class ProgramacionService {
         fecha: '2026-03-27',
         idcontrol: 'mock-control-123',
         horas: [
-          HoraDisponibleModel(idhora: 'mock-1', numero: 5, hora: '09:00', estado: true),
-          HoraDisponibleModel(idhora: 'mock-2', numero: 6, hora: '09:15', estado: true),
-          HoraDisponibleModel(idhora: 'mock-3', numero: 7, hora: '09:30', estado: false),
+          HoraDisponibleModel(
+            idhora: 'mock-1',
+            numero: 5,
+            hora: '09:00',
+            estado: true,
+          ),
+          HoraDisponibleModel(
+            idhora: 'mock-2',
+            numero: 6,
+            hora: '09:15',
+            estado: true,
+          ),
+          HoraDisponibleModel(
+            idhora: 'mock-3',
+            numero: 7,
+            hora: '09:30',
+            estado: false,
+          ),
         ],
       );
     }
@@ -481,16 +549,14 @@ class ProgramacionService {
       };
     }
 
-    final response = await _api.post(
-      ApiConstants.crearCita(),
-      body: payload,
-    );
+    final response = await _api.post(ApiConstants.crearCita(), body: payload);
 
     return switch (response) {
       ApiSuccess(:final data) => () {
         final body = data as Map<String, dynamic>;
         if (body['ok'] == false) {
-          final msg = body['message'] as String? ??
+          final msg =
+              body['message'] as String? ??
               (body['errors'] is List && (body['errors'] as List).isNotEmpty
                   ? (body['errors'] as List).first.toString()
                   : 'Error al crear la cita.');
@@ -508,13 +574,15 @@ class ProgramacionService {
   ///
   /// Retorna un record con la lista de reservas y los datos de paginación.
   Future<({List<ReservaModel> reservas, int totalElements, int totalPages})>
-      getHistorialCitas(int idper, {int pagina = 1, int cantidad = 10}) async {
+  getHistorialCitas(int idper, {int pagina = 1, int cantidad = 10}) async {
     if (AppConfig.useMockData) {
       await Future.delayed(const Duration(milliseconds: 400));
       final all = MockReservasData.historial;
       final start = (pagina - 1) * cantidad;
       final end = start + cantidad > all.length ? all.length : start + cantidad;
-      final page = start < all.length ? all.sublist(start, end) : <ReservaModel>[];
+      final page = start < all.length
+          ? all.sublist(start, end)
+          : <ReservaModel>[];
       return (
         reservas: page,
         totalElements: all.length,
@@ -538,7 +606,11 @@ class ProgramacionService {
           totalElements = pag['totalElements'] as int? ?? 0;
           totalPages = pag['totalPages'] as int? ?? 0;
         }
-        return (reservas: reservas, totalElements: totalElements, totalPages: totalPages);
+        return (
+          reservas: reservas,
+          totalElements: totalElements,
+          totalPages: totalPages,
+        );
       }(),
       ApiError(:final message) => throw Exception(message),
     };
@@ -548,15 +620,15 @@ class ProgramacionService {
   ///
   /// Retorna un record con la lista de reservas y los datos de paginación.
   Future<({List<ReservaModel> reservas, int totalElements, int totalPages})>
-      getHistorialCitasCanceladas(int idper, {int pagina = 1, int cantidad = 10}) async {
+  getHistorialCitasCanceladas(
+    int idper, {
+    int pagina = 1,
+    int cantidad = 10,
+  }) async {
     if (AppConfig.useMockData) {
       await Future.delayed(const Duration(milliseconds: 400));
       // Filtramos o devolvemos una sublista simulada
-      return (
-        reservas: <ReservaModel>[],
-        totalElements: 0,
-        totalPages: 0,
-      );
+      return (reservas: <ReservaModel>[], totalElements: 0, totalPages: 0);
     }
 
     final response = await _api.get(
@@ -565,7 +637,9 @@ class ProgramacionService {
 
     return switch (response) {
       ApiSuccess(:final data) => () {
-        if (kDebugMode) debugPrint('📦 historial-citas-canceladas raw response: $data');
+        if (kDebugMode) {
+          debugPrint('📦 historial-citas-canceladas raw response: $data');
+        }
         final List<ReservaModel> reservas = _parseReservas(data);
         // Extraer paginación
         int totalElements = 0;
@@ -575,7 +649,11 @@ class ProgramacionService {
           totalElements = pag['totalElements'] as int? ?? 0;
           totalPages = pag['totalPages'] as int? ?? 0;
         }
-        return (reservas: reservas, totalElements: totalElements, totalPages: totalPages);
+        return (
+          reservas: reservas,
+          totalElements: totalElements,
+          totalPages: totalPages,
+        );
       }(),
       ApiError(:final message) => throw Exception(message),
     };
@@ -601,7 +679,9 @@ class ProgramacionService {
         return MockReservasData.detalleFromReserva(match.first);
       }
       // Fallback genérico
-      return MockReservasData.detalleFromReserva(MockReservasData.historial.first);
+      return MockReservasData.detalleFromReserva(
+        MockReservasData.historial.first,
+      );
     }
 
     final response = await _api.get(
@@ -643,14 +723,18 @@ class ProgramacionService {
       return [];
     }
 
-    final response = await _api.get(
-      ApiConstants.grupoFamiliar(idper),
-    );
+    final response = await _api.get(ApiConstants.grupoFamiliar(idper));
 
     return switch (response) {
       ApiSuccess(:final data) => () {
-        if (kDebugMode) debugPrint('📦 grupo-familiar raw response: $data');
         final list = _extractDataList(data);
+        if (kDebugMode && list.isNotEmpty) {
+          // Log sin fotos: el Base64 satura logcat y oculta el resto de campos.
+          final sample = Map<String, dynamic>.of(
+            list.first as Map<String, dynamic>,
+          )..removeWhere((k, v) => v is String && v.length > 120);
+          debugPrint('📦 grupo-familiar campos (sin fotos): $sample');
+        }
         return list
             .map((e) => BeneficiaryModel.fromJson(e as Map<String, dynamic>))
             .toList();
@@ -680,7 +764,14 @@ class ProgramacionService {
     }
 
     final response = await _api.put(
-      ApiConstants.cancelarCitaMedica(gestion, idins, idsuc, idtran, dr, matricula),
+      ApiConstants.cancelarCitaMedica(
+        gestion,
+        idins,
+        idsuc,
+        idtran,
+        dr,
+        matricula,
+      ),
     );
 
     return switch (response) {
@@ -786,7 +877,11 @@ class ProgramacionService {
   int? _extractDataValue(dynamic body) {
     if (body is Map<String, dynamic>) {
       final data = body['data'];
-      if (kDebugMode) debugPrint('🔎 _extractDataValue: body es Map, data=$data (${data.runtimeType})');
+      if (kDebugMode) {
+        debugPrint(
+          '🔎 _extractDataValue: body es Map, data=$data (${data.runtimeType})',
+        );
+      }
       if (data is int) return data;
       if (data is num) return data.toInt();
       // Intentar parsear desde String
@@ -797,7 +892,11 @@ class ProgramacionService {
     // Si body YA es el valor escalar directamente
     if (body is int) return body;
     if (body is num) return body.toInt();
-    if (kDebugMode) debugPrint('🔎 _extractDataValue: no se pudo extraer valor de $body (${body.runtimeType})');
+    if (kDebugMode) {
+      debugPrint(
+        '🔎 _extractDataValue: no se pudo extraer valor de $body (${body.runtimeType})',
+      );
+    }
     return null;
   }
 
@@ -817,26 +916,30 @@ class ProgramacionService {
         return MedicoAsignadoModel.fromJson(data);
       }
       // Si data es una lista, tomar el primer elemento
-      if (data is List && data.isNotEmpty && data.first is Map<String, dynamic>) {
+      if (data is List &&
+          data.isNotEmpty &&
+          data.first is Map<String, dynamic>) {
         if (kDebugMode) debugPrint('   ↳ data is a list, taking first element');
         return MedicoAsignadoModel.fromJson(data.first as Map<String, dynamic>);
       }
     }
-    if (kDebugMode) debugPrint('   ⚠️ No hay datos válidos en la respuesta de médico asignado');
+    if (kDebugMode) {
+      debugPrint(
+        '   ⚠️ No hay datos válidos en la respuesta de médico asignado',
+      );
+    }
     throw Exception('Sin médico asignado para esta especialidad');
   }
 
   List<ReservaModel> _parseReservas(dynamic body) {
     final list = _extractDataList(body);
-    return list
-        .map((e) {
-          var model = ReservaModel.fromJson(e as Map<String, dynamic>);
-          if (localCanceledIds.contains('${model.idtran}_${model.dr}')) {
-            model = model.copyWith(status: 'Cancelado');
-          }
-          return model;
-        })
-        .toList();
+    return list.map((e) {
+      var model = ReservaModel.fromJson(e as Map<String, dynamic>);
+      if (localCanceledIds.contains('${model.idtran}_${model.dr}')) {
+        model = model.copyWith(status: 'Cancelado');
+      }
+      return model;
+    }).toList();
   }
 
   DetalleCitaModel _parseDetalleCita(dynamic body) {

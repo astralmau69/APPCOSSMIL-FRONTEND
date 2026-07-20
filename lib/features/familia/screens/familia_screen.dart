@@ -12,6 +12,7 @@ import '../../../core/widgets/beneficiary_details_modal.dart';
 import '../../../core/widgets/cossmil_loader.dart';
 import '../../../core/widgets/image_enlarged_modal.dart';
 import '../../../core/widgets/adaptive_sliver_nav_bar.dart';
+import '../../../core/widgets/familia_help_dialog.dart';
 
 class FamiliaScreen extends StatefulWidget {
   const FamiliaScreen({super.key});
@@ -203,6 +204,19 @@ class _FamiliaScreenState extends State<FamiliaScreen> {
               bottom: BorderSide(
                 color: AppColors.dividerC(isDark),
                 width: 0.5,
+              ),
+            ),
+            trailing: Semantics(
+              label: 'Más información sobre el grupo familiar',
+              button: true,
+              child: CupertinoButton(
+                padding: EdgeInsets.zero,
+                onPressed: () => showFamiliaHelpDialog(context),
+                child: Icon(
+                  CupertinoIcons.question_circle,
+                  color: AppColors.primary,
+                  size: 24,
+                ),
               ),
             ),
           ),

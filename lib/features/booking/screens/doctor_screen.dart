@@ -18,7 +18,12 @@ class DoctorScreen extends StatefulWidget {
   final VoidCallback? onNext;
   final VoidCallback? onBack;
 
-  const DoctorScreen({super.key, required this.tabShell, this.onNext, this.onBack});
+  const DoctorScreen({
+    super.key,
+    required this.tabShell,
+    this.onNext,
+    this.onBack,
+  });
 
   @override
   State<DoctorScreen> createState() => _DoctorScreenState();
@@ -77,7 +82,7 @@ class _DoctorScreenState extends State<DoctorScreen> {
       await _loadFavorites();
 
       if (mounted) {
-        showCupertinoDialog(
+        showAppDialog(
           context: context,
           builder: (ctx) => CupertinoAlertDialog(
             title: Text(isAdded ? 'Médico Favorito' : 'Eliminado de Favoritos'),
@@ -100,7 +105,10 @@ class _DoctorScreenState extends State<DoctorScreen> {
   */
 
   Future<void> _loadMedicos() async {
-    setState(() { _isLoading = true; _errorMessage = null; });
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
     try {
       final bs = widget.tabShell.bookingState;
       final idsuc = int.tryParse(bs.hospital?.id ?? '') ?? 0;
@@ -110,6 +118,7 @@ class _DoctorScreenState extends State<DoctorScreen> {
         idins: 1,
         idsuc: idsuc,
         idesp: idesp,
+        especialidadNombre: bs.specialty?.name,
       );
 
       if (!mounted) return;
@@ -129,13 +138,11 @@ class _DoctorScreenState extends State<DoctorScreen> {
   void _onDoctorSelected(DoctorAgendaModel doctor) {
     final bs = widget.tabShell.bookingState;
     bs.doctor = doctor.toDoctorModel();
-    
+
     if (widget.onNext != null) {
       widget.onNext!();
     }
   }
-
-
 
   @override
   Widget build(BuildContext context) {
@@ -168,16 +175,25 @@ class _DoctorScreenState extends State<DoctorScreen> {
           Expanded(
             child: AppStateWidget.empty(
               title: 'Sin médicos disponibles',
-              message: 'No hay médicos con agenda abierta para esta especialidad '
+              message:
+                  'No hay médicos con agenda abierta para esta especialidad '
                   'en este establecimiento.',
             ),
           ),
           Padding(
-            padding: EdgeInsets.fromLTRB(r.paddingH, 0, r.paddingH, r.navBarBottomSpace + r.spaceMd),
+            padding: EdgeInsets.fromLTRB(
+              r.paddingH,
+              0,
+              r.paddingH,
+              r.navBarBottomSpace + r.spaceMd,
+            ),
             child: SizedBox(
               width: double.infinity,
               child: CupertinoButton(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 14,
+                ),
                 color: AppColors.primary,
                 borderRadius: BorderRadius.circular(r.radiusMd),
                 onPressed: widget.onBack,
@@ -196,7 +212,9 @@ class _DoctorScreenState extends State<DoctorScreen> {
     }
 
     return CustomScrollView(
-      physics: const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
+      physics: const BouncingScrollPhysics(
+        parent: AlwaysScrollableScrollPhysics(),
+      ),
       slivers: [
         // Breadcrumbs
         SliverToBoxAdapter(
@@ -209,7 +227,12 @@ class _DoctorScreenState extends State<DoctorScreen> {
         // Cabecera
         SliverToBoxAdapter(
           child: Padding(
-            padding: EdgeInsets.fromLTRB(r.paddingH, r.spaceMd, r.paddingH, r.spaceSm),
+            padding: EdgeInsets.fromLTRB(
+              r.paddingH,
+              r.spaceMd,
+              r.paddingH,
+              r.spaceSm,
+            ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -227,7 +250,12 @@ class _DoctorScreenState extends State<DoctorScreen> {
 
         // Lista de médicos
         SliverPadding(
-          padding: EdgeInsets.fromLTRB(r.paddingH, 0, r.paddingH, r.navBarBottomSpace + 16),
+          padding: EdgeInsets.fromLTRB(
+            r.paddingH,
+            0,
+            r.paddingH,
+            r.navBarBottomSpace + 16,
+          ),
           sliver: SliverList.builder(
             itemCount: _medicos.length,
             itemBuilder: (context, i) {
@@ -245,7 +273,11 @@ class _DoctorScreenState extends State<DoctorScreen> {
     );
   }
 
-  Widget _buildDoctorCard(DoctorAgendaModel doctor, bool isDark, AppResponsive r) {
+  Widget _buildDoctorCard(
+    DoctorAgendaModel doctor,
+    bool isDark,
+    AppResponsive r,
+  ) {
     final photoBytes = doctor.photoBytes;
 
     return OptimizedPressButton(
@@ -255,17 +287,16 @@ class _DoctorScreenState extends State<DoctorScreen> {
         decoration: BoxDecoration(
           color: AppColors.cardBg(isDark),
           borderRadius: BorderRadius.circular(r.cardRadius),
-          border: Border.all(
-            color: AppColors.cardBorder(isDark),
-            width: 0.8,
-          ),
-          boxShadow: isDark ? [] : [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.05),
-              blurRadius: 12,
-              offset: const Offset(0, 3),
-            ),
-          ],
+          border: Border.all(color: AppColors.cardBorder(isDark), width: 0.8),
+          boxShadow: isDark
+              ? []
+              : [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.05),
+                    blurRadius: 12,
+                    offset: const Offset(0, 3),
+                  ),
+                ],
         ),
         child: Padding(
           padding: EdgeInsets.all(r.cardPadding),
@@ -307,8 +338,11 @@ class _DoctorScreenState extends State<DoctorScreen> {
 
               // Botón de favorito OCULTO (feature aún no funcional).
               SizedBox(width: r.spaceSm),
-              Icon(CupertinoIcons.chevron_right,
-                  size: r.iconSm, color: AppColors.textTertiaryC(isDark)),
+              Icon(
+                CupertinoIcons.chevron_right,
+                size: r.iconSm,
+                color: AppColors.textTertiaryC(isDark),
+              ),
             ],
           ),
         ),
@@ -316,7 +350,12 @@ class _DoctorScreenState extends State<DoctorScreen> {
     );
   }
 
-  Widget _buildAvatar(Uint8List? bytes, String name, bool isDark, AppResponsive r) {
+  Widget _buildAvatar(
+    Uint8List? bytes,
+    String name,
+    bool isDark,
+    AppResponsive r,
+  ) {
     final size = r.listAvatarSize * 1.3;
     Widget content;
 
@@ -346,7 +385,12 @@ class _DoctorScreenState extends State<DoctorScreen> {
     );
   }
 
-  Widget _buildInitials(String name, double size, bool isDark, AppResponsive r) {
+  Widget _buildInitials(
+    String name,
+    double size,
+    bool isDark,
+    AppResponsive r,
+  ) {
     final parts = name.trim().split(RegExp(r'\s+'));
     final initials = parts.length >= 2
         ? '${parts[0][0]}${parts[1][0]}'.toUpperCase()

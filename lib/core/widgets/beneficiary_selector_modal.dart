@@ -1,10 +1,12 @@
 import 'dart:convert';
+import 'package:flutter/cupertino.dart' show CupertinoIcons;
 import 'package:flutter/material.dart';
 import '../constants/app_colors.dart';
 import '../extensions/responsive_extensions.dart';
 import '../models/beneficiary_model.dart';
 import '../session/user_session.dart';
-
+import 'familia_help_dialog.dart';
+import 'liquid_glass.dart';
 
 /// Modal reutilizable para seleccionar un miembro del grupo familiar.
 /// Diseñado para ser reutilizado en cualquier flujo (booking, perfil, etc.).
@@ -27,10 +29,8 @@ class BeneficiarySelectorModal {
       context: context,
       backgroundColor: Colors.transparent,
       isScrollControlled: true,
-      builder: (ctx) => _ModalContent(
-        beneficiaries: beneficiaries,
-        currentId: currentId,
-      ),
+      builder: (ctx) =>
+          _ModalContent(beneficiaries: beneficiaries, currentId: currentId),
     );
   }
 }
@@ -39,10 +39,7 @@ class _ModalContent extends StatelessWidget {
   final List<BeneficiaryModel> beneficiaries;
   final String? currentId;
 
-  const _ModalContent({
-    required this.beneficiaries,
-    this.currentId,
-  });
+  const _ModalContent({required this.beneficiaries, this.currentId});
 
   @override
   Widget build(BuildContext context) {
@@ -50,91 +47,119 @@ class _ModalContent extends StatelessWidget {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     return Center(
       child: ConstrainedBox(
-        constraints: BoxConstraints(
-          maxWidth: r.maxContentWidth,
-        ),
+        constraints: BoxConstraints(maxWidth: r.maxContentWidth),
         child: Container(
           constraints: BoxConstraints(
             maxHeight: MediaQuery.of(context).size.height * 0.65,
           ),
-          decoration: BoxDecoration(
-            color: AppColors.cardBg(isDark),
-            borderRadius: BorderRadius.vertical(top: Radius.circular(context.r.modalRadius)),
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              SizedBox(height: context.r.spaceMd),
-              // Handle bar
-              Container(
-                width: context.r.handleBarWidth,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: AppColors.border,
-                  borderRadius: BorderRadius.circular(context.r.spaceXs),
+          // Vidrio real (blur): sheet arquitectónico único en pantalla —
+          // el contenido de la pantalla se percibe difuminado detrás.
+          child: LiquidGlass(
+            isDark: isDark,
+            blur: true,
+            borderRadius: BorderRadius.vertical(
+              top: Radius.circular(context.r.modalRadius),
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                SizedBox(height: context.r.spaceMd),
+                // Handle bar
+                Container(
+                  width: context.r.handleBarWidth,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: AppColors.border,
+                    borderRadius: BorderRadius.circular(context.r.spaceXs),
+                  ),
                 ),
-              ),
-              SizedBox(height: r.spaceLg),
-              // Title
-              Padding(
-                padding: EdgeInsets.symmetric(horizontal: r.paddingH),
-                child: Row(
-                  children: [
-                    Icon(Icons.people_alt, size: r.iconSm, color: AppColors.primary),
-                    SizedBox(width: r.spaceSm),
-                    Expanded(
-                      child: Text(
-                        '¿Para quién es la reserva?',
-                        style: TextStyle(
-                          fontSize: r.isSmallPhone ? 15 : 18,
-                          fontWeight: FontWeight.w800,
-                          color: AppColors.textPrimaryC(isDark),
-                          letterSpacing: -0.3,
-                        ),
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
+                SizedBox(height: r.spaceLg),
+                // Title
+                Padding(
+                  padding: EdgeInsets.symmetric(horizontal: r.paddingH),
+                  child: Row(
+                    children: [
+                      Icon(
+                        Icons.people_alt,
+                        size: r.iconSm,
+                        color: AppColors.primary,
                       ),
-                    ),
-                  ],
+                      SizedBox(width: r.spaceSm),
+                      Expanded(
+                        child: Text(
+                          '¿Para quién es la reserva?',
+                          style: TextStyle(
+                            fontSize: r.isSmallPhone ? 15 : 18,
+                            fontWeight: FontWeight.w800,
+                            color: AppColors.textPrimaryC(isDark),
+                            letterSpacing: -0.3,
+                          ),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      // Ayuda: mismo conducto que el Grupo Familiar (Afiliaciones
+                      // → DNTIC). Útil aquí porque un miembro puede aparecer "Sin
+                      // atención" y el titular necesita saber a dónde acudir.
+                      Semantics(
+                        label: 'Más información sobre el grupo familiar',
+                        button: true,
+                        child: GestureDetector(
+                          behavior: HitTestBehavior.opaque,
+                          onTap: () => showFamiliaHelpDialog(context),
+                          child: Padding(
+                            padding: EdgeInsets.only(left: r.spaceSm),
+                            child: Icon(
+                              CupertinoIcons.question_circle,
+                              size: r.iconSm,
+                              color: AppColors.primary,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-              SizedBox(height: r.spaceXs),
-              Padding(
-                padding: EdgeInsets.symmetric(horizontal: r.paddingH),
-                child: Align(
-                  alignment: Alignment.centerLeft,
-                  child: Text(
-                    'Selecciona el miembro de tu grupo familiar',
-                    style: TextStyle(
-                      fontSize: r.isSmallPhone ? 12 : 14,
-                      fontWeight: FontWeight.w500,
-                      color: AppColors.textSecondaryC(isDark),
+                SizedBox(height: r.spaceXs),
+                Padding(
+                  padding: EdgeInsets.symmetric(horizontal: r.paddingH),
+                  child: Align(
+                    alignment: Alignment.centerLeft,
+                    child: Text(
+                      'Selecciona el miembro de tu grupo familiar',
+                      style: TextStyle(
+                        fontSize: r.isSmallPhone ? 12 : 14,
+                        fontWeight: FontWeight.w500,
+                        color: AppColors.textSecondaryC(isDark),
+                      ),
                     ),
                   ),
                 ),
-              ),
-              SizedBox(height: r.spaceMd),
-              Container(height: 0.5, color: AppColors.border),
-              // List
-              Flexible(
-                child: ListView.builder(
-                  padding: EdgeInsets.symmetric(vertical: context.r.spaceSm),
-                  itemCount: beneficiaries.length,
-                  itemBuilder: (context, index) {
-                    final b = beneficiaries[index];
-                    final isSelected = b.id == currentId;
-                    final isEnabled = b.isAtencionEnabled;
-                    return _BeneficiaryTile(
-                      beneficiary: b,
-                      isSelected: isSelected,
-                      isDisabled: !isEnabled,
-                      onTap: isEnabled ? () => Navigator.pop(context, b) : null,
-                    );
-                  },
+                SizedBox(height: r.spaceMd),
+                Container(height: 0.5, color: AppColors.border),
+                // List
+                Flexible(
+                  child: ListView.builder(
+                    padding: EdgeInsets.symmetric(vertical: context.r.spaceSm),
+                    itemCount: beneficiaries.length,
+                    itemBuilder: (context, index) {
+                      final b = beneficiaries[index];
+                      final isSelected = b.id == currentId;
+                      final isEnabled = b.isAtencionEnabled;
+                      return _BeneficiaryTile(
+                        beneficiary: b,
+                        isSelected: isSelected,
+                        isDisabled: !isEnabled,
+                        onTap: isEnabled
+                            ? () => Navigator.pop(context, b)
+                            : null,
+                      );
+                    },
+                  ),
                 ),
-              ),
-              SizedBox(height: MediaQuery.of(context).padding.bottom + 8),
-            ],
+                SizedBox(height: MediaQuery.of(context).padding.bottom + 8),
+              ],
+            ),
           ),
         ),
       ),
@@ -172,9 +197,14 @@ class _BeneficiaryTile extends StatelessWidget {
       child: Opacity(
         opacity: isDisabled ? 0.45 : 1.0,
         child: Container(
-          padding: EdgeInsets.symmetric(horizontal: r.paddingH, vertical: r.cardPadding),
+          padding: EdgeInsets.symmetric(
+            horizontal: r.paddingH,
+            vertical: r.cardPadding,
+          ),
           color: isSelected
-              ? (isDark ? AppColors.primary.withValues(alpha: 0.15) : AppColors.primaryLight)
+              ? (isDark
+                    ? AppColors.primary.withValues(alpha: 0.15)
+                    : AppColors.primaryLight)
               : Colors.transparent,
           child: Row(
             children: [
@@ -191,7 +221,8 @@ class _BeneficiaryTile extends StatelessWidget {
                       ? Image.memory(
                           base64Decode(beneficiary.photoBase64),
                           fit: BoxFit.cover,
-                          errorBuilder: (_, __, ___) => _fallbackAvatar(beneficiary, avatarSize),
+                          errorBuilder: (_, __, ___) =>
+                              _fallbackAvatar(beneficiary, avatarSize),
                         )
                       : _fallbackAvatar(beneficiary, avatarSize),
                 ),
@@ -219,12 +250,16 @@ class _BeneficiaryTile extends StatelessWidget {
                       children: [
                         Container(
                           padding: EdgeInsets.symmetric(
-                              horizontal: context.r.chipPaddingH, vertical: context.r.chipPaddingV),
+                            horizontal: context.r.chipPaddingH,
+                            vertical: context.r.chipPaddingV,
+                          ),
                           decoration: BoxDecoration(
                             color: isTitular
                                 ? AppColors.primary.withValues(alpha: 0.1)
                                 : AppColors.accent.withValues(alpha: 0.1),
-                            borderRadius: BorderRadius.circular(context.r.badgeRadius),
+                            borderRadius: BorderRadius.circular(
+                              context.r.badgeRadius,
+                            ),
                           ),
                           child: Text(
                             label,
@@ -241,11 +276,14 @@ class _BeneficiaryTile extends StatelessWidget {
                           SizedBox(width: context.r.spaceSm),
                           Container(
                             padding: EdgeInsets.symmetric(
-                                horizontal: context.r.chipPaddingH,
-                                vertical: context.r.chipPaddingV),
+                              horizontal: context.r.chipPaddingH,
+                              vertical: context.r.chipPaddingV,
+                            ),
                             decoration: BoxDecoration(
                               color: Colors.red.withValues(alpha: 0.1),
-                              borderRadius: BorderRadius.circular(context.r.badgeRadius),
+                              borderRadius: BorderRadius.circular(
+                                context.r.badgeRadius,
+                              ),
                             ),
                             child: Row(
                               mainAxisSize: MainAxisSize.min,

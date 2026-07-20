@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/services.dart';
+import '../../../core/animations/app_dialog.dart';
 import 'package:audioplayers/audioplayers.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:package_info_plus/package_info_plus.dart';
@@ -104,12 +105,7 @@ class _LoginScreenState extends State<LoginScreen>
     _logoFloat = Tween<Offset>(
       begin: const Offset(0, 0),
       end: const Offset(0, 0.05),
-    ).animate(
-      CurvedAnimation(
-        parent: _floatCtrl,
-        curve: Curves.easeInOutSine,
-      ),
-    );
+    ).animate(CurvedAnimation(parent: _floatCtrl, curve: Curves.easeInOutSine));
 
     // Pausar flotación al abrir teclado — libera GPU en dispositivos viejos.
     _usernameFocus.addListener(_onFocusChanged);
@@ -123,9 +119,11 @@ class _LoginScreenState extends State<LoginScreen>
       }
     });
 
-    PackageInfo.fromPlatform().then((info) {
-      if (mounted) setState(() => _appVersion = info.version);
-    }).catchError((_) {}); // old devices can throw here
+    PackageInfo.fromPlatform()
+        .then((info) {
+          if (mounted) setState(() => _appVersion = info.version);
+        })
+        .catchError((_) {}); // old devices can throw here
 
     if (_multiAccountEnabled) _loadSavedAccounts();
   }
@@ -138,21 +136,22 @@ class _LoginScreenState extends State<LoginScreen>
   }
 
   Future<void> _openSavedAccount(SavedAccount account) async {
-    await Navigator.of(context).push(
-      AppPageRoute(builder: (_) => AccountUnlockScreen(account: account)),
-    );
+    await Navigator.of(
+      context,
+    ).push(AppPageRoute(builder: (_) => AccountUnlockScreen(account: account)));
     // Si el usuario volvió sin entrar, refrescar la lista (orden/datos).
     if (mounted) _loadSavedAccounts();
   }
 
   Future<void> _removeSavedAccount(SavedAccount account) async {
-    final ok = await showCupertinoDialog<bool>(
+    final ok = await showAppDialog<bool>(
       context: context,
       builder: (ctx) => CupertinoAlertDialog(
         title: const Text('Quitar cuenta'),
         content: Text(
-            '¿Quitar la cuenta de ${account.displayName.isNotEmpty ? account.displayName : account.matricula} de este dispositivo? '
-            'Tendrás que iniciar sesión con tu contraseña la próxima vez.'),
+          '¿Quitar la cuenta de ${account.displayName.isNotEmpty ? account.displayName : account.matricula} de este dispositivo? '
+          'Tendrás que iniciar sesión con tu contraseña la próxima vez.',
+        ),
         actions: [
           CupertinoDialogAction(
             child: const Text('Cancelar'),
@@ -196,12 +195,13 @@ class _LoginScreenState extends State<LoginScreen>
       }
 
       if (!mounted) return;
-      final wantSave = await showCupertinoDialog<bool>(
+      final wantSave = await showAppDialog<bool>(
         context: context,
         builder: (ctx) => CupertinoAlertDialog(
           title: const Text('Guardar esta cuenta'),
           content: const Text(
-              '¿Deseas guardar esta cuenta para entrar rápido con huella o un PIN la próxima vez?'),
+            '¿Deseas guardar esta cuenta para entrar rápido con huella o un PIN la próxima vez?',
+          ),
           actions: [
             CupertinoDialogAction(
               child: const Text('Ahora no'),
@@ -245,7 +245,6 @@ class _LoginScreenState extends State<LoginScreen>
     });
   }
 
-
   Future<void> _playLoginAudio() async {
     _audioPlayer = await SoundManager.playIfAllowed('vof/AUDIO 2. LOGIN.mp3');
   }
@@ -259,10 +258,16 @@ class _LoginScreenState extends State<LoginScreen>
         canPop: false,
         child: AlertDialog(
           backgroundColor: AppColors.cardBg(isDark),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
           title: Row(
             children: [
-              const Icon(Icons.system_update_rounded, color: AppColors.warning, size: 28),
+              const Icon(
+                Icons.system_update_rounded,
+                color: AppColors.warning,
+                size: 28,
+              ),
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
@@ -282,12 +287,18 @@ class _LoginScreenState extends State<LoginScreen>
             children: [
               Text(
                 'Tu aplicacion necesita actualizarse para continuar usando COSSMIL.',
-                style: TextStyle(color: AppColors.textSecondaryC(isDark), height: 1.4),
+                style: TextStyle(
+                  color: AppColors.textSecondaryC(isDark),
+                  height: 1.4,
+                ),
               ),
               const SizedBox(height: 8),
               Text(
                 'Visita el sitio web oficial de COSSMIL y descarga la ultima version desde ahi.',
-                style: TextStyle(color: AppColors.textSecondaryC(isDark), height: 1.4),
+                style: TextStyle(
+                  color: AppColors.textSecondaryC(isDark),
+                  height: 1.4,
+                ),
               ),
             ],
           ),
@@ -342,15 +353,24 @@ class _LoginScreenState extends State<LoginScreen>
     final password = _passwordController.text.trim();
 
     if (username.isEmpty && password.isEmpty) {
-      setState(() { _errorMessage = 'Ingresa tu matrícula y contraseña para continuar.'; _errorType = AuthErrorType.unknown; });
+      setState(() {
+        _errorMessage = 'Ingresa tu matrícula y contraseña para continuar.';
+        _errorType = AuthErrorType.unknown;
+      });
       return;
     }
     if (username.isEmpty) {
-      setState(() { _errorMessage = 'Ingresa tu matrícula.'; _errorType = AuthErrorType.unknown; });
+      setState(() {
+        _errorMessage = 'Ingresa tu matrícula.';
+        _errorType = AuthErrorType.unknown;
+      });
       return;
     }
     if (password.isEmpty) {
-      setState(() { _errorMessage = 'Ingresa tu contraseña.'; _errorType = AuthErrorType.unknown; });
+      setState(() {
+        _errorMessage = 'Ingresa tu contraseña.';
+        _errorType = AuthErrorType.unknown;
+      });
       return;
     }
 
@@ -373,9 +393,9 @@ class _LoginScreenState extends State<LoginScreen>
         // Timeout corto: en conexiones débiles no debe demorar el ingreso (el
         // splash ya verifica la versión al arrancar).
         try {
-          await ProgramacionService()
-              .verificarVersion()
-              .timeout(const Duration(seconds: 8));
+          await ProgramacionService().verificarVersion().timeout(
+            const Duration(seconds: 8),
+          );
         } on VersionOutdatedException catch (e) {
           if (!mounted) return;
           setState(() => _isLoading = false);
@@ -394,7 +414,7 @@ class _LoginScreenState extends State<LoginScreen>
 
         if (!mounted) return;
 
-        // Ya NO habilitamos la biometría automáticamente. 
+        // Ya NO habilitamos la biometría automáticamente.
         // El usuario debe hacerlo manualmente desde la configuración de seguridad.
 
         if (!mounted) return;
@@ -429,7 +449,9 @@ class _LoginScreenState extends State<LoginScreen>
     final texts = context.texts;
 
     // Reproducir audio de advertencia de seguridad (respeta modo silencio/vibración)
-    final warningPlayer = await SoundManager.playIfAllowed('vof/AUDIO 3. ADVERTENCIA DE SEGURIDAD.mp3');
+    final warningPlayer = await SoundManager.playIfAllowed(
+      'vof/AUDIO 3. ADVERTENCIA DE SEGURIDAD.mp3',
+    );
 
     if (!mounted) return;
     await showGeneralDialog(
@@ -521,7 +543,12 @@ class _LoginScreenState extends State<LoginScreen>
                 SizedBox(height: r.spaceLg),
                 // Button
                 Padding(
-                  padding: EdgeInsets.fromLTRB(r.modalPadding, 0, r.modalPadding, r.modalPadding),
+                  padding: EdgeInsets.fromLTRB(
+                    r.modalPadding,
+                    0,
+                    r.modalPadding,
+                    r.modalPadding,
+                  ),
                   child: SizedBox(
                     width: double.infinity,
                     child: CupertinoButton(
@@ -565,12 +592,27 @@ class _LoginScreenState extends State<LoginScreen>
       return _buildAccountChooser(isDark, r);
     }
 
-    final double logoSize = (r.screenHeight * 0.17).clamp(70.0, 140.0);
     final double keyboardHeight = MediaQuery.of(context).viewInsets.bottom;
     final bool keyboardVisible = keyboardHeight > 80;
 
+    // Modo compacto para pantallas bajas (teléfonos pequeños, landscape,
+    // ventanas de navegador recortadas): logo y espacios reducidos para que
+    // el botón "Iniciar Sesión" quede visible sin scroll. En pantallas muy
+    // bajas el footer pasa DENTRO del scroll para no robarle altura al
+    // formulario (era la causa de que el botón "se pierda").
+    final bool compact = r.screenHeight < 700;
+    final bool footerInScroll = r.screenHeight < 640;
+    final bool showHeader =
+        (!keyboardVisible && r.screenHeight >= 500) || r.screenHeight > 700;
+    final double logoSize = (r.screenHeight * (compact ? 0.13 : 0.17)).clamp(
+      56.0,
+      140.0,
+    );
+
     return Scaffold(
-      backgroundColor: isDark ? const Color(0xFF101214) : const Color(0xFFF7F9FB),
+      backgroundColor: isDark
+          ? const Color(0xFF101214)
+          : const Color(0xFFF7F9FB),
       // adjustNothing en el manifest + false aquí = Flutter recibe viewInsets
       // correctos sin que Android encoja la ventana, evitando el bug de MagicOS
       // donde el resize del Scaffold interrumpe el IME y cierra el teclado.
@@ -595,153 +637,174 @@ class _LoginScreenState extends State<LoginScreen>
                           // evita que el Column intente llenar el espacio detrás
                           // del teclado, previniendo el "Bottom Overflowed".
                           final visibleHeight = keyboardVisible
-                              ? (constraints.maxHeight - keyboardHeight)
-                                  .clamp(0.0, constraints.maxHeight)
+                              ? (constraints.maxHeight - keyboardHeight).clamp(
+                                  0.0,
+                                  constraints.maxHeight,
+                                )
                               : constraints.maxHeight;
                           return SingleChildScrollView(
-                          controller: _scrollController,
-                          physics: const ClampingScrollPhysics(),
-                          keyboardDismissBehavior:
-                              ScrollViewKeyboardDismissBehavior.onDrag,
-                          padding: EdgeInsets.fromLTRB(
-                            r.paddingH,
-                            keyboardVisible ? 12 : 8,
-                            r.paddingH,
-                            keyboardVisible ? keyboardHeight + 24 : 0,
-                          ),
-                          // En web/escritorio la pantalla es muy ancha; sin un
-                          // tope de ancho el formulario (crossAxisAlignment.stretch)
-                          // se estira a toda la pantalla. Lo centramos y limitamos
-                          // a un ancho tipo móvil. En teléfonos el ancho real es
-                          // menor que maxWidth → no cambia nada.
-                          child: Center(
-                            child: ConstrainedBox(
-                            constraints: BoxConstraints(
-                              minHeight: visibleHeight,
-                              maxWidth: 440,
+                            controller: _scrollController,
+                            physics: const ClampingScrollPhysics(),
+                            keyboardDismissBehavior:
+                                ScrollViewKeyboardDismissBehavior.onDrag,
+                            padding: EdgeInsets.fromLTRB(
+                              r.paddingH,
+                              keyboardVisible ? 12 : 8,
+                              r.paddingH,
+                              keyboardVisible ? keyboardHeight + 24 : 0,
                             ),
-                            child: Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              mainAxisSize: MainAxisSize.min,
-                              crossAxisAlignment: CrossAxisAlignment.stretch,
-                              children: [
-                                Center(
-                                  child: RepaintBoundary(
-                                    child: FadeTransition(
-                                      opacity: _logoFade,
-                                      child: ScaleTransition(
-                                        scale: _logoScale,
-                                        child: RotationTransition(
-                                          turns: _logoRotate,
-                                          child: SlideTransition(
-                                            position: _logoFloat,
-                                            child: _buildLogo(
-                                              keyboardVisible ? logoSize * 0.65 : logoSize,
-                                              isDark,
+                            // En web/escritorio la pantalla es muy ancha; sin un
+                            // tope de ancho el formulario (crossAxisAlignment.stretch)
+                            // se estira a toda la pantalla. Lo centramos y limitamos
+                            // a un ancho tipo móvil. En teléfonos el ancho real es
+                            // menor que maxWidth → no cambia nada.
+                            child: Center(
+                              child: ConstrainedBox(
+                                constraints: BoxConstraints(
+                                  minHeight: visibleHeight,
+                                  maxWidth: 440,
+                                ),
+                                child: Column(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  mainAxisSize: MainAxisSize.min,
+                                  crossAxisAlignment:
+                                      CrossAxisAlignment.stretch,
+                                  children: [
+                                    Center(
+                                      child: RepaintBoundary(
+                                        child: FadeTransition(
+                                          opacity: _logoFade,
+                                          child: ScaleTransition(
+                                            scale: _logoScale,
+                                            child: RotationTransition(
+                                              turns: _logoRotate,
+                                              child: SlideTransition(
+                                                position: _logoFloat,
+                                                child: _buildLogo(
+                                                  keyboardVisible
+                                                      ? logoSize * 0.65
+                                                      : logoSize,
+                                                  isDark,
+                                                ),
+                                              ),
                                             ),
                                           ),
                                         ),
                                       ),
                                     ),
-                                  ),
+                                    SizedBox(
+                                      height: keyboardVisible
+                                          ? r.spaceSm
+                                          : r.spaceMd,
+                                    ),
+                                    if (showHeader)
+                                      FadeSlideIn(
+                                        duration: AppDurations.slow,
+                                        delay: const Duration(
+                                          milliseconds: 100,
+                                        ),
+                                        child: _buildHeader(isDark),
+                                      ),
+                                    SizedBox(
+                                      height: (keyboardVisible || compact)
+                                          ? r.spaceMd
+                                          : r.spaceXl,
+                                    ),
+                                    FadeSlideIn(
+                                      duration: AppDurations.normal,
+                                      delay: const Duration(milliseconds: 200),
+                                      child: _buildAuthCard(isDark, r),
+                                    ),
+                                    // En pantallas bajas el footer viaja con
+                                    // el scroll: nunca compite con el botón.
+                                    if (footerInScroll && !keyboardVisible) ...[
+                                      SizedBox(height: r.spaceLg),
+                                      FadeSlideIn(
+                                        duration: AppDurations.normal,
+                                        delay: const Duration(
+                                          milliseconds: 350,
+                                        ),
+                                        child: _buildFooter(isDark),
+                                      ),
+                                      SizedBox(height: r.spaceMd),
+                                    ],
+                                  ],
                                 ),
-                                SizedBox(height: keyboardVisible ? r.spaceSm : r.spaceMd),
-                                if (!keyboardVisible || r.screenHeight > 700)
-                                  FadeSlideIn(
-                                    duration: AppDurations.slow,
-                                    delay: const Duration(milliseconds: 100),
-                                    child: _buildHeader(isDark),
-                                  ),
-                                SizedBox(height: keyboardVisible ? r.spaceMd : r.spaceXl),
-                                FadeSlideIn(
-                                  duration: AppDurations.normal,
-                                  delay: const Duration(milliseconds: 200),
-                                  child: _buildForm(isDark),
-                                ),
-                                SizedBox(height: r.spaceMd),
-                                if (_errorMessage != null) ...[
-                                  FadeSlideIn(
-                                    duration: AppDurations.fast,
-                                    child: _buildErrorBanner(),
-                                  ),
-                                  SizedBox(height: r.spaceSm),
-                                ],
-                                FadeSlideIn(
-                                  duration: AppDurations.normal,
-                                  delay: const Duration(milliseconds: 250),
-                                  child: _buildLoginButton(),
-                                ),
-                              ],
+                              ),
                             ),
-                            ),
-                          ),
-                        );
+                          );
                         },
                       ),
                     ),
-                  // Footer anclado: FUERA del scroll → nunca sube con el teclado.
-                  // Se oculta cuando el teclado está activo para liberar espacio.
-                  if (!keyboardVisible)
-                    Padding(
-                      padding: EdgeInsets.fromLTRB(r.paddingH, 0, r.paddingH, r.spaceMd),
-                      child: FadeSlideIn(
-                        duration: AppDurations.normal,
-                        delay: const Duration(milliseconds: 350),
-                        child: _buildFooter(isDark),
+                    // Footer anclado: FUERA del scroll → nunca sube con el teclado.
+                    // Se oculta cuando el teclado está activo para liberar espacio,
+                    // y en pantallas bajas se muda dentro del scroll (ver arriba).
+                    if (!keyboardVisible && !footerInScroll)
+                      Padding(
+                        padding: EdgeInsets.fromLTRB(
+                          r.paddingH,
+                          0,
+                          r.paddingH,
+                          r.spaceMd,
+                        ),
+                        child: FadeSlideIn(
+                          duration: AppDurations.normal,
+                          delay: const Duration(milliseconds: 350),
+                          child: _buildFooter(isDark),
+                        ),
                       ),
-                    ),
-                ],
-              ),
-              // ── Sonido & Tema — esquina superior derecha ─────────────
-              Positioned(
-                top: 8,
-                right: 0,
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    ValueListenableBuilder<bool>(
-                      valueListenable: SoundManager.soundEnabledNotifier,
-                      builder: (context, soundOn, _) => CupertinoButton(
+                  ],
+                ),
+                // ── Sonido & Tema — esquina superior derecha ─────────────
+                Positioned(
+                  top: 8,
+                  right: 0,
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      ValueListenableBuilder<bool>(
+                        valueListenable: SoundManager.soundEnabledNotifier,
+                        builder: (context, soundOn, _) => CupertinoButton(
+                          padding: EdgeInsets.all(context.r.spaceSm),
+                          onPressed: () => SoundManager.toggle(),
+                          child: Icon(
+                            soundOn
+                                ? CupertinoIcons.speaker_2_fill
+                                : CupertinoIcons.speaker_slash_fill,
+                            size: context.r.iconMd,
+                            color: AppColors.textSecondaryC(isDark),
+                          ),
+                        ),
+                      ),
+                      CupertinoButton(
                         padding: EdgeInsets.all(context.r.spaceSm),
-                        onPressed: () => SoundManager.toggle(),
+                        onPressed: () => ThemeManager.toggleTheme(),
                         child: Icon(
-                          soundOn
-                              ? CupertinoIcons.speaker_2_fill
-                              : CupertinoIcons.speaker_slash_fill,
+                          isDark
+                              ? CupertinoIcons.sun_max_fill
+                              : CupertinoIcons.moon_fill,
                           size: context.r.iconMd,
                           color: AppColors.textSecondaryC(isDark),
                         ),
                       ),
-                    ),
-                    CupertinoButton(
-                      padding: EdgeInsets.all(context.r.spaceSm),
-                      onPressed: () => ThemeManager.toggleTheme(),
-                      child: Icon(
-                        isDark
-                            ? CupertinoIcons.sun_max_fill
-                            : CupertinoIcons.moon_fill,
-                        size: context.r.iconMd,
-                        color: AppColors.textSecondaryC(isDark),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              // ── FAB de soporte — oculto cuando el teclado está activo ──
-              if (!keyboardVisible)
-                Positioned(
-                  bottom: 20,
-                  right: 20,
-                  child: FadeSlideIn(
-                    duration: AppDurations.normal,
-                    delay: const Duration(milliseconds: 450),
-                    child: _buildSupportFab(isDark),
+                    ],
                   ),
                 ),
-            ],
+                // ── FAB de soporte — oculto cuando el teclado está activo ──
+                if (!keyboardVisible)
+                  Positioned(
+                    bottom: 20,
+                    right: 20,
+                    child: FadeSlideIn(
+                      duration: AppDurations.normal,
+                      delay: const Duration(milliseconds: 450),
+                      child: _buildSupportFab(isDark),
+                    ),
+                  ),
+              ],
+            ),
           ),
         ),
-      ),
       ),
     );
   }
@@ -750,7 +813,9 @@ class _LoginScreenState extends State<LoginScreen>
 
   Widget _buildAccountChooser(bool isDark, AppResponsive r) {
     return Scaffold(
-      backgroundColor: isDark ? const Color(0xFF101214) : const Color(0xFFF7F9FB),
+      backgroundColor: isDark
+          ? const Color(0xFF101214)
+          : const Color(0xFFF7F9FB),
       body: AnimatedGradientBackground(
         isDark: isDark,
         child: SafeArea(
@@ -760,10 +825,7 @@ class _LoginScreenState extends State<LoginScreen>
               child: Column(
                 children: [
                   SizedBox(height: r.spaceXl),
-                  _buildLogo(
-                    (r.screenHeight * 0.12).clamp(56.0, 96.0),
-                    isDark,
-                  ),
+                  _buildLogo((r.screenHeight * 0.12).clamp(56.0, 96.0), isDark),
                   SizedBox(height: r.spaceMd),
                   Text(
                     '¿Con qué cuenta deseas entrar?',
@@ -793,19 +855,28 @@ class _LoginScreenState extends State<LoginScreen>
                   ),
                   Padding(
                     padding: EdgeInsets.fromLTRB(
-                        r.paddingH, r.spaceSm, r.paddingH, r.spaceMd),
+                      r.paddingH,
+                      r.spaceSm,
+                      r.paddingH,
+                      r.spaceMd,
+                    ),
                     child: SizedBox(
                       width: double.infinity,
                       child: CupertinoButton(
                         padding: EdgeInsets.symmetric(vertical: r.spaceMd),
                         borderRadius: BorderRadius.circular(r.cardRadius),
-                        color: isDark ? AppColors.darkElevated : AppColors.white,
+                        color: isDark
+                            ? AppColors.darkElevated
+                            : AppColors.white,
                         onPressed: () => setState(() => _forceForm = true),
                         child: Row(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            Icon(CupertinoIcons.person_badge_plus,
-                                size: r.iconSm, color: AppColors.primary),
+                            Icon(
+                              CupertinoIcons.person_badge_plus,
+                              size: r.iconSm,
+                              color: AppColors.primary,
+                            ),
                             SizedBox(width: r.spaceSm),
                             Text(
                               'Usar otra cuenta',
@@ -895,9 +966,11 @@ class _LoginScreenState extends State<LoginScreen>
               padding: EdgeInsets.all(r.spaceSm),
               minimumSize: Size.zero,
               onPressed: () => _removeSavedAccount(account),
-              child: Icon(CupertinoIcons.xmark_circle_fill,
-                  size: r.iconMd,
-                  color: AppColors.textTertiaryC(isDark).withValues(alpha: 0.6)),
+              child: Icon(
+                CupertinoIcons.xmark_circle_fill,
+                size: r.iconMd,
+                color: AppColors.textTertiaryC(isDark).withValues(alpha: 0.6),
+              ),
             ),
           ],
         ),
@@ -945,7 +1018,9 @@ class _LoginScreenState extends State<LoginScreen>
     return Container(
       width: size,
       height: size,
-      color: isDark ? AppColors.primary.withValues(alpha: 0.2) : AppColors.primaryLight,
+      color: isDark
+          ? AppColors.primary.withValues(alpha: 0.2)
+          : AppColors.primaryLight,
       child: Center(
         child: Text(
           initials,
@@ -999,6 +1074,56 @@ class _LoginScreenState extends State<LoginScreen>
     );
   }
 
+  /// Panel cohesivo de acceso: agrupa un encabezado discreto, los campos, el
+  /// mensaje de error (si lo hay) y el botón dentro de una tarjeta translúcida
+  /// tipo "glass" para dar sensación de formulario seguro y profesional.
+  Widget _buildAuthCard(bool isDark, AppResponsive r) {
+    return Container(
+      padding: EdgeInsets.all(r.cardPadding + 2),
+      decoration: BoxDecoration(
+        color: isDark
+            ? AppColors.darkSurface.withValues(alpha: 0.80)
+            : AppColors.white.withValues(alpha: 0.90),
+        borderRadius: BorderRadius.circular(r.cardRadius + 4),
+        border: Border.all(
+          color: AppColors.cardBorder(isDark).withValues(alpha: isDark ? 0.9 : 0.6),
+        ),
+        boxShadow: AppColors.cardShadowFor(isDark),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            children: [
+              Icon(
+                CupertinoIcons.lock_shield_fill,
+                size: r.iconSm,
+                color: AppColors.accentForTheme(isDark),
+              ),
+              SizedBox(width: r.spaceXs),
+              Text(
+                'Acceso de asegurados',
+                style: context.texts.labelSmall.copyWith(
+                  color: AppColors.textSecondaryC(isDark),
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 0.4,
+                ),
+              ),
+            ],
+          ),
+          SizedBox(height: r.spaceMd),
+          _buildForm(isDark),
+          SizedBox(height: r.spaceMd),
+          if (_errorMessage != null) ...[
+            _buildErrorBanner(),
+            SizedBox(height: r.spaceSm),
+          ],
+          _buildLoginButton(),
+        ],
+      ),
+    );
+  }
+
   Widget _buildForm(bool isDark) {
     final r = context.r;
     return Column(
@@ -1031,7 +1156,9 @@ class _LoginScreenState extends State<LoginScreen>
             onPressed: () =>
                 setState(() => _obscurePassword = !_obscurePassword),
             child: Icon(
-              _obscurePassword ? CupertinoIcons.eye_slash_fill : CupertinoIcons.eye_fill,
+              _obscurePassword
+                  ? CupertinoIcons.eye_slash_fill
+                  : CupertinoIcons.eye_fill,
               size: context.r.iconSm,
               color: AppColors.textTertiary,
             ),
@@ -1057,78 +1184,111 @@ class _LoginScreenState extends State<LoginScreen>
   }) {
     final r = context.r;
     final texts = context.texts;
+    final accent = AppColors.accentForTheme(isDark);
+
     // GestureDetector.opaque amplía el área de toque al container completo
     // (label + padding + field), evitando que en Android antiguo el teclado
     // no abra por pegar fuera del área mínima del CupertinoTextField.
-    return GestureDetector(
-      behavior: HitTestBehavior.opaque,
-      onTap: () => focusNode?.requestFocus(),
-      child: Container(
-      decoration: BoxDecoration(
-        color: isDark ? AppColors.darkCard : const Color(0xFFF8F9FB),
-        borderRadius: BorderRadius.circular(r.inputRadius),
-        border: Border.all(
-          color: AppColors.cardBorder(isDark),
-        ),
-      ),
-      padding: EdgeInsets.symmetric(horizontal: r.cardPadding, vertical: r.spaceSm),
-      child: Row(
-        children: [
-          Icon(icon, size: r.iconMd, color: AppColors.accentForTheme(isDark)),
-          SizedBox(width: r.spaceMd),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  label,
-                  style: texts.labelSmall.copyWith(
-                    color: AppColors.textSecondary,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                SizedBox(height: r.spaceXs),
-                CupertinoTextField(
-                  controller: controller,
-                  focusNode: focusNode,
-                  obscureText: obscureText,
-                  enabled: !_isLoading,
-                  textCapitalization: textCapitalization,
-                  onChanged: onChanged,
-                  inputFormatters: inputFormatters,
-                  padding: EdgeInsets.zero,
-                  decoration: null,
-                  scrollPadding: EdgeInsets.only(
-                    bottom: MediaQuery.of(context).viewInsets.bottom + 24,
-                  ),
-                  placeholder: placeholder,
-                  placeholderStyle: texts.bodyLarge.copyWith(
-                    color: AppColors.textTertiaryC(isDark).withValues(alpha: 0.6),
-                  ),
-                  style: texts.bodyLarge.copyWith(
-                    color: AppColors.textPrimaryC(isDark),
-                    fontWeight: FontWeight.w500,
-                  ),
-                  textInputAction: isLast ? TextInputAction.done : TextInputAction.next,
-                  onSubmitted: isLast ? (_) => _onLoginPressed() : null,
-                ),
-              ],
+    Widget buildField() {
+      final bool focused = focusNode?.hasFocus ?? false;
+      return GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: () => focusNode?.requestFocus(),
+        // Borde y halo reactivos al foco: el campo activo se resalta con el
+        // acento institucional, dando una sensación de formulario moderno.
+        child: AnimatedContainer(
+          duration: AppDurations.fast,
+          curve: AppCurves.smooth,
+          decoration: BoxDecoration(
+            color: isDark ? AppColors.darkCard : const Color(0xFFF8F9FB),
+            borderRadius: BorderRadius.circular(r.inputRadius),
+            border: Border.all(
+              color: focused
+                  ? accent.withValues(alpha: 0.9)
+                  : AppColors.cardBorder(isDark),
+              width: focused ? 1.5 : 1.0,
             ),
+            boxShadow: focused
+                ? [
+                    BoxShadow(
+                      color: accent.withValues(alpha: 0.14),
+                      blurRadius: 12,
+                      offset: const Offset(0, 4),
+                    ),
+                  ]
+                : null,
           ),
-          if (trailing != null) ...[
-            SizedBox(width: r.spaceXs),
-            trailing,
+          padding: EdgeInsets.symmetric(
+            horizontal: r.cardPadding,
+            vertical: r.spaceSm,
+          ),
+          child: Row(
+            children: [
+              Icon(icon, size: r.iconMd, color: accent),
+            SizedBox(width: r.spaceMd),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    label,
+                    style: texts.labelSmall.copyWith(
+                      color: AppColors.textSecondary,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  SizedBox(height: r.spaceXs),
+                  CupertinoTextField(
+                    controller: controller,
+                    focusNode: focusNode,
+                    obscureText: obscureText,
+                    enabled: !_isLoading,
+                    textCapitalization: textCapitalization,
+                    onChanged: onChanged,
+                    inputFormatters: inputFormatters,
+                    padding: EdgeInsets.zero,
+                    decoration: null,
+                    // +140 y no +24: al enfocar, el scroll deja visible el
+                    // campo Y el botón "Iniciar Sesión" que está debajo
+                    // (botón ~52 + espaciados + padding de la tarjeta).
+                    scrollPadding: EdgeInsets.only(
+                      bottom: MediaQuery.of(context).viewInsets.bottom + 140,
+                    ),
+                    placeholder: placeholder,
+                    placeholderStyle: texts.bodyLarge.copyWith(
+                      color: AppColors.textTertiaryC(
+                        isDark,
+                      ).withValues(alpha: 0.6),
+                    ),
+                    style: texts.bodyLarge.copyWith(
+                      color: AppColors.textPrimaryC(isDark),
+                      fontWeight: FontWeight.w500,
+                    ),
+                    textInputAction: isLast
+                        ? TextInputAction.done
+                        : TextInputAction.next,
+                    onSubmitted: isLast ? (_) => _onLoginPressed() : null,
+                  ),
+                ],
+              ),
+            ),
+            if (trailing != null) ...[SizedBox(width: r.spaceXs), trailing],
           ],
-        ],
-      ),
-    ), // Container
+        ),
+      ), // AnimatedContainer
     ); // GestureDetector
+    }
+
+    if (focusNode == null) return buildField();
+    return AnimatedBuilder(
+      animation: focusNode,
+      builder: (_, __) => buildField(),
+    );
   }
 
   Widget _buildErrorBanner() {
     final r = context.r;
-
 
     final bool isNetwork = _errorType == AuthErrorType.network;
     final bool isDisabled = _errorType == AuthErrorType.disabled;
@@ -1172,7 +1332,10 @@ class _LoginScreenState extends State<LoginScreen>
         : AppColors.error;
 
     return Container(
-      padding: EdgeInsets.symmetric(horizontal: r.tileHorizontalPad, vertical: r.tileVerticalPad),
+      padding: EdgeInsets.symmetric(
+        horizontal: r.tileHorizontalPad,
+        vertical: r.tileVerticalPad,
+      ),
       decoration: BoxDecoration(
         color: bannerColor,
         borderRadius: BorderRadius.circular(r.radiusMd),
@@ -1256,7 +1419,9 @@ class _LoginScreenState extends State<LoginScreen>
             style: TextStyle(
               fontWeight: FontWeight.w600,
               fontSize: 11,
-              color: const Color(0xFF16A34A).withValues(alpha: isDark ? 0.75 : 0.9),
+              color: const Color(
+                0xFF059669,
+              ).withValues(alpha: isDark ? 0.75 : 0.9),
               letterSpacing: 1.0,
             ),
             textAlign: TextAlign.center,
@@ -1353,25 +1518,39 @@ class _LoginScreenState extends State<LoginScreen>
       child: OptimizedPressButton(
         onTap: _isLoading ? null : _onLoginPressed,
         scaleDown: 0.95,
+        haptic: true,
         child: Container(
           decoration: BoxDecoration(
-            color: _isLoading
-                ? AppColors.textSecondary
-                : const Color(0xFF16A34A),
+            // Verde esmeralda sobrio con sheen superior (liquid glass),
+            // coherente con la acción héroe "Nueva Reserva" del inicio.
+            color: _isLoading ? AppColors.textSecondary : null,
+            gradient: _isLoading
+                ? null
+                : const LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [
+                      Color(0xFF10A878),
+                      Color(0xFF059669),
+                      Color(0xFF047857),
+                    ],
+                    stops: [0.0, 0.45, 1.0],
+                  ),
             borderRadius: BorderRadius.circular(context.r.buttonRadius),
+            // Filo especular blanco: firma liquid glass sobre color pleno.
             border: Border.all(
               color: _isLoading
                   ? Colors.transparent
-                  : const Color(0xFF15803D).withValues(alpha: 0.6),
-              width: 0.8,
+                  : Colors.white.withValues(alpha: 0.30),
+              width: 1,
             ),
             boxShadow: _isLoading
                 ? []
                 : [
                     BoxShadow(
-                      color: const Color(0xFF16A34A).withValues(alpha: 0.35),
-                      blurRadius: 12,
-                      offset: const Offset(0, 4),
+                      color: const Color(0xFF059669).withValues(alpha: 0.35),
+                      blurRadius: 14,
+                      offset: const Offset(0, 6),
                     ),
                   ],
           ),
@@ -1382,7 +1561,9 @@ class _LoginScreenState extends State<LoginScreen>
                     height: 24,
                     child: CircularProgressIndicator(
                       strokeWidth: 2.5,
-                      valueColor: AlwaysStoppedAnimation<Color>(AppColors.white),
+                      valueColor: AlwaysStoppedAnimation<Color>(
+                        AppColors.white,
+                      ),
                     ),
                   )
                 : Text(

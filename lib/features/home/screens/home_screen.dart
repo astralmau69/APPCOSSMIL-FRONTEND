@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:typed_data';
+import 'dart:ui' as ui show TextDirection, lerpDouble;
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
@@ -13,6 +14,7 @@ import '../../../core/models/horario_atencion_model.dart';
 import '../../../core/models/news_item_model.dart';
 import '../../../core/models/user_model.dart';
 import '../../../core/services/cossmil_news_service.dart';
+import '../../../core/widgets/liquid_glass.dart';
 import '../../../core/widgets/section_header.dart';
 import '../../../core/widgets/professional_profile_card.dart';
 import '../../../core/widgets/adaptive_sliver_nav_bar.dart';
@@ -24,7 +26,13 @@ import '../../../core/models/app_notification.dart';
 import '../../../core/services/notification_preferences.dart';
 import 'contactos_screen.dart';
 import 'noticias_screen.dart';
-import '../../carnet/screens/carnet_screen.dart';
+import '../widgets/coming_soon_dialog.dart';
+
+/// Verde esmeralda sobrio de la acción héroe "Nueva Reserva" (coherente con el
+/// botón de "Iniciar Sesión" del login). Tono profundo, menos estridente que el
+/// verde brillante anterior: se lee más profesional en modo claro y oscuro.
+const Color _kHeroGreen = Color(0xFF059669);
+const Color _kHeroGreenDark = Color(0xFF047857);
 
 class HomeScreen extends StatefulWidget {
   final TabShellState tabShell;
@@ -49,7 +57,9 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     final photo = UserSession.currentUser.photoBase64;
     if (photo.isNotEmpty) {
       _cachedPhotoB64 = photo;
-      try { _cachedUserPhoto = base64Decode(photo); } catch (_) {}
+      try {
+        _cachedUserPhoto = base64Decode(photo);
+      } catch (_) {}
     }
     _loadNews();
   }
@@ -72,7 +82,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   Future<void> _loadNews() async {
     if (!mounted) return;
     setState(() => _isLoadingNews = true);
-    
+
     // Cargar cantidad de notificaciones no leídas en background
     try {
       final userId = UserSession.currentUser.id;
@@ -119,7 +129,10 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         physics: const AlwaysScrollableScrollPhysics(),
         slivers: [
           AdaptiveSliverNavBar(
-            largeTitle: Text('Inicio', style: TextStyle(color: AppColors.textPrimaryC(isDark))),
+            largeTitle: Text(
+              'Inicio',
+              style: TextStyle(color: AppColors.textPrimaryC(isDark)),
+            ),
             backgroundColor: AppColors.navBarBg(isDark),
             border: null,
             trailing: Semantics(
@@ -128,7 +141,10 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
               child: CupertinoButton(
                 padding: EdgeInsets.zero,
                 onPressed: () async {
-                  await widget.tabShell.openSubRoute(context, (_) => const NotificacionesScreen());
+                  await widget.tabShell.openSubRoute(
+                    context,
+                    (_) => const NotificacionesScreen(),
+                  );
                   _loadNews(); // Recargar count al volver
                 },
                 child: Stack(
@@ -149,7 +165,10 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                           decoration: BoxDecoration(
                             color: const Color(0xFFEF4444), // Rojo alerta
                             shape: BoxShape.circle,
-                            border: Border.all(color: AppColors.navBarBg(isDark), width: 1.5),
+                            border: Border.all(
+                              color: AppColors.navBarBg(isDark),
+                              width: 1.5,
+                            ),
                           ),
                           child: Text(
                             _unreadNotifs > 9 ? '9+' : _unreadNotifs.toString(),
@@ -167,9 +186,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
               ),
             ),
           ),
-          CupertinoSliverRefreshControl(
-            onRefresh: _loadNews,
-          ),
+          CupertinoSliverRefreshControl(onRefresh: _loadNews),
           // Banner de estado de horario
           if (widget.tabShell.isInHorario != null)
             SliverToBoxAdapter(
@@ -183,9 +200,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
             sliver: SliverToBoxAdapter(
               child: Center(
                 child: ConstrainedBox(
-                  constraints: BoxConstraints(
-                    maxWidth: r.maxContentWidth,
-                  ),
+                  constraints: BoxConstraints(maxWidth: r.maxContentWidth),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
@@ -203,13 +218,8 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                         ),
                       ),
                       SizedBox(height: r.spaceLg),
-                      // ── Acciones principales (prominentes) ──
-                      FadeSlideIn(
-                        duration: AppDurations.normal,
-                        delay: const Duration(milliseconds: 50),
-                        offsetY: 10,
-                        child: _buildQuickActions(),
-                      ),
+                      // ── Acciones principales (entrada escalonada dentro) ──
+                      _buildQuickActions(),
                       SizedBox(height: r.spaceXl),
                       // ── COSSMIL Te Informa: header + botón en la misma línea ──
                       FadeSlideIn(
@@ -236,12 +246,18 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                                 scaleDown: 0.95,
                                 child: Container(
                                   padding: const EdgeInsets.symmetric(
-                                      horizontal: 10, vertical: 5),
+                                    horizontal: 10,
+                                    vertical: 5,
+                                  ),
                                   decoration: BoxDecoration(
-                                    color: AppColors.primary.withValues(alpha: isDark ? 0.18 : 0.08),
+                                    color: AppColors.primary.withValues(
+                                      alpha: isDark ? 0.18 : 0.08,
+                                    ),
                                     borderRadius: BorderRadius.circular(20),
                                     border: Border.all(
-                                      color: AppColors.primary.withValues(alpha: isDark ? 0.35 : 0.2),
+                                      color: AppColors.primary.withValues(
+                                        alpha: isDark ? 0.35 : 0.2,
+                                      ),
                                       width: 0.8,
                                     ),
                                   ),
@@ -321,41 +337,28 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
   // ── Acciones rápidas (grandes y prominentes) ────────────────────────────────
 
-  void _showEnDesarrollo(String feature) {
-    showCupertinoDialog(
-      context: context,
-      builder: (ctx) => CupertinoAlertDialog(
-        title: const Text('En Desarrollo'),
-        content: Text(
-          '$feature estará disponible próximamente.',
-        ),
-        actions: [
-          CupertinoDialogAction(
-            isDefaultAction: true,
-            child: const Text('Aceptar'),
-            onPressed: () => Navigator.pop(ctx),
-          ),
-        ],
-      ),
-    );
-  }
-
   Widget _buildQuickActions() {
     final r = context.r;
+
+    // Acción primaria (héroe): agendar una cita es el trabajo central de la
+    // app, por eso se destaca en una tarjeta ancha con el verde esmeralda
+    // sobrio (_kHeroGreen), coherente con el botón de "Iniciar Sesión" del
+    // login. El resto de accesos quedan en una grilla neutra y tranquila.
+    final hero = _QuickAction(
+      icon: CupertinoIcons.calendar_badge_plus,
+      label: 'Nueva Reserva',
+      subtitle: 'Agendar cita médica',
+      color: _kHeroGreen,
+      onTap: () {
+        final bens = UserSession.currentUser.beneficiaries;
+        final titular = bens.isNotEmpty
+            ? bens.firstWhere((b) => b.isTitular, orElse: () => bens.first)
+            : null;
+        widget.tabShell.startBooking('Para mí', titular);
+      },
+    );
+
     final items = [
-      _QuickAction(
-        icon: CupertinoIcons.calendar_badge_plus,
-        label: 'Nueva Reserva',
-        subtitle: 'Agendar Cita Médica',
-        color: AppColors.primary,
-        onTap: () {
-          final bens = UserSession.currentUser.beneficiaries;
-          final titular = bens.isNotEmpty
-              ? bens.firstWhere((b) => b.isTitular, orElse: () => bens.first)
-              : null;
-          widget.tabShell.startBooking('Para mí', titular);
-        },
-      ),
       _QuickAction(
         icon: CupertinoIcons.clock,
         label: 'Mis Reservas',
@@ -367,11 +370,9 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         icon: CupertinoIcons.person_2,
         label: 'Grupo Familiar',
         subtitle: 'Beneficiarios',
-        color: AppColors.success,
-        onTap: () => widget.tabShell.openSubRoute(
-          context,
-          (_) => const FamiliaScreen(),
-        ),
+        color: const Color(0xFF0D9488), // teal — se diferencia del verde del héroe
+        onTap: () =>
+            widget.tabShell.openSubRoute(context, (_) => const FamiliaScreen()),
       ),
       _QuickAction(
         icon: CupertinoIcons.phone,
@@ -390,190 +391,413 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         color: const Color(0xFF7C3AED),
         onTap: () => widget.tabShell.goToTab(3),
       ),
-      // Carnet digital: oculto hasta autorización oficial de COSSMIL.
-      // Reactivar poniendo AppConfig.carnetDigitalEnabled = true.
+      // Carnet digital y Procedimientos: visibles pero marcados "Próximamente"
+      // hasta autorización oficial de COSSMIL. Para reactivarlos: quitar
+      // `comingSoon: true` y restaurar la navegación con openSubRoute a
+      // CarnetScreen / ProcedimientosScreen (features/carnet y
+      // features/procedimientos siguen intactos).
       if (AppConfig.carnetDigitalEnabled)
         _QuickAction(
           icon: CupertinoIcons.creditcard_fill,
           label: 'Mi Carnet COSSMIL',
           subtitle: 'Carnet digital de asegurado',
           color: const Color(0xFF0E63A6),
-          onTap: () => widget.tabShell.openSubRoute(
+          comingSoon: true,
+          onTap: () => showComingSoonDialog(
             context,
-            (_) => const CarnetScreen(),
+            featureLabel: 'Mi Carnet COSSMIL',
+            icon: CupertinoIcons.creditcard_fill,
+            color: const Color(0xFF0E63A6),
           ),
         ),
       _QuickAction(
-        icon: CupertinoIcons.doc_text,
+        icon: CupertinoIcons.doc_text_fill,
         label: 'Procedimientos COSSMIL',
-        subtitle: 'Requerimientos Médicos',
+        subtitle: 'Formularios y trámites',
         color: const Color(0xFFD97706),
-        badge: 'PRÓXIMAMENTE 👷',
-        onTap: () => _showEnDesarrollo('Procedimientos Para Requerimientos Médicos COSSMIL'),
+        comingSoon: true,
+        onTap: () => showComingSoonDialog(
+          context,
+          featureLabel: 'Procedimientos COSSMIL',
+          icon: CupertinoIcons.doc_text_fill,
+          color: const Color(0xFFD97706),
+        ),
       ),
     ];
 
     final spacing = r.gridSpacing;
-    final cols = r.gridColumns;
 
-    final rows = <Widget>[];
-    for (int i = 0; i < items.length; i += cols) {
-      final end = (i + cols > items.length) ? items.length : i + cols;
-      final chunk = items.sublist(i, end);
+    // Columnas derivadas del ancho REAL disponible (no del tipo de
+    // dispositivo): así el menú se adapta a landscape, split-screen y
+    // ventanas de navegador redimensionadas, donde el ancho no coincide
+    // con la categoría del dispositivo. Cada tarjeta necesita ~168 px para
+    // que "Mis Reservas", "Grupo Familiar", etc. respiren sin desbordar.
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final cols = (constraints.maxWidth / 168).floor().clamp(2, 3);
+        // Ancho real de cada tarjeta: de él se deriva la tipografía interior,
+        // para que el texto escale con el espacio disponible (resize del
+        // navegador, split-screen, landscape) y no con el tipo de dispositivo.
+        final cardWidth =
+            (constraints.maxWidth - r.gridSpacing * (cols - 1)) / cols;
 
-      final rowChildren = <Widget>[];
-      for (int j = 0; j < chunk.length; j++) {
-        rowChildren.add(
-          Expanded(
-            child: _buildActionCard(items[i + j]),
-          ),
+        final rows = <Widget>[];
+        for (int i = 0; i < items.length; i += cols) {
+          final end = (i + cols > items.length) ? items.length : i + cols;
+          final chunk = items.sublist(i, end);
+
+          final rowChildren = <Widget>[];
+          for (int j = 0; j < chunk.length; j++) {
+            // Stagger: cada tarjeta entra 45 ms después de la anterior,
+            // guiando el ojo en cascada (héroe → grilla) sin alargar la
+            // percepción de carga (todo termina en < 700 ms).
+            rowChildren.add(
+              Expanded(
+                child: FadeSlideIn(
+                  duration: AppDurations.normal,
+                  delay: Duration(milliseconds: 100 + (i + j) * 45),
+                  offsetY: 12,
+                  child: _buildActionCard(items[i + j], cardWidth),
+                ),
+              ),
+            );
+            if (j < chunk.length - 1) {
+              rowChildren.add(SizedBox(width: spacing));
+            }
+          }
+
+          // Si la última fila tiene menos elementos, añadimos espacios vacíos
+          if (chunk.length < cols) {
+            for (int j = chunk.length; j < cols; j++) {
+              rowChildren.add(SizedBox(width: spacing));
+              rowChildren.add(const Expanded(child: SizedBox.shrink()));
+            }
+          }
+
+          rows.add(
+            IntrinsicHeight(
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: rowChildren,
+              ),
+            ),
+          );
+
+          if (i + cols < items.length) {
+            rows.add(SizedBox(height: spacing));
+          }
+        }
+
+        return Column(
+          children: [
+            FadeSlideIn(
+              duration: AppDurations.normal,
+              delay: const Duration(milliseconds: 50),
+              offsetY: 12,
+              child: _buildHeroAction(hero),
+            ),
+            SizedBox(height: spacing),
+            ...rows,
+          ],
         );
-        if (j < chunk.length - 1) {
-          rowChildren.add(SizedBox(width: spacing));
-        }
-      }
-
-      // Si la última fila tiene menos elementos, añadimos espacios vacíos
-      if (chunk.length < cols) {
-        for (int j = chunk.length; j < cols; j++) {
-          rowChildren.add(SizedBox(width: spacing));
-          rowChildren.add(const Expanded(child: SizedBox.shrink()));
-        }
-      }
-
-      rows.add(
-        IntrinsicHeight(
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: rowChildren,
-          ),
-        ),
-      );
-
-      if (i + cols < items.length) {
-        rows.add(SizedBox(height: spacing));
-      }
-    }
-
-    return Column(
-      children: rows,
+      },
     );
   }
 
-  Widget _buildActionCard(_QuickAction action) {
+  // ── Acción héroe (ancha, verde esmeralda) ───────────────────────────────────
+
+  Widget _buildHeroAction(_QuickAction action) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final r = context.r;
     final texts = context.texts;
-    final hasBadge = action.badge != null;
 
-    final cardBgColor = isDark
-        ? (hasBadge
-            ? action.color.withValues(alpha: 0.12)
-            : const Color(0xFF0284C7).withValues(alpha: 0.3))
-        : (hasBadge
-            ? action.color.withValues(alpha: 0.06)
-            : const Color(0xFFE0F2FE));
-
-    final textMainColor = isDark ? Colors.white : Colors.black;
-    final textSubColor  = isDark ? Colors.white70 : Colors.black87;
-    final cardBorderColor = hasBadge
-        ? action.color.withValues(alpha: isDark ? 0.35 : 0.25)
-        : (isDark ? Colors.black : Colors.black87);
-
-    // Tamaño de ícono reducido en teléfonos pequeños para que el texto respire
-    final iconBox  = r.isSmallPhone ? r.listAvatarSize * 0.85 : r.listAvatarSize;
-    final iconSize = r.isSmallPhone ? r.iconSm : r.iconMd;
-    // Tamaño de fuente ajustado para evitar overflow en anchos reducidos
-    final labelSize = r.isSmallPhone ? 11.5 : (r.isTablet ? 16.0 : 13.0);
-    final subSize   = r.isSmallPhone ? 9.5 : (r.isTablet ? 14.0 : 11.0);
-
-    final contentRow = Padding(
-      padding: EdgeInsets.symmetric(
-        vertical: r.tileVerticalPad,
-        horizontal: r.tileHorizontalPad,
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          // Ícono
-          Container(
-            width: iconBox,
-            height: iconBox,
-            decoration: BoxDecoration(
-              color: isDark ? action.color.withValues(alpha: 0.2) : Colors.white,
-              borderRadius: BorderRadius.circular(r.radiusMd),
-              border: Border.all(
-                color: isDark ? Colors.transparent : action.color.withValues(alpha: 0.5),
-                width: 0.5,
-              ),
+    return Semantics(
+      label: '${action.label}: ${action.subtitle}',
+      hint: 'Toca para agendar una cita',
+      button: true,
+      child: OptimizedPressButton(
+        onTap: action.onTap,
+        scaleDown: 0.97,
+        haptic: true,
+        child: Container(
+          decoration: BoxDecoration(
+            // Sheen superior + verde institucional: el vidrio tintado recibe
+            // la luz por arriba, como el resto de superficies liquid glass.
+            gradient: const LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [Color(0xFF10A878), _kHeroGreen, _kHeroGreenDark],
+              stops: [0.0, 0.45, 1.0],
             ),
-            child: Icon(action.icon, size: iconSize, color: action.color),
+            borderRadius: BorderRadius.circular(r.cardRadius),
+            // Filo especular blanco: firma liquid glass sobre color pleno.
+            border: Border.all(
+              color: Colors.white.withValues(alpha: 0.28),
+              width: 1,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: _kHeroGreen.withValues(
+                  alpha: isDark ? 0.45 : 0.30,
+                ),
+                blurRadius: 20,
+                offset: const Offset(0, 8),
+                spreadRadius: -4,
+              ),
+            ],
           ),
-          SizedBox(width: r.spaceSm),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
+          child: Padding(
+            padding: EdgeInsets.symmetric(
+              vertical: r.tileVerticalPad + 4,
+              horizontal: r.tileHorizontalPad,
+            ),
+            child: Row(
               children: [
-                Text(
-                  action.label,
-                  style: texts.titleMedium.copyWith(
-                    fontSize: labelSize,
-                    color: textMainColor,
-                    fontWeight: FontWeight.w700,
-                    height: 1.15,
+                Container(
+                  width: r.listAvatarSize,
+                  height: r.listAvatarSize,
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.18),
+                    borderRadius: BorderRadius.circular(r.radiusMd),
+                  ),
+                  child: Icon(action.icon, size: r.iconMd, color: Colors.white),
+                ),
+                SizedBox(width: r.spaceMd),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        action.label,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: texts.titleMedium.copyWith(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w800,
+                          fontSize: (r.isTablet || r.isDesktop) ? 19 : 17,
+                          height: 1.1,
+                        ),
+                      ),
+                      SizedBox(height: r.spaceXs),
+                      Text(
+                        action.subtitle,
+                        style: texts.bodySmall.copyWith(
+                          color: Colors.white.withValues(alpha: 0.85),
+                          fontWeight: FontWeight.w500,
+                          height: 1.1,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
-                SizedBox(height: r.spaceXs),
-                Text(
-                  action.subtitle,
-                  style: texts.bodySmall.copyWith(
-                    fontSize: subSize,
-                    color: textSubColor,
-                    fontWeight: FontWeight.w600,
-                    height: 1.1,
+                Container(
+                  width: 30,
+                  height: 30,
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.15),
+                    shape: BoxShape.circle,
                   ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
+                  child: const Icon(
+                    CupertinoIcons.arrow_right,
+                    size: 15,
+                    color: Colors.white,
+                  ),
                 ),
               ],
             ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// Mayor tamaño de fuente (≤ [preferred], ≥ [min]) con el que [text] cabe
+  /// en [maxWidth] sin desbordar [maxLines] y sin partir palabras: la palabra
+  /// más larga debe entrar completa en una línea. Medido con TextPainter
+  /// respetando el TextScaler de accesibilidad.
+  double _fitFontSize({
+    required String text,
+    required TextStyle style,
+    required double maxWidth,
+    required double preferred,
+    required double min,
+    required TextScaler scaler,
+    int maxLines = 1,
+  }) {
+    if (maxWidth <= 0) return min;
+    // Margen de seguridad: el ancho medido puede diferir del de render por
+    // redondeos sub-píxel, y un exceso mínimo parte la palabra a media línea
+    // (p. ej. la "s" de "Procedimientos" caía sola a la segunda línea).
+    final safeWidth = maxWidth - 2;
+    final words = text.split(' ');
+    for (var size = preferred; size >= min; size -= 0.5) {
+      final s = style.copyWith(fontSize: size);
+      var fits = true;
+      for (final word in words) {
+        final tp = TextPainter(
+          text: TextSpan(text: word, style: s),
+          textDirection: ui.TextDirection.ltr,
+          textScaler: scaler,
+          maxLines: 1,
+        )..layout();
+        if (tp.width > safeWidth) {
+          fits = false;
+          break;
+        }
+      }
+      if (!fits) continue;
+      final tp = TextPainter(
+        text: TextSpan(text: text, style: s),
+        textDirection: ui.TextDirection.ltr,
+        textScaler: scaler,
+        maxLines: maxLines,
+      )..layout(maxWidth: safeWidth);
+      if (!tp.didExceedMaxLines) return size;
+    }
+    return min;
+  }
+
+  Widget _buildActionCard(_QuickAction action, double cardWidth) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final r = context.r;
+    final texts = context.texts;
+
+    // Tarjeta de vidrio + chip de ícono a color: la grilla queda tranquila y
+    // coherente (mismo lenguaje que la lista de noticias); el color de cada
+    // acción vive en su chip, no en fondos dispares.
+    final textMainColor = AppColors.textPrimaryC(isDark);
+    final textSubColor = AppColors.textSecondaryC(isDark);
+
+    // Tipografía e ícono derivados del ancho REAL de la tarjeta: interpola
+    // entre tarjetas angostas (~140 px) y anchas (~240 px), con clamp en los
+    // extremos. Así "Procedimientos COSSMIL", "Calendario de Atención", etc.
+    // nunca desbordan al reducir la ventana ni quedan diminutos en desktop.
+    final t = ((cardWidth - 140.0) / 100.0).clamp(0.0, 1.0);
+    final iconBox = ui.lerpDouble(r.listAvatarSize * 0.85, r.listAvatarSize, t)!;
+    final iconSize = ui.lerpDouble(r.iconSm, r.iconMd, t)!;
+    final labelSize = ui.lerpDouble(12.5, 16.0, t)!;
+    final subSize = ui.lerpDouble(10.0, 13.5, t)!;
+
+    // Diseño vertical (ícono arriba, texto debajo): la etiqueta dispone del
+    // ancho COMPLETO de la tarjeta, así en tablets cabe en una sola línea y
+    // en teléfonos angostos salta por palabra completa, nunca a media palabra.
+    final textWidth = cardWidth - 2 * r.tileHorizontalPad;
+    final scaler = MediaQuery.textScalerOf(context);
+    final labelStyle = texts.titleMedium.copyWith(
+      fontSize: labelSize,
+      // "Próximamente": título en tono secundario para leerse como acceso
+      // aún no activo, sin llegar al gris de deshabilitado (sigue siendo
+      // tocable: abre el diálogo informativo).
+      color: action.comingSoon ? textSubColor : textMainColor,
+      fontWeight: FontWeight.w700,
+      height: 1.15,
+    );
+    final subStyle = texts.bodySmall.copyWith(
+      fontSize: subSize,
+      color: textSubColor,
+      fontWeight: FontWeight.w600,
+      height: 1.1,
+    );
+    final fittedLabel = _fitFontSize(
+      text: action.label,
+      style: labelStyle,
+      maxWidth: textWidth,
+      preferred: labelSize,
+      min: 10.0,
+      scaler: scaler,
+      maxLines: 2,
+    );
+    final fittedSub = _fitFontSize(
+      text: action.subtitle,
+      style: subStyle,
+      maxWidth: textWidth,
+      preferred: subSize,
+      min: 8.5,
+      scaler: scaler,
+    );
+
+    final contentColumn = Padding(
+      padding: EdgeInsets.symmetric(
+        vertical: r.tileVerticalPad + 2,
+        horizontal: r.tileHorizontalPad,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // Ícono (+ pastilla "Próximamente" alineada al borde derecho)
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                width: iconBox,
+                height: iconBox,
+                decoration: BoxDecoration(
+                  color: action.color.withValues(
+                    alpha: action.comingSoon
+                        ? (isDark ? 0.14 : 0.08)
+                        : (isDark ? 0.22 : 0.12),
+                  ),
+                  borderRadius: BorderRadius.circular(r.radiusMd),
+                ),
+                child: Icon(
+                  action.icon,
+                  size: iconSize,
+                  color: action.comingSoon
+                      ? action.color.withValues(alpha: 0.55)
+                      : action.color,
+                ),
+              ),
+              if (action.comingSoon)
+                Expanded(
+                  child: Align(
+                    alignment: Alignment.topRight,
+                    // scaleDown: en tarjetas angostas (~140 px) la pastilla se
+                    // encoge en vez de desbordar contra el chip del ícono.
+                    child: FittedBox(
+                      fit: BoxFit.scaleDown,
+                      child: _ComingSoonBadge(isDark: isDark),
+                    ),
+                  ),
+                ),
+            ],
+          ),
+          SizedBox(height: r.spaceSm + 2),
+          Text(
+            action.label,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: labelStyle.copyWith(fontSize: fittedLabel),
+          ),
+          SizedBox(height: r.spaceXs),
+          Text(
+            action.subtitle,
+            style: subStyle.copyWith(fontSize: fittedSub),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
           ),
         ],
       ),
     );
 
     return Semantics(
-      label: '${action.label}: ${action.subtitle}',
-      hint: 'Toca para abrir',
+      label: action.comingSoon
+          ? '${action.label}: próximamente, estamos trabajando en esta función'
+          : '${action.label}: ${action.subtitle}',
+      hint: action.comingSoon ? 'Toca para más información' : 'Toca para abrir',
       button: true,
       child: OptimizedPressButton(
         onTap: action.onTap,
         scaleDown: 0.96,
-        child: Container(
-          decoration: BoxDecoration(
-            color: cardBgColor,
-            borderRadius: BorderRadius.circular(r.cardRadius),
-            border: Border.all(color: cardBorderColor, width: isDark ? 0.8 : 1.0),
-            boxShadow: AppColors.cardShadowFor(isDark),
-          ),
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(r.cardRadius - 1),
-            child: hasBadge
-                ? Banner(
-                    message: action.badge!,
-                    location: BannerLocation.topEnd,
-                    color: const Color(0xFFF59E0B),
-                    textStyle: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 7.5,
-                      fontWeight: FontWeight.w800,
-                      letterSpacing: 0.3,
-                    ),
-                    child: contentRow,
-                  )
-                : contentRow,
-          ),
+        haptic: true,
+        // Vidrio simulado (sin blur): translucidez + borde especular. El blur
+        // real está vetado en tarjetas repetidas de una grilla (costo GPU).
+        child: LiquidGlass(
+          isDark: isDark,
+          borderRadius: BorderRadius.circular(r.cardRadius),
+          shadow: AppColors.cardShadowFor(isDark),
+          child: contentColumn,
         ),
       ),
     );
@@ -585,16 +809,10 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     final r = context.r;
-    return Container(
-      decoration: BoxDecoration(
-        color: AppColors.cardBg(isDark),
-        borderRadius: BorderRadius.circular(r.cardRadius),
-        border: Border.all(
-          color: isDark ? AppColors.darkBorder : const Color(0xFF191C1E).withValues(alpha: 0.10),
-          width: isDark ? 0.8 : 0.5,
-        ),
-        boxShadow: AppColors.cardShadowFor(isDark),
-      ),
+    return LiquidGlass(
+      isDark: isDark,
+      borderRadius: BorderRadius.circular(r.cardRadius),
+      shadow: AppColors.cardShadowFor(isDark),
       child: Column(
         children: [
           if (_isLoadingNews) ...[
@@ -605,7 +823,11 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
               padding: const EdgeInsets.all(20),
               child: Row(
                 children: [
-                  Icon(CupertinoIcons.news, size: r.iconSm, color: AppColors.textTertiaryC(isDark)),
+                  Icon(
+                    CupertinoIcons.news,
+                    size: r.iconSm,
+                    color: AppColors.textTertiaryC(isDark),
+                  ),
                   SizedBox(width: r.spaceMd),
                   Text(
                     'Sin comunicados recientes',
@@ -655,10 +877,14 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                         child: Image.network(
                           item.imageUrl,
                           fit: BoxFit.cover,
-                          cacheWidth: 200, // Optimización: carga la imagen al tamaño necesario
-                          errorBuilder: (_, __, ___) => _buildNewsDotDate(item, isDark, r),
+                          cacheWidth:
+                              200, // Optimización: carga la imagen al tamaño necesario
+                          errorBuilder: (_, __, ___) =>
+                              _buildNewsDotDate(item, isDark, r),
                           loadingBuilder: (_, child, progress) =>
-                              progress == null ? child : _buildNewsDotDate(item, isDark, r),
+                              progress == null
+                              ? child
+                              : _buildNewsDotDate(item, isDark, r),
                         ),
                       ),
                     )
@@ -706,7 +932,9 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                 padding: EdgeInsets.symmetric(horizontal: r.tileHorizontalPad),
                 child: Container(
                   height: 0.5,
-                  color: isDark ? AppColors.darkDivider : const Color(0xFF191C1E).withValues(alpha: 0.06),
+                  color: isDark
+                      ? AppColors.darkDivider
+                      : const Color(0xFF191C1E).withValues(alpha: 0.06),
                 ),
               ),
           ],
@@ -753,7 +981,9 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                 width: 50,
                 height: 10,
                 decoration: BoxDecoration(
-                  color: isDark ? AppColors.darkElevated : const Color(0xFFE8ECF0),
+                  color: isDark
+                      ? AppColors.darkElevated
+                      : const Color(0xFFE8ECF0),
                   borderRadius: BorderRadius.circular(r.spaceXs),
                 ),
               ),
@@ -762,7 +992,9 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                 child: Container(
                   height: 12,
                   decoration: BoxDecoration(
-                    color: isDark ? AppColors.darkElevated : const Color(0xFFE8ECF0),
+                    color: isDark
+                        ? AppColors.darkElevated
+                        : const Color(0xFFE8ECF0),
                     borderRadius: BorderRadius.circular(r.spaceXs),
                   ),
                 ),
@@ -775,13 +1007,14 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
             padding: EdgeInsets.symmetric(horizontal: r.tileHorizontalPad),
             child: Container(
               height: 0.5,
-              color: isDark ? AppColors.darkDivider : const Color(0xFF191C1E).withValues(alpha: 0.06),
+              color: isDark
+                  ? AppColors.darkDivider
+                  : const Color(0xFF191C1E).withValues(alpha: 0.06),
             ),
           ),
       ],
     );
   }
-
 
   /// Formato de fecha corta: "17 Mar"
   String _shortDate(DateTime? dt) {
@@ -802,7 +1035,11 @@ class _QuickAction {
   final String subtitle;
   final Color color;
   final VoidCallback onTap;
-  final String? badge;
+
+  /// Acceso visible pero aún no habilitado: la tarjeta se atenúa, muestra la
+  /// pastilla "Próximamente" y su onTap abre el diálogo informativo en lugar
+  /// de navegar.
+  final bool comingSoon;
 
   const _QuickAction({
     required this.icon,
@@ -810,8 +1047,46 @@ class _QuickAction {
     required this.subtitle,
     required this.color,
     required this.onTap,
-    this.badge,
+    this.comingSoon = false,
   });
+}
+
+/// Pastilla "PRÓXIMAMENTE" de las tarjetas de acceso aún no habilitadas.
+/// Ámbar con contraste ajustado por tema (oscuro más luminoso, claro más
+/// profundo para cumplir contraste WCAG sobre fondo de tarjeta).
+class _ComingSoonBadge extends StatelessWidget {
+  final bool isDark;
+
+  const _ComingSoonBadge({required this.isDark});
+
+  @override
+  Widget build(BuildContext context) {
+    final Color amber = isDark
+        ? const Color(0xFFF59E0B)
+        : const Color(0xFFB45309);
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3.5),
+      decoration: BoxDecoration(
+        color: const Color(0xFFD97706).withValues(alpha: isDark ? 0.18 : 0.10),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: amber.withValues(alpha: isDark ? 0.45 : 0.35),
+          width: 0.8,
+        ),
+      ),
+      child: Text(
+        'PRÓXIMAMENTE',
+        style: TextStyle(
+          fontSize: 8.5,
+          fontWeight: FontWeight.w800,
+          letterSpacing: 0.4,
+          height: 1,
+          color: amber,
+        ),
+      ),
+    );
+  }
 }
 
 // ─── Banner de estado de horario (extraído para evitar rebuilds del Home) ─────
@@ -820,10 +1095,7 @@ class _HorarioBanner extends StatelessWidget {
   final bool isInHorario;
   final List<HorarioAtencionModel> horariosApp;
 
-  const _HorarioBanner({
-    required this.isInHorario,
-    required this.horariosApp,
-  });
+  const _HorarioBanner({required this.isInHorario, required this.horariosApp});
 
   @override
   Widget build(BuildContext context) {
@@ -860,12 +1132,18 @@ class _HorarioBanner extends StatelessWidget {
     }
 
     return Padding(
-      padding: EdgeInsets.symmetric(horizontal: r.paddingH, vertical: r.spaceSm),
+      padding: EdgeInsets.symmetric(
+        horizontal: r.paddingH,
+        vertical: r.spaceSm,
+      ),
       child: Center(
         child: ConstrainedBox(
           constraints: BoxConstraints(maxWidth: r.maxContentWidth),
           child: Container(
-            padding: EdgeInsets.symmetric(horizontal: r.spaceMd, vertical: r.spaceSm),
+            padding: EdgeInsets.symmetric(
+              horizontal: r.spaceMd,
+              vertical: r.spaceSm,
+            ),
             decoration: BoxDecoration(
               color: bgColor,
               borderRadius: BorderRadius.circular(r.radiusMd),

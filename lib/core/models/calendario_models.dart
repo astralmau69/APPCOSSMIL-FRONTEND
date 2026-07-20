@@ -1,7 +1,7 @@
-import 'dart:convert';
 import 'dart:typed_data';
 import 'package:intl/intl.dart';
 import '../extensions/string_extensions.dart';
+import '../utils/photo_decoder.dart';
 
 // ─── MedicoSucModel ───────────────────────────────────────────────────────────
 // Respuesta del endpoint GET /api/programacion/medico-especialidad-consulta/...
@@ -31,7 +31,8 @@ class MedicoSucModel {
     }
 
     String buildNombre() {
-      final n = (json['nombre'] ?? json['medico'] ?? json['name'] ?? '').toString();
+      final n = (json['nombre'] ?? json['medico'] ?? json['name'] ?? '')
+          .toString();
       if (n.isNotEmpty) return n;
       final nom = json['nom']?.toString() ?? '';
       final pat = json['pat']?.toString() ?? '';
@@ -43,9 +44,19 @@ class MedicoSucModel {
       idmed: (json['idmed'] ?? '').toString(),
       nombre: buildNombre().toDisplayCase,
       idcon: safeInt(json['idcon']),
-      consultorio: ((json['consultorio'] ?? json['cons'] ?? '') as String? ?? '').toDisplayCase,
+      consultorio:
+          ((json['consultorio'] ?? json['cons'] ?? '') as String? ?? '')
+              .toDisplayCase,
       piso: (json['piso'] ?? json['floor'] ?? '').toString(),
-      foto: (json['foto'] ?? '').toString(),
+      // Mismo patrón defensivo que DetalleCitaModel: el backend ha usado
+      // varios nombres para la foto según la versión del servicio.
+      foto:
+          (json['foto'] ??
+                  json['fotoMedico'] ??
+                  json['base64'] ??
+                  json['imagen'] ??
+                  '')
+              .toString(),
     );
   }
 
@@ -67,37 +78,20 @@ class MedicoSucModel {
     return '${words[0][0]}${words[1][0]}'.toUpperCase();
   }
 
-  /// Decodifica la foto a bytes.
-  /// Soporta dos formatos:
-  ///  - Base64 estándar
-  ///  - Enteros con signo separados por coma (endpoint legacy)
-  Uint8List? get photoBytes {
-    if (foto.isEmpty) return null;
-    
-    // Detectar si es Base64: contiene '/', '+', '=' o solo alfanumérico sin comas
-    if (!foto.contains(',')) {
-      try {
-        String normalized = foto.replaceAll('\n', '').replaceAll('\r', '');
-        while (normalized.length % 4 != 0) {
-          normalized += '=';
-        }
-        return base64Decode(normalized);
-      } catch (_) {
-        return null;
-      }
-    }
-    
-    // Formato legacy: enteros con signo separados por coma
-    try {
-      final bytes = foto.split(',').map((s) {
-        final v = int.parse(s.trim());
-        return v < 0 ? v + 256 : v;
-      }).toList();
-      return Uint8List.fromList(bytes);
-    } catch (_) {
-      return null;
-    }
-  }
+  /// Decodifica la foto a bytes (Base64, Data URI o enteros legacy) vía el
+  /// decodificador central [decodeApiPhoto].
+  Uint8List? get photoBytes => decodeApiPhoto(foto);
+
+  /// Usado por el fallback de fotos (`medsuc-buscar`) para completar `foto`
+  /// sin tocar el resto de los datos del médico.
+  MedicoSucModel copyWith({String? foto}) => MedicoSucModel(
+    idmed: idmed,
+    nombre: nombre,
+    idcon: idcon,
+    consultorio: consultorio,
+    piso: piso,
+    foto: foto ?? this.foto,
+  );
 }
 
 // ─── HorarioMovilSlot ─────────────────────────────────────────────────────────
@@ -153,9 +147,12 @@ class HorarioMovilSlot {
   String get rangoHorario {
     String fmt(String t) {
       final p = t.split(':');
-      if (p.length >= 2) return '${p[0].padLeft(2, '0')}:${p[1].padLeft(2, '0')}';
+      if (p.length >= 2) {
+        return '${p[0].padLeft(2, '0')}:${p[1].padLeft(2, '0')}';
+      }
       return t;
     }
+
     return '${fmt(horaini)} – ${fmt(horafin)}';
   }
 }

@@ -1,4 +1,3 @@
-import 'dart:convert';
 import 'dart:typed_data';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
@@ -12,6 +11,7 @@ import '../../../core/models/user_model.dart';
 import '../../../core/models/beneficiary_model.dart';
 import '../../../core/services/programacion_service.dart';
 import '../../../core/utils/error_mapper.dart';
+import '../../../core/utils/photo_decoder.dart';
 
 import '../../../core/animations/app_page_route.dart';
 import '../../../core/animations/success_check_animation.dart';
@@ -466,34 +466,13 @@ class _SummaryScreenState extends State<SummaryScreen>
     } catch (_) {}
   }
 
-  /// Decodifica una foto que puede venir como:
-  ///   - Bytes con signo separados por coma: "120,-34,56,..."  (DoctorModel.foto)
-  ///   - Base64 / Data URL: "/9j/4AAQ..." o "data:image/jpeg;base64,..."
-  ///
-  /// Cachea el resultado en `_decodedPhotos` para evitar repetir el trabajo
-  /// en cada rebuild del summary.
+  /// Decodifica la foto (Base64, Data URI o enteros legacy) vía el
+  /// decodificador central [decodeApiPhoto], cacheando el resultado en
+  /// `_decodedPhotos` para evitar repetir el trabajo en cada rebuild.
   Uint8List? _decodePhoto(String foto) {
     if (foto.isEmpty) return null;
     if (_decodedPhotos.containsKey(foto)) return _decodedPhotos[foto];
-
-    Uint8List? bytes;
-    try {
-      final firstToken = foto.split(',').first.trim();
-      if (int.tryParse(firstToken) != null) {
-        // Bytes con signo separados por coma
-        final list = foto.split(',').map((s) {
-          final v = int.parse(s.trim());
-          return v < 0 ? v + 256 : v;
-        }).toList();
-        bytes = Uint8List.fromList(list);
-      } else {
-        // Base64 o Data URL
-        final clean = foto.contains(',') ? foto.split(',').last : foto;
-        bytes = base64Decode(clean.trim());
-      }
-    } catch (_) {
-      bytes = null;
-    }
+    final bytes = decodeApiPhoto(foto);
     _decodedPhotos[foto] = bytes;
     return bytes;
   }
