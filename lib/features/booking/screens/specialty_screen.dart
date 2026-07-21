@@ -7,7 +7,10 @@ import '../../../core/models/specialty_model.dart';
 import '../../../core/services/programacion_service.dart';
 import '../../../core/helpers/specialty_filter.dart';
 import '../../../core/widgets/breadcrumb_chips.dart';
+import '../../../core/widgets/liquid_glass.dart';
 import '../../../core/widgets/section_header.dart';
+import '../../../core/widgets/specialty_tile.dart';
+import '../../../core/widgets/guided_tap_hint.dart';
 import '../../../core/animations/optimized_animations.dart';
 import '../../../core/animations/app_page_route.dart';
 import '../../../core/widgets/app_state_widget.dart';
@@ -178,6 +181,7 @@ class _SpecialtyScreenState extends State<SpecialtyScreen> {
                               context,
                               _directas,
                               startDelay: 50,
+                              highlightFirst: bs.isTutorialMode,
                             ),
                             SizedBox(height: context.r.spaceXl),
                           ],
@@ -300,24 +304,25 @@ class _SpecialtyScreenState extends State<SpecialtyScreen> {
     List<SpecialtyModel> specialties, {
     bool showBadge = false,
     int startDelay = 0,
+    bool highlightFirst = false,
   }) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     return Container(
       margin: EdgeInsets.symmetric(horizontal: context.r.paddingH),
-      decoration: BoxDecoration(
-        color: AppColors.cardBg(isDark),
+      child: LiquidGlass(
+        isDark: isDark,
         borderRadius: BorderRadius.circular(context.r.radiusXl),
-        border: Border.all(color: AppColors.cardBorder(isDark)),
-        boxShadow: isDark ? [] : AppColors.softShadow,
-      ),
-      child: Column(
+        shadow: isDark ? null : AppColors.softShadow,
+        child: Column(
         children: [
           for (int i = 0; i < specialties.length; i++) ...[
             if (i < 5)
               FadeSlideIn(
                 delay: Duration(milliseconds: startDelay + (i * 40)),
                 offsetY: 10,
-                child: _specialtyTile(context, specialties[i], showBadge),
+                child: (highlightFirst && i == 0)
+                    ? GuidedTapHint(child: _specialtyTile(context, specialties[i], showBadge))
+                    : _specialtyTile(context, specialties[i], showBadge),
               )
             else
               _specialtyTile(context, specialties[i], showBadge),
@@ -332,6 +337,7 @@ class _SpecialtyScreenState extends State<SpecialtyScreen> {
           ],
         ],
       ),
+      ),
     );
   }
 
@@ -341,8 +347,10 @@ class _SpecialtyScreenState extends State<SpecialtyScreen> {
     bool showBadge,
   ) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    return GestureDetector(
-      behavior: HitTestBehavior.opaque,
+    return SpecialtyTile(
+      specialty: specialty,
+      showBadge: showBadge,
+      isDark: isDark,
       onTap: () {
         widget.tabShell.bookingState.specialty = specialty;
         if (widget.onNext != null) {
@@ -356,109 +364,6 @@ class _SpecialtyScreenState extends State<SpecialtyScreen> {
           );
         }
       },
-      child: Padding(
-        padding: EdgeInsets.symmetric(horizontal: context.r.cardPadding, vertical: context.r.cardPadding),
-        child: Row(
-          children: [
-            Container(
-              width: context.r.listAvatarSize,
-              height: context.r.listAvatarSize,
-              decoration: BoxDecoration(
-                color: showBadge
-                    ? AppColors.accent.withValues(alpha: 0.10)
-                    : AppColors.accentForTheme(isDark).withValues(alpha: 0.10),
-                borderRadius: BorderRadius.circular(context.r.radiusMd),
-              ),
-              child: Icon(
-                _iconForSpecialty(specialty.name),
-                size: context.r.iconMd,
-                color: showBadge
-                    ? AppColors.accent
-                    : AppColors.accentForTheme(isDark),
-              ),
-            ),
-            SizedBox(width: context.r.spaceMd),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    specialty.name,
-                    style: context.texts.titleMedium.copyWith(
-                      color: AppColors.textPrimaryC(isDark),
-                      fontWeight: FontWeight.w800,
-                      height: 1.1,
-                    ),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  SizedBox(height: context.r.spaceXs),
-                  Text(
-                    specialty.description.isNotEmpty
-                        ? specialty.description
-                        : 'Especialidad Médica',
-                    style: context.texts.bodySmall.copyWith(
-                      color: AppColors.textSecondaryC(isDark),
-                      fontStyle: specialty.description.isEmpty
-                          ? FontStyle.italic
-                          : FontStyle.normal,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ],
-              ),
-            ),
-            if (showBadge && specialty.isAuthorized) ...[
-              Container(
-                padding: EdgeInsets.symmetric(horizontal: context.r.chipPaddingH, vertical: context.r.chipPaddingV),
-                decoration: BoxDecoration(
-                  color: isDark
-                      ? AppColors.accent.withValues(alpha: 0.15)
-                      : AppColors.accentLight,
-                  borderRadius: BorderRadius.circular(context.r.radiusSm),
-                  border: Border.all(
-                    color: AppColors.accent.withValues(alpha: 0.3),
-                  ),
-                ),
-                child: Text(
-                  'AUTORIZADO',
-                  style: TextStyle(
-                    fontWeight: FontWeight.w800,
-                    color: isDark ? AppColors.accentLight : AppColors.accentDark,
-                    letterSpacing: 0.8,
-                  ),
-                ),
-              ),
-              SizedBox(width: context.r.spaceSm),
-            ],
-            Icon(
-              CupertinoIcons.chevron_right,
-              size: 14,
-              color: AppColors.textTertiaryC(isDark),
-            ),
-          ],
-        ),
-      ),
     );
-  }
-
-  IconData _iconForSpecialty(String name) {
-    final lower = name.toLowerCase();
-    if (lower.contains('general')) return Icons.health_and_safety_outlined;
-    if (lower.contains('familiar')) return Icons.family_restroom_outlined;
-    if (lower.contains('pediatr')) return Icons.child_care_outlined;
-    if (lower.contains('odonto')) return Icons.sentiment_satisfied_outlined;
-    if (lower.contains('ginecol')) return Icons.pregnant_woman_outlined;
-    if (lower.contains('cardio')) return Icons.monitor_heart_outlined;
-    if (lower.contains('trauma')) return Icons.healing_outlined;
-    if (lower.contains('oftalmo')) return Icons.visibility_outlined;
-    if (lower.contains('dermat')) return Icons.spa_outlined;
-    if (lower.contains('neurolog')) return Icons.psychology_outlined;
-    if (lower.contains('urolog')) return Icons.water_drop_outlined;
-    if (lower.contains('otorrino')) return Icons.hearing_outlined;
-    if (lower.contains('cirug')) return Icons.local_hospital_outlined;
-    if (lower.contains('intern')) return Icons.biotech_outlined;
-    return Icons.medical_services_outlined;
   }
 }

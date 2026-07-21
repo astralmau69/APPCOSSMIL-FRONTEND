@@ -16,6 +16,9 @@ import '../../../shell/tab_shell.dart';
 import '../../../core/utils/error_mapper.dart';
 import '../../../core/utils/app_logger.dart';
 import '../../../core/widgets/image_enlarged_modal.dart';
+import '../../../core/widgets/liquid_glass.dart';
+import '../../../core/widgets/time_slot_chip.dart';
+import '../../../core/widgets/guided_tap_hint.dart';
 import 'summary_screen.dart';
 
 const _tag = 'ScheduleScreen';
@@ -79,6 +82,15 @@ class _ScheduleScreenState extends State<ScheduleScreen>
     }
   }
 
+  static const _tutorialSlots = [
+    TimeSlotModel(time: '08:00', isAvailable: false),
+    TimeSlotModel(time: '08:20', isAvailable: true, idhora: 'tutorial-h1', numero: 1),
+    TimeSlotModel(time: '08:40', isAvailable: true, idhora: 'tutorial-h2', numero: 2),
+    TimeSlotModel(time: '09:00', isAvailable: false),
+    TimeSlotModel(time: '09:20', isAvailable: true, idhora: 'tutorial-h3', numero: 3),
+    TimeSlotModel(time: '09:40', isAvailable: true, idhora: 'tutorial-h4', numero: 4),
+  ];
+
   Future<void> _fetchData() async {
     if (!mounted) return;
     setState(() {
@@ -86,8 +98,18 @@ class _ScheduleScreenState extends State<ScheduleScreen>
       _errorMessage = null;
     });
 
+    final bs = widget.tabShell.bookingState;
+    if (bs.isTutorialMode) {
+      // Instantáneo y sin red: la demo nunca debe depender de que queden
+      // horas libres reales en la agenda real elegida.
+      setState(() {
+        _slots = _tutorialSlots;
+        _isLoading = false;
+      });
+      return;
+    }
+
     try {
-      final bs = widget.tabShell.bookingState;
       final idagenda = bs.idagenda ?? '';
       if (idagenda.isEmpty) throw Exception('Sin agenda seleccionada');
 
@@ -125,6 +147,7 @@ class _ScheduleScreenState extends State<ScheduleScreen>
     if (!mounted || _isLoading) return;
     try {
       final bs = widget.tabShell.bookingState;
+      if (bs.isTutorialMode) return; // datos ilustrativos, no hay nada que refrescar
       final idagenda = bs.idagenda ?? '';
       if (idagenda.isEmpty) return;
 
@@ -172,7 +195,9 @@ class _ScheduleScreenState extends State<ScheduleScreen>
   Future<void> _onSlotSelected(TimeSlotModel slot) async {
     final bs = widget.tabShell.bookingState;
     final fecha = bs.selectedDate ?? '';
-    if (fecha.isNotEmpty) {
+    // Modo tutorial: nunca se verifica una cita activa real — el usuario
+    // real podría tener una de verdad agendada y eso bloquearía la demo.
+    if (fecha.isNotEmpty && !bs.isTutorialMode) {
       final hasConflict = await widget.tabShell.checkActiveCitaForDate(fecha);
       if (hasConflict) return;
     }
@@ -450,14 +475,12 @@ class _ScheduleScreenState extends State<ScheduleScreen>
   Widget _buildDateAndInfoHeader(BuildContext context, bool isDark) {
     return Container(
       margin: EdgeInsets.symmetric(horizontal: context.r.paddingH),
-      padding: EdgeInsets.all(context.r.cardPadding),
-      decoration: BoxDecoration(
-        color: AppColors.cardBg(isDark),
+      child: LiquidGlass(
+        isDark: isDark,
         borderRadius: BorderRadius.circular(context.r.cardRadius),
-        boxShadow: AppColors.cardShadowFor(isDark),
-        border: isDark ? Border.all(color: AppColors.cardBorder(isDark)) : null,
-      ),
-      child: Column(
+        padding: EdgeInsets.all(context.r.cardPadding),
+        shadow: AppColors.cardShadowFor(isDark),
+        child: Column(
         children: [
           Row(
             children: [
@@ -502,6 +525,7 @@ class _ScheduleScreenState extends State<ScheduleScreen>
           ),
         ],
       ),
+      ),
     );
   }
 
@@ -513,14 +537,12 @@ class _ScheduleScreenState extends State<ScheduleScreen>
 
     return Container(
       margin: EdgeInsets.symmetric(horizontal: context.r.paddingH),
-      padding: EdgeInsets.all(context.r.cardPadding),
-      decoration: BoxDecoration(
-        color: AppColors.cardBg(isDark),
+      child: LiquidGlass(
+        isDark: isDark,
         borderRadius: BorderRadius.circular(context.r.cardRadius),
-        boxShadow: AppColors.cardShadowFor(isDark),
-        border: isDark ? Border.all(color: AppColors.cardBorder(isDark)) : null,
-      ),
-      child: Row(
+        padding: EdgeInsets.all(context.r.cardPadding),
+        shadow: AppColors.cardShadowFor(isDark),
+        child: Row(
         children: [
           GestureDetector(
             onTap: doctor.photoBytes != null
@@ -594,6 +616,7 @@ class _ScheduleScreenState extends State<ScheduleScreen>
             ),
           ),
         ],
+      ),
       ),
     );
   }
@@ -685,6 +708,7 @@ class _ScheduleScreenState extends State<ScheduleScreen>
 
   Widget _buildTimeGrid(BuildContext context, bool isDark) {
     final available = _availableSlots;
+    final isTutorial = widget.tabShell.bookingState.isTutorialMode;
     return Padding(
       padding: EdgeInsets.symmetric(horizontal: context.r.paddingH),
       child: GridView.builder(
@@ -698,10 +722,13 @@ class _ScheduleScreenState extends State<ScheduleScreen>
         ),
         itemCount: available.length,
         itemBuilder: (context, i) {
+          final chip = _timeChip(context, available[i], isDark);
           return FadeSlideIn(
             delay: Duration(milliseconds: 300 + (i * 15)),
             offsetY: 10,
-            child: _timeChip(context, available[i], isDark),
+            child: (isTutorial && i == 0)
+                ? GuidedTapHint(showBadge: false, child: chip)
+                : chip,
           );
         },
       ),
@@ -709,64 +736,10 @@ class _ScheduleScreenState extends State<ScheduleScreen>
   }
 
   Widget _timeChip(BuildContext context, TimeSlotModel slot, bool isDark) {
-    final Color bgColor = isDark ? const Color(0xFF064E3B) : const Color(0xFF86EFAC);
-    final Color textColor = isDark ? const Color(0xFF6EE7B7) : const Color(0xFF14532D);
-    final Color borderColor = isDark ? const Color(0xFF059669) : const Color(0xFF16A34A);
-
-    return GestureDetector(
+    return TimeSlotChip(
+      timeLabel: slot.timeFormatted,
+      isDark: isDark,
       onTap: () => _onSlotSelected(slot),
-      child: Container(
-        decoration: BoxDecoration(
-          color: bgColor,
-          borderRadius: BorderRadius.circular(context.r.radiusMd),
-          border: Border.all(color: borderColor, width: 2),
-          boxShadow: [
-            BoxShadow(
-              color: AppColors.success.withValues(alpha: isDark ? 0.18 : 0.30),
-              blurRadius: 8,
-              spreadRadius: isDark ? 0 : 1,
-              offset: const Offset(0, 2),
-            ),
-          ],
-        ),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              slot.timeFormatted,
-              style: context.texts.titleMedium.copyWith(
-                fontWeight: FontWeight.w800,
-                color: textColor,
-                fontSize: 17,
-              ),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
-            SizedBox(height: context.r.spaceXs),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
-              decoration: BoxDecoration(
-                color: isDark
-                    ? const Color(0xFF059669).withValues(alpha: 0.3)
-                    : const Color(0xFF065F46).withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(context.r.badgeRadius),
-              ),
-              child: Text(
-                'Disponible',
-                style: context.texts.labelSmall.copyWith(
-                  fontWeight: FontWeight.w800,
-                  color: isDark ? const Color(0xFF6EE7B7) : const Color(0xFF059669),
-                  letterSpacing: 0.3,
-                  fontSize: 10,
-                ),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
-            ),
-          ],
-        ),
-      ),
     );
   }
 }

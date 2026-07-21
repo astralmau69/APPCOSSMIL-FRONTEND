@@ -1,0 +1,21 @@
+.git/
+.dart_tool/
+.idea/
+.vscode/
+build/
+android/
+ios/
+linux/
+macos/
+windows/
+.flutter-plugins
+.flutter-plugins-dependencies
+*.log
+docs/
+.agents/
+.claude/
+ventanilla-mau-avancemau-backend/
+vof_backup_original/
+html_export/
+Magic Navigation Menu/
+symbols/

@@ -7,6 +7,7 @@ import '../models/app_notification.dart';
 import '../session/user_session.dart';
 import '../services/notification_preferences.dart';
 import '../utils/app_logger.dart';
+import 'background_sync_service.dart';
 import 'notification_initializer.dart';
 
 /// Programa, persiste, re-agenda y cancela recordatorios de citas médicas.
@@ -102,14 +103,19 @@ class NotificationScheduler {
       final details =
           NotificationDetails(android: androidDetails, iOS: iosDetails);
 
+      // tz.TZDateTime.now(...).add(...) — NUNCA DateTime.now().add(...) envuelto
+      // en TZDateTime.from(): .from() reinterpreta los campos (Y/M/D/H/M) del
+      // DateTime recibido COMO SI ya fueran hora de America/La_Paz, ignorando
+      // su offset real. Si el dispositivo tiene otro huso horario, "ahora + 5
+      // min" quedaba desplazado por la diferencia entre ambos husos.
       final scheduledTime =
-          DateTime.now().add(const Duration(minutes: 5));
+          tz.TZDateTime.now(tz.local).add(const Duration(minutes: 5));
       await _scheduleWithFallback(
         id: _idFromTicket(ticketNumber, 9),
         title: 'Cita Médica Confirmada — $especialidad',
         body:
             'Su cita médica con Dr. $medico fue registrada exitosamente para el $fecha a las $hora. Ficha $ticketNumber.',
-        scheduledTime: tz.TZDateTime.from(scheduledTime, tz.local),
+        scheduledTime: scheduledTime,
         details: details,
         payload: payload,
         preferredMode: AndroidScheduleMode.alarmClock,
@@ -203,11 +209,22 @@ class NotificationScheduler {
       final twoDaysPrev = apptDay.subtract(const Duration(days: 2));
       final oneDayPrev = apptDay.subtract(const Duration(days: 1));
 
+      // Todas las horas se envuelven en tz.TZDateTime.from(...) EN LA
+      // CONSTRUCCIÓN — no al momento de agendar — para que el filtro
+      // "¿ya pasó?" de más abajo (r.time.isAfter(now)) compare instantes
+      // realmente equivalentes. Antes `time` quedaba como DateTime "crudo"
+      // (interpretado en el huso horario del dispositivo) y solo se
+      // convertía a America/La_Paz justo antes de agendar: en un
+      // dispositivo con otro huso horario, el filtro podía saltarse
+      // recordatorios válidos o dejar pasar unos ya vencidos.
       final reminders = [
         // 2 días antes — 8:00 AM
         _Reminder(
           id: _idFromTicket(ticketNumber, 0),
-          time: DateTime(twoDaysPrev.year, twoDaysPrev.month, twoDaysPrev.day, 8, 0),
+          time: tz.TZDateTime.from(
+            DateTime(twoDaysPrev.year, twoDaysPrev.month, twoDaysPrev.day, 8, 0),
+            tz.local,
+          ),
           title: 'Cita médica en 2 días — $paciente',
           body: 'El $fechaStr a las $horaStr tiene una cita de $especialidad con Dr. $medico. '
               'Ficha $ticketNumber.',
@@ -216,7 +233,10 @@ class NotificationScheduler {
         // 1 día antes — 8:00 AM
         _Reminder(
           id: _idFromTicket(ticketNumber, 1),
-          time: DateTime(oneDayPrev.year, oneDayPrev.month, oneDayPrev.day, 8, 0),
+          time: tz.TZDateTime.from(
+            DateTime(oneDayPrev.year, oneDayPrev.month, oneDayPrev.day, 8, 0),
+            tz.local,
+          ),
           title: 'Cita médica mañana — $paciente',
           body: 'Mañana a las $horaStr tiene una cita de $especialidad con Dr. $medico. '
               'Prepare su documentación. Ficha $ticketNumber.',
@@ -225,7 +245,7 @@ class NotificationScheduler {
         // 3 horas antes
         _Reminder(
           id: _idFromTicket(ticketNumber, 2),
-          time: appt.subtract(const Duration(hours: 3)),
+          time: tz.TZDateTime.from(appt.subtract(const Duration(hours: 3)), tz.local),
           title: 'Cita médica en 3 horas — $paciente',
           body: 'A las $horaStr tiene una cita de $especialidad con Dr. $medico. '
               'Puede cancelar desde la app si no podrá asistir.',
@@ -234,7 +254,7 @@ class NotificationScheduler {
         // 30 minutos antes — alarmClock
         _Reminder(
           id: _idFromTicket(ticketNumber, 3),
-          time: appt.subtract(const Duration(minutes: 30)),
+          time: tz.TZDateTime.from(appt.subtract(const Duration(minutes: 30)), tz.local),
           title: 'Cita médica en 30 minutos — $paciente',
           body: 'Su cita de $especialidad con el Dr. $medico es a las $horaStr. '
               'Recuerde que debe presentarse en el consultorio 15 minutos antes de su hora de atención. Ficha $ticketNumber.',
@@ -244,7 +264,7 @@ class NotificationScheduler {
         // 15 minutos antes — alarmClock
         _Reminder(
           id: _idFromTicket(ticketNumber, 4),
-          time: appt.subtract(const Duration(minutes: 15)),
+          time: tz.TZDateTime.from(appt.subtract(const Duration(minutes: 15)), tz.local),
           title: '¡Su cita comienza en 15 minutos! — $paciente',
           body: 'Especialidad: $especialidad · Dr. $medico · $horaStr. '
               'Preséntese en el consultorio. Ficha $ticketNumber.',
@@ -278,7 +298,7 @@ class NotificationScheduler {
             id: r.id,
             title: r.title,
             body: r.body,
-            scheduledTime: tz.TZDateTime.from(r.time, tz.local),
+            scheduledTime: r.time,
             details: details,
             payload: r.payload ?? payload,
             preferredMode: r.scheduleMode,
@@ -532,6 +552,10 @@ class NotificationScheduler {
       if (userId.isNotEmpty) {
         await _ticketStorage.delete(key: '$_apptDataKeyPrefix$userId');
       }
+      // Todos los call sites de cancelAllReminders() son logout real (token +
+      // sesión limpiados) — cortar aquí la sincronización periódica evita
+      // seguir consultando el backend por un usuario que ya cerró sesión.
+      await BackgroundSyncService.cancel();
       AppLogger.info(
           _tag, 'All pending notifications and persisted data cleared (logout)');
     } catch (e, st) {
@@ -671,7 +695,7 @@ class NotificationScheduler {
 
 class _Reminder {
   final int id;
-  final DateTime time;
+  final tz.TZDateTime time;
   final String title;
   final String body;
 

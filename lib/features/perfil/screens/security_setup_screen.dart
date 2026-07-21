@@ -1,10 +1,12 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import '../../../core/animations/app_dialog.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/extensions/responsive_extensions.dart';
 import '../../../core/services/security_service.dart';
 import '../../../core/animations/app_page_route.dart';
 import '../../../core/animations/optimized_animations.dart';
+import '../../../core/widgets/liquid_glass.dart';
 import '../../auth/screens/pin_setup_screen.dart';
 import '../../auth/screens/pin_verify_screen.dart';
 
@@ -61,9 +63,7 @@ class _SecuritySetupScreenState extends State<SecuritySetupScreen> {
   /// Cambiar PIN — si ya existe, pedir el PIN actual primero.
   Future<void> _goToPinSetup() async {
     final result = await Navigator.of(context, rootNavigator: true).push<bool>(
-      AppPageRoute(
-        builder: (_) => PinSetupScreen(requireCurrentPin: _hasPin),
-      ),
+      AppPageRoute(builder: (_) => PinSetupScreen(requireCurrentPin: _hasPin)),
     );
     if (result == true) await _loadStatus();
   }
@@ -97,7 +97,7 @@ class _SecuritySetupScreenState extends State<SecuritySetupScreen> {
     if (!authenticated || !mounted) return;
 
     // 2. Diálogo de confirmación
-    final confirmed = await showCupertinoDialog<bool>(
+    final confirmed = await showAppDialog<bool>(
       context: context,
       builder: (ctx) => CupertinoAlertDialog(
         title: const Text('Desactivar protección'),
@@ -143,8 +143,7 @@ class _SecuritySetupScreenState extends State<SecuritySetupScreen> {
       AppPageRoute(
         builder: (_) => const PinVerifyScreen(
           title: 'Confirma tu identidad',
-          subtitle:
-              'Ingresa tu PIN actual para desactivar la protección local',
+          subtitle: 'Ingresa tu PIN actual para desactivar la protección local',
         ),
       ),
     );
@@ -170,7 +169,12 @@ class _SecuritySetupScreenState extends State<SecuritySetupScreen> {
               child: ResponsiveBody(
                 addHorizontalPadding: false,
                 child: ListView(
-                  padding: EdgeInsets.fromLTRB(context.r.paddingH, 24, context.r.paddingH, 48),
+                  padding: EdgeInsets.fromLTRB(
+                    context.r.paddingH,
+                    24,
+                    context.r.paddingH,
+                    48,
+                  ),
                   children: [
                     // ── Cabecera de estado ───────────────────────
                     _buildStatusHeader(isDark),
@@ -279,7 +283,9 @@ class _SecuritySetupScreenState extends State<SecuritySetupScreen> {
           value: _bioStatus == DeviceBiometricStatus.unavailable
               ? 'No disponible'
               : (_isBiometricEnabled && _hasPin ? 'Activa' : 'Inactiva'),
-          active: _isBiometricEnabled && _hasPin &&
+          active:
+              _isBiometricEnabled &&
+              _hasPin &&
               _bioStatus == DeviceBiometricStatus.available,
           isDark: isDark,
         ),
@@ -309,7 +315,9 @@ class _SecuritySetupScreenState extends State<SecuritySetupScreen> {
         decoration: BoxDecoration(
           color: active
               ? AppColors.success.withValues(alpha: 0.07)
-              : (isDark ? Colors.white.withValues(alpha: 0.05) : Colors.grey.shade50),
+              : (isDark
+                    ? Colors.white.withValues(alpha: 0.05)
+                    : Colors.grey.shade50),
           borderRadius: BorderRadius.circular(context.r.radiusMd),
           border: Border.all(
             color: active
@@ -382,7 +390,9 @@ class _SecuritySetupScreenState extends State<SecuritySetupScreen> {
           : (isDark ? Colors.white10 : Colors.grey.shade100),
       title: 'PIN de 4 dígitos',
       subtitle: _hasPin ? 'Activo · protección habilitada' : 'No configurado',
-      subtitleColor: _hasPin ? AppColors.success : AppColors.textTertiaryC(isDark),
+      subtitleColor: _hasPin
+          ? AppColors.success
+          : AppColors.textTertiaryC(isDark),
       trailing: _PillButton(
         label: _hasPin ? 'Cambiar' : 'Configurar',
         filled: !_hasPin,
@@ -399,17 +409,23 @@ class _SecuritySetupScreenState extends State<SecuritySetupScreen> {
     return _securityCard(
       isDark: isDark,
       icon: isFace ? Icons.face_retouching_natural : Icons.fingerprint,
-      iconColor: active ? AppColors.accentForTheme(isDark) : AppColors.textSecondaryC(isDark),
+      iconColor: active
+          ? AppColors.accentForTheme(isDark)
+          : AppColors.textSecondaryC(isDark),
       iconBg: active
           ? AppColors.accentForTheme(isDark).withValues(alpha: 0.12)
           : (isDark ? Colors.white10 : Colors.grey.shade100),
       title: _bioLabel,
       subtitle: !_hasPin
           ? 'Configura el PIN primero'
-          : (active ? 'Activada · desbloqueo rápido' : 'Disponible en este dispositivo'),
+          : (active
+                ? 'Activada · desbloqueo rápido'
+                : 'Disponible en este dispositivo'),
       subtitleColor: !_hasPin
           ? AppColors.textTertiaryC(isDark)
-          : (active ? AppColors.accentForTheme(isDark) : AppColors.textSecondaryC(isDark)),
+          : (active
+                ? AppColors.accentForTheme(isDark)
+                : AppColors.textSecondaryC(isDark)),
       trailing: _togglingBio
           ? const Padding(
               padding: EdgeInsets.only(right: 4),
@@ -425,15 +441,16 @@ class _SecuritySetupScreenState extends State<SecuritySetupScreen> {
 
   Widget _buildNotEnrolledBanner(bool isDark) {
     return Container(
-      padding: EdgeInsets.symmetric(horizontal: context.r.tileHorizontalPad, vertical: 14),
+      padding: EdgeInsets.symmetric(
+        horizontal: context.r.tileHorizontalPad,
+        vertical: 14,
+      ),
       decoration: BoxDecoration(
         color: isDark
             ? AppColors.warning.withValues(alpha: 0.08)
             : AppColors.warningLight,
         borderRadius: BorderRadius.circular(context.r.radiusMd),
-        border: Border.all(
-          color: AppColors.warning.withValues(alpha: 0.25),
-        ),
+        border: Border.all(color: AppColors.warning.withValues(alpha: 0.25)),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -482,15 +499,16 @@ class _SecuritySetupScreenState extends State<SecuritySetupScreen> {
           onPressed: _disableSecurity,
           child: Container(
             width: double.infinity,
-            padding: EdgeInsets.symmetric(horizontal: context.r.paddingH, vertical: 16),
+            padding: EdgeInsets.symmetric(
+              horizontal: context.r.paddingH,
+              vertical: 16,
+            ),
             decoration: BoxDecoration(
               color: isDark
                   ? AppColors.error.withValues(alpha: 0.15)
                   : AppColors.errorLight.withValues(alpha: 0.5),
               borderRadius: BorderRadius.circular(context.r.buttonRadius),
-              border: Border.all(
-                color: AppColors.error.withValues(alpha: 0.3),
-              ),
+              border: Border.all(color: AppColors.error.withValues(alpha: 0.3)),
             ),
             child: Row(
               children: [
@@ -559,23 +577,22 @@ class _SecuritySetupScreenState extends State<SecuritySetupScreen> {
     required Color subtitleColor,
     required Widget trailing,
   }) {
-    return Container(
-      padding: EdgeInsets.symmetric(horizontal: context.r.paddingH, vertical: 20),
-      decoration: BoxDecoration(
-        color: AppColors.cardBg(isDark),
-        borderRadius: BorderRadius.circular(context.r.cardRadius),
-        border: Border.all(
-          color: AppColors.cardBorder(isDark),
-          width: 0.8,
-        ),
-        boxShadow: isDark ? [] : [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          )
-        ],
+    return LiquidGlass(
+      isDark: isDark,
+      borderRadius: BorderRadius.circular(context.r.cardRadius),
+      padding: EdgeInsets.symmetric(
+        horizontal: context.r.paddingH,
+        vertical: 20,
       ),
+      shadow: isDark
+          ? null
+          : [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.04),
+                blurRadius: 10,
+                offset: const Offset(0, 4),
+              ),
+            ],
       child: Row(
         children: [
           Container(
@@ -640,13 +657,16 @@ class _PillButton extends StatelessWidget {
       padding: EdgeInsets.zero,
       onPressed: onTap,
       child: Container(
-        padding: EdgeInsets.symmetric(horizontal: context.r.tileHorizontalPad, vertical: 8),
+        padding: EdgeInsets.symmetric(
+          horizontal: context.r.tileHorizontalPad,
+          vertical: 8,
+        ),
         decoration: BoxDecoration(
           color: filled
               ? AppColors.accentForTheme(isDark)
               : (isDark
-                  ? AppColors.cardBorder(isDark)
-                  : AppColors.accentForTheme(isDark).withValues(alpha: 0.08)),
+                    ? AppColors.cardBorder(isDark)
+                    : AppColors.accentForTheme(isDark).withValues(alpha: 0.08)),
           borderRadius: BorderRadius.circular(context.r.chipRadius),
         ),
         child: Text(

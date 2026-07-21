@@ -14,7 +14,10 @@ import '../../../core/models/horario_atencion_model.dart';
 import '../../../core/models/news_item_model.dart';
 import '../../../core/models/user_model.dart';
 import '../../../core/services/cossmil_news_service.dart';
+import '../../../core/services/tutorial_service.dart';
 import '../../../core/widgets/liquid_glass.dart';
+import '../../../core/widgets/tutorial_instructor.dart';
+import '../../../core/widgets/tutorial_invite_dialog.dart';
 import '../../../core/widgets/section_header.dart';
 import '../../../core/widgets/professional_profile_card.dart';
 import '../../../core/widgets/adaptive_sliver_nav_bar.dart';
@@ -62,6 +65,35 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       } catch (_) {}
     }
     _loadNews();
+    _maybeOfferFichaTutorial();
+  }
+
+  /// Invita al tutorial de "sacar una ficha" SOLO la primera vez que el
+  /// usuario llega a Inicio (ver [TutorialService]). Se marca como visto
+  /// apenas se decide mostrar la invitación — así nunca vuelve a interrumpir
+  /// solo; después queda disponible bajo demanda desde Perfil → Ayuda.
+  Future<void> _maybeOfferFichaTutorial() async {
+    final alreadySeen = await TutorialService.hasSeenFichaTutorial();
+    if (alreadySeen || !mounted) return;
+
+    // Pequeña espera para no competir con las animaciones de entrada de la
+    // pantalla (FadeSlideIn escalonado de la tarjeta de perfil y accesos).
+    await Future.delayed(const Duration(milliseconds: 900));
+    if (!mounted) return;
+
+    await TutorialService.markFichaTutorialSeen();
+    if (!mounted) return;
+
+    // Precarga la imagen de la instructora para que su entrada elástica no
+    // parpadee mientras se decodifica el asset.
+    await precacheImage(const AssetImage(kTutorialInstructorAsset), context);
+    if (!mounted) return;
+
+    await showTutorialInviteDialog(
+      context,
+      isDark: Theme.of(context).brightness == Brightness.dark,
+      onAccept: () => widget.tabShell.startTutorialBooking(),
+    );
   }
 
   @override

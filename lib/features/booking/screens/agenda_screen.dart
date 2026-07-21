@@ -7,8 +7,10 @@ import '../../../core/services/programacion_service.dart';
 import '../../../core/data/app_session_cache.dart';
 import '../../../core/models/doctor_agenda_model.dart';
 import '../../../core/models/doctor_model.dart';
+import '../../../core/models/time_slot_model.dart';
 import '../../../core/widgets/breadcrumb_chips.dart';
 import '../../../core/widgets/app_state_widget.dart';
+import '../../../core/widgets/guided_tap_hint.dart';
 import '../../../shell/tab_shell.dart';
 
 class AgendaScreen extends StatefulWidget {
@@ -30,6 +32,10 @@ class _AgendaScreenState extends State<AgendaScreen> {
   bool _isLoading = true;
   String? _errorMessage;
 
+  /// Verificación cruzada contra medico-agenda-fecha-horas.
+  /// key = idagenda; value = true si queda al menos una hora libre real.
+  final Map<String, bool> _fichasVerificadas = {};
+
   @override
   void initState() {
     super.initState();
@@ -41,6 +47,54 @@ class _AgendaScreenState extends State<AgendaScreen> {
       _isLoading = true;
       _errorMessage = null;
     });
+
+    final bsCheck = widget.tabShell.bookingState;
+    if (bsCheck.isTutorialMode) {
+      // Instantáneo y sin red: la demo nunca debe depender de que el médico
+      // real elegido tenga agenda abierta en este momento.
+      final hoy = DateTime.now();
+      final hoySolo = DateTime(hoy.year, hoy.month, hoy.day);
+      final medicoNombre = bsCheck.doctor?.fullName ?? '';
+      final semana = List.generate(8, (i) {
+        final fechaDate = hoySolo.add(Duration(days: i));
+        final fechaStr = DateFormat('yyyy-MM-dd').format(fechaDate);
+        return _DiaAgenda(
+          fecha: fechaStr,
+          fechaDate: fechaDate,
+          idmed: bsCheck.doctor?.id ?? 'tutorial-doc-1',
+          medicoNombre: medicoNombre,
+          modelos: [
+            DoctorAgendaModel(
+              idagenda: 'tutorial-agenda-$i',
+              idmed: bsCheck.doctor?.id ?? 'tutorial-doc-1',
+              idcon: 0,
+              medico: medicoNombre,
+              dia: '',
+              fecha: fechaStr,
+              horaini: '08:00',
+              horafin: '12:00',
+              ase: 5,
+              oferta: 5,
+              demanda: 0,
+              ope: 5,
+              med: 5,
+              adm: 5,
+              foto: '',
+              consultorio: 'Consultorio 204 - Planta Baja',
+              mtrmin: '',
+              disponibles: 5,
+              estado: true,
+            ),
+          ],
+        );
+      });
+      if (!mounted) return;
+      setState(() {
+        _semana = semana;
+        _isLoading = false;
+      });
+      return;
+    }
 
     try {
       final bs = widget.tabShell.bookingState;
@@ -106,8 +160,18 @@ class _AgendaScreenState extends State<AgendaScreen> {
         ));
       }
 
+      // 5. Verificación cruzada: agenda-medico-movil puede reportar
+      //    `disponibles > 0` aunque medico-agenda-fecha-horas ya no tenga
+      //    ninguna hora libre (los dos servicios se desincronizan). Se
+      //    consultan las horas reales de cada turno candidato a "Disponible"
+      //    y solo se mantiene verde si ambos servicios coinciden.
+      final verificadas = await _verificarFichasReales(semana);
+
       if (!mounted) return;
       setState(() {
+        _fichasVerificadas
+          ..clear()
+          ..addAll(verificadas);
         _semana = semana;
         _isLoading = false;
       });
@@ -136,13 +200,65 @@ class _AgendaScreenState extends State<AgendaScreen> {
     return now.hour > endH || (now.hour == endH && now.minute >= endM);
   }
 
-  /// Disponibilidad real del turno: el día está habilitado (`estado`), TIENE
-  /// fichas libres (`disponibles > 0`) y no es un turno de hoy cuyo horario ya
-  /// finalizó. Sin el chequeo de `disponibles`, un día con todas sus horas
-  /// ocupadas salía como "Disponible" y daba falsa esperanza al asegurado:
-  /// entraba a la pantalla de horas y no había ni una ficha libre.
-  bool _slotAvailable(_DiaAgenda dia, DoctorAgendaModel m) =>
+  /// Disponibilidad según agenda-medico-movil: día habilitado (`estado`),
+  /// fichas libres (`disponibles > 0`) y turno no finalizado hoy.
+  bool _slotAvailableSegunAgenda(_DiaAgenda dia, DoctorAgendaModel m) =>
       m.estado && m.disponibles > 0 && !_shiftEndedToday(dia, m);
+
+  /// Disponibilidad real del turno cruzando los DOS servicios:
+  /// agenda-medico-movil (estado/disponibles) Y medico-agenda-fecha-horas
+  /// (horas libres reales). Ambos deben coincidir: si la agenda dice
+  /// "Disponible" pero ya no queda ninguna hora libre, el turno se muestra
+  /// como "Fichas agotadas" en vez de dar falsa esperanza al asegurado.
+  bool _slotAvailable(_DiaAgenda dia, DoctorAgendaModel m) {
+    if (!_slotAvailableSegunAgenda(dia, m)) return false;
+    return _fichasVerificadas[m.idagenda] ?? true;
+  }
+
+  /// Consulta medico-agenda-fecha-horas para cada turno que la agenda marca
+  /// como disponible y retorna, por idagenda, si queda alguna hora libre.
+  /// Si la consulta de un turno falla (red), se respeta el veredicto de la
+  /// agenda para no bloquear la reserva por un error transitorio.
+  Future<Map<String, bool>> _verificarFichasReales(List<_DiaAgenda> semana) async {
+    final candidatos = <({_DiaAgenda dia, DoctorAgendaModel m})>[];
+    for (final dia in semana) {
+      for (final m in dia.modelos) {
+        if (m.idagenda.isNotEmpty && _slotAvailableSegunAgenda(dia, m)) {
+          candidatos.add((dia: dia, m: m));
+        }
+      }
+    }
+    if (candidatos.isEmpty) return {};
+
+    final entries = await Future.wait(candidatos.map((c) async {
+      try {
+        final slots = await _service.getHorasAgenda(c.m.idagenda);
+        return MapEntry(c.m.idagenda, _tieneHoraLibre(c.dia, slots));
+      } catch (_) {
+        return MapEntry(c.m.idagenda, true);
+      }
+    }));
+    return Map.fromEntries(entries);
+  }
+
+  /// `true` si existe al menos una hora libre; para turnos de HOY solo cuentan
+  /// las horas posteriores a la hora actual (mismo criterio que la pantalla
+  /// de horas, que oculta los turnos ya pasados).
+  bool _tieneHoraLibre(_DiaAgenda dia, List<TimeSlotModel> slots) {
+    final libres = slots.where((s) => s.isAvailable);
+    final now = DateTime.now();
+    final isToday = dia.fechaDate.year == now.year &&
+        dia.fechaDate.month == now.month &&
+        dia.fechaDate.day == now.day;
+    if (!isToday) return libres.isNotEmpty;
+    return libres.any((s) {
+      final p = s.time.split(':');
+      if (p.length < 2) return true;
+      final h = int.tryParse(p[0]) ?? 0;
+      final min = int.tryParse(p[1]) ?? 0;
+      return h > now.hour || (h == now.hour && min > now.minute);
+    });
+  }
 
   void _onSlotSelected(_DiaAgenda dia, DoctorAgendaModel m) {
     if (!_slotAvailable(dia, m)) return;
@@ -274,9 +390,14 @@ class _AgendaScreenState extends State<AgendaScreen> {
           sliver: SliverList.builder(
             itemCount: _semana.length,
             itemBuilder: (context, i) {
+              final dia = _semana[i];
+              final card = _buildDayCard(dia, isDark, r);
+              final isFirstAvailable = bs.isTutorialMode &&
+                  dia.modelos.any((m) => _slotAvailable(dia, m)) &&
+                  !_semana.take(i).any((d) => d.modelos.any((m) => _slotAvailable(d, m)));
               return Padding(
                 padding: EdgeInsets.only(bottom: r.spaceMd),
-                child: _buildDayCard(_semana[i], isDark, r),
+                child: isFirstAvailable ? GuidedTapHint(child: card) : card,
               );
             },
           ),

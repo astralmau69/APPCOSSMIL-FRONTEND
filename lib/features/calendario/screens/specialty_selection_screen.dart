@@ -8,6 +8,7 @@ import '../../../core/animations/app_page_route.dart';
 import '../../../core/animations/optimized_animations.dart';
 import '../../../core/widgets/skeleton_loading.dart';
 import '../../../core/widgets/app_state_widget.dart';
+import '../../../core/widgets/liquid_glass.dart';
 import 'doctor_selection_screen.dart';
 
 class SpecialtySelectionScreen extends StatefulWidget {
@@ -282,13 +283,10 @@ class _SpecialtySelectionScreenState extends State<SpecialtySelectionScreen> {
         ),
       );
     }
-    return Container(
-      decoration: BoxDecoration(
-        color: AppColors.cardBg(isDark),
-        borderRadius: BorderRadius.circular(r.cardRadius),
-        border: Border.all(color: AppColors.cardBorder(isDark), width: 0.5),
-        boxShadow: AppColors.cardShadowFor(isDark),
-      ),
+    return LiquidGlass(
+      isDark: isDark,
+      borderRadius: BorderRadius.circular(r.cardRadius),
+      shadow: AppColors.cardShadowFor(isDark),
       child: Column(
         children: List.generate(items.length, (i) {
           final sp = items[i];

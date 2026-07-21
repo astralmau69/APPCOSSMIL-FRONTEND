@@ -9,6 +9,7 @@ import '../../../core/animations/optimized_animations.dart';
 import '../../../core/utils/error_mapper.dart';
 import 'news_detail_screen.dart';
 import '../../../core/widgets/adaptive_sliver_nav_bar.dart';
+import '../../../core/widgets/liquid_glass.dart';
 
 /// Pantalla dedicada para comunicados y noticias de COSSMIL con paginación.
 class NoticiasScreen extends StatefulWidget {
@@ -260,19 +261,15 @@ class _NewsListCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    return GestureDetector(
+    return OptimizedPressButton(
       onTap: onTap,
-      child: Container(
+      scaleDown: 0.98,
+      haptic: true,
+      child: LiquidGlass(
+        isDark: isDark,
+        borderRadius: BorderRadius.circular(context.r.radiusMd),
         padding: EdgeInsets.all(context.r.spaceMd),
-        decoration: BoxDecoration(
-          color: AppColors.cardBg(isDark),
-          borderRadius: BorderRadius.circular(context.r.radiusMd),
-          border: Border.all(
-            color: isDark ? AppColors.darkBorder : const Color(0xFF191C1E).withValues(alpha: 0.08),
-            width: isDark ? 0.8 : 0.5,
-          ),
-          boxShadow: AppColors.cardShadowFor(isDark),
-        ),
+        shadow: AppColors.cardShadowFor(isDark),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [

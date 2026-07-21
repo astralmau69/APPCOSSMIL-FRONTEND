@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:typed_data';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import '../../../core/animations/app_dialog.dart';
 import 'package:intl/intl.dart';
 import 'package:printing/printing.dart';
 import '../../../core/constants/app_colors.dart';
@@ -49,8 +50,11 @@ class _DetalleCitaScreenState extends State<DetalleCitaScreen> {
   ///   - Bytes con signo separados por coma: "120,-34,56,..."
   ///   - Base64 / Data URL: "/9j/4AAQ..." o "data:image/jpeg;base64,..."
   Widget _buildPhoto(String? foto, bool isDark, {required IconData icon}) {
-    final fallback = Icon(icon, size: 28,
-        color: AppColors.accentForTheme(isDark).withValues(alpha: 0.5));
+    final fallback = Icon(
+      icon,
+      size: 28,
+      color: AppColors.accentForTheme(isDark).withValues(alpha: 0.5),
+    );
     if (foto == null || foto.isEmpty) return fallback;
 
     try {
@@ -113,9 +117,14 @@ class _DetalleCitaScreenState extends State<DetalleCitaScreen> {
     });
 
     final r = widget.reserva;
-    if (r.gestion == null || r.idins == null || r.idsuc == null || r.idtran == null || r.dr == null) {
+    if (r.gestion == null ||
+        r.idins == null ||
+        r.idsuc == null ||
+        r.idtran == null ||
+        r.dr == null) {
       setState(() {
-        _errorMessage = 'No se tienen los datos necesarios para consultar el detalle de esta cita.';
+        _errorMessage =
+            'No se tienen los datos necesarios para consultar el detalle de esta cita.';
         _isLoading = false;
       });
       return;
@@ -138,7 +147,10 @@ class _DetalleCitaScreenState extends State<DetalleCitaScreen> {
     } catch (e) {
       if (!mounted) return;
       setState(() {
-        _errorMessage = ErrorMapper.message(e, context: ErrorContext.cargarHistorial);
+        _errorMessage = ErrorMapper.message(
+          e,
+          context: ErrorContext.cargarHistorial,
+        );
         _isLoading = false;
       });
     }
@@ -192,17 +204,20 @@ class _DetalleCitaScreenState extends State<DetalleCitaScreen> {
           child: _isLoading
               ? ListView(
                   key: const ValueKey('skeleton'),
-                  padding: const EdgeInsets.symmetric(horizontal: 0, vertical: 16),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 0,
+                    vertical: 16,
+                  ),
                   children: const [SkeletonDetalleCita()],
                 )
               : _errorMessage != null
-                  ? AppStateWidget.error(
-                      key: const ValueKey('error'),
-                      title: 'Error',
-                      message: _errorMessage!,
-                      onRetry: _fetchDetalle,
-                    )
-                  : _buildContent(isDark),
+              ? AppStateWidget.error(
+                  key: const ValueKey('error'),
+                  title: 'Error',
+                  message: _errorMessage!,
+                  onRetry: _fetchDetalle,
+                )
+              : _buildContent(isDark),
         ),
       ),
     );
@@ -284,7 +299,8 @@ class _DetalleCitaScreenState extends State<DetalleCitaScreen> {
                 label: 'Especialidad',
                 value: d.especialidad,
                 valueColor: AppColors.accentForTheme(isDark),
-                secondaryValue: (d.tipoConsulta != null && d.tipoConsulta!.isNotEmpty)
+                secondaryValue:
+                    (d.tipoConsulta != null && d.tipoConsulta!.isNotEmpty)
                     ? d.tipoConsulta
                     : null,
               ),
@@ -303,9 +319,9 @@ class _DetalleCitaScreenState extends State<DetalleCitaScreen> {
                 photoBase64: d.fotoMedico,
                 onPhotoTap: (d.fotoMedico != null && d.fotoMedico!.isNotEmpty)
                     ? () => _showPhotoEnlarged(
-                          d.fotoMedico!,
-                          d.medico.isNotEmpty ? d.medico[0].toUpperCase() : 'M',
-                        )
+                        d.fotoMedico!,
+                        d.medico.isNotEmpty ? d.medico[0].toUpperCase() : 'M',
+                      )
                     : null,
               ),
             ),
@@ -319,7 +335,8 @@ class _DetalleCitaScreenState extends State<DetalleCitaScreen> {
                 icon: CupertinoIcons.person_crop_circle_fill,
                 label: 'Paciente',
                 value: _patientDisplayName(d),
-                secondaryValue: 'Mat. ${d.matricula}${d.obs.isNotEmpty ? '  •  Obs: ${d.obs}' : ''}',
+                secondaryValue:
+                    'Mat. ${d.matricula}${d.obs.isNotEmpty ? '  •  Obs: ${d.obs}' : ''}',
                 photoBase64: _patientPhoto(d),
               ),
             ),
@@ -335,9 +352,17 @@ class _DetalleCitaScreenState extends State<DetalleCitaScreen> {
                 customValueWidget: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    _buildStatusRow('Confirmación', isCancelled ? 'CANCELADO' : d.estadoConfirmacion, isDark),
+                    _buildStatusRow(
+                      'Confirmación',
+                      isCancelled ? 'CANCELADO' : d.estadoConfirmacion,
+                      isDark,
+                    ),
                     SizedBox(height: r.spaceSm),
-                    _buildStatusRow('Atención', isCancelled ? 'CANCELADO' : d.estadoAtencion, isDark),
+                    _buildStatusRow(
+                      'Atención',
+                      isCancelled ? 'CANCELADO' : d.estadoAtencion,
+                      isDark,
+                    ),
                   ],
                 ),
               ),
@@ -359,7 +384,9 @@ class _DetalleCitaScreenState extends State<DetalleCitaScreen> {
             SizedBox(height: r.spaceXl),
 
             // ── PDF ──
-            if (widget.reserva.canDownloadPdf && widget.reserva.status != 'Cancelado' && !_wasCancelled)
+            if (widget.reserva.canDownloadPdf &&
+                widget.reserva.status != 'Cancelado' &&
+                !_wasCancelled)
               FadeSlideIn(
                 delay: const Duration(milliseconds: 400),
                 child: _buildPdfButton(isDark),
@@ -385,7 +412,10 @@ class _DetalleCitaScreenState extends State<DetalleCitaScreen> {
               FadeSlideIn(
                 delay: const Duration(milliseconds: 430),
                 child: Container(
-                  padding: EdgeInsets.symmetric(horizontal: r.spaceMd, vertical: r.spaceSm),
+                  padding: EdgeInsets.symmetric(
+                    horizontal: r.spaceMd,
+                    vertical: r.spaceSm,
+                  ),
                   decoration: BoxDecoration(
                     color: isDark
                         ? const Color(0xFF422006).withValues(alpha: 0.5)
@@ -398,8 +428,11 @@ class _DetalleCitaScreenState extends State<DetalleCitaScreen> {
                   ),
                   child: Row(
                     children: [
-                      const Icon(CupertinoIcons.exclamationmark_circle_fill,
-                          size: 18, color: Color(0xFFB45309)),
+                      const Icon(
+                        CupertinoIcons.exclamationmark_circle_fill,
+                        size: 18,
+                        color: Color(0xFFB45309),
+                      ),
                       SizedBox(width: r.spaceSm),
                       Expanded(
                         child: Text(
@@ -421,7 +454,10 @@ class _DetalleCitaScreenState extends State<DetalleCitaScreen> {
             ],
 
             // Padding extra para que la barra flotante no tape el contenido (REPORTE 007)
-            SizedBox(height: r.spaceXxl + MediaQuery.of(context).viewPadding.bottom + 90),
+            SizedBox(
+              height:
+                  r.spaceXxl + MediaQuery.of(context).viewPadding.bottom + 90,
+            ),
           ],
         ),
       ),
@@ -457,7 +493,10 @@ class _DetalleCitaScreenState extends State<DetalleCitaScreen> {
   String? _patientPhoto(DetalleCitaModel d) {
     final bens = UserSession.currentUser.beneficiaries;
     final match = bens.where((b) => b.matricula == d.matricula);
-    if (match.isNotEmpty) return match.first.photoBase64.isNotEmpty ? match.first.photoBase64 : null;
+    if (match.isNotEmpty)
+      return match.first.photoBase64.isNotEmpty
+          ? match.first.photoBase64
+          : null;
     if (UserSession.currentUser.matricula == d.matricula) {
       final p = UserSession.currentUser.photoBase64;
       return p.isNotEmpty ? p : null;
@@ -484,7 +523,11 @@ class _DetalleCitaScreenState extends State<DetalleCitaScreen> {
         child: SizedBox(
           width: 44,
           height: 44,
-          child: _buildPhoto(photoBase64, isDark, icon: CupertinoIcons.person_fill),
+          child: _buildPhoto(
+            photoBase64,
+            isDark,
+            icon: CupertinoIcons.person_fill,
+          ),
         ),
       );
       leftWidget = onPhotoTap != null
@@ -507,7 +550,11 @@ class _DetalleCitaScreenState extends State<DetalleCitaScreen> {
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           leftWidget,
-          SizedBox(width: photoBase64 != null && photoBase64.isNotEmpty ? r.spaceSm : r.spaceMd),
+          SizedBox(
+            width: photoBase64 != null && photoBase64.isNotEmpty
+                ? r.spaceSm
+                : r.spaceMd,
+          ),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -594,7 +641,10 @@ class _DetalleCitaScreenState extends State<DetalleCitaScreen> {
         ),
         Flexible(
           child: Container(
-            padding: EdgeInsets.symmetric(horizontal: context.r.spaceSm, vertical: 3),
+            padding: EdgeInsets.symmetric(
+              horizontal: context.r.spaceSm,
+              vertical: 3,
+            ),
             decoration: BoxDecoration(
               color: chipColor.withValues(alpha: 0.12),
               borderRadius: BorderRadius.circular(context.r.radiusSm),
@@ -607,10 +657,7 @@ class _DetalleCitaScreenState extends State<DetalleCitaScreen> {
               value,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: TextStyle(
-                fontWeight: FontWeight.w700,
-                color: chipColor,
-              ),
+              style: TextStyle(fontWeight: FontWeight.w700, color: chipColor),
             ),
           ),
         ),
@@ -707,7 +754,8 @@ class _DetalleCitaScreenState extends State<DetalleCitaScreen> {
         await CossmilIosAlert.show(
           context: context,
           title: 'Documento no disponible',
-          message: 'No se pudo obtener el documento. Intenta de nuevo más tarde.',
+          message:
+              'No se pudo obtener el documento. Intenta de nuevo más tarde.',
           type: AlertType.warning,
           confirmText: 'Aceptar',
         );
@@ -750,7 +798,8 @@ class _DetalleCitaScreenState extends State<DetalleCitaScreen> {
         await CossmilIosAlert.show(
           context: context,
           title: 'Documento no disponible',
-          message: 'No se pudo obtener el documento de la cita médica. Intenta de nuevo más tarde.',
+          message:
+              'No se pudo obtener el documento de la cita médica. Intenta de nuevo más tarde.',
           type: AlertType.warning,
           confirmText: 'Aceptar',
         );
@@ -762,10 +811,8 @@ class _DetalleCitaScreenState extends State<DetalleCitaScreen> {
       Navigator.push(
         context,
         AppPageRoute(
-          builder: (_) => _PdfPreviewScreen(
-            pdfBytes: pdfBytes,
-            fileName: fileName,
-          ),
+          builder: (_) =>
+              _PdfPreviewScreen(pdfBytes: pdfBytes, fileName: fileName),
         ),
       );
     } catch (e) {
@@ -798,8 +845,11 @@ class _DetalleCitaScreenState extends State<DetalleCitaScreen> {
             : Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  const Icon(CupertinoIcons.xmark_circle_fill,
-                      size: 20, color: CupertinoColors.white),
+                  const Icon(
+                    CupertinoIcons.xmark_circle_fill,
+                    size: 20,
+                    color: CupertinoColors.white,
+                  ),
                   SizedBox(width: context.r.spaceSm),
                   const Text(
                     'Cancelar Cita',
@@ -818,7 +868,7 @@ class _DetalleCitaScreenState extends State<DetalleCitaScreen> {
   Future<void> _cancelCita() async {
     final reserva = widget.reserva;
 
-    final confirm = await showCupertinoDialog<bool>(
+    final confirm = await showAppDialog<bool>(
       context: context,
       builder: (ctx) => CupertinoAlertDialog(
         title: const Text('Cancelar Cita'),
@@ -898,10 +948,7 @@ class _PdfPreviewScreen extends StatelessWidget {
   final Uint8List pdfBytes;
   final String fileName;
 
-  const _PdfPreviewScreen({
-    required this.pdfBytes,
-    required this.fileName,
-  });
+  const _PdfPreviewScreen({required this.pdfBytes, required this.fileName});
 
   @override
   Widget build(BuildContext context) {
@@ -966,7 +1013,9 @@ class _PdfPreviewScreen extends StatelessWidget {
                 color: AppColors.cardBg(isDark),
                 border: Border(
                   top: BorderSide(
-                    color: isDark ? AppColors.darkDivider : const Color(0xFF191C1E).withValues(alpha: 0.08),
+                    color: isDark
+                        ? AppColors.darkDivider
+                        : const Color(0xFF191C1E).withValues(alpha: 0.08),
                     width: 0.5,
                   ),
                 ),
@@ -975,14 +1024,20 @@ class _PdfPreviewScreen extends StatelessWidget {
                 children: [
                   Expanded(
                     child: CupertinoButton(
-                      padding: EdgeInsets.symmetric(vertical: context.r.spaceMd),
+                      padding: EdgeInsets.symmetric(
+                        vertical: context.r.spaceMd,
+                      ),
                       color: AppColors.primary,
                       borderRadius: BorderRadius.circular(14),
                       onPressed: () => _printPdf(),
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          const Icon(CupertinoIcons.printer, size: 18, color: AppColors.white),
+                          const Icon(
+                            CupertinoIcons.printer,
+                            size: 18,
+                            color: AppColors.white,
+                          ),
                           SizedBox(width: context.r.spaceSm),
                           Text(
                             'Descargar / Imprimir',
@@ -1007,7 +1062,9 @@ class _PdfPreviewScreen extends StatelessWidget {
                         ),
                       ),
                       child: CupertinoButton(
-                        padding: EdgeInsets.symmetric(vertical: context.r.spaceMd),
+                        padding: EdgeInsets.symmetric(
+                          vertical: context.r.spaceMd,
+                        ),
                         color: isDark
                             ? AppColors.darkElevated
                             : const Color(0xFFEFF6FF),
@@ -1016,7 +1073,11 @@ class _PdfPreviewScreen extends StatelessWidget {
                         child: Row(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            Icon(CupertinoIcons.share, size: 18, color: AppColors.accentForTheme(isDark)),
+                            Icon(
+                              CupertinoIcons.share,
+                              size: 18,
+                              color: AppColors.accentForTheme(isDark),
+                            ),
                             SizedBox(width: context.r.spaceSm),
                             Text(
                               'Compartir',
@@ -1040,16 +1101,10 @@ class _PdfPreviewScreen extends StatelessWidget {
   }
 
   void _printPdf() {
-    Printing.layoutPdf(
-      onLayout: (_) async => pdfBytes,
-      name: fileName,
-    );
+    Printing.layoutPdf(onLayout: (_) async => pdfBytes, name: fileName);
   }
 
   void _sharePdf() {
-    Printing.sharePdf(
-      bytes: pdfBytes,
-      filename: '$fileName.pdf',
-    );
+    Printing.sharePdf(bytes: pdfBytes, filename: '$fileName.pdf');
   }
 }

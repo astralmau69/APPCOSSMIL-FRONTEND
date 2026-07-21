@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/extensions/responsive_extensions.dart';
 import '../../../core/widgets/app_background.dart';
+import '../../../core/widgets/liquid_glass.dart';
 import '../../../core/services/auth_service.dart';
 import '../../../core/services/session_restore_service.dart';
 import '../../../core/session/user_session.dart';
@@ -249,17 +250,11 @@ class _EmergencyDataScreenState extends State<EmergencyDataScreen> {
                           SizedBox(height: r.spaceLg),
 
                           // ── Card principal ────────────────────────────────
-                          Container(
+                          LiquidGlass(
+                            isDark: isDark,
+                            borderRadius: BorderRadius.circular(r.cardRadius),
                             padding: EdgeInsets.all(r.cardPadding),
-                            decoration: BoxDecoration(
-                              color: AppColors.cardBg(isDark),
-                              borderRadius: BorderRadius.circular(r.cardRadius),
-                              border: Border.all(
-                                color: borderColor,
-                                width: 0.5,
-                              ),
-                              boxShadow: AppColors.cardShadowFor(isDark),
-                            ),
+                            shadow: AppColors.cardShadowFor(isDark),
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [

@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import '../../../core/animations/app_dialog.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/extensions/responsive_extensions.dart';
 import '../../../core/session/user_session.dart';
@@ -20,8 +21,11 @@ import '../../../core/services/location_service.dart';
 import '../../../core/helpers/distance_helper.dart';
 import '../../../core/widgets/skeleton_loading.dart';
 import '../../../core/widgets/app_state_widget.dart';
+import '../../../core/widgets/hospital_card.dart';
+import '../../../core/widgets/liquid_glass.dart';
 import '../../../core/widgets/loader_with_message.dart';
 import '../../../core/widgets/inasistencias_modal.dart';
+import '../../../core/widgets/guided_tap_hint.dart';
 import '../../../core/utils/error_mapper.dart';
 import '../../../core/utils/app_logger.dart';
 import 'specialty_screen.dart';
@@ -65,7 +69,9 @@ class _RegionalScreenState extends State<RegionalScreen> {
   @override
   void initState() {
     super.initState();
-    _beneficiaries = List<BeneficiaryModel>.from(UserSession.currentUser.beneficiaries);
+    _beneficiaries = List<BeneficiaryModel>.from(
+      UserSession.currentUser.beneficiaries,
+    );
     // Default to titular if no beneficiary selected
     final bs = widget.tabShell.bookingState;
     if (bs.beneficiary == null) {
@@ -75,7 +81,9 @@ class _RegionalScreenState extends State<RegionalScreen> {
           orElse: () => _beneficiaries.first,
         );
         bs.beneficiary = titular;
-        bs.beneficiaryLabel = titular.isTitular ? 'Para mí' : titular.displayTitle;
+        bs.beneficiaryLabel = titular.isTitular
+            ? 'Para mí'
+            : titular.displayTitle;
       }
     }
     _fetchData();
@@ -92,10 +100,16 @@ class _RegionalScreenState extends State<RegionalScreen> {
       // Solo llama al backend si el caché está vacío (cold start).
       List<RegionalModel> rawData;
       if (AppSessionCache.isLoaded && AppSessionCache.regionales.isNotEmpty) {
-        AppLogger.info('RegionalScreen', 'Usando regionales desde AppSessionCache (${AppSessionCache.regionales.length} elementos)');
+        AppLogger.info(
+          'RegionalScreen',
+          'Usando regionales desde AppSessionCache (${AppSessionCache.regionales.length} elementos)',
+        );
         rawData = List<RegionalModel>.from(AppSessionCache.regionales);
       } else {
-        AppLogger.info('RegionalScreen', 'Caché vacío — cargando regionales desde API');
+        AppLogger.info(
+          'RegionalScreen',
+          'Caché vacío — cargando regionales desde API',
+        );
         rawData = await _service.getRegionalesPorDepartamento(1);
       }
 
@@ -132,7 +146,9 @@ class _RegionalScreenState extends State<RegionalScreen> {
               orElse: () => freshBens.first,
             );
             bs.beneficiary = titular;
-            bs.beneficiaryLabel = titular.isTitular ? 'Para mí' : titular.displayTitle;
+            bs.beneficiaryLabel = titular.isTitular
+                ? 'Para mí'
+                : titular.displayTitle;
           }
         });
       }
@@ -142,7 +158,10 @@ class _RegionalScreenState extends State<RegionalScreen> {
     } catch (e) {
       if (mounted) {
         setState(() {
-          _errorMessage = ErrorMapper.message(e, context: ErrorContext.cargarRegionales);
+          _errorMessage = ErrorMapper.message(
+            e,
+            context: ErrorContext.cargarRegionales,
+          );
           _isLoading = false;
         });
       }
@@ -157,16 +176,19 @@ class _RegionalScreenState extends State<RegionalScreen> {
       final locationService = LocationService();
       // No volver a pedir permiso aquí: la ubicación se solicita una sola vez en
       // el onboarding (primer arranque). Aquí solo se usa si ya está concedida.
-      final position =
-          await locationService.getCurrentLocation(requestIfNotGranted: false);
+      final position = await locationService.getCurrentLocation(
+        requestIfNotGranted: false,
+      );
       if (position == null || !mounted || _entries.isEmpty) return;
 
       for (final e in _entries) {
         final h = e.hospital;
         if (h.latitude != null && h.longitude != null) {
           e.distanceKm = DistanceHelper.calculateDistanceInKm(
-            position.latitude, position.longitude,
-            h.latitude!, h.longitude!,
+            position.latitude,
+            position.longitude,
+            h.latitude!,
+            h.longitude!,
           );
         }
       }
@@ -184,7 +206,11 @@ class _RegionalScreenState extends State<RegionalScreen> {
         });
       }
     } catch (e) {
-      AppLogger.warn('RegionalScreen', 'Error obteniendo ubicación del dispositivo', e);
+      AppLogger.warn(
+        'RegionalScreen',
+        'Error obteniendo ubicación del dispositivo',
+        e,
+      );
     }
   }
 
@@ -226,7 +252,11 @@ class _RegionalScreenState extends State<RegionalScreen> {
             delegate: SliverChildListDelegate([
               FadeSlideIn(
                 offsetY: 30,
-                child: _buildActiveProfileCard(context, currentBeneficiary, isDark),
+                child: _buildActiveProfileCard(
+                  context,
+                  currentBeneficiary,
+                  isDark,
+                ),
               ),
               if (!UserSession.currentUser.isTitular) ...[
                 SizedBox(height: r.spaceMd),
@@ -236,7 +266,9 @@ class _RegionalScreenState extends State<RegionalScreen> {
                     padding: EdgeInsets.symmetric(horizontal: r.paddingH),
                     child: Container(
                       padding: EdgeInsets.symmetric(
-                          horizontal: r.spaceMd, vertical: r.spaceSm),
+                        horizontal: r.spaceMd,
+                        vertical: r.spaceSm,
+                      ),
                       decoration: BoxDecoration(
                         color: isDark
                             ? AppColors.info.withValues(alpha: 0.12)
@@ -252,8 +284,11 @@ class _RegionalScreenState extends State<RegionalScreen> {
                         children: [
                           Padding(
                             padding: const EdgeInsets.only(top: 1),
-                            child: Icon(CupertinoIcons.info_circle_fill,
-                                size: r.iconSm, color: AppColors.info),
+                            child: Icon(
+                              CupertinoIcons.info_circle_fill,
+                              size: r.iconSm,
+                              color: AppColors.info,
+                            ),
                           ),
                           SizedBox(width: r.spaceSm),
                           Expanded(
@@ -283,10 +318,16 @@ class _RegionalScreenState extends State<RegionalScreen> {
                 ),
               ),
               SizedBox(height: r.spaceSm),
-              if (_locationApplied && _entries.isNotEmpty && _entries.first.distanceKm != null)
+              if (_locationApplied &&
+                  _entries.isNotEmpty &&
+                  _entries.first.distanceKm != null)
                 Padding(
                   padding: EdgeInsets.only(
-                      left: r.paddingH, right: r.paddingH, top: 0, bottom: r.spaceMd),
+                    left: r.paddingH,
+                    right: r.paddingH,
+                    top: 0,
+                    bottom: r.spaceMd,
+                  ),
                   child: Wrap(
                     spacing: r.spaceSm,
                     crossAxisAlignment: WrapCrossAlignment.center,
@@ -310,7 +351,9 @@ class _RegionalScreenState extends State<RegionalScreen> {
               if (_entries.isEmpty)
                 Padding(
                   padding: EdgeInsets.all(r.spaceXxl),
-                  child: const Center(child: Text('No hay establecimientos disponibles.')),
+                  child: const Center(
+                    child: Text('No hay establecimientos disponibles.'),
+                  ),
                 ),
             ]),
           ),
@@ -334,7 +377,11 @@ class _RegionalScreenState extends State<RegionalScreen> {
       navigationBar: CupertinoNavigationBar(
         middle: Text(
           'Establecimiento',
-          style: TextStyle(fontWeight: FontWeight.w700, fontSize: r.navTitleSize, color: AppColors.textPrimaryC(isDark)),
+          style: TextStyle(
+            fontWeight: FontWeight.w700,
+            fontSize: r.navTitleSize,
+            color: AppColors.textPrimaryC(isDark),
+          ),
         ),
         backgroundColor: isDark
             ? AppColors.darkSurface.withValues(alpha: 0.92)
@@ -347,18 +394,18 @@ class _RegionalScreenState extends State<RegionalScreen> {
         ),
       ),
       child: SafeArea(
-        child: Column(
-          children: [
-            Expanded(child: _buildBody(context)),
-          ],
-        ),
+        child: Column(children: [Expanded(child: _buildBody(context))]),
       ),
     );
   }
 
   // ── Profile selector card ────────────────────────────────────────────────
 
-  Widget _buildActiveProfileCard(BuildContext context, BeneficiaryModel? beneficiary, bool isDark) {
+  Widget _buildActiveProfileCard(
+    BuildContext context,
+    BeneficiaryModel? beneficiary,
+    bool isDark,
+  ) {
     if (beneficiary == null) return const SizedBox.shrink();
 
     final r = context.r;
@@ -368,35 +415,31 @@ class _RegionalScreenState extends State<RegionalScreen> {
 
     return Container(
       margin: EdgeInsets.symmetric(horizontal: r.paddingH),
-      padding: EdgeInsets.all(r.cardPadding),
-      decoration: BoxDecoration(
-        color: AppColors.cardBg(isDark),
+      child: LiquidGlass(
+        isDark: isDark,
         borderRadius: BorderRadius.circular(r.cardRadius),
-        boxShadow: AppColors.cardShadowFor(isDark),
-        border: Border.all(
-          color: isDark ? AppColors.cardBorder(isDark) : AppColors.primary.withValues(alpha: 0.15),
-        ),
-      ),
-      child: Row(
-        children: [
-          // Avatar
-          Container(
-            width: r.avatarLg,
-            height: r.avatarLg,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: avatarColor,
+        padding: EdgeInsets.all(r.cardPadding),
+        shadow: AppColors.cardShadowFor(isDark),
+        child: Row(
+          children: [
+            // Avatar
+            Container(
+              width: r.avatarLg,
+              height: r.avatarLg,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: avatarColor,
+              ),
+              child: ClipOval(
+                child: _buildAvatarContent(beneficiary, isTitular),
+              ),
             ),
-            child: ClipOval(
-              child: _buildAvatarContent(beneficiary, isTitular),
-            ),
-          ),
-          SizedBox(width: r.spaceMd),
-          // Name + label
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
+            SizedBox(width: r.spaceMd),
+            // Name + label
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
                   Row(
                     crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
@@ -419,19 +462,28 @@ class _RegionalScreenState extends State<RegionalScreen> {
                           onTap: _onChangeBeneficiary,
                           child: Container(
                             padding: EdgeInsets.symmetric(
-                                horizontal: r.chipPaddingH, vertical: 4),
+                              horizontal: r.chipPaddingH,
+                              vertical: 4,
+                            ),
                             decoration: BoxDecoration(
-                              color: AppColors.accentForTheme(isDark).withValues(alpha: 0.08),
+                              color: AppColors.accentForTheme(
+                                isDark,
+                              ).withValues(alpha: 0.08),
                               borderRadius: BorderRadius.circular(r.chipRadius),
                               border: Border.all(
-                                color: AppColors.accentForTheme(isDark).withValues(alpha: 0.2),
+                                color: AppColors.accentForTheme(
+                                  isDark,
+                                ).withValues(alpha: 0.2),
                               ),
                             ),
                             child: Row(
                               mainAxisSize: MainAxisSize.min,
                               children: [
-                                Icon(CupertinoIcons.arrow_2_squarepath,
-                                    size: r.iconSm * 0.7, color: AppColors.accentForTheme(isDark)),
+                                Icon(
+                                  CupertinoIcons.arrow_2_squarepath,
+                                  size: r.iconSm * 0.7,
+                                  color: AppColors.accentForTheme(isDark),
+                                ),
                                 SizedBox(width: r.spaceXs),
                                 Text(
                                   'Cambiar',
@@ -468,7 +520,9 @@ class _RegionalScreenState extends State<RegionalScreen> {
                     SizedBox(height: r.spaceSm),
                     Container(
                       padding: EdgeInsets.symmetric(
-                          horizontal: r.chipPaddingH, vertical: r.chipPaddingV),
+                        horizontal: r.chipPaddingH,
+                        vertical: r.chipPaddingV,
+                      ),
                       decoration: BoxDecoration(
                         color: isTitular
                             ? AppColors.primary.withValues(alpha: 0.1)
@@ -491,6 +545,7 @@ class _RegionalScreenState extends State<RegionalScreen> {
             ),
           ],
         ),
+      ),
     );
   }
 
@@ -511,9 +566,12 @@ class _RegionalScreenState extends State<RegionalScreen> {
               ? user.photoBase64
               : beneficiary.photoBase64;
         } else {
-          final fresh = user.beneficiaries
-              .where((b) => b.id == beneficiary.id && b.photoBase64.isNotEmpty);
-          photoB64 = fresh.isNotEmpty ? fresh.first.photoBase64 : beneficiary.photoBase64;
+          final fresh = user.beneficiaries.where(
+            (b) => b.id == beneficiary.id && b.photoBase64.isNotEmpty,
+          );
+          photoB64 = fresh.isNotEmpty
+              ? fresh.first.photoBase64
+              : beneficiary.photoBase64;
         }
 
         if (photoB64.isNotEmpty) {
@@ -558,24 +616,33 @@ class _RegionalScreenState extends State<RegionalScreen> {
     //    y también el caso donde el backend omitió la familia en el token de login.
     if (bens.length <= 1 && UserSession.currentUser.isTitular) {
       bool loaderOpen = false;
-      showCupertinoDialog<void>(
+      showAppDialog<void>(
         context: context,
         barrierDismissible: false,
-        builder: (_) => const LoaderWithMessage(message: 'Cargando familiares…'),
+        builder: (_) =>
+            const LoaderWithMessage(message: 'Cargando familiares…'),
       );
       loaderOpen = true;
       try {
         final idper = int.tryParse(UserSession.currentUser.id) ?? 0;
         final fresh = await _service.getGrupoFamiliar(idper);
         if (!mounted) return;
-        if (loaderOpen) { loaderOpen = false; Navigator.of(context, rootNavigator: true).pop(); }
+        if (loaderOpen) {
+          loaderOpen = false;
+          Navigator.of(context, rootNavigator: true).pop();
+        }
         if (fresh.isNotEmpty) {
           bens = fresh;
-          UserSession.currentUser = UserSession.currentUser.copyWith(beneficiaries: fresh);
+          UserSession.currentUser = UserSession.currentUser.copyWith(
+            beneficiaries: fresh,
+          );
           setState(() => _beneficiaries = List.from(fresh));
         }
       } catch (_) {
-        if (mounted && loaderOpen) { loaderOpen = false; Navigator.of(context, rootNavigator: true).pop(); }
+        if (mounted && loaderOpen) {
+          loaderOpen = false;
+          Navigator.of(context, rootNavigator: true).pop();
+        }
         bens = _beneficiaries; // fallback a caché local
       }
     }
@@ -591,15 +658,16 @@ class _RegionalScreenState extends State<RegionalScreen> {
       setState(() {
         _beneficiaries = List.from(bens); // sincronizar caché local
         widget.tabShell.bookingState.beneficiary = selected;
-        widget.tabShell.bookingState.beneficiaryLabel =
-            selected.isTitular ? 'Para mí' : selected.displayTitle;
+        widget.tabShell.bookingState.beneficiaryLabel = selected.isTitular
+            ? 'Para mí'
+            : selected.displayTitle;
       });
     }
   }
 
   Future<void> _showValidacionModal(String message) async {
     if (!mounted) return;
-    await showCupertinoDialog<void>(
+    await showAppDialog<void>(
       context: context,
       barrierDismissible: false,
       builder: (ctx) {
@@ -608,8 +676,11 @@ class _RegionalScreenState extends State<RegionalScreen> {
           title: const Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(CupertinoIcons.exclamationmark_shield_fill,
-                  color: CupertinoColors.systemOrange, size: 20),
+              Icon(
+                CupertinoIcons.exclamationmark_shield_fill,
+                color: CupertinoColors.systemOrange,
+                size: 20,
+              ),
               SizedBox(width: 8),
               Expanded(
                 child: Text(
@@ -643,13 +714,23 @@ class _RegionalScreenState extends State<RegionalScreen> {
 
   // ── Hospital list (flat) ────────────────────────────────────────────────
 
-  Future<void> _onHospitalSelected(RegionalModel regional, HospitalModel hospital) async {
-    debugPrint('🏥 Hospital seleccionado: ${hospital.name} (hospital.id="${hospital.id}")');
+  Future<void> _onHospitalSelected(
+    RegionalModel regional,
+    HospitalModel hospital,
+  ) async {
+    debugPrint(
+      '🏥 Hospital seleccionado: ${hospital.name} (hospital.id="${hospital.id}")',
+    );
     widget.tabShell.bookingState.regional = regional;
     widget.tabShell.bookingState.hospital = hospital;
 
+    // Modo tutorial: nunca se ejecutan verificaciones reales de negocio
+    // (podrían bloquear la demo por inasistencias/aportes reales del
+    // usuario) — se avanza directo al siguiente paso.
+    final isTutorial = widget.tabShell.bookingState.isTutorialMode;
+
     // Para titulares: verificar validaciones + cita activa del beneficiario elegido.
-    if (UserSession.currentUser.isTitular) {
+    if (UserSession.currentUser.isTitular && !isTutorial) {
       if (_isCheckingCita) return;
       setState(() => _isCheckingCita = true);
 
@@ -670,20 +751,21 @@ class _RegionalScreenState extends State<RegionalScreen> {
         final matricula = (beneficiary == null || beneficiary.isTitular)
             ? UserSession.currentUser.matricula
             : (beneficiary.matricula.isNotEmpty
-                ? beneficiary.matricula
-                : UserSession.currentUser.matricula);
+                  ? beneficiary.matricula
+                  : UserSession.currentUser.matricula);
         final idper = (beneficiary == null || beneficiary.isTitular)
             ? (int.tryParse(UserSession.currentUser.id) ?? 0)
             : (int.tryParse(beneficiary.id) ?? 0);
 
-        showCupertinoDialog<void>(
+        showAppDialog<void>(
           context: context,
           barrierDismissible: false,
-          builder: (_) => const LoaderWithMessage(message: 'Verificando disponibilidad…'),
+          builder: (_) =>
+              const LoaderWithMessage(message: 'Verificando disponibilidad…'),
         );
         loaderOpen = true;
 
-        // 1a. Penalización por inasistencias (3 faltas) del familiar elegido.
+        // 1a. Penalización por inasistencias (2 faltas) del familiar elegido.
         //     Se consulta con el idper de la persona que va a ser atendida; si
         //     está penalizada (data:true) debe reservar de forma presencial.
         final inasistenciasMsg = await _service.validarInasistencias(idper);
@@ -742,9 +824,7 @@ class _RegionalScreenState extends State<RegionalScreen> {
     // Agrupar respetando el orden de aparición en _entries.
     final byDepto = <String, List<_HospitalEntry>>{};
     for (final e in _entries) {
-      final depto = e.regional.name.trim().isEmpty
-          ? 'Otros'
-          : e.regional.name;
+      final depto = e.regional.name.trim().isEmpty ? 'Otros' : e.regional.name;
       byDepto.putIfAbsent(depto, () => []).add(e);
     }
 
@@ -769,24 +849,27 @@ class _RegionalScreenState extends State<RegionalScreen> {
 
       // El depto que contiene el hospital más cercano es el primero (entries
       // viene ordenado por distancia). Su header muestra "Más cercano a ti".
-      final isNearestDepto = _locationApplied &&
+      final isNearestDepto =
+          _locationApplied &&
           deptoStartIndex == 0 &&
           hospitals.isNotEmpty &&
           hospitals.first.distanceKm != null;
 
-      widgets.add(_buildDeptoHeader(
-        depto: depto,
-        count: hospitals.length,
-        isExpanded: isExpanded,
-        isNearest: isNearestDepto,
-        isDark: isDark,
-        r: r,
-        onTap: () {
-          setState(() {
-            _expandedDeptos[depto] = !isExpanded;
-          });
-        },
-      ));
+      widgets.add(
+        _buildDeptoHeader(
+          depto: depto,
+          count: hospitals.length,
+          isExpanded: isExpanded,
+          isNearest: isNearestDepto,
+          isDark: isDark,
+          r: r,
+          onTap: () {
+            setState(() {
+              _expandedDeptos[depto] = !isExpanded;
+            });
+          },
+        ),
+      );
 
       widgets.add(
         AnimatedSize(
@@ -804,12 +887,26 @@ class _RegionalScreenState extends State<RegionalScreen> {
                         for (int i = 0; i < hospitals.length; i++)
                           Padding(
                             padding: EdgeInsets.fromLTRB(
-                                r.paddingH, 0, r.paddingH, r.listItemSpacing),
-                            child: _hospitalCard(
-                              context,
-                              hospitals[i],
-                              isDark: isDark,
+                              r.paddingH,
+                              0,
+                              r.paddingH,
+                              r.listItemSpacing,
                             ),
+                            child: (widget.tabShell.bookingState.isTutorialMode &&
+                                    deptoStartIndex == 0 &&
+                                    i == 0)
+                                ? GuidedTapHint(
+                                    child: _hospitalCard(
+                                      context,
+                                      hospitals[i],
+                                      isDark: isDark,
+                                    ),
+                                  )
+                                : _hospitalCard(
+                                    context,
+                                    hospitals[i],
+                                    isDark: isDark,
+                                  ),
                           ),
                       ],
                     ),
@@ -836,12 +933,18 @@ class _RegionalScreenState extends State<RegionalScreen> {
     final accent = AppColors.accentForTheme(isDark);
     return Padding(
       padding: EdgeInsets.fromLTRB(
-          r.paddingH, r.spaceMd, r.paddingH, r.spaceSm),
+        r.paddingH,
+        r.spaceMd,
+        r.paddingH,
+        r.spaceSm,
+      ),
       child: AnimatedPressButton(
         onTap: onTap,
         child: Container(
           padding: EdgeInsets.symmetric(
-              horizontal: r.spaceMd, vertical: r.spaceSm),
+            horizontal: r.spaceMd,
+            vertical: r.spaceSm,
+          ),
           decoration: BoxDecoration(
             color: isDark
                 ? AppColors.primary.withValues(alpha: 0.15)
@@ -882,7 +985,9 @@ class _RegionalScreenState extends State<RegionalScreen> {
                 Flexible(
                   child: Container(
                     padding: EdgeInsets.symmetric(
-                        horizontal: r.chipPaddingH, vertical: r.chipPaddingV),
+                      horizontal: r.chipPaddingH,
+                      vertical: r.chipPaddingV,
+                    ),
                     decoration: BoxDecoration(
                       color: AppColors.primary.withValues(alpha: 0.12),
                       borderRadius: BorderRadius.circular(r.radiusSm),
@@ -890,8 +995,11 @@ class _RegionalScreenState extends State<RegionalScreen> {
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Icon(CupertinoIcons.location_fill,
-                            size: r.iconSm * 0.7, color: accent),
+                        Icon(
+                          CupertinoIcons.location_fill,
+                          size: r.iconSm * 0.7,
+                          color: accent,
+                        ),
                         SizedBox(width: r.spaceXs),
                         Flexible(
                           child: Text(
@@ -912,7 +1020,9 @@ class _RegionalScreenState extends State<RegionalScreen> {
               SizedBox(width: r.spaceSm),
               Container(
                 padding: EdgeInsets.symmetric(
-                    horizontal: r.chipPaddingH, vertical: 2),
+                  horizontal: r.chipPaddingH,
+                  vertical: 2,
+                ),
                 margin: EdgeInsets.only(right: r.spaceSm),
                 decoration: BoxDecoration(
                   color: accent.withValues(alpha: 0.12),
@@ -947,147 +1057,11 @@ class _RegionalScreenState extends State<RegionalScreen> {
     _HospitalEntry entry, {
     required bool isDark,
   }) {
-    final r = context.r;
-    final hospital = entry.hospital;
-    final regional = entry.regional;
-    final cardColor = isDark
-        ? AppColors.primary.withValues(alpha: 0.15)
-        : AppColors.primary.withValues(alpha: 0.05);
-    // Ancho de la tira fotográfica — escala con el tamaño de pantalla
-    final photoW = r.isSmallPhone ? 78.0 : r.isTablet ? 128.0 : 100.0;
-    final hasPhoto = hospital.photoBase64.isNotEmpty;
-    return AnimatedPressButton(
-      onTap: () => _onHospitalSelected(regional, hospital),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(r.radiusLg),
-        child: Container(
-          width: double.infinity,
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(r.radiusLg),
-            color: cardColor,
-            border: Border.all(
-                color: AppColors.primary.withValues(alpha: 0.15), width: 1.5),
-          ),
-          child: Stack(
-            children: [
-              // ── Foto del hospital con desvanecido en borde izquierdo ─────
-              if (hasPhoto)
-                Positioned(
-                  top: 0,
-                  bottom: 0,
-                  right: 0,
-                  width: photoW,
-                  child: _buildPhotoStrip(hospital.photoBase64, isDark),
-                ),
-
-              // ── Contenido — padding derecho reserva la zona de la foto ───
-              Padding(
-                padding: EdgeInsets.fromLTRB(
-                  r.spaceMd,
-                  r.spaceMd,
-                  hasPhoto ? photoW + 8 : r.spaceMd,
-                  r.spaceMd,
-                ),
-                child: Row(
-                  children: [
-                    Container(
-                      width: r.listAvatarSize,
-                      height: r.listAvatarSize,
-                      decoration: BoxDecoration(
-                        color: AppColors.primary.withValues(alpha: 0.1),
-                        shape: BoxShape.circle,
-                      ),
-                      child: Icon(
-                        CupertinoIcons.building_2_fill,
-                        size: r.iconLg * 0.7,
-                        color: isDark ? AppColors.white : AppColors.primary,
-                      ),
-                    ),
-                    SizedBox(width: r.spaceMd),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Row(
-                            children: [
-                              Expanded(
-                                child: Text(
-                                  hospital.name,
-                                  style: context.texts.titleMedium.copyWith(
-                                    fontWeight: FontWeight.w800,
-                                    color: AppColors.textPrimaryC(isDark),
-                                    height: 1.2,
-                                  ),
-                                  maxLines: 2,
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                              ),
-                            ],
-                          ),
-                          SizedBox(height: r.spaceXs),
-                          Text(
-                            regional.name,
-                            style: context.texts.bodySmall.copyWith(
-                              color: AppColors.accentForTheme(isDark),
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                          if (hospital.address.isNotEmpty) ...[
-                            SizedBox(height: r.spaceXs),
-                            Text(
-                              hospital.address,
-                              style: context.texts.bodySmall,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ],
-                        ],
-                      ),
-                    ),
-                    SizedBox(width: r.spaceSm),
-                    Icon(
-                      CupertinoIcons.chevron_right,
-                      color: isDark ? AppColors.white : AppColors.primary,
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
+    return HospitalCard(
+      hospital: entry.hospital,
+      regionalName: entry.regional.name,
+      isDark: isDark,
+      onTap: () => _onHospitalSelected(entry.regional, entry.hospital),
     );
-  }
-
-  Widget _buildPhotoStrip(String base64, bool isDark) {
-    // Usa el mismo color sólido que _buildFadedHospitalPhoto del Calendario
-    // para que el desvanecido blanco/oscuro sea idéntico.
-    final fadeColor = AppColors.cardBg(isDark);
-    try {
-      return Stack(
-        fit: StackFit.expand,
-        children: [
-          Image.memory(
-            base64Decode(base64),
-            fit: BoxFit.cover,
-            alignment: Alignment.center,
-            errorBuilder: (_, __, ___) => const SizedBox(),
-          ),
-          DecoratedBox(
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.centerLeft,
-                end: Alignment.centerRight,
-                colors: [fadeColor, fadeColor.withValues(alpha: 0.0)],
-                stops: const [0.0, 0.45],
-              ),
-            ),
-          ),
-        ],
-      );
-    } catch (_) {
-      return const SizedBox();
-    }
   }
 }

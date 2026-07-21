@@ -148,12 +148,14 @@ class AuthService {
               id: b.id,
               fullName: b.fullName,
               relationship: b.relationship,
+              ci: b.ci,
               age: b.age,
               gender: b.gender,
               matricula: b.matricula,
               photoBase64: b.photoBase64,
               grado: loggedUser.rank,
               serviceStatus: b.serviceStatus,
+              atencion: b.atencion,
             );
           }
           return b;

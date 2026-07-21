@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:typed_data';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import '../../../core/animations/app_dialog.dart';
 import '../../../core/utils/app_version_helper.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/extensions/responsive_extensions.dart';
@@ -15,18 +16,23 @@ import '../../../core/animations/app_page_route.dart';
 import '../../../core/animations/optimized_animations.dart';
 import '../../../core/theme/theme_manager.dart';
 import '../../../core/services/auth_service.dart';
+import '../../../core/services/session_restore_service.dart';
 import '../../../core/widgets/cossmil_ios_alert.dart';
+import '../../../core/widgets/liquid_glass.dart';
 import '../../../core/theme/sound_manager.dart';
 import '../../../core/utils/rank_utils.dart';
 import '../../../core/widgets/image_enlarged_modal.dart';
 import '../../../core/widgets/adaptive_sliver_nav_bar.dart';
 import '../../notificaciones/screens/notificaciones_screen.dart';
+import '../../../shell/tab_shell.dart';
 import 'emergency_data_screen.dart';
 // Favoritos OCULTO (feature aún no funcional):
 // import 'favoritos_screen.dart';
 
 class PerfilScreen extends StatefulWidget {
-  const PerfilScreen({super.key});
+  final TabShellState tabShell;
+
+  const PerfilScreen({super.key, required this.tabShell});
 
   @override
   State<PerfilScreen> createState() => _PerfilScreenState();
@@ -451,6 +457,25 @@ class _PerfilScreenState extends State<PerfilScreen> {
                       ),
                       SizedBox(height: r.spaceLg),
 
+                      // Ayuda — tutoriales guiados (no reales, solo demostración)
+                      FadeSlideIn(delay: const Duration(milliseconds: 300), offsetY: 12,
+                        child: _buildSection(
+                          isDark: isDark,
+                          header: 'AYUDA',
+                          children: [
+                            _buildNavTile(
+                              isDark: isDark,
+                              icon: CupertinoIcons.play_circle_fill,
+                              iconColor: const Color(0xFF059669),
+                              title: 'Cómo sacar una ficha',
+                              subtitle: 'Tutorial guiado paso a paso',
+                              onTap: () => widget.tabShell.startTutorialBooking(),
+                            ),
+                          ],
+                        ),
+                      ),
+                      SizedBox(height: r.spaceLg),
+
                       // Cerrar sesión
                       FadeSlideIn(delay: const Duration(milliseconds: 320), offsetY: 12,
                         child: _buildLogoutTile(isDark, r),
@@ -810,17 +835,11 @@ class _PerfilScreenState extends State<PerfilScreen> {
             ),
           ),
         ),
-        Container(
-          decoration: BoxDecoration(
-            color: AppColors.cardBg(isDark),
-            borderRadius: BorderRadius.circular(14),
-            border: Border.all(color: AppColors.cardBorder(isDark), width: 0.5),
-            boxShadow: AppColors.cardShadowFor(isDark),
-          ),
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(14),
-            child: Column(children: manualDividers ? children : _separatedWith(children, isDark)),
-          ),
+        LiquidGlass(
+          isDark: isDark,
+          borderRadius: BorderRadius.circular(14),
+          shadow: AppColors.cardShadowFor(isDark),
+          child: Column(children: manualDividers ? children : _separatedWith(children, isDark)),
         ),
       ],
     );
@@ -1432,7 +1451,7 @@ class _PerfilScreenState extends State<PerfilScreen> {
   // ──────────────────────────────────────────────────────────────────────────
 
   Future<void> _confirmLogout() async {
-    final confirmed = await showCupertinoDialog<bool>(
+    final confirmed = await showAppDialog<bool>(
       context: context,
       builder: (ctx) => CupertinoAlertDialog(
         title: const Text('Cerrar Sesión'),
@@ -1472,6 +1491,10 @@ class _PerfilScreenState extends State<PerfilScreen> {
     try {
       final idper = int.tryParse(UserSession.currentUser.id) ?? 0;
       await AuthService().updateProfile(idper: idper, mail: newEmail, fon: _phone);
+      // Sincronizar la sesión global + storage cifrado para que el cambio
+      // persista al reentrar al perfil o reiniciar la app.
+      UserSession.currentUser = UserSession.currentUser.copyWith(email: newEmail);
+      await SessionRestoreService.saveUserSession(UserSession.currentUser);
       if (!mounted) return;
       setState(() { _email = newEmail; _isEditingEmail = false; _isSavingEmail = false; });
       await CossmilIosAlert.show(
@@ -1500,6 +1523,15 @@ class _PerfilScreenState extends State<PerfilScreen> {
     try {
       final idper = int.tryParse(UserSession.currentUser.id) ?? 0;
       await AuthService().updateProfile(idper: idper, mail: _email, fon: newPhone);
+      // Sincronizar la sesión global + storage cifrado para que el cambio
+      // persista al reentrar al perfil o reiniciar la app.
+      // OJO: el cuadro de perfil (ProfessionalProfileCard) muestra `numCel`
+      // (de aseg-tipo-gpo), no `phone`. Actualizamos ambos para que el cambio
+      // se refleje de inmediato en el cuadro. La persistencia definitiva tras
+      // un re-login depende de que el backend actualice safil.asegurado.numcel.
+      UserSession.currentUser =
+          UserSession.currentUser.copyWith(phone: newPhone, numCel: newPhone);
+      await SessionRestoreService.saveUserSession(UserSession.currentUser);
       if (!mounted) return;
       setState(() { _phone = newPhone; _isEditingPhone = false; _isSavingPhone = false; });
       await CossmilIosAlert.show(
@@ -1525,7 +1557,7 @@ class _PerfilScreenState extends State<PerfilScreen> {
     bool obscure2 = true;
     bool isSaving = false;
 
-    await showCupertinoDialog(
+    await showAppDialog(
       context: context,
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setDialogState) => CupertinoAlertDialog(

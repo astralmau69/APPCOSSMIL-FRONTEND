@@ -1,10 +1,12 @@
 import 'dart:convert';
 import 'dart:typed_data';
 import 'package:flutter/cupertino.dart';
+import '../../../core/animations/app_dialog.dart';
 import 'package:flutter/material.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/extensions/responsive_extensions.dart';
 import '../../../core/widgets/app_background.dart';
+import '../../../core/widgets/liquid_glass.dart';
 import '../../../core/services/favorites_service.dart';
 import '../../../core/services/push_notification_service.dart';
 import '../../../core/animations/optimized_animations.dart';
@@ -56,7 +58,7 @@ class _FavoritosScreenState extends State<FavoritosScreen> {
       await _loadFavorites();
 
       if (mounted) {
-        showCupertinoDialog(
+        showAppDialog(
           context: context,
           builder: (ctx) => CupertinoAlertDialog(
             title: const Text('Médico Eliminado'),
@@ -219,24 +221,20 @@ class _FavoritosScreenState extends State<FavoritosScreen> {
   ) {
     final avatarSize = r.listAvatarSize * 1.3;
 
-    return Container(
-      decoration: BoxDecoration(
-        color: AppColors.cardBg(isDark),
-        borderRadius: BorderRadius.circular(r.cardRadius),
-        border: Border.all(color: AppColors.cardBorder(isDark), width: 0.8),
-        boxShadow: isDark
-            ? []
-            : [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.05),
-                  blurRadius: 12,
-                  offset: const Offset(0, 3),
-                ),
-              ],
-      ),
-      child: Padding(
-        padding: EdgeInsets.all(r.cardPadding),
-        child: Row(
+    return LiquidGlass(
+      isDark: isDark,
+      borderRadius: BorderRadius.circular(r.cardRadius),
+      padding: EdgeInsets.all(r.cardPadding),
+      shadow: isDark
+          ? null
+          : [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.05),
+                blurRadius: 12,
+                offset: const Offset(0, 3),
+              ),
+            ],
+      child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // Foto
@@ -318,7 +316,6 @@ class _FavoritosScreenState extends State<FavoritosScreen> {
             ),
           ],
         ),
-      ),
     );
   }
 

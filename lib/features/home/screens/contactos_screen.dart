@@ -1,6 +1,7 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import '../../../core/animations/app_dialog.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/extensions/responsive_extensions.dart';
@@ -201,7 +202,11 @@ class _ContactosScreenState extends State<ContactosScreen> {
           ),
           SliverPadding(
             padding: EdgeInsets.fromLTRB(
-                context.r.paddingH, 12, context.r.paddingH, context.r.navBarBottomSpace),
+              context.r.paddingH,
+              12,
+              context.r.paddingH,
+              context.r.navBarBottomSpace,
+            ),
             sliver: SliverList(
               delegate: SliverChildListDelegate([
                 // Subtitle
@@ -259,7 +264,7 @@ class _ContactosScreenState extends State<ContactosScreen> {
   static void _copyPhone(BuildContext context, String phone) {
     final clean = phone.replaceAll(RegExp(r'[^0-9]'), '');
     Clipboard.setData(ClipboardData(text: clean));
-    showCupertinoDialog(
+    showAppDialog(
       context: context,
       builder: (ctx) => CupertinoAlertDialog(
         title: const Text('Número copiado'),
@@ -276,7 +281,10 @@ class _ContactosScreenState extends State<ContactosScreen> {
   }
 
   static Future<void> _makePhoneCall(String phoneNumber) async {
-    final cleanFormat = phoneNumber.split(' ').first.replaceAll(RegExp(r'[^\d+]'), '');
+    final cleanFormat = phoneNumber
+        .split(' ')
+        .first
+        .replaceAll(RegExp(r'[^\d+]'), '');
     final Uri launchUri = Uri(scheme: 'tel', path: cleanFormat);
     if (!await launchUrl(launchUri, mode: LaunchMode.externalApplication)) {
       debugPrint('Could not launch $launchUri');
@@ -322,7 +330,9 @@ class _CollapsibleGroup extends StatelessWidget {
             onTap: onToggle,
             child: Padding(
               padding: EdgeInsets.symmetric(
-                  horizontal: r.cardPadding, vertical: r.spaceMd),
+                horizontal: r.cardPadding,
+                vertical: r.spaceMd,
+              ),
               child: Row(
                 children: [
                   // Icon container
@@ -333,7 +343,11 @@ class _CollapsibleGroup extends StatelessWidget {
                       color: group.accentColor.withValues(alpha: 0.12),
                       borderRadius: BorderRadius.circular(r.radiusMd),
                     ),
-                    child: Icon(group.icon, size: r.iconMd, color: group.accentColor),
+                    child: Icon(
+                      group.icon,
+                      size: r.iconMd,
+                      color: group.accentColor,
+                    ),
                   ),
                   SizedBox(width: r.spaceMd),
 
@@ -368,7 +382,9 @@ class _CollapsibleGroup extends StatelessWidget {
                   if (!isExpanded)
                     Container(
                       padding: EdgeInsets.symmetric(
-                          horizontal: r.chipPaddingH, vertical: r.chipPaddingV),
+                        horizontal: r.chipPaddingH,
+                        vertical: r.chipPaddingV,
+                      ),
                       decoration: BoxDecoration(
                         color: group.accentColor.withValues(alpha: 0.12),
                         borderRadius: BorderRadius.circular(r.chipRadius),
@@ -475,7 +491,9 @@ class _ContactRow extends StatelessWidget {
       children: [
         Padding(
           padding: EdgeInsets.symmetric(
-              horizontal: r.cardPadding, vertical: r.spaceMd),
+            horizontal: r.cardPadding,
+            vertical: r.spaceMd,
+          ),
           child: Row(
             children: [
               // Icon
@@ -499,9 +517,13 @@ class _ContactRow extends StatelessWidget {
                       Container(
                         margin: const EdgeInsets.only(bottom: 3),
                         padding: EdgeInsets.symmetric(
-                            horizontal: r.spaceSm, vertical: 2),
+                          horizontal: r.spaceSm,
+                          vertical: 2,
+                        ),
                         decoration: BoxDecoration(
-                          color: const Color(0xFF059669).withValues(alpha: 0.10),
+                          color: const Color(
+                            0xFF059669,
+                          ).withValues(alpha: 0.10),
                           borderRadius: BorderRadius.circular(r.radiusSm),
                         ),
                         child: Text(
@@ -550,13 +572,15 @@ class _ContactRow extends StatelessWidget {
                   _ActionButton(
                     icon: CupertinoIcons.phone_fill,
                     color: accentColor,
-                    onTap: () => _ContactosScreenState._makePhoneCall(item.phone),
+                    onTap: () =>
+                        _ContactosScreenState._makePhoneCall(item.phone),
                   ),
                   SizedBox(height: r.spaceXs),
                   _ActionButton(
                     icon: CupertinoIcons.doc_on_clipboard,
                     color: AppColors.textSecondaryC(isDark),
-                    onTap: () => _ContactosScreenState._copyPhone(context, item.phone),
+                    onTap: () =>
+                        _ContactosScreenState._copyPhone(context, item.phone),
                   ),
                 ],
               ),
@@ -566,10 +590,7 @@ class _ContactRow extends StatelessWidget {
         if (showDivider)
           Padding(
             padding: EdgeInsets.symmetric(horizontal: r.cardPadding),
-            child: Container(
-              height: 0.5,
-              color: AppColors.cardBorder(isDark),
-            ),
+            child: Container(height: 0.5, color: AppColors.cardBorder(isDark)),
           ),
       ],
     );
@@ -620,10 +641,7 @@ class _DnticSupportCard extends StatelessWidget {
   final bool isExpanded;
   final VoidCallback onToggle;
 
-  const _DnticSupportCard({
-    required this.isExpanded,
-    required this.onToggle,
-  });
+  const _DnticSupportCard({required this.isExpanded, required this.onToggle});
 
   @override
   Widget build(BuildContext context) {
@@ -650,7 +668,9 @@ class _DnticSupportCard extends StatelessWidget {
             onTap: onToggle,
             child: Padding(
               padding: EdgeInsets.symmetric(
-                  horizontal: r.cardPadding, vertical: r.spaceMd),
+                horizontal: r.cardPadding,
+                vertical: r.spaceMd,
+              ),
               child: Row(
                 children: [
                   // Ícono con degradado azul
@@ -713,7 +733,9 @@ class _DnticSupportCard extends StatelessWidget {
                   if (!isExpanded)
                     Container(
                       padding: EdgeInsets.symmetric(
-                          horizontal: r.chipPaddingH, vertical: r.chipPaddingV),
+                        horizontal: r.chipPaddingH,
+                        vertical: r.chipPaddingV,
+                      ),
                       decoration: BoxDecoration(
                         color: _accent.withValues(alpha: 0.12),
                         borderRadius: BorderRadius.circular(r.chipRadius),
@@ -779,21 +801,24 @@ class _DnticContent extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         // Divider superior
-        Container(
-          height: 0.5,
-          color: accent.withValues(alpha: 0.20),
-        ),
+        Container(height: 0.5, color: accent.withValues(alpha: 0.20)),
 
         Padding(
           padding: EdgeInsets.fromLTRB(
-              r.cardPadding, r.spaceMd, r.cardPadding, r.spaceMd),
+            r.cardPadding,
+            r.spaceMd,
+            r.cardPadding,
+            r.spaceMd,
+          ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               // Badge SOPORTE TÉCNICO
               Container(
-                padding:
-                    EdgeInsets.symmetric(horizontal: r.spaceSm, vertical: 2),
+                padding: EdgeInsets.symmetric(
+                  horizontal: r.spaceSm,
+                  vertical: 2,
+                ),
                 decoration: BoxDecoration(
                   color: accent.withValues(alpha: 0.12),
                   borderRadius: BorderRadius.circular(r.radiusSm),
@@ -823,8 +848,11 @@ class _DnticContent extends StatelessWidget {
               // Horario
               Row(
                 children: [
-                  Icon(Icons.access_time_rounded,
-                      size: r.iconSm, color: accent),
+                  Icon(
+                    Icons.access_time_rounded,
+                    size: r.iconSm,
+                    color: accent,
+                  ),
                   SizedBox(width: r.spaceXs),
                   Text(
                     'Atención: Lun–Vie  08:30 – 16:30',
@@ -847,8 +875,11 @@ class _DnticContent extends StatelessWidget {
                       color: accent.withValues(alpha: 0.10),
                       borderRadius: BorderRadius.circular(r.radiusMd),
                     ),
-                    child: Icon(Icons.phone_rounded,
-                        size: r.iconSm, color: accent),
+                    child: Icon(
+                      Icons.phone_rounded,
+                      size: r.iconSm,
+                      color: accent,
+                    ),
                   ),
                   SizedBox(width: r.spaceSm),
                   Expanded(
@@ -871,8 +902,7 @@ class _DnticContent extends StatelessWidget {
                   _ActionButton(
                     icon: CupertinoIcons.phone_fill,
                     color: accent,
-                    onTap: () =>
-                        _ContactosScreenState._makePhoneCall(phone),
+                    onTap: () => _ContactosScreenState._makePhoneCall(phone),
                   ),
                 ],
               ),
@@ -885,13 +915,15 @@ class _DnticContent extends StatelessWidget {
                   padding: EdgeInsets.symmetric(vertical: r.spaceMd),
                   color: accent,
                   borderRadius: BorderRadius.circular(r.radiusMd),
-                  onPressed: () =>
-                      _ContactosScreenState._makePhoneCall(phone),
+                  onPressed: () => _ContactosScreenState._makePhoneCall(phone),
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      const Icon(Icons.phone_rounded,
-                          size: 20, color: AppColors.white),
+                      const Icon(
+                        Icons.phone_rounded,
+                        size: 20,
+                        color: AppColors.white,
+                      ),
                       SizedBox(width: r.spaceSm),
                       Text(
                         'Llamar al soporte',
@@ -946,8 +978,11 @@ class _EmergencyCard extends StatelessWidget {
                   color: AppColors.white.withValues(alpha: 0.18),
                   borderRadius: BorderRadius.circular(r.radiusMd),
                 ),
-                child: Icon(CupertinoIcons.bell_fill,
-                    color: AppColors.white, size: r.iconLg * 0.75),
+                child: Icon(
+                  CupertinoIcons.bell_fill,
+                  color: AppColors.white,
+                  size: r.iconLg * 0.75,
+                ),
               ),
               SizedBox(width: r.spaceMd),
               Expanded(
@@ -956,7 +991,9 @@ class _EmergencyCard extends StatelessWidget {
                   children: [
                     Container(
                       padding: const EdgeInsets.symmetric(
-                          horizontal: 8, vertical: 3),
+                        horizontal: 8,
+                        vertical: 3,
+                      ),
                       decoration: BoxDecoration(
                         color: AppColors.white.withValues(alpha: 0.20),
                         borderRadius: BorderRadius.circular(r.badgeRadius),
@@ -1019,12 +1056,16 @@ class _EmergencyCard extends StatelessWidget {
               padding: EdgeInsets.symmetric(vertical: r.spaceMd),
               color: AppColors.white.withValues(alpha: 0.20),
               borderRadius: BorderRadius.circular(r.radiusMd),
-              onPressed: () => _ContactosScreenState._makePhoneCall(contact.phone),
+              onPressed: () =>
+                  _ContactosScreenState._makePhoneCall(contact.phone),
               child: const Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(CupertinoIcons.phone_fill,
-                      size: 24, color: AppColors.white),
+                  Icon(
+                    CupertinoIcons.phone_fill,
+                    size: 24,
+                    color: AppColors.white,
+                  ),
                   SizedBox(width: 8),
                   Text(
                     'Llamar ahora',

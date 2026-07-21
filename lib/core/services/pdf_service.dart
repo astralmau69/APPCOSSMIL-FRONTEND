@@ -194,7 +194,7 @@ class PdfService {
                    borderRadius: pw.BorderRadius.circular(4),
                 ),
                 child: pw.Text(
-                   'ADVERTENCIA: Si falta 3 veces a sus consultas reservadas por la app será penalizado y no podrá volver a reservar fichas.',
+                   'ADVERTENCIA: Si falta 2 veces a sus consultas reservadas por la app será penalizado y no podrá volver a reservar fichas.',
                    textAlign: pw.TextAlign.center,
                    style: pw.TextStyle(fontSize: 7, color: PdfColor.fromHex('#991B1B'), fontWeight: pw.FontWeight.bold),
                 ),

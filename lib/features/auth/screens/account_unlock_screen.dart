@@ -343,18 +343,18 @@ class _AccountUnlockScreenState extends State<AccountUnlockScreen>
 
   Widget _buildBiometricKey(AppResponsive r) {
     final keySize = r.pinKeySize;
-    return SizedBox(
-      width: keySize,
-      height: keySize,
-      child: Material(
-        color: AppColors.primary.withValues(alpha: 0.1),
-        shape: const CircleBorder(),
-        child: InkWell(
-          onTap: _bioInProgress ? null : _tryBiometrics,
-          customBorder: const CircleBorder(),
-          child: Icon(Icons.fingerprint,
-              size: keySize * 0.5, color: AppColors.primary),
+    return OptimizedPressButton(
+      onTap: _bioInProgress ? null : _tryBiometrics,
+      scaleDown: 0.92,
+      haptic: true,
+      child: Container(
+        width: keySize,
+        height: keySize,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          color: AppColors.primary.withValues(alpha: 0.1),
         ),
+        child: Icon(Icons.fingerprint, size: keySize * 0.5, color: AppColors.primary),
       ),
     );
   }

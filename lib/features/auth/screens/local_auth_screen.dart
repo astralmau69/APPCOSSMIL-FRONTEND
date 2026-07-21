@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/services.dart';
+import '../../../core/animations/app_dialog.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/theme/app_constants.dart';
 import '../../../core/extensions/responsive_extensions.dart';
@@ -66,9 +67,10 @@ class _LocalAuthScreenState extends State<LocalAuthScreen>
       vsync: this,
       duration: const Duration(milliseconds: 400),
     );
-    _shakeAnim = Tween<double>(begin: 0, end: 1).animate(
-      CurvedAnimation(parent: _shakeCtrl, curve: Curves.elasticIn),
-    );
+    _shakeAnim = Tween<double>(
+      begin: 0,
+      end: 1,
+    ).animate(CurvedAnimation(parent: _shakeCtrl, curve: Curves.elasticIn));
 
     _init();
   }
@@ -91,17 +93,17 @@ class _LocalAuthScreenState extends State<LocalAuthScreen>
 
     if (!mounted) return;
 
-    final name       = results[0] as String?;
+    final name = results[0] as String?;
     final bioEnabled = results[1] as bool;
-    final cooldown   = results[2] as Duration?;
-    final hasPinRes  = results[3] as bool;
+    final cooldown = results[2] as Duration?;
+    final hasPinRes = results[3] as bool;
 
     setState(() {
-      _displayName       = name ?? '';
+      _displayName = name ?? '';
       _isBiometricEnabled = bioEnabled;
       _cooldownRemaining = cooldown;
-      _photoBase64       = UserSession.currentUser.photoBase64;
-      _hasPin            = hasPinRes;
+      _photoBase64 = UserSession.currentUser.photoBase64;
+      _hasPin = hasPinRes;
     });
 
     if (cooldown != null) {
@@ -157,7 +159,8 @@ class _LocalAuthScreenState extends State<LocalAuthScreen>
           break;
         case BiometricAuthResult.lockedOut:
           setState(() {
-            _errorMessage = 'Sensor bloqueado. Por favor, usa tu PIN de seguridad.';
+            _errorMessage =
+                'Sensor bloqueado. Por favor, usa tu PIN de seguridad.';
           });
           break;
         case BiometricAuthResult.cancelled:
@@ -193,8 +196,10 @@ class _LocalAuthScreenState extends State<LocalAuthScreen>
     if (_isBlocked) return;
     if (_currentPinInput.isNotEmpty) {
       setState(() {
-        _currentPinInput =
-            _currentPinInput.substring(0, _currentPinInput.length - 1);
+        _currentPinInput = _currentPinInput.substring(
+          0,
+          _currentPinInput.length - 1,
+        );
       });
     }
   }
@@ -307,7 +312,7 @@ class _LocalAuthScreenState extends State<LocalAuthScreen>
   }
 
   Future<void> _onLogoutPressed() async {
-    final confirmed = await showCupertinoDialog<bool>(
+    final confirmed = await showAppDialog<bool>(
       context: context,
       builder: (ctx) => CupertinoAlertDialog(
         title: const Text('Cerrar Sesión'),
@@ -337,8 +342,7 @@ class _LocalAuthScreenState extends State<LocalAuthScreen>
       UserSession.clear();
       AppSessionCache.clear();
       if (!mounted) return;
-      Navigator.of(context, rootNavigator: true)
-          .pushReplacementNamed('/login');
+      Navigator.of(context, rootNavigator: true).pushReplacementNamed('/login');
     }
   }
 
@@ -370,148 +374,153 @@ class _LocalAuthScreenState extends State<LocalAuthScreen>
       body: AnimatedGradientBackground(
         isDark: isDark,
         child: SafeArea(
-        child: Column(
-          children: [
-            const Spacer(flex: 2),
+          child: Column(
+            children: [
+              const Spacer(flex: 2),
 
-            // ── Header ──────────────────────────────────────────────
-            FadeSlideIn(
-              child: Column(
-                children: [
-                  _buildAvatar(isDark),
-                  SizedBox(height: context.r.spaceLg),
-                  Text(
-                    _displayName.isNotEmpty
-                        ? 'Bienvenido de vuelta'
-                        : 'Desbloquea tu app',
-                    style: context.texts.bodyMedium.copyWith(
-                      color: AppColors.textSecondaryC(isDark),
-                    ),
-                  ),
-                  if (_displayName.isNotEmpty) ...[
-                    SizedBox(height: context.r.spaceXs),
+              // ── Header ──────────────────────────────────────────────
+              FadeSlideIn(
+                child: Column(
+                  children: [
+                    _buildAvatar(isDark),
+                    SizedBox(height: context.r.spaceLg),
                     Text(
-                      _displayName,
-                      style: context.texts.titleLarge.copyWith(
-                        fontWeight: FontWeight.w700,
-                        color: isDark ? AppColors.accentForTheme(isDark) : null,
+                      _displayName.isNotEmpty
+                          ? 'Bienvenido de vuelta'
+                          : 'Desbloquea tu app',
+                      style: context.texts.bodyMedium.copyWith(
+                        color: AppColors.textSecondaryC(isDark),
                       ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
+                    ),
+                    if (_displayName.isNotEmpty) ...[
+                      SizedBox(height: context.r.spaceXs),
+                      Text(
+                        _displayName,
+                        style: context.texts.titleLarge.copyWith(
+                          fontWeight: FontWeight.w700,
+                          color: isDark
+                              ? AppColors.accentForTheme(isDark)
+                              : null,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
+                    SizedBox(height: context.r.spaceLg),
+                    Text(
+                      _isBlocked
+                          ? 'Ingreso temporalmente bloqueado'
+                          : 'Ingresa tu PIN de seguridad',
+                      style: context.texts.bodyMedium.copyWith(
+                        color: _isBlocked
+                            ? AppColors.warning
+                            : AppColors.textSecondaryC(isDark),
+                        fontWeight: _isBlocked ? FontWeight.w600 : null,
+                      ),
                     ),
                   ],
-                  SizedBox(height: context.r.spaceLg),
-                  Text(
-                    _isBlocked
-                        ? 'Ingreso temporalmente bloqueado'
-                        : 'Ingresa tu PIN de seguridad',
-                    style: context.texts.bodyMedium.copyWith(
-                      color: _isBlocked
-                          ? AppColors.warning
-                          : AppColors.textSecondaryC(isDark),
-                      fontWeight: _isBlocked ? FontWeight.w600 : null,
-                    ),
-                  ),
-                ],
+                ),
               ),
-            ),
 
-            SizedBox(height: context.r.spaceXxl),
+              SizedBox(height: context.r.spaceXxl),
 
-            // ── Indicadores de PIN ──────────────────────────────────
-            AnimatedBuilder(
-              animation: _shakeAnim,
-              builder: (context, child) {
-                final offset =
-                    _shakeCtrl.isAnimating ? _shakeOffset(_shakeAnim.value) : 0.0;
-                return Transform.translate(
-                  offset: Offset(offset, 0),
-                  child: child,
-                );
-              },
-              child: _buildPinIndicators(isDark, r),
-            ),
+              // ── Indicadores de PIN ──────────────────────────────────
+              AnimatedBuilder(
+                animation: _shakeAnim,
+                builder: (context, child) {
+                  final offset = _shakeCtrl.isAnimating
+                      ? _shakeOffset(_shakeAnim.value)
+                      : 0.0;
+                  return Transform.translate(
+                    offset: Offset(offset, 0),
+                    child: child,
+                  );
+                },
+                child: _buildPinIndicators(isDark, r),
+              ),
 
-            SizedBox(height: context.r.spaceMd),
+              SizedBox(height: context.r.spaceMd),
 
-            // ── Mensaje de error o cooldown ─────────────────────────
-            AnimatedSwitcher(
-              duration: const Duration(milliseconds: 200),
-              child: _isBlocked
-                  ? _buildCooldownBadge()
-                  : (_errorMessage != null
-                      ? Padding(
-                          key: ValueKey(_errorMessage),
-                          padding: EdgeInsets.symmetric(horizontal: r.pinKeypadPadding),
-                          child: Text(
-                            _errorMessage!,
-                            textAlign: TextAlign.center,
-                            style: context.texts.bodySmall.copyWith(
-                              color: AppColors.error,
-                              fontWeight: FontWeight.w600,
-                            ),
+              // ── Mensaje de error o cooldown ─────────────────────────
+              AnimatedSwitcher(
+                duration: const Duration(milliseconds: 200),
+                child: _isBlocked
+                    ? _buildCooldownBadge()
+                    : (_errorMessage != null
+                          ? Padding(
+                              key: ValueKey(_errorMessage),
+                              padding: EdgeInsets.symmetric(
+                                horizontal: r.pinKeypadPadding,
+                              ),
+                              child: Text(
+                                _errorMessage!,
+                                textAlign: TextAlign.center,
+                                style: context.texts.bodySmall.copyWith(
+                                  color: AppColors.error,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            )
+                          : const SizedBox(key: ValueKey('empty'), height: 20)),
+              ),
+
+              const Spacer(),
+
+              // ── Teclado numérico ────────────────────────────────────
+              _buildKeypad(isDark, r),
+
+              // ── Opción biométrica secundaria ─────────────────────────
+              // Solo aparece cuando hay PIN + biometría configurados y
+              // el usuario no está en cooldown. Es un enlace discreto,
+              // no un botón prominente, para que el PIN siga siendo el
+              // método principal de desbloqueo.
+              if (_hasPin && _isBiometricEnabled && !_isBlocked)
+                _buildBiometricLink(isDark),
+
+              SizedBox(height: r.spaceLg),
+
+              // ── Footer Actions ────────────────────────────────────────
+              Padding(
+                padding: EdgeInsets.symmetric(horizontal: r.pinKeypadPadding),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: CupertinoButton(
+                        onPressed: _onExitApp,
+                        child: Text(
+                          'Salir',
+                          style: context.texts.bodyMedium.copyWith(
+                            color: AppColors.textSecondaryC(isDark),
+                            fontWeight: FontWeight.w600,
                           ),
-                        )
-                      : const SizedBox(key: ValueKey('empty'), height: 20)),
-            ),
-
-            const Spacer(),
-
-            // ── Teclado numérico ────────────────────────────────────
-            _buildKeypad(isDark, r),
-
-            // ── Opción biométrica secundaria ─────────────────────────
-            // Solo aparece cuando hay PIN + biometría configurados y
-            // el usuario no está en cooldown. Es un enlace discreto,
-            // no un botón prominente, para que el PIN siga siendo el
-            // método principal de desbloqueo.
-            if (_hasPin && _isBiometricEnabled && !_isBlocked)
-              _buildBiometricLink(isDark),
-
-            SizedBox(height: r.spaceLg),
-
-            // ── Footer Actions ────────────────────────────────────────
-            Padding(
-              padding: EdgeInsets.symmetric(horizontal: r.pinKeypadPadding),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: CupertinoButton(
-                      onPressed: _onExitApp,
-                      child: Text(
-                        'Salir',
-                        style: context.texts.bodyMedium.copyWith(
-                          color: AppColors.textSecondaryC(isDark),
-                          fontWeight: FontWeight.w600,
                         ),
                       ),
                     ),
-                  ),
-                  Container(
-                    width: 1,
-                    height: 16,
-                    color: AppColors.dividerC(isDark).withValues(alpha: 0.5),
-                  ),
-                  Expanded(
-                    child: CupertinoButton(
-                      onPressed: _onLogoutPressed,
-                      child: Text(
-                        'Cerrar sesión',
-                        style: context.texts.bodyMedium.copyWith(
-                          color: AppColors.error,
-                          fontWeight: FontWeight.w600,
+                    Container(
+                      width: 1,
+                      height: 16,
+                      color: AppColors.dividerC(isDark).withValues(alpha: 0.5),
+                    ),
+                    Expanded(
+                      child: CupertinoButton(
+                        onPressed: _onLogoutPressed,
+                        child: Text(
+                          'Cerrar sesión',
+                          style: context.texts.bodyMedium.copyWith(
+                            color: AppColors.error,
+                            fontWeight: FontWeight.w600,
+                          ),
                         ),
                       ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
-            ),
 
-            SizedBox(height: context.r.spaceMd),
-          ],
+              SizedBox(height: context.r.spaceMd),
+            ],
+          ),
         ),
-      ),
       ),
     );
   }
@@ -548,7 +557,9 @@ class _LocalAuthScreenState extends State<LocalAuthScreen>
                           _displayName,
                           style: context.texts.titleLarge.copyWith(
                             fontWeight: FontWeight.w700,
-                            color: isDark ? AppColors.accentForTheme(isDark) : null,
+                            color: isDark
+                                ? AppColors.accentForTheme(isDark)
+                                : null,
                           ),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
@@ -607,8 +618,10 @@ class _LocalAuthScreenState extends State<LocalAuthScreen>
                               ),
                             ),
                             CupertinoButton(
-                              onPressed: () =>
-                                  Navigator.pushReplacementNamed(context, '/login'),
+                              onPressed: () => Navigator.pushReplacementNamed(
+                                context,
+                                '/login',
+                              ),
                               child: Text(
                                 'Iniciar sesión con contraseña',
                                 style: context.texts.bodyMedium.copyWith(
@@ -647,7 +660,10 @@ class _LocalAuthScreenState extends State<LocalAuthScreen>
     return Container(
       key: const ValueKey('cooldown'),
       margin: EdgeInsets.symmetric(horizontal: r.pinKeypadPadding),
-      padding: EdgeInsets.symmetric(horizontal: r.chipPaddingH, vertical: r.chipPaddingV * 1.5),
+      padding: EdgeInsets.symmetric(
+        horizontal: r.chipPaddingH,
+        vertical: r.chipPaddingV * 1.5,
+      ),
       decoration: BoxDecoration(
         color: AppColors.warning.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(r.radiusMd),
@@ -691,7 +707,8 @@ class _LocalAuthScreenState extends State<LocalAuthScreen>
           fit: BoxFit.cover,
           width: avatarSize,
           height: avatarSize,
-          errorBuilder: (_, __, ___) => _buildInitialsOrLogo(isDark, avatarSize),
+          errorBuilder: (_, __, ___) =>
+              _buildInitialsOrLogo(isDark, avatarSize),
         ),
       );
     } else {
@@ -765,7 +782,7 @@ class _LocalAuthScreenState extends State<LocalAuthScreen>
         final isActive = index < _currentPinInput.length;
         final isError = _errorMessage != null;
         final activeColor = isDark ? Colors.white : const Color(0xFF0284C7);
-        
+
         return AnimatedContainer(
           duration: const Duration(milliseconds: 180),
           margin: EdgeInsets.symmetric(horizontal: dotMargin),
@@ -776,8 +793,8 @@ class _LocalAuthScreenState extends State<LocalAuthScreen>
             color: isError && isActive
                 ? AppColors.error
                 : isActive
-                    ? activeColor
-                    : (isDark ? Colors.white12 : const Color(0xFFBAE6FD)),
+                ? activeColor
+                : (isDark ? Colors.white12 : const Color(0xFFBAE6FD)),
             border: isActive
                 ? Border.all(
                     color: isError ? AppColors.error : activeColor,
@@ -838,23 +855,18 @@ class _LocalAuthScreenState extends State<LocalAuthScreen>
       return SizedBox(width: keySize, height: keySize);
     }
 
-    return SizedBox(
-      width: keySize,
-      height: keySize,
-      child: Material(
-        color: AppColors.primary.withValues(alpha: 0.1),
-        shape: const CircleBorder(),
-        child: InkWell(
-          onTap: _tryBiometrics,
-          customBorder: const CircleBorder(),
-          splashColor: AppColors.primary.withValues(alpha: 0.2),
-          highlightColor: AppColors.primary.withValues(alpha: 0.1),
-          child: Icon(
-            Icons.fingerprint,
-            size: keySize * 0.5,
-            color: AppColors.primary,
-          ),
+    return OptimizedPressButton(
+      onTap: _tryBiometrics,
+      scaleDown: 0.92,
+      haptic: true,
+      child: Container(
+        width: keySize,
+        height: keySize,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          color: AppColors.primary.withValues(alpha: 0.1),
         ),
+        child: Icon(Icons.fingerprint, size: keySize * 0.5, color: AppColors.primary),
       ),
     );
   }

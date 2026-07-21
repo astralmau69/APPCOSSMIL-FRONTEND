@@ -464,7 +464,12 @@ class ProfessionalProfileCard extends StatelessWidget {
     final celular = _InfoItem(
       icon: CupertinoIcons.phone_fill,
       label: 'Celular',
-      value: user.numCel.isNotEmpty ? user.numCel : (user.phone.isNotEmpty ? user.phone : '—'),
+      // Preferir `phone` (usuarioweb) sobre `numCel` (safil.asegurado): `phone`
+      // es el campo que el usuario edita en Perfil y que el endpoint
+      // update-profile sí persiste, por lo que se mantiene tras re-loguear.
+      // `numCel` viene de aseg-tipo-gpo (otra tabla) y no lo toca la edición,
+      // así que revertía al valor viejo. Fallback a numCel si phone está vacío.
+      value: user.phone.isNotEmpty ? user.phone : (user.numCel.isNotEmpty ? user.numCel : '—'),
     );
     final emergencyPhone = _InfoItem(
       icon: CupertinoIcons.phone_circle_fill,

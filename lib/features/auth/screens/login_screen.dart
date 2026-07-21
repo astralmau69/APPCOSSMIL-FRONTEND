@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/services.dart';
 import '../../../core/animations/app_dialog.dart';
+import '../../../core/widgets/warning_modal.dart';
 import 'package:audioplayers/audioplayers.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:package_info_plus/package_info_plus.dart';
@@ -250,84 +251,41 @@ class _LoginScreenState extends State<LoginScreen>
   }
 
   void _showVersionModal(String message) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    showDialog<void>(
+    showWarningModal<void>(
       context: context,
+      icon: CupertinoIcons.arrow_up_circle_fill,
+      accentColor: AppColors.warning,
+      title: 'Nueva versión disponible',
+      buttonLabel: 'Actualizar',
       barrierDismissible: false,
-      builder: (ctx) => PopScope(
-        canPop: false,
-        child: AlertDialog(
-          backgroundColor: AppColors.cardBg(isDark),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-          ),
-          title: Row(
-            children: [
-              const Icon(
-                Icons.system_update_rounded,
-                color: AppColors.warning,
-                size: 28,
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  'Nueva version disponible',
-                  style: TextStyle(
-                    fontWeight: FontWeight.w800,
-                    color: AppColors.textPrimaryC(isDark),
-                    fontSize: 18,
-                  ),
-                ),
-              ),
-            ],
-          ),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
+      preventSystemBack: true,
+      onButtonPressed: (_) => launchUrl(
+        Uri.parse('https://www.cossmil.mil.bo/#/'),
+        mode: LaunchMode.externalApplication,
+      ),
+      body: Builder(
+        builder: (ctx) {
+          final isDark = Theme.of(ctx).brightness == Brightness.dark;
+          final style = TextStyle(
+            height: 1.4,
+            color: AppColors.textSecondaryC(isDark),
+            decoration: TextDecoration.none,
+          );
+          return Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                'Tu aplicacion necesita actualizarse para continuar usando COSSMIL.',
-                style: TextStyle(
-                  color: AppColors.textSecondaryC(isDark),
-                  height: 1.4,
-                ),
+                'Tu aplicación necesita actualizarse para continuar usando COSSMIL.',
+                style: style,
               ),
               const SizedBox(height: 8),
               Text(
-                'Visita el sitio web oficial de COSSMIL y descarga la ultima version desde ahi.',
-                style: TextStyle(
-                  color: AppColors.textSecondaryC(isDark),
-                  height: 1.4,
-                ),
+                'Visita el sitio web oficial de COSSMIL y descarga la última versión desde ahí.',
+                style: style,
               ),
             ],
-          ),
-          actionsAlignment: MainAxisAlignment.center,
-          actions: [
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton.icon(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.warning,
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(vertical: 14),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                ),
-                icon: const Icon(Icons.language_rounded, size: 18),
-                label: const Text(
-                  'Actualizar',
-                  style: TextStyle(fontWeight: FontWeight.w700),
-                ),
-                onPressed: () => launchUrl(
-                  Uri.parse('https://www.cossmil.mil.bo/#/'),
-                  mode: LaunchMode.externalApplication,
-                ),
-              ),
-            ),
-          ],
-        ),
+          );
+        },
       ),
     );
   }
@@ -444,9 +402,6 @@ class _LoginScreenState extends State<LoginScreen>
 
   Future<void> _showSecurityWarningModal() async {
     if (!mounted) return;
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final r = context.r;
-    final texts = context.texts;
 
     // Reproducir audio de advertencia de seguridad (respeta modo silencio/vibración)
     final warningPlayer = await SoundManager.playIfAllowed(
@@ -454,126 +409,48 @@ class _LoginScreenState extends State<LoginScreen>
     );
 
     if (!mounted) return;
-    await showGeneralDialog(
+    await showWarningModal<void>(
       context: context,
       barrierDismissible: false,
-      barrierLabel: 'Advertencia de Seguridad',
-      barrierColor: Colors.black54,
-      transitionDuration: const Duration(milliseconds: 350),
-      transitionBuilder: (ctx, anim, _, child) {
-        return ScaleTransition(
-          scale: CurvedAnimation(parent: anim, curve: Curves.easeOutBack),
-          child: FadeTransition(opacity: anim, child: child),
-        );
+      icon: CupertinoIcons.shield_lefthalf_fill,
+      accentColor: AppColors.warning,
+      title: 'Advertencia de Seguridad',
+      buttonLabel: 'Entendido, Continuar',
+      onButtonPressed: (ctx) {
+        warningPlayer?.stop();
+        warningPlayer?.dispose();
+        Navigator.of(ctx).pop();
       },
-      pageBuilder: (ctx, _, __) => Center(
-        child: Material(
-          color: Colors.transparent,
-          child: Container(
-            width: MediaQuery.of(ctx).size.width * r.modalWidthFactor,
-            constraints: BoxConstraints(maxWidth: r.modalMaxWidth),
-            decoration: BoxDecoration(
-              color: AppColors.cardBg(isDark),
-              borderRadius: BorderRadius.circular(r.modalRadius),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.25),
-                  blurRadius: 30,
-                  offset: const Offset(0, 12),
+      body: Builder(
+        builder: (ctx) {
+          final isDark = Theme.of(ctx).brightness == Brightness.dark;
+          return Column(
+            children: [
+              Text(
+                'Por seguridad y confidencialidad de su información deberá '
+                'cambiar su contraseña.',
+                style: TextStyle(
+                  height: 1.5,
+                  color: AppColors.textSecondaryC(isDark),
+                  fontWeight: FontWeight.w400,
+                  decoration: TextDecoration.none,
                 ),
-              ],
-            ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                SizedBox(height: r.spaceXl),
-                // Warning icon
-                Container(
-                  width: r.avatarMd,
-                  height: r.avatarMd,
-                  decoration: BoxDecoration(
-                    color: AppColors.warning.withValues(alpha: 0.12),
-                    shape: BoxShape.circle,
-                  ),
-                  child: Icon(
-                    CupertinoIcons.shield_lefthalf_fill,
-                    size: r.iconLg,
-                    color: AppColors.warning,
-                  ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 4),
+              Text(
+                'Esta acción es obligatoria y no puede omitirse.',
+                style: const TextStyle(
+                  height: 1.4,
+                  color: AppColors.warning,
+                  fontWeight: FontWeight.w600,
+                  decoration: TextDecoration.none,
                 ),
-                SizedBox(height: r.spaceMd),
-                // Title
-                Text(
-                  'Advertencia de Seguridad',
-                  style: texts.titleLarge.copyWith(
-                    fontWeight: FontWeight.w800,
-                    color: AppColors.textPrimaryC(isDark),
-                    decoration: TextDecoration.none,
-                  ),
-                ),
-                SizedBox(height: r.spaceSm),
-                // Message
-                Padding(
-                  padding: EdgeInsets.symmetric(horizontal: r.modalPadding),
-                  child: Text(
-                    'Por seguridad y confidencialidad de su información deberá cambiar su contraseña.',
-                    style: texts.bodyMedium.copyWith(
-                      height: 1.5,
-                      color: AppColors.textSecondaryC(isDark),
-                      fontWeight: FontWeight.w400,
-                      decoration: TextDecoration.none,
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-                ),
-                SizedBox(height: r.spaceXs),
-                Padding(
-                  padding: EdgeInsets.symmetric(horizontal: r.modalPadding),
-                  child: Text(
-                    'Esta acción es obligatoria y no puede omitirse.',
-                    style: texts.bodySmall.copyWith(
-                      height: 1.4,
-                      color: AppColors.warning,
-                      fontWeight: FontWeight.w600,
-                      decoration: TextDecoration.none,
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-                ),
-                SizedBox(height: r.spaceLg),
-                // Button
-                Padding(
-                  padding: EdgeInsets.fromLTRB(
-                    r.modalPadding,
-                    0,
-                    r.modalPadding,
-                    r.modalPadding,
-                  ),
-                  child: SizedBox(
-                    width: double.infinity,
-                    child: CupertinoButton(
-                      padding: EdgeInsets.symmetric(vertical: r.spaceMd),
-                      borderRadius: BorderRadius.circular(r.buttonRadius),
-                      color: AppColors.primary,
-                      onPressed: () {
-                        warningPlayer?.stop();
-                        warningPlayer?.dispose();
-                        Navigator.of(ctx).pop();
-                      },
-                      child: Text(
-                        'Entendido, Continuar',
-                        style: texts.titleMedium.copyWith(
-                          fontWeight: FontWeight.w700,
-                          color: AppColors.white,
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
+                textAlign: TextAlign.center,
+              ),
+            ],
+          );
+        },
       ),
     );
 

@@ -6,6 +6,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter/material.dart';
 
 import 'package:flutter/services.dart';
+import '../core/animations/app_dialog.dart';
 
 import 'package:audioplayers/audioplayers.dart';
 
@@ -53,6 +54,7 @@ import '../core/storage/token_storage.dart';
 
 import '../core/services/session_restore_service.dart';
 import '../core/services/notification_service.dart';
+import '../core/services/appointment_status_sync.dart';
 // Favoritos OCULTO (feature aún no funcional):
 // import '../core/services/favorites_service.dart';
 import '../core/services/update_service.dart';
@@ -66,10 +68,16 @@ import '../core/widgets/inasistencias_modal.dart';
 import '../core/utils/app_logger.dart';
 import '../core/animations/app_page_route.dart';
 
-
-
 /// Estado mutable del flujo de reserva, compartido entre pantallas.
 class BookingState {
+  /// true durante el tutorial guiado ("Cómo sacar una ficha"): las pantallas
+  /// reales de este flujo comparten este flag para (a) saltarse llamadas y
+  /// bloqueos reales de negocio (inasistencias, validaciones, disponibilidad
+  /// cruzada) que no aplican a una demostración, y (b) mostrar un banner
+  /// explicativo. Nunca se llama a la API de crear-cita mientras es true —
+  /// ver `SummaryScreen._onConfirmPressed`.
+  bool isTutorialMode = false;
+
   String? beneficiaryLabel;
   BeneficiaryModel? beneficiary;
   RegionalModel? regional;
@@ -131,6 +139,10 @@ class BookingState {
   }
 
   void reset() {
+    // Defensivo: una reserva REAL (startBooking) nunca debe heredar el modo
+    // tutorial de una sesión anterior — eso silenciosamente impediría crear
+    // la cita real al confirmar.
+    isTutorialMode = false;
     beneficiaryLabel = null;
     beneficiary = null;
     regional = null;
@@ -149,25 +161,15 @@ class BookingState {
   }
 }
 
-
 class TabShell extends StatefulWidget {
-
   const TabShell({super.key});
 
-
-
   @override
-
   State<TabShell> createState() => TabShellState();
-
 }
 
-
-
 class TabShellState extends State<TabShell>
-
     with SingleTickerProviderStateMixin, WidgetsBindingObserver {
-
   int _currentIndex = 0;
 
   /// Índice del tab activo. Permite a las pantallas (ej. ScheduleScreen)
@@ -184,8 +186,6 @@ class TabShellState extends State<TabShell>
   bool? isInHorario;
   List<HorarioAtencionModel> horariosApp = [];
 
-
-
   /// Se incrementa cada vez que se confirma una reserva para que
 
   /// ReservasScreen sepa que debe refrescar su lista.
@@ -199,15 +199,11 @@ class TabShellState extends State<TabShell>
   /// Permite que ReservasScreen refresque para el beneficiario correcto.
   String? lastBookedIdper;
 
-
-
   // Evita que el bloqueo se apile múltiples veces si el lifecycle
 
   // se dispara repetidamente antes de que el usuario desbloquee.
 
   bool _isLocked = false;
-
-
 
   // Timer para verificar bloqueo por inactividad cada 30 segundos.
 
@@ -217,10 +213,7 @@ class TabShellState extends State<TabShell>
   /// porque la sesión fue cerrada al ir a background sin seguridad local.
   bool _requiresLoginOnResume = false;
 
-
-
   final List<GlobalKey<NavigatorState>> _tabNavKeys = [
-
     GlobalKey<NavigatorState>(),
 
     GlobalKey<NavigatorState>(),
@@ -230,32 +223,23 @@ class TabShellState extends State<TabShell>
     GlobalKey<NavigatorState>(),
 
     GlobalKey<NavigatorState>(),
-
   ];
 
   /// Contadores de refresh por tab. Se incrementan al tocar la tab activa
   /// para forzar reconstrucción completa de la pantalla.
   final List<int> _tabRefreshCounters = [0, 0, 0, 0, 0];
 
-
-
   final _bookingFlowKey = GlobalKey<BookingFlowScreenState>();
 
   late final CupertinoTabController _tabController;
 
-
-
   @override
-
   void initState() {
-
     super.initState();
 
     _tabController = CupertinoTabController();
 
     WidgetsBinding.instance.addObserver(this);
-
-
 
     // Registrar actividad inicial
 
@@ -288,13 +272,15 @@ class TabShellState extends State<TabShell>
       _showScheduleInfoModalIfNeeded();
       // Verificar citas completadas al inicio de sesión
       _checkForCompletedAppointments();
+      // Si la app se abrió tocando una notificación estando completamente
+      // cerrada, despachar ese tap ahora que la navegación ya existe.
+      NotificationService.consumeAppLaunchNotification();
       // Actualizaciones pequeñas (flexible) vía Google Play. No bloquea ni
       // consulta el backend; solo descarga en segundo plano y avisa al terminar.
       _checkForFlexibleUpdate();
-      // Favoritos OCULTO (feature aún no funcional): sync deshabilitado.
-      // FavoritesService.syncFavoritesWithCloud();
+      // Favoritos: almacenamiento 100% local (SharedPreferences). Se removió la
+      // sync con Firestore; las push por médico se manejan en las pantallas.
     });
-
   }
 
   /// Descarga en segundo plano una actualización menor de Play (si existe) y,
@@ -306,7 +292,9 @@ class TabShellState extends State<TabShell>
         final messenger = ScaffoldMessenger.maybeOf(context);
         messenger?.showSnackBar(
           SnackBar(
-            content: const Text('Hay una actualización lista. Reinicia para aplicarla.'),
+            content: const Text(
+              'Hay una actualización lista. Reinicia para aplicarla.',
+            ),
             duration: const Duration(seconds: 10),
             behavior: SnackBarBehavior.floating,
             action: SnackBarAction(
@@ -319,12 +307,8 @@ class TabShellState extends State<TabShell>
     );
   }
 
-
-
   @override
-
   void dispose() {
-
     _inactivityTimer?.cancel();
 
     reservasRefreshNotifier.dispose();
@@ -334,21 +318,14 @@ class TabShellState extends State<TabShell>
     _tabController.dispose();
 
     super.dispose();
-
   }
-
-
 
   // ─── Inactividad ────────────────────────────────────────────────────────
 
-
-
   void _startInactivityTimer() {
-
     _inactivityTimer?.cancel();
 
     _inactivityTimer = Timer.periodic(const Duration(seconds: 30), (_) async {
-
       if (_isLocked) return;
 
       // Usuarios CON PIN → bloqueo local (pantalla PIN/biométrica).
@@ -367,17 +344,15 @@ class TabShellState extends State<TabShell>
         UserSession.clear();
         WidgetsBinding.instance.addPostFrameCallback((_) {
           if (mounted) {
-            Navigator.of(context, rootNavigator: true)
-                .pushReplacementNamed('/login');
+            Navigator.of(
+              context,
+              rootNavigator: true,
+            ).pushReplacementNamed('/login');
           }
         });
       }
-
     });
-
   }
-
-
 
   /// Muestra el aviso de días/horarios de atención solo la primera vez.
   Future<void> _showScheduleInfoModalIfNeeded() async {
@@ -387,7 +362,7 @@ class TabShellState extends State<TabShell>
       if (prefs.getBool(key) == true) return;
       await prefs.setBool(key, true);
       if (!mounted) return;
-      await showCupertinoDialog<void>(
+      await showAppDialog<void>(
         context: context,
         barrierDismissible: false,
         builder: (_) => const _ScheduleInfoDialog(),
@@ -403,71 +378,23 @@ class TabShellState extends State<TabShell>
   ///
   /// Corre al iniciar sesión y cada vez que la app vuelve al primer plano
   /// (lifecycle resumed), **independientemente** de si [ReservasScreen] está montada.
-  Future<void> _checkForCompletedAppointments() async {
-    if (!UserSession.isLoggedIn) return;
-    try {
-      final idperStr = UserSession.currentUser.id;
-      if (idperStr.isEmpty) return;
-      final idper = int.tryParse(idperStr);
-      if (idper == null) return;
-
-      final result = await _programacionService.getHistorialCitas(
-        idper,
-        pagina: 1,
-        cantidad: 10,
-      );
-
-      final today = DateTime.now();
-      final todayDate = DateTime(today.year, today.month, today.day);
-      final prefs = await SharedPreferences.getInstance();
-
-      for (final r in result.reservas) {
-        if (r.status.toUpperCase() != 'COMPLETADO') continue;
-        if (r.estadoCancelacion == '1') continue;
-
-        // Solo citas de 2026 en adelante
-        final apptDate = r.appointmentDate;
-        if (apptDate == null || apptDate.year < 2026) continue;
-
-        // Solo citas del día
-        final isToday = !apptDate.isBefore(todayDate) &&
-            apptDate.isBefore(todayDate.add(const Duration(days: 1)));
-        if (!isToday) continue;
-
-        // Verificar si ya fue calificada o la notificación ya fue ofrecida
-        final ratedKey = 'rated_reserva_${r.idtran}_${r.dr}';
-        final offeredKey = 'offered_reserva_${r.idtran}_${r.dr}';
-        if (prefs.getBool(ratedKey) == true) continue;
-        if (prefs.getBool(offeredKey) == true) continue;
-
-        // Disparar notificación inmediata
-        final ticket = r.codigoReserva ?? r.id;
-        await NotificationService.showRatingReminder(
-          ticketNumber: ticket,
-          especialidad: r.specialty,
-          medico: r.doctorName,
-          paciente: r.patientName,
-          idtran: r.idtran,
-          dr: r.dr,
-        );
-
-        // Marcar como ofrecida para no repetirla en el próximo resumed
-        await prefs.setBool(offeredKey, true);
-      }
-    } catch (_) {
-      // Silencioso: no interrumpir el flujo normal si el API falla
-    }
-  }
+  Future<void> _checkForCompletedAppointments() => AppointmentStatusSync
+      .checkCompletedAppointments(service: _programacionService);
 
   /// Consulta el estado del horario al iniciar para mostrar banner en HomeScreen.
   Future<void> _checkHorarioStatus() async {
     try {
-      final todosHorarios = await _programacionService.getHorariosAtencion(1, 1);
+      final todosHorarios = await _programacionService.getHorariosAtencion(
+        1,
+        1,
+      );
       final appHorarios = todosHorarios
           .where((h) => h.descripcion.toUpperCase().contains('APP-MOVIL'))
           .toList();
-      final codigoHorario =
-          await _programacionService.verificarHorarioAtencion(1, 1);
+      final codigoHorario = await _programacionService.verificarHorarioAtencion(
+        1,
+        1,
+      );
       if (!mounted) return;
       setState(() {
         horariosApp = appHorarios.isNotEmpty ? appHorarios : todosHorarios;
@@ -481,12 +408,8 @@ class TabShellState extends State<TabShell>
   /// Llamado por el Listener en cada interacción del usuario.
 
   void _onUserInteraction() {
-
     SecurityService.recordActivity();
-
   }
-
-
 
   // ─── Paused handler ─────────────────────────────────────────────────────
 
@@ -537,7 +460,7 @@ class TabShellState extends State<TabShell>
 
   void _showBiometricSetupOffer() {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    showCupertinoDialog<void>(
+    showAppDialog<void>(
       context: context,
       builder: (ctx) => CupertinoAlertDialog(
         title: const Text('Protege tu cuenta'),
@@ -550,7 +473,9 @@ class TabShellState extends State<TabShell>
           CupertinoDialogAction(
             child: Text(
               'Ahora no',
-              style: TextStyle(color: isDark ? AppColors.textSecondaryC(isDark) : null),
+              style: TextStyle(
+                color: isDark ? AppColors.textSecondaryC(isDark) : null,
+              ),
             ),
             onPressed: () => Navigator.pop(ctx),
           ),
@@ -560,9 +485,7 @@ class TabShellState extends State<TabShell>
             onPressed: () {
               Navigator.pop(ctx);
               Navigator.of(context, rootNavigator: true).push(
-                AppPageRoute(
-                  builder: (_) => const _SecuritySetupWrapper(),
-                ),
+                AppPageRoute(builder: (_) => const _SecuritySetupWrapper()),
               );
             },
           ),
@@ -573,14 +496,9 @@ class TabShellState extends State<TabShell>
 
   // ─── Lifecycle ──────────────────────────────────────────────────────────
 
-
-
   @override
-
   void didChangeAppLifecycleState(AppLifecycleState state) {
-
     if (state == AppLifecycleState.paused) {
-
       // Registrar el momento en que la app va a background.
       // SOLO en paused (no en inactive): el estado inactive también se dispara
       // durante diálogos de biometría, permisos o notificaciones del sistema,
@@ -592,16 +510,16 @@ class TabShellState extends State<TabShell>
       // Evita que un PIN recién configurado (sin reiniciar TabShell) cause que
       // la sesión se borre incorrectamente al minimizar la app.
       _handlePaused();
-
     } else if (state == AppLifecycleState.resumed) {
-
       // Sin seguridad local: redirigir al login porque la sesión fue cerrada.
       if (_requiresLoginOnResume) {
         _requiresLoginOnResume = false;
         WidgetsBinding.instance.addPostFrameCallback((_) {
           if (mounted) {
-            Navigator.of(context, rootNavigator: true)
-                .pushReplacementNamed('/login');
+            Navigator.of(
+              context,
+              rootNavigator: true,
+            ).pushReplacementNamed('/login');
           }
         });
         return;
@@ -619,15 +537,10 @@ class TabShellState extends State<TabShell>
 
       // Verificar directamente desde TabShell (no depende de ReservasScreen).
       _checkForCompletedAppointments();
-
     }
-
   }
 
-
-
   Future<void> _checkSecurityLock() async {
-
     if (_isLocked) return;
 
     final hasPin = await SecurityService.hasPin();
@@ -645,8 +558,10 @@ class TabShellState extends State<TabShell>
         AppSessionCache.clear();
         WidgetsBinding.instance.addPostFrameCallback((_) {
           if (mounted) {
-            Navigator.of(context, rootNavigator: true)
-                .pushReplacementNamed('/login');
+            Navigator.of(
+              context,
+              rootNavigator: true,
+            ).pushReplacementNamed('/login');
           }
         });
       } else {
@@ -660,42 +575,28 @@ class TabShellState extends State<TabShell>
     final shouldLock = await SecurityService.shouldLockOnResume();
 
     if (!shouldLock) {
-
       SecurityService.recordActivity();
 
       return;
-
     }
 
     if (!mounted) return;
 
     _triggerLock();
-
   }
 
-
-
   Future<void> _triggerLock() async {
-
     if (_isLocked) return;
 
     _isLocked = true;
 
-
-
     await Navigator.of(context, rootNavigator: true).push(
-
       AppPageRoute(
-
         fullscreenDialog: true,
 
         builder: (_) => const LocalAuthScreen(isOverlay: true),
-
       ),
-
     );
-
-
 
     if (!mounted) return;
 
@@ -708,10 +609,7 @@ class TabShellState extends State<TabShell>
     await SecurityService.recordActivity();
 
     _isLocked = false;
-
   }
-
-
 
   // ─── Navegación ─────────────────────────────────────────────────────────
 
@@ -725,41 +623,40 @@ class TabShellState extends State<TabShell>
   }
 
   void goToTab(int index) {
-
     if (index == 2) {
+      // Defensivo: esta es la entrada REAL al tab de Reservar (ícono de la
+      // barra de navegación). Si el usuario salió de un tutorial a medias
+      // sin usar "Salir del tutorial" y vuelve a entrar por aquí, jamás debe
+      // heredar isTutorialMode=true — eso silenciaría la creación de una
+      // cita real al confirmar. Solo `startTutorialBooking()` (que no pasa
+      // por `goToTab`) puede activar el modo tutorial.
+      bookingState.isTutorialMode = false;
 
       // Tab de reservar → verificar horario primero
 
       // Set default beneficiary if not already set
 
       if (bookingState.beneficiary == null) {
-
         final bens = UserSession.currentUser.beneficiaries;
 
         if (bens.isNotEmpty) {
-
           final titular = bens.firstWhere(
-
             (b) => b.isTitular,
 
             orElse: () => bens.first,
-
           );
 
           bookingState.beneficiary = titular;
 
-          bookingState.beneficiaryLabel =
-
-              titular.isTitular ? 'Para mí' : titular.fullName;
-
+          bookingState.beneficiaryLabel = titular.isTitular
+              ? 'Para mí'
+              : titular.fullName;
         }
-
       }
 
       _tryEnterBookingTab();
 
       return;
-
     }
 
     // Al navegar a Mis Reservas desde cualquier otra tab, disparar un refresh
@@ -776,15 +673,11 @@ class TabShellState extends State<TabShell>
     setState(() => _currentIndex = index);
 
     _tabController.index = index;
-
   }
-
-
 
   /// Llamado desde HomeScreen al seleccionar un beneficiario.
 
   void startBooking(String label, BeneficiaryModel? beneficiary) {
-
     bookingState.reset();
 
     bookingState.beneficiaryLabel = label;
@@ -792,22 +685,54 @@ class TabShellState extends State<TabShell>
     bookingState.beneficiary = beneficiary;
 
     _tryEnterBookingTab();
-
   }
 
+  /// Entra al flujo REAL de Reservar en modo demostración ("Cómo sacar una
+  /// ficha"): mismas pantallas, misma navegación, mismos datos reales del
+  /// usuario — pero A PROPÓSITO se salta `_tryEnterBookingTab` (verificación
+  /// de horario de atención, inasistencias, validaciones de aportes). Esas
+  /// comprobaciones reales podrían bloquear al usuario (fuera de horario,
+  /// penalizado, etc.) y el tutorial debe estar siempre disponible sin
+  /// depender de su situación real. Cada pantalla del flujo consulta
+  /// `bookingState.isTutorialMode` para saltarse igualmente sus propias
+  /// llamadas/bloqueos de negocio internos.
+  void startTutorialBooking() {
+    bookingState.reset();
+    bookingState.isTutorialMode = true;
 
+    final bens = UserSession.currentUser.beneficiaries;
+    final titular = bens.isNotEmpty
+        ? bens.firstWhere((b) => b.isTitular, orElse: () => bens.first)
+        : null;
+    bookingState.beneficiary = titular;
+    bookingState.beneficiaryLabel =
+        (titular == null || titular.isTitular) ? 'Para mí' : titular.fullName;
+
+    _bookingFlowKey.currentState?.resetFlow();
+    setState(() => _currentIndex = 2);
+    _tabController.index = 2;
+    _tabNavKeys[2].currentState?.popUntil((route) => route.isFirst);
+  }
+
+  /// Sale del modo demostración y vuelve a Inicio. Limpia `bookingState` por
+  /// completo (incluido `isTutorialMode`) para que la próxima vez que el
+  /// usuario entre a Reservar sea siempre un flujo real desde cero.
+  void exitTutorialMode() {
+    bookingState.reset();
+    _bookingFlowKey.currentState?.resetFlow();
+    goToTab(0);
+  }
 
   /// Verifica horario de atención ANTES de entrar al tab de reservas.
 
   Future<void> _tryEnterBookingTab() async {
-
     if (_isCheckingHorario) return;
 
     _isCheckingHorario = true;
     bool _loaderOpen = false;
 
     // Helper para cerrar el loader una sola vez de forma segura.
-    // showCupertinoDialog usa rootNavigator:true por defecto → hay que popearlo
+    // showAppDialog usa rootNavigator:true por defecto → hay que popearlo
     // con rootNavigator:true o el pop afecta al sub-navigator del tab.
     void _closeLoader() {
       if (_loaderOpen && mounted) {
@@ -818,10 +743,12 @@ class TabShellState extends State<TabShell>
 
     try {
       // Mostrar indicador de carga
-      showCupertinoDialog(
+      showAppDialog(
         context: context,
         barrierDismissible: false,
-        builder: (context) => const LoaderWithMessage(message: 'Verificando horario de atención…'),
+        builder: (context) => const LoaderWithMessage(
+          message: 'Verificando horario de atención…',
+        ),
       );
       _loaderOpen = true;
 
@@ -852,8 +779,9 @@ class TabShellState extends State<TabShell>
             orElse: () => bens.first,
           );
           bookingState.beneficiary = titular;
-          bookingState.beneficiaryLabel =
-              titular.isTitular ? 'Para mí' : titular.fullName;
+          bookingState.beneficiaryLabel = titular.isTitular
+              ? 'Para mí'
+              : titular.fullName;
         }
       }
 
@@ -866,9 +794,9 @@ class TabShellState extends State<TabShell>
           final matricula = UserSession.currentUser.matricula;
           final idper = int.tryParse(UserSession.currentUser.id) ?? 0;
 
-          // 1a. Penalización por inasistencias (3 faltas) → reserva presencial.
-          final inasistenciasMsg =
-              await _programacionService.validarInasistencias(idper);
+          // 1a. Penalización por inasistencias (2 faltas) → reserva presencial.
+          final inasistenciasMsg = await _programacionService
+              .validarInasistencias(idper);
           if (inasistenciasMsg != null) {
             if (!mounted) return;
             _closeLoader();
@@ -881,7 +809,10 @@ class TabShellState extends State<TabShell>
           }
 
           // 1b. Validaciones de aportes (Art. 186 Ley SSML).
-          final validMsg = await _programacionService.verificarValidaciones(matricula, idper);
+          final validMsg = await _programacionService.verificarValidaciones(
+            matricula,
+            idper,
+          );
           if (validMsg != null) {
             if (!mounted) return;
             _closeLoader();
@@ -907,37 +838,25 @@ class TabShellState extends State<TabShell>
       List<HorarioAtencionModel> localHorariosApp = [];
 
       try {
-
         todosHorarios = await _programacionService.getHorariosAtencion(1, 1);
 
         localHorariosApp = todosHorarios
-
             .where((h) => h.descripcion.toUpperCase().contains('APP-MOVIL'))
-
             .toList();
-
       } catch (e) {
-
         debugPrint('⚠️ Error al cargar horarios en TabShell: $e');
-
       }
-
-
 
       // 4. Verificar si estamos en horario
 
-      final codigoHorario =
-
-          await _programacionService.verificarHorarioAtencion(1, 1);
-
-
+      final codigoHorario = await _programacionService.verificarHorarioAtencion(
+        1,
+        1,
+      );
 
       if (!mounted) return;
 
-
-
       if (codigoHorario != null && codigoHorario > 0) {
-
         _closeLoader();
 
         bookingState.idhorario = codigoHorario;
@@ -953,17 +872,15 @@ class TabShellState extends State<TabShell>
         _tabController.index = 2;
 
         _tabNavKeys[2].currentState?.popUntil((route) => route.isFirst);
-
       } else {
-
         // ❌ Fuera de horario → mostrar modal y volver al inicio
 
         if (!mounted) return;
         _closeLoader();
 
-        final horariosParaMostrar =
-
-            localHorariosApp.isNotEmpty ? localHorariosApp : todosHorarios;
+        final horariosParaMostrar = localHorariosApp.isNotEmpty
+            ? localHorariosApp
+            : todosHorarios;
 
         if (mounted) {
           setState(() {
@@ -975,17 +892,12 @@ class TabShellState extends State<TabShell>
         await _showFueraDeHorarioModal(horariosParaMostrar);
 
         if (mounted) {
-
           setState(() => _currentIndex = 0);
 
           _tabController.index = 0;
-
         }
-
       }
-
     } catch (e) {
-
       debugPrint('❌ Error verificando horario: $e');
 
       // En caso de error de conexión, dejarlo pasar al booking
@@ -997,18 +909,11 @@ class TabShellState extends State<TabShell>
         _tabController.index = 2;
 
         _tabNavKeys[2].currentState?.popUntil((route) => route.isFirst);
-
       }
-
     } finally {
-
       _isCheckingHorario = false;
-
     }
-
   }
-
-
 
   /// Para titulares: verifica si el beneficiario seleccionado ya tiene cita activa.
   /// Muestra loader → consulta → cierra loader → modal si aplica.
@@ -1023,16 +928,22 @@ class TabShellState extends State<TabShell>
     }
 
     try {
-      showCupertinoDialog(
+      showAppDialog(
         context: context,
         barrierDismissible: false,
-        builder: (_) => const LoaderWithMessage(message: 'Comprobando citas activas…'),
+        builder: (_) =>
+            const LoaderWithMessage(message: 'Comprobando citas activas…'),
       );
       loaderOpen = true;
 
-      final idperStr = bookingState.beneficiary?.id ?? UserSession.currentUser.id;
+      final idperStr =
+          bookingState.beneficiary?.id ?? UserSession.currentUser.id;
       final idper = int.tryParse(idperStr) ?? 0;
-      final historyResult = await _programacionService.getHistorialCitas(idper, pagina: 1, cantidad: 10);
+      final historyResult = await _programacionService.getHistorialCitas(
+        idper,
+        pagina: 1,
+        cantidad: 10,
+      );
 
       if (!mounted) return false;
       closeLoader();
@@ -1040,7 +951,11 @@ class TabShellState extends State<TabShell>
       // Bloquear solo si ya tiene cita para mañana (el próximo día reservable).
       // Citas pendientes para fechas posteriores no impiden reservar para mañana.
       final tomorrow = DateTime.now().add(const Duration(days: 1));
-      final tomorrowDate = DateTime(tomorrow.year, tomorrow.month, tomorrow.day);
+      final tomorrowDate = DateTime(
+        tomorrow.year,
+        tomorrow.month,
+        tomorrow.day,
+      );
 
       final activeAppointments = historyResult.reservas.where((r) {
         if (r.estadoCancelacion != '0') return false;
@@ -1069,11 +984,20 @@ class TabShellState extends State<TabShell>
     try {
       final targetDate = DateTime.tryParse(fechaISO.split(' ')[0]);
       if (targetDate == null) return false;
-      final target = DateTime(targetDate.year, targetDate.month, targetDate.day);
+      final target = DateTime(
+        targetDate.year,
+        targetDate.month,
+        targetDate.day,
+      );
 
-      final idperStr = bookingState.beneficiary?.id ?? UserSession.currentUser.id;
+      final idperStr =
+          bookingState.beneficiary?.id ?? UserSession.currentUser.id;
       final idper = int.tryParse(idperStr) ?? 0;
-      final historyResult = await _programacionService.getHistorialCitas(idper, pagina: 1, cantidad: 10);
+      final historyResult = await _programacionService.getHistorialCitas(
+        idper,
+        pagina: 1,
+        cantidad: 10,
+      );
 
       if (!mounted) return false;
 
@@ -1101,15 +1025,18 @@ class TabShellState extends State<TabShell>
   Future<void> _showValidacionesModal(String message) async {
     if (!mounted) return;
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    await showCupertinoDialog<void>(
+    await showAppDialog<void>(
       context: context,
       barrierDismissible: false,
       builder: (ctx) => CupertinoAlertDialog(
         title: Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(CupertinoIcons.exclamationmark_shield_fill,
-                color: CupertinoColors.systemOrange, size: 22),
+            Icon(
+              CupertinoIcons.exclamationmark_shield_fill,
+              color: CupertinoColors.systemOrange,
+              size: 22,
+            ),
             const SizedBox(width: 8),
             const Expanded(
               child: Text(
@@ -1145,13 +1072,12 @@ class TabShellState extends State<TabShell>
 
     bool isCancelling = false;
 
-    await showGeneralDialog(
+    await showAppDialog(
       context: context,
       barrierDismissible: false,
       barrierLabel: 'Ya tiene cita',
       barrierColor: Colors.black54,
-      transitionDuration: const Duration(milliseconds: 300),
-      pageBuilder: (ctx, anim, __) {
+      builder: (ctx) {
         return StatefulBuilder(
           builder: (context, setModalState) {
             return ActiveAppointmentModal(
@@ -1176,14 +1102,21 @@ class TabShellState extends State<TabShell>
                         reserva.idtran.toString(),
                       );
                     } catch (e) {
-                      AppLogger.warn('TabShell', 'No se pudieron cancelar recordatorios de notificación', e);
+                      AppLogger.warn(
+                        'TabShell',
+                        'No se pudieron cancelar recordatorios de notificación',
+                        e,
+                      );
                     }
                     // ignore: use_build_context_synchronously
                     if (mounted) Navigator.pop(ctx);
                     if (mounted) {
                       // ignore: use_build_context_synchronously
                       ScaffoldMessenger.of(this.context).showSnackBar(
-                        const SnackBar(content: Text('Cita cancelada correctamente'), backgroundColor: AppColors.success),
+                        const SnackBar(
+                          content: Text('Cita cancelada correctamente'),
+                          backgroundColor: AppColors.success,
+                        ),
                       );
                       // Se puede entrar a la reserva ahora si gusta
                       _tryEnterBookingTab();
@@ -1195,12 +1128,15 @@ class TabShellState extends State<TabShell>
                   setModalState(() => isCancelling = false);
                   // ignore: use_build_context_synchronously
                   ScaffoldMessenger.of(this.context).showSnackBar(
-                    SnackBar(content: Text('Error al cancelar: $e'), backgroundColor: AppColors.error),
+                    SnackBar(
+                      content: Text('Error al cancelar: $e'),
+                      backgroundColor: AppColors.error,
+                    ),
                   );
                 }
               },
             );
-          }
+          },
         );
       },
     );
@@ -1209,36 +1145,31 @@ class TabShellState extends State<TabShell>
   /// Modal centrado: fuera de horario de atención
 
   Future<void> _showFueraDeHorarioModal(
-
-      List<HorarioAtencionModel> horarios) async {
-
+    List<HorarioAtencionModel> horarios,
+  ) async {
     if (!mounted) return;
 
     final isDark = Theme.of(context).brightness == Brightness.dark;
-
-
 
     // Reproducir audio de horarios habilitados
 
     AudioPlayer? horarioPlayer;
 
-    if (SoundManager.isEnabled && !await SoundManager.isDeviceSilentOrVibrate()) {
+    if (SoundManager.isEnabled &&
+        !await SoundManager.isDeviceSilentOrVibrate()) {
       try {
-
         horarioPlayer = AudioPlayer();
 
-        await horarioPlayer.play(AssetSource('vof/AUDIO 4. HORARIOS HABILITADOS CON HORA.mp3'));
-
+        await horarioPlayer.play(
+          AssetSource('vof/AUDIO 4. HORARIOS HABILITADOS CON HORA.mp3'),
+        );
       } catch (e) {
         AppLogger.warn('TabShell', 'Error reproduciendo audio de horarios', e);
       }
     }
 
-
-
     if (!mounted) return;
     await showGeneralDialog(
-
       context: context,
 
       barrierDismissible: false,
@@ -1250,113 +1181,88 @@ class TabShellState extends State<TabShell>
       transitionDuration: const Duration(milliseconds: 300),
 
       transitionBuilder: (ctx, anim, _, child) {
-
         return ScaleTransition(
-
           scale: CurvedAnimation(parent: anim, curve: Curves.easeOutBack),
 
           child: FadeTransition(opacity: anim, child: child),
-
         );
-
       },
 
       pageBuilder: (ctx, _, __) => Center(
-
         child: Material(
-
           color: Colors.transparent,
 
           child: Container(
-
             width: MediaQuery.of(ctx).size.width * context.r.modalWidthFactor,
 
             constraints: BoxConstraints(maxWidth: context.r.modalMaxWidth),
 
             decoration: BoxDecoration(
-
               color: AppColors.cardBg(isDark),
 
               borderRadius: BorderRadius.circular(context.r.modalRadius),
 
               boxShadow: [
-
                 BoxShadow(
-
                   color: Colors.black.withValues(alpha: 0.25),
 
                   blurRadius: 30,
 
                   offset: const Offset(0, 12),
-
                 ),
-
               ],
-
             ),
 
             child: Column(
-
               mainAxisSize: MainAxisSize.min,
 
               children: [
-
                 SizedBox(height: context.r.spaceXl),
 
                 // Ícono
-
                 Container(
-
                   width: context.r.avatarMd,
 
                   height: context.r.avatarMd,
 
                   decoration: BoxDecoration(
-
                     color: AppColors.warning.withValues(alpha: 0.12),
 
                     shape: BoxShape.circle,
-
                   ),
 
-                  child: Icon(CupertinoIcons.clock_fill,
+                  child: Icon(
+                    CupertinoIcons.clock_fill,
 
-                      size: context.r.iconLg * 0.75, color: AppColors.warning),
-
+                    size: context.r.iconLg * 0.75,
+                    color: AppColors.warning,
+                  ),
                 ),
 
                 SizedBox(height: context.r.spaceMd),
 
                 // Título
-
                 Text(
-
                   'Fuera de horario',
 
                   style: TextStyle(
-
                     fontWeight: FontWeight.w800,
 
                     color: AppColors.textPrimaryC(isDark),
 
                     decoration: TextDecoration.none,
-
                   ),
-
                 ),
 
                 SizedBox(height: context.r.spaceSm),
 
                 Padding(
-
                   padding: EdgeInsets.symmetric(horizontal: context.r.spaceLg),
 
                   child: Text(
-
                     'Las reservas por la App Móvil solo están disponibles en los siguientes horarios:',
 
                     style: TextStyle(
-
                       height: 1.5,
 
                       color: AppColors.textSecondaryC(isDark),
@@ -1364,103 +1270,92 @@ class TabShellState extends State<TabShell>
                       fontWeight: FontWeight.w400,
 
                       decoration: TextDecoration.none,
-
                     ),
 
                     textAlign: TextAlign.center,
-
                   ),
-
                 ),
 
                 SizedBox(height: context.r.spaceLg),
 
                 // Horarios
-
                 if (horarios.isNotEmpty)
-
                   Padding(
-
-                    padding: EdgeInsets.symmetric(horizontal: context.r.paddingH),
+                    padding: EdgeInsets.symmetric(
+                      horizontal: context.r.paddingH,
+                    ),
 
                     child: Column(
-
                       children: [
-
                         for (final h in horarios)
-
                           Padding(
-
                             padding: const EdgeInsets.only(bottom: 10),
 
                             child: Container(
-
                               width: double.infinity,
 
-                              padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+                              padding: const EdgeInsets.symmetric(
+                                vertical: 12,
+                                horizontal: 16,
+                              ),
 
                               decoration: BoxDecoration(
-
                                 color: isDark
-
                                     ? AppColors.info.withValues(alpha: 0.15)
-
                                     : const Color(0xFFEFF6FF),
 
-                                borderRadius: BorderRadius.circular(context.r.buttonRadius),
-
-                                border: Border.all(
-
-                                  color: AppColors.info.withValues(alpha: 0.25),
-
+                                borderRadius: BorderRadius.circular(
+                                  context.r.buttonRadius,
                                 ),
 
+                                border: Border.all(
+                                  color: AppColors.info.withValues(alpha: 0.25),
+                                ),
                               ),
 
                               child: Row(
-
                                 children: [
-
                                   Container(
-
                                     padding: EdgeInsets.all(context.r.spaceSm),
 
                                     decoration: BoxDecoration(
-
-                                      color: isDark ? AppColors.info.withValues(alpha: 0.2) : AppColors.white,
+                                      color: isDark
+                                          ? AppColors.info.withValues(
+                                              alpha: 0.2,
+                                            )
+                                          : AppColors.white,
 
                                       shape: BoxShape.circle,
 
-                                      boxShadow: isDark ? [] : AppColors.softShadow,
-
+                                      boxShadow: isDark
+                                          ? []
+                                          : AppColors.softShadow,
                                     ),
 
-                                    child: const Icon(CupertinoIcons.clock_fill, size: 20, color: AppColors.info),
-
+                                    child: const Icon(
+                                      CupertinoIcons.clock_fill,
+                                      size: 20,
+                                      color: AppColors.info,
+                                    ),
                                   ),
 
                                   SizedBox(width: context.r.spaceMd),
 
                                   Expanded(
-
                                     child: Column(
-
-                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
 
                                       children: [
-
                                         FittedBox(
-
                                           fit: BoxFit.scaleDown,
 
                                           alignment: Alignment.centerLeft,
 
                                           child: Text(
-
                                             h.rangoHorario,
 
                                             style: const TextStyle(
-
                                               fontWeight: FontWeight.w800,
 
                                               color: AppColors.info,
@@ -1468,154 +1363,111 @@ class TabShellState extends State<TabShell>
                                               decoration: TextDecoration.none,
 
                                               letterSpacing: -0.5,
-
                                             ),
-
                                           ),
-
                                         ),
 
                                         SizedBox(height: context.r.spaceXs),
 
                                         Text(
-
                                           h.descripcion.toDisplayCase,
 
                                           style: TextStyle(
-
-                                            color: AppColors.textSecondaryC(isDark),
+                                            color: AppColors.textSecondaryC(
+                                              isDark,
+                                            ),
 
                                             fontWeight: FontWeight.w500,
 
                                             decoration: TextDecoration.none,
 
                                             height: 1.2,
-
                                           ),
 
                                           maxLines: 2,
 
                                           overflow: TextOverflow.ellipsis,
-
                                         ),
-
                                       ],
-
                                     ),
-
                                   ),
-
                                 ],
-
                               ),
-
                             ),
-
                           ),
-
                       ],
-
+                    ),
+                  )
+                else
+                  Padding(
+                    padding: EdgeInsets.symmetric(
+                      horizontal: context.r.spaceLg,
                     ),
 
-                  )
-
-                else
-
-                  Padding(
-
-                    padding: EdgeInsets.symmetric(horizontal: context.r.spaceLg),
-
                     child: Text(
-
                       'No se pudieron obtener los horarios habilitados. Intente nuevamente más tarde.',
 
                       style: TextStyle(
-
                         color: AppColors.textSecondaryC(isDark),
 
                         decoration: TextDecoration.none,
-
                       ),
 
                       textAlign: TextAlign.center,
-
                     ),
-
                   ),
 
                 SizedBox(height: context.r.spaceSm),
 
                 // Botón OK
-
                 Padding(
-
                   padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
 
                   child: SizedBox(
-
                     width: double.infinity,
 
                     child: CupertinoButton(
+                      padding: EdgeInsets.symmetric(
+                        vertical: context.r.spaceMd,
+                      ),
 
-                      padding: EdgeInsets.symmetric(vertical: context.r.spaceMd),
-
-                      borderRadius: BorderRadius.circular(context.r.buttonRadius),
+                      borderRadius: BorderRadius.circular(
+                        context.r.buttonRadius,
+                      ),
 
                       color: AppColors.primary,
 
                       onPressed: () {
-
                         horarioPlayer?.stop();
 
                         horarioPlayer?.dispose();
 
                         Navigator.of(ctx).pop();
-
                       },
 
                       child: const Text(
-
                         'OK',
 
                         style: TextStyle(
-
                           fontWeight: FontWeight.w700,
 
                           color: AppColors.white,
-
                         ),
-
                       ),
-
                     ),
-
                   ),
-
                 ),
-
               ],
-
             ),
-
           ),
-
         ),
-
       ),
-
     );
-
   }
-
-
-
-
-
 
   /// Vuelve al tab Inicio después de confirmar reserva.
 
   void finishBooking({int? idtran, int? dr}) {
-
     if (idtran != null && dr != null) {
       lastBookingIds = (idtran: idtran, dr: dr);
     }
@@ -1623,7 +1475,8 @@ class TabShellState extends State<TabShell>
     // Capturar el idper del paciente ANTES de resetear el estado de reserva.
     // Esto permite que ReservasScreen refresque para el beneficiario correcto
     // incluso cuando el titular reservó para un familiar.
-    lastBookedIdper = bookingState.beneficiary?.id ?? UserSession.currentUser.id;
+    lastBookedIdper =
+        bookingState.beneficiary?.id ?? UserSession.currentUser.id;
 
     bookingState.reset();
 
@@ -1642,198 +1495,159 @@ class TabShellState extends State<TabShell>
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) reservasRefreshNotifier.value++;
     });
-
   }
 
-
-
   Widget _screenForIndex(int index) {
-
     final refreshKey = ValueKey('tab_${index}_${_tabRefreshCounters[index]}');
 
     return switch (index) {
-
       0 => HomeScreen(key: refreshKey, tabShell: this),
 
-      1 => ReservasScreen(key: refreshKey, refreshNotifier: reservasRefreshNotifier, lastBookingIds: lastBookingIds, lastBookedIdper: lastBookedIdper),
+      1 => ReservasScreen(
+        key: refreshKey,
+        refreshNotifier: reservasRefreshNotifier,
+        lastBookingIds: lastBookingIds,
+        lastBookedIdper: lastBookedIdper,
+      ),
 
       2 => BookingFlowScreen(key: _bookingFlowKey, tabShell: this),
 
       3 => CalendarioHospitalScreen(key: refreshKey),
 
-      4 => PerfilScreen(key: refreshKey),
+      4 => PerfilScreen(key: refreshKey, tabShell: this),
 
       _ => const SizedBox.shrink(),
-
     };
-
   }
 
-
-
   @override
-
   Widget build(BuildContext context) {
-
     return PopScope(
-
       canPop: false,
 
       onPopInvokedWithResult: (didPop, result) async {
-
         if (didPop) return;
-
-
 
         final navState = _tabNavKeys[_currentIndex].currentState;
 
         final canPopInternal = await navState?.maybePop() ?? false;
 
-
-
         if (!canPopInternal) {
-
           if (_currentIndex != 0) {
-
             goToTab(0);
-
           } else {
-
             if (!mounted) return;
 
-            final bool? shouldExit = await showCupertinoDialog<bool>(context: context, builder: (ctx) => CupertinoAlertDialog( // ignore: use_build_context_synchronously
-
+            final bool? shouldExit = await showAppDialog<bool>(
+              context: context,
+              builder: (ctx) => CupertinoAlertDialog(
+                // ignore: use_build_context_synchronously
                 title: const Text('Salir'),
 
                 content: const Text('¿Desea cerrar la aplicación?'),
 
                 actions: [
-
                   CupertinoDialogAction(
-
                     child: const Text('No'),
 
                     onPressed: () => Navigator.pop(ctx, false),
-
                   ),
 
                   CupertinoDialogAction(
-
                     isDestructiveAction: true,
 
                     child: const Text('Sí'),
 
                     onPressed: () => Navigator.pop(ctx, true),
-
                   ),
-
                 ],
-
               ),
-
             );
 
-
-
             if (shouldExit == true) {
-
               final hasPin = await SecurityService.hasPin();
 
               if (!hasPin) {
-
                 await TokenStorage.deleteToken();
 
                 await SessionRestoreService.clearUserSession();
 
                 UserSession.clear();
-
               }
 
               SystemChannels.platform.invokeMethod('SystemNavigator.pop');
-
             }
-
           }
-
         }
-
       },
 
       // Listener global que detecta toques y reinicia el timer de inactividad.
-
       child: Listener(
-
         behavior: HitTestBehavior.translucent,
 
         onPointerDown: (_) => _onUserInteraction(),
 
-        child: Builder(builder: (context) {
+        child: Builder(
+          builder: (context) {
+            final r = context.r;
+            final bool useSideNav =
+                r.isDesktop || (r.isTablet && r.isLandscape);
 
-          final r = context.r;
-          final bool useSideNav =
-              r.isDesktop || (r.isTablet && r.isLandscape);
-
-          // Callback compartido de navegación por tap
-          void handleNavTap(int index) {
-            if (index == _currentIndex) {
-              _tabNavKeys[index]
-                  .currentState
-                  ?.popUntil((route) => route.isFirst);
-              setState(() => _tabRefreshCounters[index]++);
-            } else {
-              goToTab(index);
+            // Callback compartido de navegación por tap
+            void handleNavTap(int index) {
+              if (index == _currentIndex) {
+                _tabNavKeys[index].currentState?.popUntil(
+                  (route) => route.isFirst,
+                );
+                setState(() => _tabRefreshCounters[index]++);
+              } else {
+                goToTab(index);
+              }
             }
-          }
 
-          final tabs = IndexedStack(
-            index: _currentIndex,
-            children: List.generate(5, (index) {
-              return CupertinoTabView(
-                navigatorKey: _tabNavKeys[index],
-                builder: (context) => _screenForIndex(index),
-              );
-            }),
-          );
+            final tabs = IndexedStack(
+              index: _currentIndex,
+              children: List.generate(5, (index) {
+                return CupertinoTabView(
+                  navigatorKey: _tabNavKeys[index],
+                  builder: (context) => _screenForIndex(index),
+                );
+              }),
+            );
 
-          return AppBackground(
+            return AppBackground(
+              isDark: Theme.of(context).brightness == Brightness.dark,
 
-            isDark: Theme.of(context).brightness == Brightness.dark,
+              child: Scaffold(
+                backgroundColor: Colors.transparent,
 
-            child: Scaffold(
+                extendBody: !useSideNav,
 
-              backgroundColor: Colors.transparent,
+                body: useSideNav
+                    ? Row(
+                        children: [
+                          SideNavBar(
+                            currentIndex: _currentIndex,
+                            onTap: handleNavTap,
+                          ),
+                          Expanded(child: tabs),
+                        ],
+                      )
+                    : tabs,
 
-              extendBody: !useSideNav,
-
-              body: useSideNav
-                  ? Row(children: [
-                      SideNavBar(
+                bottomNavigationBar: useSideNav
+                    ? null
+                    : FloatingNavBar(
                         currentIndex: _currentIndex,
                         onTap: handleNavTap,
                       ),
-                      Expanded(child: tabs),
-                    ])
-                  : tabs,
-
-              bottomNavigationBar: useSideNav
-                  ? null
-                  : FloatingNavBar(
-                      currentIndex: _currentIndex,
-                      onTap: handleNavTap,
-                    ),
-
-          ),
-
-          );
-
-        }),
-
+              ),
+            );
+          },
+        ),
       ),
-
     );
-
   }
-
 }
 
 // ── Wrapper para SecuritySetupScreen desde el prompt de biometría ────────────
@@ -1859,10 +1673,16 @@ class _ScheduleInfoDialog extends StatelessWidget {
     final r = context.r;
     final texts = context.texts;
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final surfaceColor = isDark ? const Color(0xFF2C2C2E) : CupertinoColors.white;
+    final surfaceColor = isDark
+        ? const Color(0xFF2C2C2E)
+        : CupertinoColors.white;
     final textColor = isDark ? CupertinoColors.white : CupertinoColors.black;
-    final subtleColor = isDark ? const Color(0xFF8E8E93) : const Color(0xFF6C6C70);
-    final dividerColor = isDark ? const Color(0xFF38383A) : const Color(0xFFE5E5EA);
+    final subtleColor = isDark
+        ? const Color(0xFF8E8E93)
+        : const Color(0xFF6C6C70);
+    final dividerColor = isDark
+        ? const Color(0xFF38383A)
+        : const Color(0xFFE5E5EA);
     final buttonColor = CupertinoColors.activeBlue;
 
     final dialogWidth = (MediaQuery.of(context).size.width * r.modalWidthFactor)
@@ -1870,7 +1690,10 @@ class _ScheduleInfoDialog extends StatelessWidget {
 
     return Dialog(
       backgroundColor: Colors.transparent,
-      insetPadding: EdgeInsets.symmetric(horizontal: r.paddingH, vertical: r.spaceLg),
+      insetPadding: EdgeInsets.symmetric(
+        horizontal: r.paddingH,
+        vertical: r.spaceLg,
+      ),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(r.modalRadius),
         child: Container(
@@ -1881,7 +1704,12 @@ class _ScheduleInfoDialog extends StatelessWidget {
             children: [
               // ── Cabecera ──────────────────────────────────────────────────
               Padding(
-                padding: EdgeInsets.fromLTRB(r.modalPadding, r.spaceLg, r.modalPadding, r.spaceMd),
+                padding: EdgeInsets.fromLTRB(
+                  r.modalPadding,
+                  r.spaceLg,
+                  r.modalPadding,
+                  r.spaceMd,
+                ),
                 child: Column(
                   children: [
                     Image.asset(
@@ -1892,7 +1720,10 @@ class _ScheduleInfoDialog extends StatelessWidget {
                     SizedBox(height: r.spaceSm),
                     Text(
                       'Horarios y Modalidades\nde Atención Médica',
-                      style: texts.titleLarge.copyWith(color: textColor, height: 1.25),
+                      style: texts.titleLarge.copyWith(
+                        color: textColor,
+                        height: 1.25,
+                      ),
                       textAlign: TextAlign.center,
                     ),
                   ],
@@ -1901,25 +1732,48 @@ class _ScheduleInfoDialog extends StatelessWidget {
 
               Divider(height: 1, thickness: 1, color: dividerColor),
 
-                      // ── Contenido (scrollable para no desbordar en web/pantalla pequeña) ──
+              // ── Contenido (scrollable para no desbordar en web/pantalla pequeña) ──
               Flexible(
                 child: SingleChildScrollView(
                   child: Padding(
-                    padding: EdgeInsets.fromLTRB(r.modalPadding, r.spaceMd, r.modalPadding, r.spaceLg),
+                    padding: EdgeInsets.fromLTRB(
+                      r.modalPadding,
+                      r.spaceMd,
+                      r.modalPadding,
+                      r.spaceLg,
+                    ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        _infoRow('🗓', 'Lunes a Viernes',
-                            'Atención regular para todas las especialidades médicas mediante reserva previa.',
-                            textColor, subtleColor, r, texts),
+                        _infoRow(
+                          '🗓',
+                          'Lunes a Viernes',
+                          'Atención regular para todas las especialidades médicas mediante reserva previa.',
+                          textColor,
+                          subtleColor,
+                          r,
+                          texts,
+                        ),
                         SizedBox(height: r.spaceMd),
-                        _infoRow('🚨', 'Sábados, Domingos y Feriados',
-                            'Atención exclusiva a través de Emergencias, disponible las 24 horas.',
-                            textColor, subtleColor, r, texts),
+                        _infoRow(
+                          '🚨',
+                          'Sábados, Domingos y Feriados',
+                          'Atención exclusiva a través de Emergencias, disponible las 24 horas.',
+                          textColor,
+                          subtleColor,
+                          r,
+                          texts,
+                        ),
                         SizedBox(height: r.spaceMd),
-                        _infoRow('📱', 'Reserva 24/7',
-                            'Puedes reservar tu cita médica en cualquier momento del día. La agenda se renueva cada mañana a las 6:00 a.m. para habilitar nuevos turnos.\n\nEjemplo: Si hoy es viernes y desea reservar para el próximo viernes, ese turno estará disponible desde las 6:00 a.m. de ese día.',
-                            textColor, subtleColor, r, texts),
+                        _infoRow(
+                          '📱',
+                          'Reserva 24/7',
+                          'Puedes reservar tu cita médica en cualquier momento del día. La agenda se renueva cada mañana a las 6:00 a.m. para habilitar nuevos turnos.\n\nEjemplo: Si hoy es viernes y desea reservar para el próximo viernes, ese turno estará disponible desde las 6:00 a.m. de ese día.',
+                          textColor,
+                          subtleColor,
+                          r,
+                          texts,
+                        ),
                       ],
                     ),
                   ),
@@ -1977,7 +1831,10 @@ class _ScheduleInfoDialog extends StatelessWidget {
               SizedBox(height: r.spaceXs),
               Text(
                 detail,
-                style: texts.bodySmall.copyWith(color: subtleColor, height: 1.45),
+                style: texts.bodySmall.copyWith(
+                  color: subtleColor,
+                  height: 1.45,
+                ),
               ),
             ],
           ),
@@ -1986,4 +1843,3 @@ class _ScheduleInfoDialog extends StatelessWidget {
     );
   }
 }
-

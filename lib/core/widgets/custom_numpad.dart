@@ -1,7 +1,7 @@
 import 'package:flutter/cupertino.dart';
-import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
+import 'package:flutter/material.dart' show Colors;
 
+import '../animations/optimized_animations.dart';
 import '../constants/app_colors.dart';
 import '../extensions/responsive_extensions.dart';
 
@@ -65,14 +65,15 @@ class CustomNumpad extends StatelessWidget {
     );
   }
 
+  // Tecla numérica: círculo plano + feedback por escala/háptico
+  // (OptimizedPressButton), NO ripple Material — regla de la app (iOS no usa
+  // splash de tinta; la pulsación se comunica achicando el propio botón).
   Widget _buildNumberKey(BuildContext context, int number, AppResponsive r) {
     final keySize = r.pinKeySize;
     final fontSize = r.pinKeyFontSize;
     final isDisabled = disabled;
 
-    final bgColor = isDark
-        ? AppColors.darkElevated
-        : Colors.white;
+    final bgColor = isDark ? AppColors.darkElevated : Colors.white;
     final borderColor = isDark
         ? Colors.white.withValues(alpha: 0.15)
         : AppColors.primary.withValues(alpha: 0.12);
@@ -80,37 +81,36 @@ class CustomNumpad extends StatelessWidget {
         ? AppColors.textTertiaryC(isDark)
         : AppColors.textPrimaryC(isDark);
 
-    return SizedBox(
-      width: keySize,
-      height: keySize,
-      child: Material(
-        color: isDisabled ? bgColor.withValues(alpha: 0.3) : bgColor,
-        shape: const CircleBorder(),
-        elevation: isDark ? 0 : 3,
-        shadowColor: Colors.black.withValues(alpha: 0.15),
-        child: InkWell(
-          onTap: isDisabled ? null : () {
-            HapticFeedback.lightImpact();
-            onNumberPressed(number);
-          },
-          customBorder: const CircleBorder(),
-          splashColor: AppColors.primary.withValues(alpha: isDark ? 0.25 : 0.15),
-          highlightColor: AppColors.primary.withValues(alpha: isDark ? 0.12 : 0.08),
-          child: Container(
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              border: Border.all(color: borderColor, width: 1.5),
-            ),
-            child: Center(
-              child: Text(
-                number.toString(),
-                style: TextStyle(
-                  fontSize: fontSize * 1.05,
-                  fontWeight: FontWeight.w800,
-                  color: textColor,
-                  height: 1,
-                ),
-              ),
+    return OptimizedPressButton(
+      onTap: isDisabled ? null : () => onNumberPressed(number),
+      scaleDown: 0.92,
+      haptic: true,
+      child: Container(
+        width: keySize,
+        height: keySize,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          color: isDisabled ? bgColor.withValues(alpha: 0.3) : bgColor,
+          border: Border.all(color: borderColor, width: 1.5),
+          // Sombra translúcida fina — reemplaza la elevación Material.
+          boxShadow: isDark
+              ? null
+              : [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.10),
+                    blurRadius: 8,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
+        ),
+        child: Center(
+          child: Text(
+            number.toString(),
+            style: TextStyle(
+              fontSize: fontSize * 1.05,
+              fontWeight: FontWeight.w800,
+              color: textColor,
+              height: 1,
             ),
           ),
         ),
@@ -120,25 +120,17 @@ class CustomNumpad extends StatelessWidget {
 
   Widget _buildDeleteKey(BuildContext context, AppResponsive r) {
     final keySize = r.pinKeySize;
-    return SizedBox(
-      width: keySize,
-      height: keySize,
-      child: Material(
-        color: Colors.transparent,
-        shape: const CircleBorder(),
-        child: InkWell(
-          onTap: () {
-            HapticFeedback.selectionClick();
-            onDelete();
-          },
-          customBorder: const CircleBorder(),
-          splashColor: AppColors.textSecondaryC(isDark).withValues(alpha: 0.15),
-          highlightColor: AppColors.textSecondaryC(isDark).withValues(alpha: 0.08),
-          child: Icon(
-            CupertinoIcons.delete_left,
-            size: keySize * 0.36,
-            color: AppColors.textSecondaryC(isDark),
-          ),
+    return OptimizedPressButton(
+      onTap: onDelete,
+      scaleDown: 0.88,
+      haptic: true,
+      child: SizedBox(
+        width: keySize,
+        height: keySize,
+        child: Icon(
+          CupertinoIcons.delete_left,
+          size: keySize * 0.36,
+          color: AppColors.textSecondaryC(isDark),
         ),
       ),
     );

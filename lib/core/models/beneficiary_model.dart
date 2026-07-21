@@ -1,3 +1,5 @@
+import 'package:flutter/foundation.dart' show kDebugMode, debugPrint;
+
 import '../extensions/string_extensions.dart';
 import '../utils/rank_utils.dart';
 
@@ -11,6 +13,9 @@ class BeneficiaryModel {
   final String id;
   final String fullName;
   final String relationship;
+  /// Cédula de identidad. El backend no siempre la envía para beneficiarios;
+  /// cuando falta queda vacía y los formularios la dejan editable.
+  final String ci;
   final String matricula;
   final String photoBase64;
   final int? age;
@@ -26,6 +31,7 @@ class BeneficiaryModel {
     required this.id,
     required this.fullName,
     required this.relationship,
+    this.ci = '',
     this.matricula = '',
     this.photoBase64 = '',
     this.age,
@@ -35,7 +41,15 @@ class BeneficiaryModel {
     this.atencion = 'S',
   });
 
+  /// Diagnóstico único por sesión: qué claves envía realmente el backend
+  /// (para detectar bajo qué nombre viene la cédula de identidad).
+  static bool _loggedKeys = false;
+
   factory BeneficiaryModel.fromJson(Map<String, dynamic> json) {
+    if (kDebugMode && !_loggedKeys) {
+      _loggedKeys = true;
+      debugPrint('🪪 beneficiario: claves del backend = ${json.keys.toList()}');
+    }
     // Construir nombre completo desde pat/mat/nom si no viene directo
     String fullName = (json['nombre_completo'] as String? ??
         json['fullName'] as String? ??
@@ -55,6 +69,14 @@ class BeneficiaryModel {
       relationship: (json['parentesco'] as String? ??
           json['relationship'] as String? ??
           '').trim().toDisplayCase,
+      ci: (json['ci'] ??
+              json['docide'] ??
+              json['cedula'] ??
+              json['nrodoc'] ??
+              json['numdoc'] ??
+              '')
+          .toString()
+          .trim(),
       matricula: (json['mtrben'] ??
                   json['matricula'] ??
                   json['nromatricula'] ??
@@ -80,6 +102,7 @@ class BeneficiaryModel {
         'id': id,
         'fullName': fullName,
         'relationship': relationship,
+        'ci': ci,
         'matricula': matricula,
         'photoBase64': photoBase64,
         'age': age,

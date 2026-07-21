@@ -38,6 +38,19 @@
 
   <title>COSSMIL</title>
   <link rel="manifest" href="manifest.json">
+
+  <!--
+    pdf.js AUTOALOJADO (web/pdfjs/): el paquete `printing` lo necesita para
+    previsualizar/imprimir PDFs en web y por defecto lo descarga de unpkg.com
+    (imposible en la LAN sin internet). Se precarga aquí COMPLETO (script +
+    workerSrc en init.js) para que `printing` detecte pdfjsLib listo y salte
+    su propio cargador: su lectura de window.dartPdfJsBaseUrl tiene un bug de
+    interop en printing 5.14.3 (TypeError String→Never) que rompía la vista
+    previa. NO volver a usar dartPdfJsBaseUrl mientras siga esa versión.
+    Ambos <script> llevan defer: se ejecutan en orden, sin bloquear el pintado.
+  -->
+  <script src="pdfjs/pdf.min.js" defer></script>
+  <script src="pdfjs/init.js" defer></script>
 </head>
 <body>
   <script src="flutter_bootstrap.js" async></script>

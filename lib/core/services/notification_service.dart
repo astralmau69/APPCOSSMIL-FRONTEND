@@ -43,6 +43,11 @@ class NotificationService {
   static Future<void> requestBatteryOptimizationExemption() =>
       NotificationInitializer.requestBatteryOptimizationExemption();
 
+  /// Despacha la notificación que abrió la app en frío (app cerrada por
+  /// completo). Ver [NotificationInitializer.consumeAppLaunchNotification].
+  static Future<void> consumeAppLaunchNotification() =>
+      NotificationInitializer.consumeAppLaunchNotification();
+
   // ── Navegación / callbacks ─────────────────────────────────────────────────
 
   /// Registrar por TabShell para cambiar de tab desde una notificación.

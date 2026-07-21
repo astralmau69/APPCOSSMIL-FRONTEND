@@ -1,4 +1,5 @@
 import 'package:flutter/cupertino.dart';
+import '../animations/app_dialog.dart';
 import '../constants/app_colors.dart';
 import '../extensions/responsive_extensions.dart';
 
@@ -34,7 +35,7 @@ class CossmilIosAlert {
     final icon = _iconForType(type);
     final iconColor = _colorForType(type);
 
-    return showCupertinoDialog(
+    return showAppDialog(
       context: context,
       builder: (ctx) => CupertinoAlertDialog(
         title: Row(
@@ -53,7 +54,10 @@ class CossmilIosAlert {
         ),
         content: Padding(
           padding: const EdgeInsets.only(top: 8.0),
-          child: Text(message, style: const TextStyle(fontSize: 14, height: 1.4)),
+          child: Text(
+            message,
+            style: const TextStyle(fontSize: 14, height: 1.4),
+          ),
         ),
         actions: [
           if (cancelText != null)
@@ -85,16 +89,16 @@ class CossmilIosAlert {
   // ─── Helpers ───────────────────────────────────────────────────────────────
 
   static IconData _iconForType(AlertType type) => switch (type) {
-        AlertType.success => CupertinoIcons.checkmark_circle_fill,
-        AlertType.error   => CupertinoIcons.xmark_circle_fill,
-        AlertType.warning => CupertinoIcons.exclamationmark_triangle_fill,
-        AlertType.info    => CupertinoIcons.info_circle_fill,
-      };
+    AlertType.success => CupertinoIcons.checkmark_circle_fill,
+    AlertType.error => CupertinoIcons.xmark_circle_fill,
+    AlertType.warning => CupertinoIcons.exclamationmark_triangle_fill,
+    AlertType.info => CupertinoIcons.info_circle_fill,
+  };
 
   static Color _colorForType(AlertType type) => switch (type) {
-        AlertType.success => AppColors.success,
-        AlertType.error   => AppColors.error,
-        AlertType.warning => AppColors.warning,
-        AlertType.info    => AppColors.info,
-      };
+    AlertType.success => AppColors.success,
+    AlertType.error => AppColors.error,
+    AlertType.warning => AppColors.warning,
+    AlertType.info => AppColors.info,
+  };
 }

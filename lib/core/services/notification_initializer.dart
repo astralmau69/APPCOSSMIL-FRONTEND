@@ -110,4 +110,33 @@ class NotificationInitializer {
           _tag, 'requestBatteryOptimizationExemption failed', e, null);
     }
   }
+
+  // ── Notificación que abrió la app (cold start) ─────────────────────────────
+
+  static bool _launchNotificationConsumed = false;
+
+  /// Si la app fue abierta tocando una notificación mientras estaba
+  /// completamente cerrada (no en segundo plano), la entrega aquí.
+  /// `onDidReceiveNotificationResponse` (registrado en [initialize]) NUNCA se
+  /// dispara para ese caso — solo con la app ya corriendo en foreground o
+  /// segundo plano — así que sin esto el tap que abrió la app se pierde en
+  /// silencio (no aparece el modal ni cambia de pestaña).
+  ///
+  /// Llamar una vez que la sesión y la navegación ya están listas (ej. en
+  /// `TabShellState.initState`, nunca desde `main()`).
+  static Future<void> consumeAppLaunchNotification() async {
+    if (_launchNotificationConsumed) return;
+    _launchNotificationConsumed = true;
+    try {
+      final details = await plugin.getNotificationAppLaunchDetails();
+      final response = details?.notificationResponse;
+      if (details?.didNotificationLaunchApp == true && response != null) {
+        AppLogger.info(
+            _tag, 'App abierta desde el tap de una notificación — despachando');
+        NotificationUiHandler.onNotificationTap(response);
+      }
+    } catch (e) {
+      AppLogger.warn(_tag, 'consumeAppLaunchNotification failed: $e');
+    }
+  }
 }

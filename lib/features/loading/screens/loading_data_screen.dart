@@ -5,6 +5,7 @@ import '../../../core/animations/optimized_animations.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/data/initial_data_orchestrator.dart';
 import '../../../core/extensions/responsive_extensions.dart';
+import '../../../core/services/background_sync_service.dart';
 import '../../../core/services/notification_service.dart';
 import '../../../core/services/permissions_onboarding.dart';
 import '../../../core/theme/app_constants.dart';
@@ -88,6 +89,11 @@ class _LoadingDataScreenState extends State<LoadingDataScreen> {
       // Fire-and-forget: no bloquea la navegación si el storage tarda.
       NotificationService.rescheduleNotificationsForCurrentUser()
           .catchError((_) {});
+
+      // "Push sin Firebase": agenda la sincronización periódica en segundo
+      // plano (WorkManager) que detecta citas «Completado» aunque el
+      // usuario no vuelva a abrir la app. Idempotente y solo Android.
+      BackgroundSyncService.schedulePeriodicSync().catchError((_) {});
 
       // Permisos de una sola vez (solo en el PRIMER arranque): notificaciones +
       // ubicación. Tras pedirlos se guarda un flag y NO se vuelven a solicitar

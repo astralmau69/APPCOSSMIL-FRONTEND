@@ -1,8 +1,8 @@
 import 'dart:convert';
 import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/cupertino.dart';
-import 'package:flutter/material.dart'
-    show Colors, Brightness, Theme;
+import 'package:flutter/material.dart' show Colors, Brightness, Theme;
+import '../animations/app_dialog.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import '../../app.dart';
 import '../constants/app_colors.dart';
@@ -37,13 +37,11 @@ class NotificationUiHandler {
 
   static void registerCancelCitaHandler(
     Future<void> Function(Map<String, dynamic> data) fn,
-  ) =>
-      _onCancelCita = fn;
+  ) => _onCancelCita = fn;
 
   static void registerCancelRemindersHandler(
     Future<void> Function(String ticket) fn,
-  ) =>
-      _onCancelReminders = fn;
+  ) => _onCancelReminders = fn;
 
   static void switchTab(int tab) => _onSwitchTab?.call(tab);
 
@@ -65,7 +63,10 @@ class NotificationUiHandler {
   /// Procesa los datos de una notificación (local o push) redirigiendo a la pantalla correspondiente.
   static void handleNotificationData(Map<String, dynamic> data) {
     if (!UserSession.isLoggedIn) {
-      AppLogger.debug(_tag, 'Notification received but no active session — ignoring');
+      AppLogger.debug(
+        _tag,
+        'Notification received but no active session — ignoring',
+      );
       return;
     }
 
@@ -76,8 +77,9 @@ class NotificationUiHandler {
           notifUserId.isNotEmpty &&
           notifUserId != UserSession.currentUser.id) {
         AppLogger.warn(
-            _tag,
-            'Notification userId=$notifUserId ≠ session userId=${UserSession.currentUser.id} — ignoring');
+          _tag,
+          'Notification userId=$notifUserId ≠ session userId=${UserSession.currentUser.id} — ignoring',
+        );
         return;
       }
 
@@ -117,13 +119,14 @@ class NotificationUiHandler {
           audioPlayer!
               .play(AssetSource('vof/AUDIO 7. NOTIFICACION CITA MEDICA.mp3'))
               .catchError((e) {
-            AppLogger.error(_tag, 'Failed to play AUDIO 7', e);
-          });
+                AppLogger.error(_tag, 'Failed to play AUDIO 7', e);
+              });
         }
       });
     }
 
-    final hasCancelData = data['gestion'] != null &&
+    final hasCancelData =
+        data['gestion'] != null &&
         data['idins'] != null &&
         data['idsuc'] != null &&
         data['idtran'] != null &&
@@ -169,10 +172,12 @@ class NotificationUiHandler {
                 width: double.infinity,
                 padding: const EdgeInsets.fromLTRB(20, 24, 20, 16),
                 decoration: BoxDecoration(
-                  color: AppColors.primary
-                      .withValues(alpha: isDark ? 0.2 : 0.08),
-                  borderRadius:
-                      const BorderRadius.vertical(top: Radius.circular(20)),
+                  color: AppColors.primary.withValues(
+                    alpha: isDark ? 0.2 : 0.08,
+                  ),
+                  borderRadius: const BorderRadius.vertical(
+                    top: Radius.circular(20),
+                  ),
                 ),
                 child: Column(
                   children: [
@@ -180,12 +185,14 @@ class NotificationUiHandler {
                       width: 56,
                       height: 56,
                       decoration: BoxDecoration(
-                        color:
-                            AppColors.primary.withValues(alpha: 0.15),
+                        color: AppColors.primary.withValues(alpha: 0.15),
                         shape: BoxShape.circle,
                       ),
-                      child: const Icon(CupertinoIcons.bell_fill,
-                          size: 28, color: AppColors.primary),
+                      child: const Icon(
+                        CupertinoIcons.bell_fill,
+                        size: 28,
+                        color: AppColors.primary,
+                      ),
                     ),
                     const SizedBox(height: 12),
                     Text(
@@ -215,19 +222,43 @@ class NotificationUiHandler {
                 padding: const EdgeInsets.fromLTRB(20, 16, 20, 4),
                 child: Column(
                   children: [
-                    _modalInfoTile(CupertinoIcons.heart_circle,
-                        'Especialidad', data['especialidad'] ?? '', isDark),
-                    _modalInfoTile(CupertinoIcons.person, 'Médico',
-                        data['medico'] ?? '', isDark),
-                    _modalInfoTile(CupertinoIcons.calendar, 'Fecha',
-                        data['fecha'] ?? '', isDark),
-                    _modalInfoTile(CupertinoIcons.clock, 'Hora',
-                        data['hora'] ?? '', isDark),
-                    _modalInfoTile(CupertinoIcons.person_2, 'Paciente',
-                        data['paciente'] ?? '', isDark),
+                    _modalInfoTile(
+                      CupertinoIcons.heart_circle,
+                      'Especialidad',
+                      data['especialidad'] ?? '',
+                      isDark,
+                    ),
+                    _modalInfoTile(
+                      CupertinoIcons.person,
+                      'Médico',
+                      data['medico'] ?? '',
+                      isDark,
+                    ),
+                    _modalInfoTile(
+                      CupertinoIcons.calendar,
+                      'Fecha',
+                      data['fecha'] ?? '',
+                      isDark,
+                    ),
+                    _modalInfoTile(
+                      CupertinoIcons.clock,
+                      'Hora',
+                      data['hora'] ?? '',
+                      isDark,
+                    ),
+                    _modalInfoTile(
+                      CupertinoIcons.person_2,
+                      'Paciente',
+                      data['paciente'] ?? '',
+                      isDark,
+                    ),
                     if ((data['ticket'] ?? '').toString().isNotEmpty)
-                      _modalInfoTile(CupertinoIcons.ticket, 'Ficha',
-                          data['ticket'] ?? '', isDark),
+                      _modalInfoTile(
+                        CupertinoIcons.ticket,
+                        'Ficha',
+                        data['ticket'] ?? '',
+                        isDark,
+                      ),
                   ],
                 ),
               ),
@@ -249,8 +280,9 @@ class NotificationUiHandler {
                         child: const Text(
                           'Entendido',
                           style: TextStyle(
-                              fontWeight: FontWeight.w700,
-                              color: CupertinoColors.white),
+                            fontWeight: FontWeight.w700,
+                            color: CupertinoColors.white,
+                          ),
                         ),
                       ),
                     ),
@@ -262,10 +294,12 @@ class NotificationUiHandler {
                           padding: const EdgeInsets.symmetric(vertical: 14),
                           borderRadius: BorderRadius.circular(12),
                           color: isDark
-                              ? CupertinoColors.destructiveRed
-                                  .withValues(alpha: 0.15)
-                              : CupertinoColors.destructiveRed
-                                  .withValues(alpha: 0.08),
+                              ? CupertinoColors.destructiveRed.withValues(
+                                  alpha: 0.15,
+                                )
+                              : CupertinoColors.destructiveRed.withValues(
+                                  alpha: 0.08,
+                                ),
                           onPressed: () {
                             cleanup();
                             Navigator.of(dialogCtx).pop();
@@ -274,9 +308,11 @@ class NotificationUiHandler {
                           child: Row(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
-                              Icon(CupertinoIcons.xmark_circle_fill,
-                                  size: 18,
-                                  color: CupertinoColors.destructiveRed),
+                              Icon(
+                                CupertinoIcons.xmark_circle_fill,
+                                size: 18,
+                                color: CupertinoColors.destructiveRed,
+                              ),
                               const SizedBox(width: 8),
                               Text(
                                 'Cancelar esta cita médica',
@@ -301,7 +337,11 @@ class NotificationUiHandler {
   }
 
   static Widget _modalInfoTile(
-      IconData icon, String label, String value, bool isDark) {
+    IconData icon,
+    String label,
+    String value,
+    bool isDark,
+  ) {
     if (value.isEmpty) return const SizedBox.shrink();
     return Padding(
       padding: const EdgeInsets.only(bottom: 10),
@@ -361,7 +401,7 @@ class NotificationUiHandler {
     final especialidad = data['especialidad'] ?? '';
     final medico = data['medico'] ?? '';
 
-    showCupertinoDialog(
+    showAppDialog(
       context: ctx,
       builder: (dialogCtx) => CupertinoAlertDialog(
         title: const Text('Cancelar Cita'),
@@ -389,12 +429,13 @@ class NotificationUiHandler {
   /// Ejecuta la cancelación usando los callbacks registrados externamente.
   /// N6 fix: ya no importa ProgramacionService — delega al callback de TabShell.
   static Future<void> _executeCancelFromNotification(
-      Map<String, dynamic> data) async {
+    Map<String, dynamic> data,
+  ) async {
     final ctx = CossmilApp.navigatorKey.currentContext;
     if (ctx == null) return;
 
     // Mostrar loader
-    showCupertinoDialog(
+    showAppDialog(
       context: ctx,
       barrierDismissible: false,
       builder: (_) =>
@@ -406,8 +447,10 @@ class NotificationUiHandler {
       if (_onCancelCita != null) {
         await _onCancelCita!(data);
       } else {
-        AppLogger.warn(_tag,
-            '_onCancelCita no registrado — cancelación HTTP omitida');
+        AppLogger.warn(
+          _tag,
+          '_onCancelCita no registrado — cancelación HTTP omitida',
+        );
       }
 
       // Cancelar recordatorios locales vía callback
@@ -421,12 +464,11 @@ class NotificationUiHandler {
       // ignore: use_build_context_synchronously
       Navigator.of(navCtx).pop(); // Quitar loader
 
-      showCupertinoDialog(
+      showAppDialog(
         context: navCtx, // ignore: use_build_context_synchronously
         builder: (dCtx) => CupertinoAlertDialog(
           title: const Text('Cita Cancelada'),
-          content: const Text(
-              'Su cita médica ha sido cancelada exitosamente.'),
+          content: const Text('Su cita médica ha sido cancelada exitosamente.'),
           actions: [
             CupertinoDialogAction(
               child: const Text('Entendido'),
@@ -441,7 +483,7 @@ class NotificationUiHandler {
       // ignore: use_build_context_synchronously
       Navigator.of(navCtx).pop(); // Quitar loader
 
-      showCupertinoDialog(
+      showAppDialog(
         context: navCtx, // ignore: use_build_context_synchronously
         builder: (dCtx) => CupertinoAlertDialog(
           title: const Text('Error'),

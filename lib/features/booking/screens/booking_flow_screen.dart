@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/extensions/responsive_extensions.dart';
 import '../../../core/widgets/booking_stepper.dart';
+import '../../../core/widgets/tutorial_coach_overlay.dart';
 import '../../../shell/tab_shell.dart';
 import 'regional_screen.dart';
 import 'specialty_screen.dart';
@@ -30,6 +31,10 @@ class BookingFlowScreenState extends State<BookingFlowScreen> {
   int _currentStep = 0;
   bool _isConfirmed = false;
   DateTime? _lastPopTime;
+
+  /// Acceso al coach del tutorial para minimizarlo en cuanto el usuario
+  /// interactúa con el contenido del paso (que no estorbe al elegir).
+  final _coachKey = GlobalKey<TutorialCoachOverlayState>();
 
   static const _titles = [
     'Establecimiento',
@@ -124,24 +129,51 @@ class BookingFlowScreenState extends State<BookingFlowScreen> {
             children: [
               // Barra líquida persistente — se anima sola al cambiar paso
               BookingStepper(currentStep: _currentStep),
-              // Contenido del paso actual
+              // Contenido del paso actual. En modo tutorial, la instructora
+              // flota en la esquina inferior izquierda POR ENCIMA del paso y
+              // FUERA del AnimatedSwitcher: persiste entre pasos y solo sus
+              // burbujas se renuevan con cada uno.
               Expanded(
-                child: Center(
-                  child: ConstrainedBox(
-                    constraints: BoxConstraints(maxWidth: r.maxContentWidth),
-                    child: AnimatedSwitcher(
-                      duration: const Duration(milliseconds: 350),
-                      switchInCurve: Curves.easeOut,
-                      switchOutCurve: Curves.easeIn,
-                      transitionBuilder: (child, animation) {
-                        return FadeTransition(
-                          opacity: animation,
-                          child: child,
-                        );
-                      },
-                      child: _buildStepContent(),
+                child: Stack(
+                  children: [
+                    // En modo tutorial, cualquier interacción con el paso
+                    // (tap o inicio de scroll) minimiza al coach para que
+                    // no tape las opciones; el Listener es translúcido y no
+                    // interfiere con los gestos reales.
+                    Listener(
+                      behavior: HitTestBehavior.translucent,
+                      onPointerDown: widget.tabShell.bookingState.isTutorialMode
+                          ? (_) => _coachKey.currentState?.collapse()
+                          : null,
+                      child: Center(
+                        child: ConstrainedBox(
+                          constraints: BoxConstraints(maxWidth: r.maxContentWidth),
+                          child: AnimatedSwitcher(
+                            duration: const Duration(milliseconds: 350),
+                            switchInCurve: Curves.easeOut,
+                            switchOutCurve: Curves.easeIn,
+                            transitionBuilder: (child, animation) {
+                              return FadeTransition(
+                                opacity: animation,
+                                child: child,
+                              );
+                            },
+                            child: _buildStepContent(),
+                          ),
+                        ),
+                      ),
                     ),
-                  ),
+                    if (widget.tabShell.bookingState.isTutorialMode)
+                      TutorialCoachOverlay(
+                        key: _coachKey,
+                        messages: _coachMessages(),
+                        isDark: isDark,
+                        celebrate: _isConfirmed,
+                        step: _currentStep + 1,
+                        totalSteps: 6,
+                        onExit: _exitTutorial,
+                      ),
+                  ],
                 ),
               ),
             ],
@@ -149,6 +181,54 @@ class BookingFlowScreenState extends State<BookingFlowScreen> {
         ),
       ),
     );
+  }
+
+  /// Burbujas de la instructora para cada paso del tutorial — frases cortas
+  /// y cercanas, una idea por burbuja (estilo chat). La última siempre lleva
+  /// la colita apuntando hacia ella.
+  List<String> _coachMessages() {
+    if (_isConfirmed) {
+      return const [
+        '¡Misión cumplida! 🎖️',
+        'Esto fue solo una demostración — no se creó ninguna cita real. '
+            'Puedes ver tu ficha de ejemplo o volver al inicio.',
+      ];
+    }
+    return switch (_currentStep) {
+      0 => const [
+        '¡Hola! Vamos a sacar tu primera ficha juntos.',
+        'Primero elige tu hospital o policlínico — estos son los que tienes '
+            'habilitados, agrupados por regional.',
+      ],
+      1 => const [
+        '¡Muy bien!',
+        'Ahora elige la especialidad médica que necesitas.',
+      ],
+      2 => const [
+        'Estos son los médicos disponibles para esa especialidad.',
+        'Elige el que prefieras.',
+      ],
+      3 => const [
+        'Ahora elige el día — cada tarjeta muestra si el médico atiende '
+            'y si quedan fichas.',
+      ],
+      4 => const [
+        '¡Ya casi terminamos!',
+        'Elige un horario disponible dentro del día que escogiste.',
+      ],
+      5 => const [
+        'Revisa que todos los datos estén correctos.',
+        'Toca "Confirmar Reserva" — no te preocupes: aquí no se creará '
+            'ninguna cita real.',
+      ],
+      _ => const [],
+    };
+  }
+
+  Future<void> _exitTutorial() async {
+    if (await confirmExitTutorial(context) && mounted) {
+      widget.tabShell.exitTutorialMode();
+    }
   }
 
   Widget _buildStepContent() {

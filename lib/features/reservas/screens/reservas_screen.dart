@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:typed_data';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import '../../../core/animations/app_dialog.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/theme/app_constants.dart';
 import '../../../core/extensions/responsive_extensions.dart';
@@ -14,6 +15,7 @@ import '../../../core/session/user_session.dart';
 import '../../../core/widgets/app_state_widget.dart';
 import '../../../core/widgets/beneficiary_selector_modal.dart';
 import '../../../core/widgets/adaptive_sliver_nav_bar.dart';
+import '../../../core/widgets/liquid_glass.dart';
 import '../../../core/models/beneficiary_model.dart';
 import '../../../core/utils/error_mapper.dart';
 import '../../../core/utils/app_logger.dart';
@@ -25,11 +27,17 @@ import '../widgets/doctor_rating_modal.dart';
 class ReservasScreen extends StatefulWidget {
   final ValueNotifier<int>? refreshNotifier;
   final ({int idtran, int dr})? lastBookingIds;
+
   /// idper del paciente de la última reserva confirmada.
   /// Usado para refrescar la lista en la vista correcta del beneficiario.
   final String? lastBookedIdper;
 
-  const ReservasScreen({super.key, this.refreshNotifier, this.lastBookingIds, this.lastBookedIdper});
+  const ReservasScreen({
+    super.key,
+    this.refreshNotifier,
+    this.lastBookingIds,
+    this.lastBookedIdper,
+  });
 
   @override
   State<ReservasScreen> createState() => _ReservasScreenState();
@@ -58,7 +66,12 @@ class _ReservasScreenState extends State<ReservasScreen> {
   /// para evitar la race condition que hace desaparecer el selector.
   List<BeneficiaryModel> _beneficiaries = [];
 
-  final List<String> _statusFilters = ['Todos', 'Completado', 'Falta', 'Cancelado'];
+  final List<String> _statusFilters = [
+    'Todos',
+    'Completado',
+    'Falta',
+    'Cancelado',
+  ];
   String _activeStatusFilter = 'Todos';
   int _displayLimit = 10;
 
@@ -66,7 +79,8 @@ class _ReservasScreenState extends State<ReservasScreen> {
   Uint8List? _latestDoctorPhotoBytes;
 
   String _searchQuery = '';
-  int _sortOptionIndex = 0; // 0: Recientes primero, 1: Antiguas primero, 2: Especialidad A-Z
+  int _sortOptionIndex =
+      0; // 0: Recientes primero, 1: Antiguas primero, 2: Especialidad A-Z
 
   /// idsuc → nombre completo del hospital (cargado desde la API de regionales)
   Map<int, String> _hospitalNames = {};
@@ -100,7 +114,9 @@ class _ReservasScreenState extends State<ReservasScreen> {
     final bookedIdper = widget.lastBookedIdper;
     if (bookedIdper != null && UserSession.currentUser.isTitular) {
       // Titular reservando para un familiar: apuntar la vista al paciente reservado.
-      final match = _beneficiaries.where((b) => b.id == bookedIdper).firstOrNull;
+      final match = _beneficiaries
+          .where((b) => b.id == bookedIdper)
+          .firstOrNull;
       if (match != null && mounted) {
         setState(() => _selectedBeneficiary = match.isTitular ? null : match);
       }
@@ -135,7 +151,9 @@ class _ReservasScreenState extends State<ReservasScreen> {
       if (!mounted) return;
       if (fresh.isNotEmpty) {
         // Actualizar sesión global y caché local
-        UserSession.currentUser = UserSession.currentUser.copyWith(beneficiaries: fresh);
+        UserSession.currentUser = UserSession.currentUser.copyWith(
+          beneficiaries: fresh,
+        );
         setState(() => _beneficiaries = List.from(fresh));
       } else if (fromSession.isNotEmpty) {
         setState(() => _beneficiaries = List.from(fromSession));
@@ -162,7 +180,11 @@ class _ReservasScreenState extends State<ReservasScreen> {
     }
 
     try {
-      final idper = int.tryParse(_selectedBeneficiary?.id ?? UserSession.currentUser.id) ?? 0;
+      final idper =
+          int.tryParse(
+            _selectedBeneficiary?.id ?? UserSession.currentUser.id,
+          ) ??
+          0;
       final page = loadMore ? _currentPage + 1 : 1;
       // Carga inicial con tamaño grande: el backend devuelve TODO el historial en
       // un solo request (independientemente del orden ASC/DESC del servidor).
@@ -251,7 +273,10 @@ class _ReservasScreenState extends State<ReservasScreen> {
         if (loadMore) {
           _isLoadingMore = false;
         } else {
-          _errorMessage = ErrorMapper.message(e, context: ErrorContext.cargarHistorial);
+          _errorMessage = ErrorMapper.message(
+            e,
+            context: ErrorContext.cargarHistorial,
+          );
           _isLoading = false;
         }
       });
@@ -264,13 +289,28 @@ class _ReservasScreenState extends State<ReservasScreen> {
   Future<void> _fetchReservasForIdper(String idperStr) async {
     if (!mounted) return;
     final idper = int.tryParse(idperStr) ?? 0;
-    if (idper == 0) { _fetchReservas(); return; }
+    if (idper == 0) {
+      _fetchReservas();
+      return;
+    }
 
-    setState(() { _isLoading = true; _errorMessage = null; _currentPage = 1; });
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+      _currentPage = 1;
+    });
     try {
       final result = _activeStatusFilter == 'Cancelado'
-          ? await _service.getHistorialCitasCanceladas(idper, pagina: 1, cantidad: _initialPageSize)
-          : await _service.getHistorialCitas(idper, pagina: 1, cantidad: _initialPageSize);
+          ? await _service.getHistorialCitasCanceladas(
+              idper,
+              pagina: 1,
+              cantidad: _initialPageSize,
+            )
+          : await _service.getHistorialCitas(
+              idper,
+              pagina: 1,
+              cantidad: _initialPageSize,
+            );
       if (!mounted) return;
 
       List<ReservaModel> fetched = result.reservas;
@@ -279,9 +319,15 @@ class _ReservasScreenState extends State<ReservasScreen> {
         try {
           final lastPage = _activeStatusFilter == 'Cancelado'
               ? await _service.getHistorialCitasCanceladas(
-                  idper, pagina: fetchedTotalPages, cantidad: _pageSize)
+                  idper,
+                  pagina: fetchedTotalPages,
+                  cantidad: _pageSize,
+                )
               : await _service.getHistorialCitas(
-                  idper, pagina: fetchedTotalPages, cantidad: _pageSize);
+                  idper,
+                  pagina: fetchedTotalPages,
+                  cantidad: _pageSize,
+                );
           if (!mounted) return;
           final seen = result.reservas
               .map((r) => '${r.idtran}_${r.dr}_${r.id}')
@@ -318,7 +364,10 @@ class _ReservasScreenState extends State<ReservasScreen> {
     } catch (e) {
       if (!mounted) return;
       setState(() {
-        _errorMessage = ErrorMapper.message(e, context: ErrorContext.cargarHistorial);
+        _errorMessage = ErrorMapper.message(
+          e,
+          context: ErrorContext.cargarHistorial,
+        );
         _isLoading = false;
       });
     }
@@ -327,9 +376,7 @@ class _ReservasScreenState extends State<ReservasScreen> {
   void _openDetalle(ReservaModel reserva) async {
     final wasCancelled = await Navigator.push<bool>(
       context,
-      AppPageRoute(
-        builder: (_) => DetalleCitaScreen(reserva: reserva),
-      ),
+      AppPageRoute(builder: (_) => DetalleCitaScreen(reserva: reserva)),
     );
     if (wasCancelled == true && mounted) {
       _fetchReservas();
@@ -351,11 +398,13 @@ class _ReservasScreenState extends State<ReservasScreen> {
   void _onCancelLatestAppointment(ReservaModel reserva) {
     if (!reserva.canDownloadPdf) return;
 
-    showCupertinoDialog(
+    showAppDialog(
       context: context,
       builder: (ctx) => CupertinoAlertDialog(
         title: const Text('Cancelar Cita Médica'),
-        content: Text('¿Está seguro que desea cancelar su cita médica de ${reserva.specialty} con el Dr. ${reserva.doctorName}?'),
+        content: Text(
+          '¿Está seguro que desea cancelar su cita médica de ${reserva.specialty} con el Dr. ${reserva.doctorName}?',
+        ),
         actions: [
           CupertinoDialogAction(
             child: const Text('No, mantener'),
@@ -393,11 +442,13 @@ class _ReservasScreenState extends State<ReservasScreen> {
                   if (!mounted) return;
                   // Recargar desde el API para reflejar el estado real
                   _fetchReservas();
-                  showCupertinoDialog(
+                  showAppDialog(
                     context: context,
                     builder: (ctx2) => CupertinoAlertDialog(
                       title: const Text('Cita médica cancelada'),
-                      content: const Text('Su cita médica ha sido cancelada exitosamente.'),
+                      content: const Text(
+                        'Su cita médica ha sido cancelada exitosamente.',
+                      ),
                       actions: [
                         CupertinoDialogAction(
                           child: const Text('Entendido'),
@@ -411,7 +462,7 @@ class _ReservasScreenState extends State<ReservasScreen> {
                 if (!mounted) return;
                 setState(() => _isCancellingLatest = false);
                 final msg = e.toString().replaceFirst('Exception: ', '');
-                showCupertinoDialog(
+                showAppDialog(
                   context: context,
                   builder: (ctx2) => CupertinoAlertDialog(
                     title: const Text('No se pudo cancelar'),
@@ -457,7 +508,9 @@ class _ReservasScreenState extends State<ReservasScreen> {
 
     final match = widget.lastBookingIds;
     if (match != null) {
-      final idx = vigentes.indexWhere((r) => r.idtran == match.idtran && r.dr == match.dr);
+      final idx = vigentes.indexWhere(
+        (r) => r.idtran == match.idtran && r.dr == match.dr,
+      );
       if (idx > 0) {
         final promoted = vigentes.removeAt(idx);
         vigentes.insert(0, promoted);
@@ -500,14 +553,18 @@ class _ReservasScreenState extends State<ReservasScreen> {
     }).toList();
 
     // Quitar todas las vigentes de la lista del historial (se muestran arriba)
-    final pendingIds = allPending.map((r) => '${r.idtran}_${r.dr}_${r.id}').toSet();
+    final pendingIds = allPending
+        .map((r) => '${r.idtran}_${r.dr}_${r.id}')
+        .toSet();
     final historyList = allPending.isNotEmpty && _activeStatusFilter == 'Todos'
-        ? filtered.where((r) => !pendingIds.contains('${r.idtran}_${r.dr}_${r.id}')).toList()
+        ? filtered
+              .where((r) => !pendingIds.contains('${r.idtran}_${r.dr}_${r.id}'))
+              .toList()
         : filtered;
 
     // Aplicar búsqueda
-    final searchedList = _searchQuery.isEmpty 
-        ? historyList 
+    final searchedList = _searchQuery.isEmpty
+        ? historyList
         : historyList.where((r) {
             final q = _searchQuery.toLowerCase();
             return r.status.toLowerCase().contains(q) ||
@@ -554,8 +611,10 @@ class _ReservasScreenState extends State<ReservasScreen> {
             ),
             slivers: [
               AdaptiveSliverNavBar(
-                largeTitle: Text('Mis Reservas',
-                    style: TextStyle(color: AppColors.textPrimaryC(isDark))),
+                largeTitle: Text(
+                  'Mis Reservas',
+                  style: TextStyle(color: AppColors.textPrimaryC(isDark)),
+                ),
                 backgroundColor: isDark
                     ? AppColors.darkSurface.withValues(alpha: 0.92)
                     : AppColors.white.withValues(alpha: 0.92),
@@ -566,12 +625,22 @@ class _ReservasScreenState extends State<ReservasScreen> {
                   ),
                 ),
               ),
-              CupertinoSliverRefreshControl(onRefresh: () async { _fetchReservas(); }),
+              CupertinoSliverRefreshControl(
+                onRefresh: () async {
+                  _fetchReservas();
+                },
+              ),
 
-              if (UserSession.currentUser.isTitular && _beneficiaries.length > 1)
+              if (UserSession.currentUser.isTitular &&
+                  _beneficiaries.length > 1)
                 SliverToBoxAdapter(
                   child: Padding(
-                    padding: EdgeInsets.fromLTRB(r.paddingH, r.spaceSm, r.paddingH, 0),
+                    padding: EdgeInsets.fromLTRB(
+                      r.paddingH,
+                      r.spaceSm,
+                      r.paddingH,
+                      0,
+                    ),
                     child: _buildBeneficiarySelector(isDark),
                   ),
                 ),
@@ -580,7 +649,12 @@ class _ReservasScreenState extends State<ReservasScreen> {
               if (allPending.isNotEmpty && _activeStatusFilter == 'Todos')
                 SliverToBoxAdapter(
                   child: Padding(
-                    padding: EdgeInsets.fromLTRB(r.paddingH, r.spaceMd, r.paddingH, 0),
+                    padding: EdgeInsets.fromLTRB(
+                      r.paddingH,
+                      r.spaceMd,
+                      r.paddingH,
+                      0,
+                    ),
                     child: Column(
                       children: allPending.asMap().entries.map((entry) {
                         final i = entry.key;
@@ -590,8 +664,15 @@ class _ReservasScreenState extends State<ReservasScreen> {
                           delay: Duration(milliseconds: i * 80),
                           offsetY: 15,
                           child: Padding(
-                            padding: EdgeInsets.only(bottom: i < allPending.length - 1 ? r.spaceMd : 0),
-                            child: _buildLatestCard(reserva, isDark, r, isFirst: i == 0),
+                            padding: EdgeInsets.only(
+                              bottom: i < allPending.length - 1 ? r.spaceMd : 0,
+                            ),
+                            child: _buildLatestCard(
+                              reserva,
+                              isDark,
+                              r,
+                              isFirst: i == 0,
+                            ),
                           ),
                         );
                       }).toList(),
@@ -601,7 +682,12 @@ class _ReservasScreenState extends State<ReservasScreen> {
 
               // ── Resumen + Filtros ──
               SliverPadding(
-                padding: EdgeInsets.fromLTRB(r.paddingH, r.spaceMd, r.paddingH, r.spaceSm),
+                padding: EdgeInsets.fromLTRB(
+                  r.paddingH,
+                  r.spaceMd,
+                  r.paddingH,
+                  r.spaceSm,
+                ),
                 sliver: SliverList(
                   delegate: SliverChildListDelegate([
                     Padding(
@@ -619,7 +705,10 @@ class _ReservasScreenState extends State<ReservasScreen> {
                       offsetY: 10,
                       child: Padding(
                         padding: EdgeInsets.only(top: r.spaceMd),
-                        child: _sectionHeader(context, 'HISTORIAL DE ATENCIONES'),
+                        child: _sectionHeader(
+                          context,
+                          'HISTORIAL DE ATENCIONES',
+                        ),
                       ),
                     ),
                   ]),
@@ -630,7 +719,10 @@ class _ReservasScreenState extends State<ReservasScreen> {
               if (visible.isEmpty)
                 SliverToBoxAdapter(
                   child: Padding(
-                    padding: EdgeInsets.symmetric(vertical: r.spaceXl, horizontal: r.paddingH),
+                    padding: EdgeInsets.symmetric(
+                      vertical: r.spaceXl,
+                      horizontal: r.paddingH,
+                    ),
                     child: Center(
                       child: Text(
                         'No hay registros con este filtro',
@@ -644,33 +736,55 @@ class _ReservasScreenState extends State<ReservasScreen> {
                 )
               else
                 SliverPadding(
-                  padding: EdgeInsets.only(bottom: r.navBarBottomSpace, left: r.paddingH, right: r.paddingH),
+                  padding: EdgeInsets.only(
+                    bottom: r.navBarBottomSpace,
+                    left: r.paddingH,
+                    right: r.paddingH,
+                  ),
                   sliver: SliverList.builder(
-                    itemCount: visible.length + (hasMore ? 1 : (_currentPage < _totalPages ? 1 : 0)),
+                    itemCount:
+                        visible.length +
+                        (hasMore ? 1 : (_currentPage < _totalPages ? 1 : 0)),
                     itemBuilder: (context, index) {
                       if (index == visible.length && hasMore) {
                         final remaining = historyList.length - _displayLimit;
                         return Padding(
-                          padding: EdgeInsets.symmetric(vertical: context.r.spaceMd),
+                          padding: EdgeInsets.symmetric(
+                            vertical: context.r.spaceMd,
+                          ),
                           child: Center(
                             child: CupertinoButton(
-                              onPressed: () => setState(() => _displayLimit += 10),
+                              onPressed: () =>
+                                  setState(() => _displayLimit += 10),
                               child: Text(
                                 'Mostrar más ($remaining restantes)',
-                                style: TextStyle(fontWeight: FontWeight.w700, color: AppColors.accentForTheme(isDark)),
+                                style: TextStyle(
+                                  fontWeight: FontWeight.w700,
+                                  color: AppColors.accentForTheme(isDark),
+                                ),
                               ),
                             ),
                           ),
                         );
-                      } else if (index == visible.length && _currentPage < _totalPages) {
+                      } else if (index == visible.length &&
+                          _currentPage < _totalPages) {
                         return Padding(
-                          padding: EdgeInsets.symmetric(vertical: context.r.spaceMd),
+                          padding: EdgeInsets.symmetric(
+                            vertical: context.r.spaceMd,
+                          ),
                           child: Center(
                             child: _isLoadingMore
                                 ? const CupertinoActivityIndicator()
                                 : CupertinoButton(
-                                    onPressed: () => _fetchReservas(loadMore: true),
-                                    child: Text('Cargar más historial', style: TextStyle(fontWeight: FontWeight.w700, color: AppColors.accentForTheme(isDark))),
+                                    onPressed: () =>
+                                        _fetchReservas(loadMore: true),
+                                    child: Text(
+                                      'Cargar más historial',
+                                      style: TextStyle(
+                                        fontWeight: FontWeight.w700,
+                                        color: AppColors.accentForTheme(isDark),
+                                      ),
+                                    ),
                                   ),
                           ),
                         );
@@ -704,8 +818,15 @@ class _ReservasScreenState extends State<ReservasScreen> {
   //  TARJETA DESTACADA — última reserva pendiente con acciones
   // ══════════════════════════════════════════════════════════════
 
-  Widget _buildLatestCard(ReservaModel reserva, bool isDark, AppResponsive r, {bool isFirst = true}) {
-    final accentColor = isFirst ? const Color(0xFF2563EB) : const Color(0xFF0891B2);
+  Widget _buildLatestCard(
+    ReservaModel reserva,
+    bool isDark,
+    AppResponsive r, {
+    bool isFirst = true,
+  }) {
+    final accentColor = isFirst
+        ? const Color(0xFF2563EB)
+        : const Color(0xFF0891B2);
 
     return GestureDetector(
       onTap: () => _openDetalle(reserva),
@@ -738,7 +859,10 @@ class _ReservasScreenState extends State<ReservasScreen> {
             // ── Encabezado con etiqueta ──
             Container(
               width: double.infinity,
-              padding: EdgeInsets.symmetric(horizontal: r.cardPadding, vertical: r.spaceSm + 2),
+              padding: EdgeInsets.symmetric(
+                horizontal: r.cardPadding,
+                vertical: r.spaceSm + 2,
+              ),
               decoration: BoxDecoration(
                 color: accentColor,
                 borderRadius: BorderRadius.only(
@@ -748,7 +872,11 @@ class _ReservasScreenState extends State<ReservasScreen> {
               ),
               child: Row(
                 children: [
-                  const Icon(CupertinoIcons.clock_fill, size: 14, color: Colors.white),
+                  const Icon(
+                    CupertinoIcons.clock_fill,
+                    size: 14,
+                    color: Colors.white,
+                  ),
                   SizedBox(width: r.spaceXs),
                   Text(
                     isFirst ? 'PRÓXIMA CITA MÉDICA' : 'CITA VIGENTE',
@@ -761,7 +889,10 @@ class _ReservasScreenState extends State<ReservasScreen> {
                   ),
                   const Spacer(),
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 3,
+                    ),
                     decoration: BoxDecoration(
                       color: Colors.white.withValues(alpha: 0.2),
                       borderRadius: BorderRadius.circular(8),
@@ -806,8 +937,11 @@ class _ReservasScreenState extends State<ReservasScreen> {
                             SizedBox(height: r.spaceXs),
                             Row(
                               children: [
-                                Icon(CupertinoIcons.person_fill, size: 14,
-                                    color: accentColor.withValues(alpha: 0.7)),
+                                Icon(
+                                  CupertinoIcons.person_fill,
+                                  size: 14,
+                                  color: accentColor.withValues(alpha: 0.7),
+                                ),
                                 SizedBox(width: r.spaceXs),
                                 Expanded(
                                   child: Text(
@@ -876,7 +1010,8 @@ class _ReservasScreenState extends State<ReservasScreen> {
                           r: r,
                         ),
                       ],
-                      if (reserva.consultorio != null && reserva.consultorio!.isNotEmpty) ...[
+                      if (reserva.consultorio != null &&
+                          reserva.consultorio!.isNotEmpty) ...[
                         SizedBox(height: r.spaceSm),
                         // Consultorio
                         _buildDetailRow(
@@ -911,14 +1046,20 @@ class _ReservasScreenState extends State<ReservasScreen> {
                       // Botón Ver detalle
                       Expanded(
                         child: CupertinoButton(
-                          padding: EdgeInsets.symmetric(vertical: r.spaceSm + 2),
+                          padding: EdgeInsets.symmetric(
+                            vertical: r.spaceSm + 2,
+                          ),
                           color: accentColor,
                           borderRadius: BorderRadius.circular(r.radiusSm + 2),
                           onPressed: () => _openDetalle(reserva),
                           child: Row(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
-                              const Icon(CupertinoIcons.doc_text_search, size: 16, color: Colors.white),
+                              const Icon(
+                                CupertinoIcons.doc_text_search,
+                                size: 16,
+                                color: Colors.white,
+                              ),
                               SizedBox(width: r.spaceXs),
                               Text(
                                 'Ver Detalle',
@@ -933,20 +1074,30 @@ class _ReservasScreenState extends State<ReservasScreen> {
                         ),
                       ),
                       // Botón Cancelar (solo si puede cancelar)
-                      if (reserva.canCancel) ...[ 
+                      if (reserva.canCancel) ...[
                         SizedBox(width: r.spaceSm),
                         CupertinoButton(
-                          padding: EdgeInsets.symmetric(horizontal: r.spaceMd, vertical: r.spaceSm + 2),
+                          padding: EdgeInsets.symmetric(
+                            horizontal: r.spaceMd,
+                            vertical: r.spaceSm + 2,
+                          ),
                           color: CupertinoColors.destructiveRed,
                           borderRadius: BorderRadius.circular(r.radiusSm + 2),
-                          onPressed: _isCancellingLatest ? null : () => _onCancelLatestAppointment(reserva),
+                          onPressed: _isCancellingLatest
+                              ? null
+                              : () => _onCancelLatestAppointment(reserva),
                           child: _isCancellingLatest
-                              ? const CupertinoActivityIndicator(color: Colors.white)
+                              ? const CupertinoActivityIndicator(
+                                  color: Colors.white,
+                                )
                               : Row(
                                   mainAxisSize: MainAxisSize.min,
                                   children: [
-                                    const Icon(CupertinoIcons.xmark_circle_fill, size: 16,
-                                        color: Colors.white),
+                                    const Icon(
+                                      CupertinoIcons.xmark_circle_fill,
+                                      size: 16,
+                                      color: Colors.white,
+                                    ),
                                     SizedBox(width: r.spaceXs),
                                     Text(
                                       'Cancelar',
@@ -972,16 +1123,25 @@ class _ReservasScreenState extends State<ReservasScreen> {
                       reserva.isWithinTwoHoursOfAppointment) ...[
                     SizedBox(height: r.spaceSm),
                     Container(
-                      padding: EdgeInsets.symmetric(horizontal: r.spaceMd, vertical: r.spaceXs + 2),
+                      padding: EdgeInsets.symmetric(
+                        horizontal: r.spaceMd,
+                        vertical: r.spaceXs + 2,
+                      ),
                       decoration: BoxDecoration(
                         color: const Color(0xFFFFFBEB),
                         borderRadius: BorderRadius.circular(r.radiusSm),
-                        border: Border.all(color: const Color(0xFFF59E0B).withValues(alpha: 0.5), width: 0.8),
+                        border: Border.all(
+                          color: const Color(0xFFF59E0B).withValues(alpha: 0.5),
+                          width: 0.8,
+                        ),
                       ),
                       child: Row(
                         children: [
-                          const Icon(CupertinoIcons.exclamationmark_circle_fill,
-                              size: 14, color: Color(0xFFB45309)),
+                          const Icon(
+                            CupertinoIcons.exclamationmark_circle_fill,
+                            size: 14,
+                            color: Color(0xFFB45309),
+                          ),
                           SizedBox(width: r.spaceXs),
                           Expanded(
                             child: Text(
@@ -1019,14 +1179,15 @@ class _ReservasScreenState extends State<ReservasScreen> {
       child: OptimizedPressButton(
         onTap: () => _openDetalle(reserva),
         scaleDown: 0.98,
-        child: Container(
-          padding: EdgeInsets.symmetric(horizontal: r.cardPadding, vertical: r.spaceSm + 4),
-          decoration: BoxDecoration(
-            color: AppColors.cardBg(isDark),
-            borderRadius: BorderRadius.circular(r.cardRadius),
-            border: Border.all(color: AppColors.cardBorder(isDark), width: 0.5),
-            boxShadow: AppColors.cardShadowFor(isDark),
+        haptic: true,
+        child: LiquidGlass(
+          isDark: isDark,
+          borderRadius: BorderRadius.circular(r.cardRadius),
+          padding: EdgeInsets.symmetric(
+            horizontal: r.cardPadding,
+            vertical: r.spaceSm + 4,
           ),
+          shadow: AppColors.cardShadowFor(isDark),
           child: Row(
             children: [
               // Indicador de color del estado (barra lateral)
@@ -1063,12 +1224,16 @@ class _ReservasScreenState extends State<ReservasScreen> {
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
-                    if (reserva.consultorio != null && reserva.consultorio!.isNotEmpty) ...[
+                    if (reserva.consultorio != null &&
+                        reserva.consultorio!.isNotEmpty) ...[
                       SizedBox(height: 2),
                       Row(
                         children: [
-                          Icon(Icons.meeting_room_outlined, size: 12,
-                              color: AppColors.textTertiaryC(isDark)),
+                          Icon(
+                            Icons.meeting_room_outlined,
+                            size: 12,
+                            color: AppColors.textTertiaryC(isDark),
+                          ),
                           SizedBox(width: 4),
                           Expanded(
                             child: Text(
@@ -1087,8 +1252,11 @@ class _ReservasScreenState extends State<ReservasScreen> {
                     SizedBox(height: r.spaceXs),
                     Row(
                       children: [
-                        Icon(CupertinoIcons.calendar, size: 12,
-                            color: AppColors.textTertiaryC(isDark)),
+                        Icon(
+                          CupertinoIcons.calendar,
+                          size: 12,
+                          color: AppColors.textTertiaryC(isDark),
+                        ),
                         SizedBox(width: 4),
                         Text(
                           reserva.formattedDate,
@@ -1099,8 +1267,11 @@ class _ReservasScreenState extends State<ReservasScreen> {
                         ),
                         if (reserva.time.isNotEmpty) ...[
                           SizedBox(width: r.spaceSm),
-                          Icon(CupertinoIcons.clock, size: 12,
-                              color: AppColors.textTertiaryC(isDark)),
+                          Icon(
+                            CupertinoIcons.clock,
+                            size: 12,
+                            color: AppColors.textTertiaryC(isDark),
+                          ),
                           SizedBox(width: 4),
                           Text(
                             reserva.formattedTime12h,
@@ -1116,8 +1287,11 @@ class _ReservasScreenState extends State<ReservasScreen> {
                       SizedBox(height: 2),
                       Row(
                         children: [
-                          Icon(Icons.location_city_outlined, size: 12,
-                              color: AppColors.textTertiaryC(isDark)),
+                          Icon(
+                            Icons.location_city_outlined,
+                            size: 12,
+                            color: AppColors.textTertiaryC(isDark),
+                          ),
                           SizedBox(width: 4),
                           Expanded(
                             child: Text(
@@ -1147,13 +1321,21 @@ class _ReservasScreenState extends State<ReservasScreen> {
                   if (reserva.status != 'Pendiente')
                     AnimatedStatusBadge.fromStatus(reserva.status),
                   // Botón calificar — solo si fue ofrecido y el usuario lo omitió.
-                  if (_pendingRatings.contains('${reserva.idtran}_${reserva.dr}')) ...[
-                    if (reserva.status != 'Pendiente') SizedBox(height: r.spaceXs),
+                  if (_pendingRatings.contains(
+                    '${reserva.idtran}_${reserva.dr}',
+                  )) ...[
+                    if (reserva.status != 'Pendiente')
+                      SizedBox(height: r.spaceXs),
                     GestureDetector(
-                      onTap: () => DoctorRatingModal.showManual(context, reserva)
-                          .then((_) => _loadPendingRatings()),
+                      onTap: () => DoctorRatingModal.showManual(
+                        context,
+                        reserva,
+                      ).then((_) => _loadPendingRatings()),
                       child: Container(
-                        padding: EdgeInsets.symmetric(horizontal: r.spaceSm, vertical: 4),
+                        padding: EdgeInsets.symmetric(
+                          horizontal: r.spaceSm,
+                          vertical: 4,
+                        ),
                         decoration: BoxDecoration(
                           color: AppColors.primary.withValues(alpha: 0.12),
                           borderRadius: BorderRadius.circular(r.chipRadius),
@@ -1165,7 +1347,11 @@ class _ReservasScreenState extends State<ReservasScreen> {
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            Icon(CupertinoIcons.star_fill, size: 11, color: AppColors.primary),
+                            Icon(
+                              CupertinoIcons.star_fill,
+                              size: 11,
+                              color: AppColors.primary,
+                            ),
                             SizedBox(width: 3),
                             Text(
                               'Calificar',
@@ -1189,7 +1375,6 @@ class _ReservasScreenState extends State<ReservasScreen> {
     );
   }
 
-
   /// Carga las reservas que fueron ofrecidas para calificación pero no calificadas.
   /// Actualiza [_pendingRatings] para controlar el botón "Calificar" en la lista.
   ///
@@ -1198,22 +1383,10 @@ class _ReservasScreenState extends State<ReservasScreen> {
   ///   - Citas de 2026+ completadas → muestran botón "Calificar" si no fue calificada.
   ///   - Notificación inmediata → SOLO si la cita es del día de hoy.
   Future<void> _loadPendingRatings() async {
-    // Consulta las últimas 10 citas al backend para sincronizar estado de calificación.
-    // Esto detecta las ya calificadas sin depender únicamente de SharedPreferences local.
-    final idper = int.tryParse(UserSession.currentUser.id) ?? 0;
-    if (idper > 0) {
-      try {
-        final result = await _service.getHistorialCitas(idper, pagina: 1, cantidad: 10);
-        for (final r in result.reservas) {
-          if (r.calificado) {
-            await DoctorRatingModal.markAsRated(r);
-          }
-        }
-      } catch (_) {
-        // Error de red: continuar con el estado local de SharedPreferences.
-      }
-    }
-
+    // El estado `calificado` ya viene en cada registro de `_history` (mismo
+    // endpoint historial-citas), así que se sincroniza desde memoria SIN una
+    // llamada de red extra. El bucle de abajo marca como calificadas las citas
+    // que el backend ya reporta como tal.
     final pending = <String>{};
     final today = DateTime.now();
     final todayDate = DateTime(today.year, today.month, today.day);
@@ -1239,7 +1412,8 @@ class _ReservasScreenState extends State<ReservasScreen> {
 
       // ── Notificación de calificación ──────────────────────────────────────
       // Solo se dispara si la cita es del día de hoy (estado recién cambió).
-      final isToday = !apptDate.isBefore(todayDate) &&
+      final isToday =
+          !apptDate.isBefore(todayDate) &&
           apptDate.isBefore(todayDate.add(const Duration(days: 1)));
       if (!isToday) continue;
 
@@ -1264,7 +1438,8 @@ class _ReservasScreenState extends State<ReservasScreen> {
   /// o cae al API si el caché aún no fue poblado (cold start).
   Future<void> _fetchHospitalNames() async {
     try {
-      final regionales = AppSessionCache.isLoaded && AppSessionCache.regionales.isNotEmpty
+      final regionales =
+          AppSessionCache.isLoaded && AppSessionCache.regionales.isNotEmpty
           ? AppSessionCache.regionales
           : await _service.getRegionalesPorDepartamento(1);
       final map = <int, String>{};
@@ -1276,7 +1451,11 @@ class _ReservasScreenState extends State<ReservasScreen> {
       }
       if (mounted) setState(() => _hospitalNames = map);
     } catch (e) {
-      AppLogger.warn('ReservasScreen', 'No se pudo cargar nombres de hospitales', e);
+      AppLogger.warn(
+        'ReservasScreen',
+        'No se pudo cargar nombres de hospitales',
+        e,
+      );
     }
   }
 
@@ -1315,7 +1494,11 @@ class _ReservasScreenState extends State<ReservasScreen> {
         ? _selectedBeneficiary!.photoBase64
         : UserSession.currentUser.photoBase64;
     if (b64.isEmpty) return null;
-    try { return base64Decode(b64); } catch (_) { return null; }
+    try {
+      return base64Decode(b64);
+    } catch (_) {
+      return null;
+    }
   }
 
   /// Inicial del nombre del paciente para el avatar de respaldo.
@@ -1339,8 +1522,14 @@ class _ReservasScreenState extends State<ReservasScreen> {
       ),
       child: ClipOval(
         child: photoBytes != null
-            ? Image.memory(photoBytes, width: size, height: size, fit: BoxFit.cover,
-                errorBuilder: (_, __, ___) => _avatarInitialWidget(initial, size, isDark))
+            ? Image.memory(
+                photoBytes,
+                width: size,
+                height: size,
+                fit: BoxFit.cover,
+                errorBuilder: (_, __, ___) =>
+                    _avatarInitialWidget(initial, size, isDark),
+              )
             : _avatarInitialWidget(initial, size, isDark),
       ),
     );
@@ -1377,13 +1566,22 @@ class _ReservasScreenState extends State<ReservasScreen> {
       decoration: BoxDecoration(
         shape: BoxShape.circle,
         color: accentColor.withValues(alpha: 0.1),
-        border: Border.all(color: accentColor.withValues(alpha: 0.35), width: 2),
+        border: Border.all(
+          color: accentColor.withValues(alpha: 0.35),
+          width: 2,
+        ),
       ),
       child: ClipOval(
         child: _latestDoctorPhotoBytes != null
-            ? Image.memory(_latestDoctorPhotoBytes!, width: size, height: size, fit: BoxFit.cover,
+            ? Image.memory(
+                _latestDoctorPhotoBytes!,
+                width: size,
+                height: size,
+                fit: BoxFit.cover,
                 gaplessPlayback: true,
-                errorBuilder: (_, __, ___) => Center(child: Text(initial, style: textStyle)))
+                errorBuilder: (_, __, ___) =>
+                    Center(child: Text(initial, style: textStyle)),
+              )
             : Center(child: Text(initial, style: textStyle)),
       ),
     );
@@ -1391,11 +1589,16 @@ class _ReservasScreenState extends State<ReservasScreen> {
 
   Color _statusColor(String status) {
     switch (status) {
-      case 'Completado': return AppColors.accent;
-      case 'Falta': return const Color(0xFF9333EA);
-      case 'Pendiente': return const Color(0xFF2563EB);
-      case 'Cancelado': return AppColors.textSecondary;
-      default: return AppColors.textSecondary;
+      case 'Completado':
+        return AppColors.accent;
+      case 'Falta':
+        return const Color(0xFF9333EA);
+      case 'Pendiente':
+        return const Color(0xFF2563EB);
+      case 'Cancelado':
+        return AppColors.textSecondary;
+      default:
+        return AppColors.textSecondary;
     }
   }
 
@@ -1415,7 +1618,9 @@ class _ReservasScreenState extends State<ReservasScreen> {
             : Colors.white.withValues(alpha: 0.7),
         borderRadius: BorderRadius.circular(r.radiusSm + 2),
         border: Border.all(
-          color: isDark ? Colors.white.withValues(alpha: 0.08) : accentColor.withValues(alpha: 0.08),
+          color: isDark
+              ? Colors.white.withValues(alpha: 0.08)
+              : accentColor.withValues(alpha: 0.08),
         ),
       ),
       child: Row(
@@ -1495,10 +1700,14 @@ class _ReservasScreenState extends State<ReservasScreen> {
         duration: const Duration(milliseconds: 200),
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         decoration: BoxDecoration(
-          color: isActive ? AppColors.primary : (isDark ? AppColors.darkElevated : AppColors.background),
+          color: isActive
+              ? AppColors.primary
+              : (isDark ? AppColors.darkElevated : AppColors.background),
           borderRadius: BorderRadius.circular(context.r.chipRadius),
           border: Border.all(
-            color: isActive ? AppColors.primary : (isDark ? AppColors.darkBorder : AppColors.border),
+            color: isActive
+                ? AppColors.primary
+                : (isDark ? AppColors.darkBorder : AppColors.border),
           ),
         ),
         alignment: Alignment.center,
@@ -1514,8 +1723,11 @@ class _ReservasScreenState extends State<ReservasScreen> {
   }
 
   Widget _buildBeneficiarySelector(bool isDark) {
-    final isTitularView = _selectedBeneficiary == null || _selectedBeneficiary!.isTitular;
-    final label = isTitularView ? 'Titular' : _selectedBeneficiary!.relationship;
+    final isTitularView =
+        _selectedBeneficiary == null || _selectedBeneficiary!.isTitular;
+    final label = isTitularView
+        ? 'Titular'
+        : _selectedBeneficiary!.relationship;
     final name = isTitularView
         ? UserSession.currentUser.displayName
         : _selectedBeneficiary!.displayTitle;
@@ -1526,7 +1738,9 @@ class _ReservasScreenState extends State<ReservasScreen> {
         : (_selectedBeneficiary?.photoBase64 ?? '');
     Uint8List? selectorPhoto;
     if (b64.isNotEmpty) {
-      try { selectorPhoto = base64Decode(b64); } catch (_) {}
+      try {
+        selectorPhoto = base64Decode(b64);
+      } catch (_) {}
     }
     final initial = name.isNotEmpty ? name[0].toUpperCase() : '?';
     const avatarSize = 44.0;
@@ -1536,10 +1750,14 @@ class _ReservasScreenState extends State<ReservasScreen> {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         decoration: BoxDecoration(
-          color: isDark ? AppColors.darkElevated : AppColors.primary.withValues(alpha: 0.05),
+          color: isDark
+              ? AppColors.darkElevated
+              : AppColors.primary.withValues(alpha: 0.05),
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
-            color: isDark ? AppColors.darkBorder : AppColors.primary.withValues(alpha: 0.1),
+            color: isDark
+                ? AppColors.darkBorder
+                : AppColors.primary.withValues(alpha: 0.1),
           ),
         ),
         child: Row(
@@ -1550,19 +1768,40 @@ class _ReservasScreenState extends State<ReservasScreen> {
                 color: AppColors.primary.withValues(alpha: 0.1),
                 shape: BoxShape.circle,
               ),
-              child: Icon(CupertinoIcons.group_solid, color: AppColors.primary, size: 20),
+              child: Icon(
+                CupertinoIcons.group_solid,
+                color: AppColors.primary,
+                size: 20,
+              ),
             ),
             SizedBox(width: context.r.spaceMd),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('Viendo reservas de:', style: context.texts.bodySmall.copyWith(color: AppColors.textSecondaryC(isDark))),
+                  Text(
+                    'Viendo reservas de:',
+                    style: context.texts.bodySmall.copyWith(
+                      color: AppColors.textSecondaryC(isDark),
+                    ),
+                  ),
                   SizedBox(height: context.r.spaceXs),
-                  Text(label, style: context.texts.bodyLarge.copyWith(fontWeight: FontWeight.w600, color: AppColors.textPrimaryC(isDark))),
+                  Text(
+                    label,
+                    style: context.texts.bodyLarge.copyWith(
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.textPrimaryC(isDark),
+                    ),
+                  ),
                   if (name != label) ...[
                     SizedBox(height: 2),
-                    Text(name, style: context.texts.bodySmall.copyWith(color: AppColors.textSecondaryC(isDark), fontWeight: FontWeight.w500)),
+                    Text(
+                      name,
+                      style: context.texts.bodySmall.copyWith(
+                        color: AppColors.textSecondaryC(isDark),
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
                   ],
                 ],
               ),
@@ -1574,25 +1813,52 @@ class _ReservasScreenState extends State<ReservasScreen> {
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
                 color: AppColors.primary.withValues(alpha: 0.15),
-                border: Border.all(color: AppColors.primary.withValues(alpha: 0.3), width: 2),
+                border: Border.all(
+                  color: AppColors.primary.withValues(alpha: 0.3),
+                  width: 2,
+                ),
               ),
               child: ClipOval(
                 child: selectorPhoto != null
-                    ? Image.memory(selectorPhoto, width: avatarSize, height: avatarSize, fit: BoxFit.cover,
-                        errorBuilder: (_, __, ___) => Center(child: Text(initial,
-                            style: TextStyle(fontSize: avatarSize * 0.42, fontWeight: FontWeight.w700, color: AppColors.primary))))
-                    : Center(child: Text(initial,
-                        style: TextStyle(fontSize: avatarSize * 0.42, fontWeight: FontWeight.w700, color: AppColors.primary))),
+                    ? Image.memory(
+                        selectorPhoto,
+                        width: avatarSize,
+                        height: avatarSize,
+                        fit: BoxFit.cover,
+                        errorBuilder: (_, __, ___) => Center(
+                          child: Text(
+                            initial,
+                            style: TextStyle(
+                              fontSize: avatarSize * 0.42,
+                              fontWeight: FontWeight.w700,
+                              color: AppColors.primary,
+                            ),
+                          ),
+                        ),
+                      )
+                    : Center(
+                        child: Text(
+                          initial,
+                          style: TextStyle(
+                            fontSize: avatarSize * 0.42,
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.primary,
+                          ),
+                        ),
+                      ),
               ),
             ),
             SizedBox(width: context.r.spaceXs),
-            Icon(CupertinoIcons.chevron_down, size: 18, color: AppColors.textTertiaryC(isDark)),
+            Icon(
+              CupertinoIcons.chevron_down,
+              size: 18,
+              color: AppColors.textTertiaryC(isDark),
+            ),
           ],
         ),
       ),
     );
   }
-
 
   Widget _sectionHeader(BuildContext context, String text) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
@@ -1656,7 +1922,10 @@ class _ReservasScreenState extends State<ReservasScreen> {
                 if (_sortOptionIndex == 0)
                   const Icon(CupertinoIcons.checkmark_alt, size: 20),
                 if (_sortOptionIndex == 0) const SizedBox(width: 8),
-                Text('Fecha (recientes primero)', style: TextStyle(color: AppColors.textPrimaryC(isDark))),
+                Text(
+                  'Fecha (recientes primero)',
+                  style: TextStyle(color: AppColors.textPrimaryC(isDark)),
+                ),
               ],
             ),
           ),
@@ -1671,7 +1940,10 @@ class _ReservasScreenState extends State<ReservasScreen> {
                 if (_sortOptionIndex == 1)
                   const Icon(CupertinoIcons.checkmark_alt, size: 20),
                 if (_sortOptionIndex == 1) const SizedBox(width: 8),
-                Text('Fecha (antiguas primero)', style: TextStyle(color: AppColors.textPrimaryC(isDark))),
+                Text(
+                  'Fecha (antiguas primero)',
+                  style: TextStyle(color: AppColors.textPrimaryC(isDark)),
+                ),
               ],
             ),
           ),
@@ -1686,7 +1958,10 @@ class _ReservasScreenState extends State<ReservasScreen> {
                 if (_sortOptionIndex == 2)
                   const Icon(CupertinoIcons.checkmark_alt, size: 20),
                 if (_sortOptionIndex == 2) const SizedBox(width: 8),
-                Text('Especialidad (A-Z)', style: TextStyle(color: AppColors.textPrimaryC(isDark))),
+                Text(
+                  'Especialidad (A-Z)',
+                  style: TextStyle(color: AppColors.textPrimaryC(isDark)),
+                ),
               ],
             ),
           ),
@@ -1702,11 +1977,12 @@ class _ReservasScreenState extends State<ReservasScreen> {
 
   Widget _emptyState(BuildContext context, bool isDark) {
     final r = context.r;
-    final isTitularWithGroup = UserSession.currentUser.isTitular &&
-        _beneficiaries.length > 1;
+    final isTitularWithGroup =
+        UserSession.currentUser.isTitular && _beneficiaries.length > 1;
 
     // Nombre del beneficiario seleccionado (o del titular si no hay selección).
-    final emptyLabel = _selectedBeneficiary != null && !_selectedBeneficiary!.isTitular
+    final emptyLabel =
+        _selectedBeneficiary != null && !_selectedBeneficiary!.isTitular
         ? '${_selectedBeneficiary!.displayTitle}\nno tiene atenciones registradas'
         : 'No tiene atenciones registradas';
 
@@ -1721,8 +1997,10 @@ class _ReservasScreenState extends State<ReservasScreen> {
             ),
             slivers: [
               AdaptiveSliverNavBar(
-                largeTitle: Text('Mis Reservas',
-                    style: TextStyle(color: AppColors.textPrimaryC(isDark))),
+                largeTitle: Text(
+                  'Mis Reservas',
+                  style: TextStyle(color: AppColors.textPrimaryC(isDark)),
+                ),
                 backgroundColor: isDark
                     ? AppColors.darkSurface.withValues(alpha: 0.92)
                     : AppColors.white.withValues(alpha: 0.92),
@@ -1735,14 +2013,23 @@ class _ReservasScreenState extends State<ReservasScreen> {
               ),
 
               // Pull-to-refresh disponible incluso en estado vacío.
-              CupertinoSliverRefreshControl(onRefresh: () async { _fetchReservas(); }),
+              CupertinoSliverRefreshControl(
+                onRefresh: () async {
+                  _fetchReservas();
+                },
+              ),
 
               // Selector de beneficiario — el titular nunca queda atrapado
               // sin poder cambiar al ver que un miembro no tiene historial.
               if (isTitularWithGroup)
                 SliverToBoxAdapter(
                   child: Padding(
-                    padding: EdgeInsets.fromLTRB(r.paddingH, r.spaceSm, r.paddingH, 0),
+                    padding: EdgeInsets.fromLTRB(
+                      r.paddingH,
+                      r.spaceSm,
+                      r.paddingH,
+                      0,
+                    ),
                     child: _buildBeneficiarySelector(isDark),
                   ),
                 ),
@@ -1759,8 +2046,9 @@ class _ReservasScreenState extends State<ReservasScreen> {
                           Icon(
                             CupertinoIcons.calendar,
                             size: 64,
-                            color: AppColors.textTertiaryC(isDark)
-                                .withValues(alpha: 0.3),
+                            color: AppColors.textTertiaryC(
+                              isDark,
+                            ).withValues(alpha: 0.3),
                           ),
                           SizedBox(height: r.spaceLg),
                           Text(
@@ -1795,4 +2083,3 @@ class _ReservasScreenState extends State<ReservasScreen> {
     );
   }
 }
-

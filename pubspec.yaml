@@ -58,10 +58,10 @@ dependencies:
   local_auth_android: ^1.0.56
   local_auth_darwin: ^1.6.1
   firebase_core: ^4.10.0
-  firebase_messaging: ^16.3.0
-  cloud_firestore: ^6.5.0
+  firebase_messaging: ^16.3.0 # Notificaciones push (FCM) — favoritos usan almacenamiento local
   in_app_update: ^4.2.3 # Actualizaciones flexibles (pequeñas) vía Google Play
   mobile_scanner: ^7.2.0
+  workmanager: ^0.9.0+3
 
 dev_dependencies:
   flutter_test:
@@ -93,6 +93,23 @@ flutter:
   assets:
     - assets/images/
     - assets/vof/
+
+  # Roboto empaquetado localmente: en web el motor lo descarga de
+  # fonts.gstatic.com; en redes sin internet (LAN interna) esa descarga
+  # falla y el texto no se dibuja. Con el asset local no depende del CDN.
+  fonts:
+    - family: Roboto
+      fonts:
+        - asset: assets/fonts/Roboto-Light.ttf
+          weight: 300
+        - asset: assets/fonts/Roboto-Regular.ttf
+          weight: 400
+        - asset: assets/fonts/Roboto-Italic.ttf
+          style: italic
+        - asset: assets/fonts/Roboto-Medium.ttf
+          weight: 500
+        - asset: assets/fonts/Roboto-Bold.ttf
+          weight: 700
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images

@@ -1,4 +1,3 @@
-import 'dart:typed_data';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import '../../../core/constants/app_colors.dart';
@@ -8,6 +7,8 @@ import '../../../core/models/doctor_agenda_model.dart';
 import '../../../core/services/programacion_service.dart';
 import '../../../core/widgets/app_state_widget.dart';
 import '../../../core/widgets/breadcrumb_chips.dart';
+import '../../../core/widgets/doctor_card.dart';
+import '../../../core/widgets/guided_tap_hint.dart';
 import '../../../shell/tab_shell.dart';
 // Favoritos OCULTO (feature aún no funcional): imports comentados.
 // import '../../../core/services/favorites_service.dart';
@@ -28,6 +29,51 @@ class DoctorScreen extends StatefulWidget {
   @override
   State<DoctorScreen> createState() => _DoctorScreenState();
 }
+
+/// Médicos ilustrativos para el modo tutorial — evita que la demo quede sin
+/// salida si el hospital+especialidad real elegido no tiene médicos con
+/// agenda abierta en este momento (un caso perfectamente posible y real,
+/// pero que no debe interrumpir una demostración).
+const _tutorialMedicos = [
+  DoctorAgendaModel(
+    idagenda: 'tutorial-agenda-1',
+    idmed: 'tutorial-doc-1',
+    idcon: 0,
+    medico: 'Dr. Roberto Guzmán',
+    dia: '',
+    fecha: '',
+    horaini: '',
+    horafin: '',
+    ase: 0,
+    oferta: 0,
+    demanda: 0,
+    ope: 0,
+    med: 0,
+    adm: 0,
+    foto: '',
+    consultorio: 'Consultorio 204 - Planta Baja',
+    mtrmin: '4521',
+  ),
+  DoctorAgendaModel(
+    idagenda: 'tutorial-agenda-2',
+    idmed: 'tutorial-doc-2',
+    idcon: 0,
+    medico: 'Dra. Fátima Rojas',
+    dia: '',
+    fecha: '',
+    horaini: '',
+    horafin: '',
+    ase: 0,
+    oferta: 0,
+    demanda: 0,
+    ope: 0,
+    med: 0,
+    adm: 0,
+    foto: '',
+    consultorio: 'Consultorio 108 - Primer Piso',
+    mtrmin: '3897',
+  ),
+];
 
 class _DoctorScreenState extends State<DoctorScreen> {
   final _service = ProgramacionService();
@@ -109,8 +155,19 @@ class _DoctorScreenState extends State<DoctorScreen> {
       _isLoading = true;
       _errorMessage = null;
     });
+
+    final bs = widget.tabShell.bookingState;
+    if (bs.isTutorialMode) {
+      // Instantáneo y sin red: la demo nunca debe depender de que el
+      // hospital+especialidad real elegido tenga médicos de verdad.
+      setState(() {
+        _medicos = _tutorialMedicos;
+        _isLoading = false;
+      });
+      return;
+    }
+
     try {
-      final bs = widget.tabShell.bookingState;
       final idsuc = int.tryParse(bs.hospital?.id ?? '') ?? 0;
       final idesp = int.tryParse(bs.specialty?.id ?? '') ?? 0;
 
@@ -259,11 +316,14 @@ class _DoctorScreenState extends State<DoctorScreen> {
           sliver: SliverList.builder(
             itemCount: _medicos.length,
             itemBuilder: (context, i) {
+              final card = _buildDoctorCard(_medicos[i], isDark, r);
               return FadeSlideIn(
                 offsetY: 12,
                 child: Padding(
                   padding: EdgeInsets.only(bottom: r.spaceMd),
-                  child: _buildDoctorCard(_medicos[i], isDark, r),
+                  child: (bs.isTutorialMode && i == 0)
+                      ? GuidedTapHint(child: card)
+                      : card,
                 ),
               );
             },
@@ -278,140 +338,15 @@ class _DoctorScreenState extends State<DoctorScreen> {
     bool isDark,
     AppResponsive r,
   ) {
-    final photoBytes = doctor.photoBytes;
-
-    return OptimizedPressButton(
+    // Botón de favorito OCULTO (feature aún no funcional): antes vivía a la
+    // derecha de la tarjeta; DoctorCard no lo expone todavía.
+    return DoctorCard(
+      name: doctor.medico,
+      photoBytes: doctor.photoBytes,
+      subtitle: doctor.mtrmin.isNotEmpty ? 'Matrícula prof.: ${doctor.mtrmin}' : null,
+      isDark: isDark,
       onTap: () => _onDoctorSelected(doctor),
-      scaleDown: 0.98,
-      child: Container(
-        decoration: BoxDecoration(
-          color: AppColors.cardBg(isDark),
-          borderRadius: BorderRadius.circular(r.cardRadius),
-          border: Border.all(color: AppColors.cardBorder(isDark), width: 0.8),
-          boxShadow: isDark
-              ? []
-              : [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.05),
-                    blurRadius: 12,
-                    offset: const Offset(0, 3),
-                  ),
-                ],
-        ),
-        child: Padding(
-          padding: EdgeInsets.all(r.cardPadding),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Foto del médico
-              _buildAvatar(photoBytes, doctor.medico, isDark, r),
-              SizedBox(width: r.spaceMd),
-
-              // Info
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      doctor.medico,
-                      style: context.texts.titleMedium.copyWith(
-                        fontWeight: FontWeight.w800,
-                        color: AppColors.textPrimaryC(isDark),
-                        height: 1.2,
-                      ),
-                      maxLines: 3,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    if (doctor.mtrmin.isNotEmpty) ...[
-                      SizedBox(height: r.spaceXs),
-                      Text(
-                        'Matrícula prof.: ${doctor.mtrmin}',
-                        style: context.texts.bodySmall.copyWith(
-                          color: AppColors.textSecondaryC(isDark),
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ],
-                  ],
-                ),
-              ),
-
-              // Botón de favorito OCULTO (feature aún no funcional).
-              SizedBox(width: r.spaceSm),
-              Icon(
-                CupertinoIcons.chevron_right,
-                size: r.iconSm,
-                color: AppColors.textTertiaryC(isDark),
-              ),
-            ],
-          ),
-        ),
-      ),
     );
   }
 
-  Widget _buildAvatar(
-    Uint8List? bytes,
-    String name,
-    bool isDark,
-    AppResponsive r,
-  ) {
-    final size = r.listAvatarSize * 1.3;
-    Widget content;
-
-    if (bytes != null) {
-      content = ClipOval(
-        child: Image.memory(
-          bytes,
-          width: size,
-          height: size,
-          fit: BoxFit.cover,
-          gaplessPlayback: true,
-          errorBuilder: (_, __, ___) => _buildInitials(name, size, isDark, r),
-        ),
-      );
-    } else {
-      content = _buildInitials(name, size, isDark, r);
-    }
-
-    return Container(
-      width: size,
-      height: size,
-      decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        color: isDark ? AppColors.darkElevated : AppColors.primaryLight,
-      ),
-      child: content,
-    );
-  }
-
-  Widget _buildInitials(
-    String name,
-    double size,
-    bool isDark,
-    AppResponsive r,
-  ) {
-    final parts = name.trim().split(RegExp(r'\s+'));
-    final initials = parts.length >= 2
-        ? '${parts[0][0]}${parts[1][0]}'.toUpperCase()
-        : (parts.isNotEmpty ? parts[0][0].toUpperCase() : '?');
-    return Container(
-      width: size,
-      height: size,
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(r.radiusMd),
-        color: AppColors.primary.withValues(alpha: 0.12),
-      ),
-      child: Center(
-        child: Text(
-          initials,
-          style: TextStyle(
-            fontSize: size * 0.32,
-            fontWeight: FontWeight.w700,
-            color: AppColors.primary,
-          ),
-        ),
-      ),
-    );
-  }
 }

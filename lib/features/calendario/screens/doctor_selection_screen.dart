@@ -9,6 +9,7 @@ import '../../../core/services/calendario_service.dart';
 import '../../../core/animations/app_page_route.dart';
 import '../../../core/animations/optimized_animations.dart';
 import '../../../core/widgets/app_state_widget.dart';
+import '../../../core/widgets/liquid_glass.dart';
 import 'doctor_schedule_screen.dart';
 
 class DoctorSelectionScreen extends StatefulWidget {
@@ -238,13 +239,10 @@ class _DoctorSelectionScreenState extends State<DoctorSelectionScreen> {
         ),
       );
     }
-    return Container(
-      decoration: BoxDecoration(
-        color: AppColors.cardBg(isDark),
-        borderRadius: BorderRadius.circular(r.cardRadius),
-        border: Border.all(color: AppColors.cardBorder(isDark), width: 0.5),
-        boxShadow: AppColors.cardShadowFor(isDark),
-      ),
+    return LiquidGlass(
+      isDark: isDark,
+      borderRadius: BorderRadius.circular(r.cardRadius),
+      shadow: AppColors.cardShadowFor(isDark),
       child: Column(
         children: List.generate(doctors.length, (i) {
           final doc = doctors[i];

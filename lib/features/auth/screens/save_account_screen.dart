@@ -1,4 +1,5 @@
 import 'package:flutter/cupertino.dart';
+import '../../../core/animations/app_dialog.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
@@ -89,12 +90,14 @@ class _SaveAccountScreenState extends State<SaveAccountScreen> {
     if (mounted && bioStatus == DeviceBiometricStatus.available) {
       final label = await SecurityService.getBiometricLabel();
       if (!mounted) return;
-      useBiometric = await showCupertinoDialog<bool>(
+      useBiometric =
+          await showAppDialog<bool>(
             context: context,
             builder: (ctx) => CupertinoAlertDialog(
               title: Text('Activar $label'),
               content: Text(
-                  '¿Deseas usar $label para entrar a esta cuenta sin escribir el PIN?'),
+                '¿Deseas usar $label para entrar a esta cuenta sin escribir el PIN?',
+              ),
               actions: [
                 CupertinoDialogAction(
                   child: const Text('Ahora no'),
@@ -144,18 +147,26 @@ class _SaveAccountScreenState extends State<SaveAccountScreen> {
                 alignment: Alignment.centerLeft,
                 child: CupertinoButton(
                   padding: EdgeInsets.all(r.spaceMd),
-                  onPressed:
-                      _saving ? null : () => Navigator.of(context).pop(false),
-                  child: Icon(CupertinoIcons.xmark,
-                      color: AppColors.textPrimaryC(isDark)),
+                  onPressed: _saving
+                      ? null
+                      : () => Navigator.of(context).pop(false),
+                  child: Icon(
+                    CupertinoIcons.xmark,
+                    color: AppColors.textPrimaryC(isDark),
+                  ),
                 ),
               ),
               const Spacer(flex: 2),
-              Icon(CupertinoIcons.lock_shield_fill,
-                  size: r.iconLg * 1.4, color: AppColors.primary),
+              Icon(
+                CupertinoIcons.lock_shield_fill,
+                size: r.iconLg * 1.4,
+                color: AppColors.primary,
+              ),
               SizedBox(height: r.spaceLg),
               Text(
-                _confirming ? 'Confirma tu PIN' : 'Crea un PIN para esta cuenta',
+                _confirming
+                    ? 'Confirma tu PIN'
+                    : 'Crea un PIN para esta cuenta',
                 style: context.texts.titleLarge.copyWith(
                   fontWeight: FontWeight.w800,
                   color: AppColors.textPrimaryC(isDark),
@@ -183,11 +194,14 @@ class _SaveAccountScreenState extends State<SaveAccountScreen> {
                 child: _error != null
                     ? Padding(
                         padding: EdgeInsets.only(top: r.spaceSm),
-                        child: Text(_error!,
-                            textAlign: TextAlign.center,
-                            style: context.texts.bodySmall.copyWith(
-                                color: AppColors.error,
-                                fontWeight: FontWeight.w600)),
+                        child: Text(
+                          _error!,
+                          textAlign: TextAlign.center,
+                          style: context.texts.bodySmall.copyWith(
+                            color: AppColors.error,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
                       )
                     : null,
               ),

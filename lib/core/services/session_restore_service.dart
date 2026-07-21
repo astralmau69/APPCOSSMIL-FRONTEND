@@ -9,6 +9,7 @@ import 'auth_service.dart';
 import 'api_client.dart';
 import '../constants/api_constants.dart';
 import '../utils/web_local_storage.dart';
+import '../utils/web_secure_storage.dart';
 
 /// Persiste y restaura los datos esenciales del usuario autenticado
 /// en [FlutterSecureStorage] para que la app pueda arrancar sin re-login.
@@ -53,6 +54,15 @@ class SessionRestoreService {
   /// Guarda las credenciales cifradas para permitir re-login silencioso
   /// al desbloquear con PIN/biometría sin mantener el token del servidor vivo.
   static Future<void> storeCredentials(String username, String password) async {
+    // Web: flutter_secure_storage usa crypto.subtle (solo https/localhost).
+    // Servido por http://IP el write cuelga el login SIN excepción capturable
+    // (la promesa JS muere fuera de la zona Dart). Se usa el mismo esquema que
+    // el token: memoria + sessionStorage (se borra al cerrar la pestaña).
+    if (kIsWeb) {
+      webSecureSet(_keyStoredUsername, username);
+      webSecureSet(_keyStoredPassword, password);
+      return;
+    }
     try {
       await _storage.write(key: _keyStoredUsername, value: username);
       await _storage.write(key: _keyStoredPassword, value: password);
@@ -62,8 +72,12 @@ class SessionRestoreService {
   /// Lee las credenciales almacenadas. Retorna null si no existen.
   static Future<({String username, String password})?> loadCredentials() async {
     try {
-      final u = await _readResilient(_keyStoredUsername);
-      final p = await _readResilient(_keyStoredPassword);
+      final u = kIsWeb
+          ? webSecureGet(_keyStoredUsername)
+          : await _readResilient(_keyStoredUsername);
+      final p = kIsWeb
+          ? webSecureGet(_keyStoredPassword)
+          : await _readResilient(_keyStoredPassword);
       if (u == null || p == null || u.isEmpty || p.isEmpty) return null;
       return (username: u, password: p);
     } catch (_) {
@@ -75,6 +89,11 @@ class SessionRestoreService {
   /// Nota: [TokenStorage.wipeAll()] ya las borra al hacer deleteAll(); este
   /// método sirve para borrarlas de forma selectiva si fuera necesario.
   static Future<void> clearCredentials() async {
+    if (kIsWeb) {
+      webSecureDel(_keyStoredUsername);
+      webSecureDel(_keyStoredPassword);
+      return;
+    }
     await _storage.delete(key: _keyStoredUsername);
     await _storage.delete(key: _keyStoredPassword);
   }

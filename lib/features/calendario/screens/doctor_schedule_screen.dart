@@ -9,6 +9,7 @@ import '../../../core/services/calendario_service.dart';
 import '../../../core/animations/optimized_animations.dart';
 import '../../../core/widgets/app_state_widget.dart';
 import '../../../core/widgets/image_enlarged_modal.dart';
+import '../../../core/widgets/liquid_glass.dart';
 
 // ─── Modelo de turno ─────────────────────────────────────────────────────────
 
@@ -395,13 +396,10 @@ class _DoctorScheduleScreenState extends State<DoctorScheduleScreen> {
         .where((t) => byTurno.containsKey(t))
         .toList();
 
-    return Container(
-      decoration: BoxDecoration(
-        color: AppColors.cardBg(isDark),
-        borderRadius: BorderRadius.circular(r.cardRadius),
-        border: Border.all(color: AppColors.cardBorder(isDark), width: 0.5),
-        boxShadow: AppColors.cardShadowFor(isDark),
-      ),
+    return LiquidGlass(
+      isDark: isDark,
+      borderRadius: BorderRadius.circular(r.cardRadius),
+      shadow: AppColors.cardShadowFor(isDark),
       child: Column(
         children: [
           // Encabezado con Consultorio y Piso

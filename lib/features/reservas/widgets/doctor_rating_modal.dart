@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/services.dart';
+import '../../../core/animations/app_dialog.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/extensions/responsive_extensions.dart';
@@ -31,28 +32,32 @@ const List<_RatingLevel> _ratingLevels = [
     emoji: '😄',
     title: 'Excelente',
     timeCriteria: 'Puntualidad perfecta.',
-    attentionCriteria: 'Máxima claridad, resolvió dudas y el trato fue excepcional.',
+    attentionCriteria:
+        'Máxima claridad, resolvió dudas y el trato fue excepcional.',
   ),
   _RatingLevel(
     level: 3,
     emoji: '🙂',
     title: 'Bueno',
     timeCriteria: 'Puntual: Entró a su hora exacta.',
-    attentionCriteria: 'Diagnóstico claro y trato amable. Aprovechó bien el tiempo.',
+    attentionCriteria:
+        'Diagnóstico claro y trato amable. Aprovechó bien el tiempo.',
   ),
   _RatingLevel(
     level: 2,
     emoji: '😐',
     title: 'Regular',
     timeCriteria: 'Retraso leve (5-10 min fuera de su turno).',
-    attentionCriteria: 'Cumplió lo básico pero sin mucha interacción o detalle.',
+    attentionCriteria:
+        'Cumplió lo básico pero sin mucha interacción o detalle.',
   ),
   _RatingLevel(
     level: 1,
     emoji: '😠',
     title: 'Malo',
     timeCriteria: 'Retraso crítico o cita muy breve.',
-    attentionCriteria: 'El médico no escuchó, fue rudo o no revisó al paciente.',
+    attentionCriteria:
+        'El médico no escuchó, fue rudo o no revisó al paciente.',
   ),
 ];
 
@@ -73,8 +78,7 @@ class DoctorRatingModal extends StatefulWidget {
       'offered_reserva_${r.idtran}_${r.dr}';
 
   /// Se persiste cuando el usuario envió exitosamente una calificación.
-  static String ratedKey(ReservaModel r) =>
-      'rated_reserva_${r.idtran}_${r.dr}';
+  static String ratedKey(ReservaModel r) => 'rated_reserva_${r.idtran}_${r.dr}';
 
   // ── Guardia de sesión ─────────────────────────────────────────────────────
 
@@ -90,7 +94,8 @@ class DoctorRatingModal extends StatefulWidget {
   /// aún no envió una calificación. Usado internamente.
   static Future<bool> isOfferedButNotRated(ReservaModel reserva) async {
     final prefs = await SharedPreferences.getInstance();
-    final offered = prefs.getBool(_offeredKey(reserva)) == true ||
+    final offered =
+        prefs.getBool(_offeredKey(reserva)) == true ||
         _offeredThisSession.contains(_offeredKey(reserva));
     final rated = prefs.getBool(ratedKey(reserva)) == true;
     return offered && !rated;
@@ -130,8 +135,11 @@ class DoctorRatingModal extends StatefulWidget {
 
     // Ignorar canceladas / falta.
     final status = reserva.status.toUpperCase();
-    if (status == 'CANCELADO' || status == 'FALTA' ||
-        reserva.estadoCancelacion == '1') { return; }
+    if (status == 'CANCELADO' ||
+        status == 'FALTA' ||
+        reserva.estadoCancelacion == '1') {
+      return;
+    }
 
     // Ventana de tiempo: 15 min después de la cita y dentro de las 24 h siguientes.
     try {
@@ -141,13 +149,17 @@ class DoctorRatingModal extends StatefulWidget {
       if (tParts.length < 2) return;
 
       final appointmentEnd = DateTime(
-        int.parse(parts[0]), int.parse(parts[1]), int.parse(parts[2]),
-        int.parse(tParts[0]), int.parse(tParts[1]),
+        int.parse(parts[0]),
+        int.parse(parts[1]),
+        int.parse(parts[2]),
+        int.parse(tParts[0]),
+        int.parse(tParts[1]),
       ).add(const Duration(minutes: 15));
       final now = DateTime.now();
 
       if (!now.isAfter(appointmentEnd)) return; // Cita aún no terminó
-      if (now.difference(appointmentEnd).inHours >= 24) return; // Pasaron más de 24 h
+      if (now.difference(appointmentEnd).inHours >= 24)
+        return; // Pasaron más de 24 h
 
       // Marcar como ofrecida ANTES de mostrar: impide que un refresh simultáneo
       // lance otro modal mientras este aún está abierto.
@@ -163,13 +175,12 @@ class DoctorRatingModal extends StatefulWidget {
         return;
       }
 
-      await showGeneralDialog(
+      await showAppDialog(
         context: context,
         barrierDismissible: false,
         barrierLabel: 'Califica tu cita',
         barrierColor: Colors.black.withValues(alpha: 0.65),
-        transitionDuration: const Duration(milliseconds: 400),
-        pageBuilder: (ctx, _, __) => DoctorRatingModal(
+        builder: (ctx) => DoctorRatingModal(
           reserva: reserva,
           onDismiss: () => Navigator.pop(ctx),
         ),
@@ -191,13 +202,12 @@ class DoctorRatingModal extends StatefulWidget {
     _isShowingModal = true;
 
     try {
-      await showGeneralDialog(
+      await showAppDialog(
         context: context,
         barrierDismissible: false,
         barrierLabel: 'Califica tu cita',
         barrierColor: Colors.black.withValues(alpha: 0.65),
-        transitionDuration: const Duration(milliseconds: 400),
-        pageBuilder: (ctx, _, __) => DoctorRatingModal(
+        builder: (ctx) => DoctorRatingModal(
           reserva: reserva,
           onDismiss: () => Navigator.pop(ctx),
         ),
@@ -307,7 +317,8 @@ class _DoctorRatingModalState extends State<DoctorRatingModal>
       if (!mounted) return;
       setState(() {
         _isSubmitting = false;
-        _errorMessage = 'No se pudo enviar la calificación. Intente nuevamente.';
+        _errorMessage =
+            'No se pudo enviar la calificación. Intente nuevamente.';
       });
     }
   }
@@ -326,7 +337,9 @@ class _DoctorRatingModalState extends State<DoctorRatingModal>
 
     _RatingLevel? selectedLevel;
     if (_selectedScore > 0) {
-      selectedLevel = _ratingLevels.firstWhere((e) => e.level == _selectedScore);
+      selectedLevel = _ratingLevels.firstWhere(
+        (e) => e.level == _selectedScore,
+      );
     }
 
     return Scaffold(
@@ -334,9 +347,15 @@ class _DoctorRatingModalState extends State<DoctorRatingModal>
       resizeToAvoidBottomInset: true,
       body: Center(
         child: FadeTransition(
-          opacity: CurvedAnimation(parent: _appearController, curve: Curves.easeOut),
+          opacity: CurvedAnimation(
+            parent: _appearController,
+            curve: Curves.easeOut,
+          ),
           child: ScaleTransition(
-            scale: CurvedAnimation(parent: _appearController, curve: Curves.elasticOut),
+            scale: CurvedAnimation(
+              parent: _appearController,
+              curve: Curves.elasticOut,
+            ),
             child: Container(
               width: MediaQuery.of(context).size.width * r.modalWidthFactor,
               constraints: BoxConstraints(maxWidth: r.modalMaxWidth),
@@ -361,10 +380,13 @@ class _DoctorRatingModalState extends State<DoctorRatingModal>
                       decoration: BoxDecoration(
                         color: AppColors.primary.withValues(alpha: 0.05),
                         borderRadius: BorderRadius.vertical(
-                            top: Radius.circular(r.modalRadius)),
+                          top: Radius.circular(r.modalRadius),
+                        ),
                         border: Border(
-                            bottom: BorderSide(
-                                color: AppColors.primary.withValues(alpha: 0.1))),
+                          bottom: BorderSide(
+                            color: AppColors.primary.withValues(alpha: 0.1),
+                          ),
+                        ),
                       ),
                       child: Column(
                         children: [
@@ -422,12 +444,18 @@ class _DoctorRatingModalState extends State<DoctorRatingModal>
                                   mainAxisSize: MainAxisSize.min,
                                   children: [
                                     AnimatedContainer(
-                                      duration: const Duration(milliseconds: 250),
+                                      duration: const Duration(
+                                        milliseconds: 250,
+                                      ),
                                       curve: Curves.easeOutBack,
-                                      padding: EdgeInsets.all(isSelected ? 6.0 : 4.0),
+                                      padding: EdgeInsets.all(
+                                        isSelected ? 6.0 : 4.0,
+                                      ),
                                       decoration: BoxDecoration(
                                         color: isSelected
-                                            ? AppColors.primary.withValues(alpha: 0.15)
+                                            ? AppColors.primary.withValues(
+                                                alpha: 0.15,
+                                              )
                                             : Colors.transparent,
                                         shape: BoxShape.circle,
                                         border: Border.all(
@@ -441,14 +469,17 @@ class _DoctorRatingModalState extends State<DoctorRatingModal>
                                         lvl.emoji,
                                         style: TextStyle(
                                           fontSize: isSelected ? 36 : 28,
-                                          color: Colors.white
-                                              .withValues(alpha: dimmed ? 0.3 : 1.0),
+                                          color: Colors.white.withValues(
+                                            alpha: dimmed ? 0.3 : 1.0,
+                                          ),
                                         ),
                                       ),
                                     ),
                                     const SizedBox(height: 4),
                                     AnimatedDefaultTextStyle(
-                                      duration: const Duration(milliseconds: 200),
+                                      duration: const Duration(
+                                        milliseconds: 200,
+                                      ),
                                       style: TextStyle(
                                         fontSize: r.isSmallPhone ? 9 : 11,
                                         fontWeight: isSelected
@@ -456,10 +487,16 @@ class _DoctorRatingModalState extends State<DoctorRatingModal>
                                             : FontWeight.w500,
                                         color: isSelected
                                             ? AppColors.primary
-                                            : AppColors.textSecondaryC(isDark)
-                                                .withValues(alpha: dimmed ? 0.4 : 1.0),
+                                            : AppColors.textSecondaryC(
+                                                isDark,
+                                              ).withValues(
+                                                alpha: dimmed ? 0.4 : 1.0,
+                                              ),
                                       ),
-                                      child: Text(lvl.title, textAlign: TextAlign.center),
+                                      child: Text(
+                                        lvl.title,
+                                        textAlign: TextAlign.center,
+                                      ),
                                     ),
                                   ],
                                 ),
@@ -478,18 +515,26 @@ class _DoctorRatingModalState extends State<DoctorRatingModal>
                                     padding: EdgeInsets.all(r.spaceMd),
                                     decoration: BoxDecoration(
                                       color: AppColors.scaffoldBg(isDark),
-                                      borderRadius: BorderRadius.circular(r.radiusMd),
+                                      borderRadius: BorderRadius.circular(
+                                        r.radiusMd,
+                                      ),
                                       border: Border.all(
-                                          color: AppColors.primary
-                                              .withValues(alpha: 0.2)),
+                                        color: AppColors.primary.withValues(
+                                          alpha: 0.2,
+                                        ),
+                                      ),
                                     ),
                                     child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
                                       children: [
                                         Row(
                                           children: [
-                                            Icon(CupertinoIcons.info_circle_fill,
-                                                size: r.iconSm, color: AppColors.primary),
+                                            Icon(
+                                              CupertinoIcons.info_circle_fill,
+                                              size: r.iconSm,
+                                              color: AppColors.primary,
+                                            ),
                                             SizedBox(width: r.spaceXs),
                                             Text(
                                               selectedLevel.title,
@@ -504,13 +549,19 @@ class _DoctorRatingModalState extends State<DoctorRatingModal>
                                         Text(
                                           '🕒 Nivel de tiempo:\n${selectedLevel.timeCriteria}',
                                           style: texts.bodySmall.copyWith(
-                                              color: AppColors.textPrimaryC(isDark)),
+                                            color: AppColors.textPrimaryC(
+                                              isDark,
+                                            ),
+                                          ),
                                         ),
                                         SizedBox(height: r.spaceXs),
                                         Text(
                                           '👤 Criterio de Atención:\n${selectedLevel.attentionCriteria}',
                                           style: texts.bodySmall.copyWith(
-                                              color: AppColors.textPrimaryC(isDark)),
+                                            color: AppColors.textPrimaryC(
+                                              isDark,
+                                            ),
+                                          ),
                                         ),
                                       ],
                                     ),
@@ -527,12 +578,15 @@ class _DoctorRatingModalState extends State<DoctorRatingModal>
                             alignment: Alignment.topCenter,
                             child: _selectedScore == 1
                                 ? Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
                                     children: [
                                       Text(
                                         '¿Qué falló? (opcional)',
                                         style: texts.bodySmall.copyWith(
-                                          color: AppColors.textSecondaryC(isDark),
+                                          color: AppColors.textSecondaryC(
+                                            isDark,
+                                          ),
                                           fontWeight: FontWeight.w600,
                                         ),
                                       ),
@@ -544,14 +598,23 @@ class _DoctorRatingModalState extends State<DoctorRatingModal>
                                         maxLength: 200,
                                         padding: EdgeInsets.all(r.spaceMd),
                                         style: texts.bodyMedium.copyWith(
-                                            color: AppColors.textPrimaryC(isDark)),
-                                        placeholderStyle: texts.bodyMedium.copyWith(
-                                            color: AppColors.textTertiaryC(isDark)),
+                                          color: AppColors.textPrimaryC(isDark),
+                                        ),
+                                        placeholderStyle: texts.bodyMedium
+                                            .copyWith(
+                                              color: AppColors.textTertiaryC(
+                                                isDark,
+                                              ),
+                                            ),
                                         decoration: BoxDecoration(
                                           color: AppColors.scaffoldBg(isDark),
-                                          borderRadius: BorderRadius.circular(r.radiusMd),
+                                          borderRadius: BorderRadius.circular(
+                                            r.radiusMd,
+                                          ),
                                           border: Border.all(
-                                            color: AppColors.primary.withValues(alpha: 0.2),
+                                            color: AppColors.primary.withValues(
+                                              alpha: 0.2,
+                                            ),
                                             width: 0.8,
                                           ),
                                         ),
@@ -572,22 +635,25 @@ class _DoctorRatingModalState extends State<DoctorRatingModal>
                                     child: Row(
                                       children: [
                                         Icon(
-                                            _alreadyRated
-                                                ? CupertinoIcons.info_circle_fill
-                                                : CupertinoIcons.exclamationmark_circle_fill,
-                                            size: r.iconSm,
-                                            color: _alreadyRated
-                                                ? AppColors.primary
-                                                : AppColors.warning),
+                                          _alreadyRated
+                                              ? CupertinoIcons.info_circle_fill
+                                              : CupertinoIcons
+                                                    .exclamationmark_circle_fill,
+                                          size: r.iconSm,
+                                          color: _alreadyRated
+                                              ? AppColors.primary
+                                              : AppColors.warning,
+                                        ),
                                         SizedBox(width: r.spaceXs),
                                         Expanded(
                                           child: Text(
                                             _errorMessage,
                                             style: texts.bodySmall.copyWith(
-                                                color: _alreadyRated
-                                                    ? AppColors.primary
-                                                    : AppColors.warning,
-                                                fontWeight: FontWeight.w600),
+                                              color: _alreadyRated
+                                                  ? AppColors.primary
+                                                  : AppColors.warning,
+                                              fontWeight: FontWeight.w600,
+                                            ),
                                           ),
                                         ),
                                       ],
@@ -603,9 +669,13 @@ class _DoctorRatingModalState extends State<DoctorRatingModal>
                             SizedBox(
                               width: double.infinity,
                               child: CupertinoButton(
-                                padding: EdgeInsets.symmetric(vertical: r.spaceMd),
+                                padding: EdgeInsets.symmetric(
+                                  vertical: r.spaceMd,
+                                ),
                                 color: AppColors.primary,
-                                borderRadius: BorderRadius.circular(r.buttonRadius),
+                                borderRadius: BorderRadius.circular(
+                                  r.buttonRadius,
+                                ),
                                 onPressed: widget.onDismiss,
                                 child: Text(
                                   'Cerrar',
@@ -622,26 +692,31 @@ class _DoctorRatingModalState extends State<DoctorRatingModal>
                                 Expanded(
                                   child: Container(
                                     decoration: BoxDecoration(
-                                      borderRadius:
-                                          BorderRadius.circular(r.buttonRadius),
+                                      borderRadius: BorderRadius.circular(
+                                        r.buttonRadius,
+                                      ),
                                       border: Border.all(
                                         color: isDark
                                             ? AppColors.darkBorder
-                                            : const Color(0xFF191C1E)
-                                                .withValues(alpha: 0.15),
+                                            : const Color(
+                                                0xFF191C1E,
+                                              ).withValues(alpha: 0.15),
                                         width: 0.8,
                                       ),
                                     ),
                                     child: CupertinoButton(
                                       padding: EdgeInsets.symmetric(
-                                          vertical: r.spaceMd),
+                                        vertical: r.spaceMd,
+                                      ),
                                       color: isDark
                                           ? AppColors.darkElevated
                                           : AppColors.divider,
-                                      borderRadius:
-                                          BorderRadius.circular(r.buttonRadius),
-                                      onPressed:
-                                          _isSubmitting ? null : widget.onDismiss,
+                                      borderRadius: BorderRadius.circular(
+                                        r.buttonRadius,
+                                      ),
+                                      onPressed: _isSubmitting
+                                          ? null
+                                          : widget.onDismiss,
                                       child: Text(
                                         'Omitir',
                                         style: texts.titleMedium.copyWith(
@@ -659,20 +734,24 @@ class _DoctorRatingModalState extends State<DoctorRatingModal>
                                   flex: 2,
                                   child: CupertinoButton(
                                     padding: EdgeInsets.symmetric(
-                                        vertical: r.spaceMd),
+                                      vertical: r.spaceMd,
+                                    ),
                                     color: _selectedScore > 0
                                         ? AppColors.primary
-                                        : AppColors.textSecondary
-                                            .withValues(alpha: 0.5),
-                                    borderRadius:
-                                        BorderRadius.circular(r.buttonRadius),
+                                        : AppColors.textSecondary.withValues(
+                                            alpha: 0.5,
+                                          ),
+                                    borderRadius: BorderRadius.circular(
+                                      r.buttonRadius,
+                                    ),
                                     onPressed:
                                         (_isSubmitting || _selectedScore == 0)
-                                            ? null
-                                            : _submitRating,
+                                        ? null
+                                        : _submitRating,
                                     child: _isSubmitting
                                         ? const CupertinoActivityIndicator(
-                                            color: Colors.white)
+                                            color: Colors.white,
+                                          )
                                         : Text(
                                             'Enviar Evaluación',
                                             style: texts.titleMedium.copyWith(

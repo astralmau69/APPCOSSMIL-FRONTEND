@@ -9,6 +9,7 @@ import 'package:local_auth_android/local_auth_android.dart';
 import 'package:local_auth_darwin/local_auth_darwin.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/foundation.dart';
+import '../utils/web_local_storage.dart';
 
 /// Capacidad biométrica real del dispositivo.
 ///
@@ -52,6 +53,28 @@ class SecurityService {
   );
   static final _localAuth = LocalAuthentication();
 
+  // ── Acceso a almacenamiento con soporte web ────────────────────────────
+  // En web, flutter_secure_storage cifra con window.crypto.subtle, que SOLO
+  // existe en contextos seguros (https o localhost). Servida por http://IP
+  // (LAN interna) esa API es undefined y CUALQUIER write revienta el flujo
+  // de login sin error visible. En web se usa localStorage: aquí solo viven
+  // hash+salt del PIN, flags y timestamps — nada reversible a la contraseña.
+  static Future<void> _write(String key, String value) async {
+    if (kIsWeb) {
+      webLsSet(key, value);
+      return;
+    }
+    await _storage.write(key: key, value: value);
+  }
+
+  static Future<void> _delete(String key) async {
+    if (kIsWeb) {
+      webLsDel(key);
+      return;
+    }
+    await _storage.delete(key: key);
+  }
+
   /// Lee una clave del almacenamiento seguro con reintentos.
   ///
   /// Tras reiniciar el dispositivo, la primera lectura del Keystore puede
@@ -64,6 +87,7 @@ class SecurityService {
   /// reintenta ante un error real de descifrado/lectura. Si tras los reintentos
   /// el error persiste, se relanza para que el llamador NO asuma "sin PIN".
   static Future<String?> _readResilient(String key, {int retries = 2}) async {
+    if (kIsWeb) return webLsGet(key); // localStorage: sin Keystore ni reintentos
     for (int attempt = 0; ; attempt++) {
       try {
         return await _storage.read(key: key);
@@ -177,8 +201,8 @@ class SecurityService {
     final derivedBytes = _pbkdf2(pin, salt, 10000, 32);
     
     // Almacenar el Salt dinámico en Base64 y el hash derivado en Secure Storage
-    await _storage.write(key: _keyPinSalt, value: base64.encode(salt));
-    await _storage.write(key: _keyPin, value: base64.encode(derivedBytes));
+    await _write(_keyPinSalt, base64.encode(salt));
+    await _write(_keyPin, base64.encode(derivedBytes));
   }
 
   /// Compara el PIN ingresado contra el hash guardado, soportando migración desde hash legacy.
@@ -213,7 +237,7 @@ class SecurityService {
 
   /// Retorna el número de intentos fallidos acumulados.
   static Future<int> getFailedAttempts() async {
-    final v = await _storage.read(key: _keyFailedAttempts);
+    final v = await _readResilient(_keyFailedAttempts);
     return int.tryParse(v ?? '0') ?? 0;
   }
 
@@ -222,21 +246,21 @@ class SecurityService {
   static Future<int> recordFailedAttempt() async {
     final current = await getFailedAttempts();
     final next = current + 1;
-    await _storage.write(key: _keyFailedAttempts, value: next.toString());
+    await _write(_keyFailedAttempts, next.toString());
     if (next >= maxPinAttempts) {
       // Bloqueo ESCALONADO: cada bloqueo dura más que el anterior, para que la
       // fuerza bruta de un PIN de 4 dígitos sea impracticable (anti brute-force).
       final lockouts =
-          (int.tryParse(await _storage.read(key: _keyLockoutCount) ?? '0') ?? 0) + 1;
-      await _storage.write(key: _keyLockoutCount, value: lockouts.toString());
+          (int.tryParse(await _readResilient(_keyLockoutCount) ?? '0') ?? 0) + 1;
+      await _write(_keyLockoutCount, lockouts.toString());
       final until = DateTime.now().add(_escalatingCooldown(lockouts));
-      await _storage.write(
-        key: _keyCooldownUntil,
-        value: until.millisecondsSinceEpoch.toString(),
+      await _write(
+        _keyCooldownUntil,
+        until.millisecondsSinceEpoch.toString(),
       );
       // Reiniciar la ventana de intentos; el conteo de bloqueos PERSISTE para
       // escalar el siguiente cooldown.
-      await _storage.delete(key: _keyFailedAttempts);
+      await _delete(_keyFailedAttempts);
     }
     return next;
   }
@@ -252,22 +276,22 @@ class SecurityService {
   /// Reinicia COMPLETAMENTE el estado de intentos (intentos, cooldown y conteo
   /// de bloqueos). Llamar siempre tras un desbloqueo exitoso.
   static Future<void> resetFailedAttempts() async {
-    await _storage.delete(key: _keyFailedAttempts);
-    await _storage.delete(key: _keyCooldownUntil);
-    await _storage.delete(key: _keyLockoutCount);
+    await _delete(_keyFailedAttempts);
+    await _delete(_keyCooldownUntil);
+    await _delete(_keyLockoutCount);
   }
 
   /// Retorna el tiempo restante de cooldown, o null si no hay cooldown activo.
   /// Al expirar permite reintentar (limpia cooldown e intentos), pero CONSERVA
   /// el conteo de bloqueos para escalar el próximo bloqueo.
   static Future<Duration?> cooldownRemaining() async {
-    final v = await _storage.read(key: _keyCooldownUntil);
+    final v = await _readResilient(_keyCooldownUntil);
     if (v == null) return null;
     final until = DateTime.fromMillisecondsSinceEpoch(int.parse(v));
     final remaining = until.difference(DateTime.now());
     if (remaining.isNegative) {
-      await _storage.delete(key: _keyCooldownUntil);
-      await _storage.delete(key: _keyFailedAttempts);
+      await _delete(_keyCooldownUntil);
+      await _delete(_keyFailedAttempts);
       return null;
     }
     return remaining;
@@ -331,7 +355,7 @@ class SecurityService {
 
   /// Activa o desactiva el uso de biometría como método de desbloqueo.
   static Future<void> setBiometricsEnabled(bool enabled) async {
-    await _storage.write(key: _keyUseBiometrics, value: enabled.toString());
+    await _write(_keyUseBiometrics, enabled.toString());
   }
 
   /// true si el usuario tiene biometría habilitada como método de desbloqueo.
@@ -413,7 +437,7 @@ class SecurityService {
   /// Guarda el nombre de display del usuario autenticado.
   /// Llamar desde AuthService tras un login exitoso.
   static Future<void> saveDisplayName(String name) async {
-    await _storage.write(key: _keyDisplayName, value: name);
+    await _write(_keyDisplayName, name);
   }
 
   /// Retorna el nombre guardado del usuario, o null si no existe.
@@ -427,14 +451,14 @@ class SecurityService {
   /// Registra el momento exacto en que la app fue a background (paused).
   static Future<void> recordBackground() async {
     final now = DateTime.now().millisecondsSinceEpoch;
-    await _storage.write(key: _keyLastBackground, value: now.toString());
+    await _write(_keyLastBackground, now.toString());
   }
 
   /// Retorna true si el tiempo en background superó la [graceWindowDuration].
   /// Si no hay timestamp guardado → asume que debe bloquear (primera vez o reinicio).
   /// Si ya está expirado → debe bloquear.
   static Future<bool> shouldLockOnResume() async {
-    final v = await _storage.read(key: _keyLastBackground);
+    final v = await _readResilient(_keyLastBackground);
     if (v == null) return false; // No hay registro de background → no bloquear
     final backgroundAt = DateTime.fromMillisecondsSinceEpoch(int.parse(v));
     final elapsed = DateTime.now().difference(backgroundAt);
@@ -445,13 +469,13 @@ class SecurityService {
   /// correctamente, evitando que futuras transiciones `resumed` vuelvan a
   /// disparar el bloqueo dentro de la misma sesión activa.
   static Future<void> clearBackground() async {
-    await _storage.delete(key: _keyLastBackground);
+    await _delete(_keyLastBackground);
   }
 
   /// Retorna true si el usuario SIN PIN ha estado minimizado en background
   /// por más tiempo del permitido por [sessionTimeoutNoPinDuration].
   static Future<bool> shouldLogoutOnResumeNoPin() async {
-    final v = await _storage.read(key: _keyLastBackground);
+    final v = await _readResilient(_keyLastBackground);
     if (v == null) return false;
     final backgroundAt = DateTime.fromMillisecondsSinceEpoch(int.parse(v));
     final elapsed = DateTime.now().difference(backgroundAt);
@@ -463,7 +487,7 @@ class SecurityService {
   /// Actualiza el timestamp de última actividad real del usuario.
   static Future<void> recordActivity() async {
     final now = DateTime.now().millisecondsSinceEpoch;
-    await _storage.write(key: _keyLastActivity, value: now.toString());
+    await _write(_keyLastActivity, now.toString());
   }
 
   /// Retorna true si el usuario lleva más de [inactivityTimeout] sin interactuar.
@@ -471,7 +495,7 @@ class SecurityService {
   static Future<bool> shouldLockOnInactivity() async {
     final hasPin = await SecurityService.hasPin();
     if (!hasPin) return false;
-    final v = await _storage.read(key: _keyLastActivity);
+    final v = await _readResilient(_keyLastActivity);
     if (v == null) return false; // Sin registro → no bloquear
     final lastActivity = DateTime.fromMillisecondsSinceEpoch(int.parse(v));
     final elapsed = DateTime.now().difference(lastActivity);
@@ -483,7 +507,7 @@ class SecurityService {
   static Future<bool> shouldLogoutOnInactivity() async {
     final hasPin = await SecurityService.hasPin();
     if (hasPin) return false; // Con PIN → se usa shouldLockOnInactivity()
-    final v = await _storage.read(key: _keyLastActivity);
+    final v = await _readResilient(_keyLastActivity);
     if (v == null) return false;
     final lastActivity = DateTime.fromMillisecondsSinceEpoch(int.parse(v));
     final elapsed = DateTime.now().difference(lastActivity);
@@ -495,13 +519,13 @@ class SecurityService {
   /// Elimina PIN, salt, preferencia biométrica, datos de cooldown, nombre y timestamps.
   /// Se llama siempre al hacer logout.
   static Future<void> clearSecurityData() async {
-    await _storage.delete(key: _keyPin);
-    await _storage.delete(key: _keyPinSalt);
-    await _storage.delete(key: _keyUseBiometrics);
-    await _storage.delete(key: _keyCooldownUntil);
-    await _storage.delete(key: _keyFailedAttempts);
-    await _storage.delete(key: _keyDisplayName);
-    await _storage.delete(key: _keyLastBackground);
-    await _storage.delete(key: _keyLastActivity);
+    await _delete(_keyPin);
+    await _delete(_keyPinSalt);
+    await _delete(_keyUseBiometrics);
+    await _delete(_keyCooldownUntil);
+    await _delete(_keyFailedAttempts);
+    await _delete(_keyDisplayName);
+    await _delete(_keyLastBackground);
+    await _delete(_keyLastActivity);
   }
 }

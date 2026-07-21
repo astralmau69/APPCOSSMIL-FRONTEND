@@ -12,14 +12,19 @@ import '../../../core/models/beneficiary_model.dart';
 import '../../../core/services/programacion_service.dart';
 import '../../../core/utils/error_mapper.dart';
 import '../../../core/utils/photo_decoder.dart';
+import '../../../core/utils/tutorial_ticket_pdf.dart';
 
 import '../../../core/animations/app_page_route.dart';
 import '../../../core/animations/success_check_animation.dart';
 import '../../../shell/tab_shell.dart';
 import '../../../core/widgets/cossmil_ios_alert.dart';
+import '../../../core/widgets/warning_modal.dart';
 import '../../../core/services/notification_service.dart';
 import '../../../core/theme/sound_manager.dart';
 import '../../../core/widgets/image_enlarged_modal.dart';
+import '../../../core/widgets/summary_info_row.dart';
+import '../../../core/widgets/guided_tap_hint.dart';
+import '../../../core/widgets/tutorial_coach_overlay.dart';
 
 class SummaryScreen extends StatefulWidget {
   final TabShellState tabShell;
@@ -382,60 +387,11 @@ class _SummaryScreenState extends State<SummaryScreen>
     required String label,
     required String value,
   }) {
-    return Padding(
-      padding: EdgeInsets.symmetric(vertical: context.r.chipPaddingV),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          Container(
-            padding: EdgeInsets.all(context.r.spaceSm),
-            decoration: BoxDecoration(
-               color: AppColors.textTertiaryC(isDark).withValues(alpha: 0.08),
-               shape: BoxShape.circle,
-            ),
-            child: Icon(icon, size: 20, color: AppColors.textTertiaryC(isDark)),
-          ),
-          SizedBox(width: context.r.spaceMd),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  label.toUpperCase(),
-                  style: TextStyle(
-                    fontWeight: FontWeight.w800,
-                    color: AppColors.textSecondaryC(isDark),
-                    letterSpacing: 0.5,
-                  ),
-                ),
-                SizedBox(height: context.r.spaceXs),
-                Text(
-                  value,
-                  style: TextStyle(
-                    fontWeight: FontWeight.w700,
-                    color: AppColors.textPrimaryC(isDark),
-                    height: 1.2,
-                  ),
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
+    return SummaryInfoRow(icon: icon, label: label, value: value, isDark: isDark);
   }
 
   Widget _divider(bool isDark) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 2, horizontal: 4),
-      child: Divider(
-        height: 1,
-        thickness: 0.5,
-        color: isDark ? AppColors.darkDivider : const Color(0xFF191C1E).withValues(alpha: 0.05),
-      ),
-    );
+    return SummaryDivider(isDark: isDark);
   }
 
   /// Decodifica bytes con signo y abre el modal de foto ampliada.
@@ -548,75 +504,96 @@ class _SummaryScreenState extends State<SummaryScreen>
         SizedBox(width: context.r.spaceMd),
         Expanded(
           flex: 2,
-          child: ScaleTransition(
-            scale: _isConfirming ? const AlwaysStoppedAnimation(1.0) : _pulseScale,
-            child: Container(
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(context.r.cardRadius),
-                border: Border.all(
-                  color: isDark ? AppColors.darkBorder : const Color(0xFF191C1E).withValues(alpha: 0.15),
-                  width: 0.8,
+          // showBadge:false — la insignia flotante empujaba este botón hacia
+          // abajo (Padding(top:14) del GuidedTapHint) dentro del Row, quedando
+          // desalineado respecto a "Modificar". Solo el borde pulsante, sin
+          // insignia, mantiene ambos botones perfectamente sincronizados.
+          child: _wrapWithTutorialHint(
+            ScaleTransition(
+              scale: _isConfirming ? const AlwaysStoppedAnimation(1.0) : _pulseScale,
+              child: Container(
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(context.r.cardRadius),
+                  border: Border.all(
+                    color: isDark ? AppColors.darkBorder : const Color(0xFF191C1E).withValues(alpha: 0.15),
+                    width: 0.8,
+                  ),
+                ),
+                child: CupertinoButton(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                  color: AppColors.success,
+                  borderRadius: BorderRadius.circular(context.r.cardRadius),
+                  onPressed: _isConfirming ? null : () => _onConfirmPressed(),
+                  child: _isConfirming
+                      ? const CupertinoActivityIndicator(color: Colors.white)
+                      : const Text(
+                          'Confirmar Reserva',
+                          style: TextStyle(
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: 0.5,
+                            color: Colors.white,
+                          ),
+                        ),
                 ),
               ),
-              child: CupertinoButton(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                color: AppColors.success,
-                borderRadius: BorderRadius.circular(context.r.cardRadius),
-                onPressed: _isConfirming ? null : () => _onConfirmPressed(),
-                child: _isConfirming
-                    ? const CupertinoActivityIndicator(color: Colors.white)
-                    : const Text(
-                        'Confirmar Reserva',
-                        style: TextStyle(
-                          fontWeight: FontWeight.w800, 
-                          letterSpacing: 0.5,
-                          color: Colors.white,
-                        ),
-                      ),
-              ),
             ),
+            showBadge: false,
           ),
         ),
       ],
     );
   }
 
+  /// Envuelve un CTA con el resaltado guiado del tutorial ("toca aquí")
+  /// solo cuando `isTutorialMode` es true.
+  Widget _wrapWithTutorialHint(
+    Widget child, {
+    String label = 'Confirma aquí',
+    bool showBadge = true,
+  }) {
+    if (!widget.tabShell.bookingState.isTutorialMode) return child;
+    return GuidedTapHint(label: label, showBadge: showBadge, child: child);
+  }
+
   Widget _buildPostConfirmButtons(bool isDark) {
     return Column(
       children: [
         // Botón Ver Imagen de la Cita Médica (abre previsualizador)
-        ScaleTransition(
-          scale: _pulseScale,
-          child: SizedBox(
-            width: double.infinity,
-            child: Container(
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(context.r.cardRadius),
-                border: Border.all(
-                  color: isDark ? AppColors.darkBorder : const Color(0xFF191C1E).withValues(alpha: 0.15),
-                  width: 0.8,
+        _wrapWithTutorialHint(
+          ScaleTransition(
+            scale: _pulseScale,
+            child: SizedBox(
+              width: double.infinity,
+              child: Container(
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(context.r.cardRadius),
+                  border: Border.all(
+                    color: isDark ? AppColors.darkBorder : const Color(0xFF191C1E).withValues(alpha: 0.15),
+                    width: 0.8,
+                  ),
                 ),
-              ),
-              child: CupertinoButton.filled(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                borderRadius: BorderRadius.circular(context.r.cardRadius),
-                onPressed: _isDownloadingPdf ? null : _openPdfPreview,
-                child: _isDownloadingPdf
-                    ? const CupertinoActivityIndicator(color: Colors.white)
-                    : Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(CupertinoIcons.doc_text_search, size: 20),
-                          SizedBox(width: 10),
-                          Text(
-                            'Ver Imagen de la Cita Médica',
-                            style: context.texts.bodyMedium.copyWith(fontWeight: FontWeight.w800, letterSpacing: 0.3),
-                          ),
-                        ],
-                      ),
+                child: CupertinoButton.filled(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                  borderRadius: BorderRadius.circular(context.r.cardRadius),
+                  onPressed: _isDownloadingPdf ? null : _openPdfPreview,
+                  child: _isDownloadingPdf
+                      ? const CupertinoActivityIndicator(color: Colors.white)
+                      : Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(CupertinoIcons.doc_text_search, size: 20),
+                            SizedBox(width: 10),
+                            Text(
+                              'Ver Imagen de la Cita Médica',
+                              style: context.texts.bodyMedium.copyWith(fontWeight: FontWeight.w800, letterSpacing: 0.3),
+                            ),
+                          ],
+                        ),
+                ),
               ),
             ),
           ),
+          label: 'Mira tu ficha',
         ),
         SizedBox(height: context.r.spaceMd),
 
@@ -635,7 +612,13 @@ class _SummaryScreenState extends State<SummaryScreen>
             child: CupertinoButton(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
               borderRadius: BorderRadius.circular(context.r.cardRadius),
-              onPressed: () => widget.tabShell.finishBooking(idtran: _idtran, dr: _dr),
+              onPressed: () {
+                if (widget.tabShell.bookingState.isTutorialMode) {
+                  widget.tabShell.exitTutorialMode();
+                } else {
+                  widget.tabShell.finishBooking(idtran: _idtran, dr: _dr);
+                }
+              },
               child: Text(
                 'Volver al Inicio',
                 style: TextStyle(
@@ -651,6 +634,11 @@ class _SummaryScreenState extends State<SummaryScreen>
   }
 
   Future<void> _openPdfPreview() async {
+    if (widget.tabShell.bookingState.isTutorialMode) {
+      await _openTutorialTicketPreview();
+      return;
+    }
+
     if (_gestion == null || _idins == null || _idsuc == null || _idtran == null || _dr == null) {
       await CossmilIosAlert.show(
         context: context,
@@ -733,6 +721,73 @@ class _SummaryScreenState extends State<SummaryScreen>
     }
   }
 
+  /// Genera y muestra el "ticket" de ejemplo del tutorial — construido 100%
+  /// en el dispositivo con [TutorialTicketPdf], jamás llama al backend.
+  Future<void> _openTutorialTicketPreview() async {
+    if (_cachedPdfBytes != null && _cachedPdfBytes!.isNotEmpty) {
+      Navigator.push(
+        context,
+        AppPageRoute(
+          builder: (_) => _PdfPreviewScreen(
+            pdfBytes: _cachedPdfBytes!,
+            fileName: 'Ficha_Ejemplo_Tutorial',
+            isTutorial: true,
+            onFinishTutorial: () => widget.tabShell.exitTutorialMode(),
+          ),
+        ),
+      );
+      return;
+    }
+
+    setState(() => _isDownloadingPdf = true);
+
+    final bs = widget.tabShell.bookingState;
+    final user = UserSession.currentUser;
+
+    try {
+      final pdfBytes = await TutorialTicketPdf.build(
+        hospital: bs.hospital?.name ?? '',
+        especialidad: bs.specialty?.name ?? '',
+        medico: bs.doctor?.fullName ?? '',
+        consultorio: bs.doctor?.office ?? 'No especificado',
+        paciente: bs.beneficiary?.fullName ?? user.fullName,
+        fecha: _fechaReserva,
+        hora: _formatTimeAmPm(bs.selectedTime),
+        ficha: bs.slotNumber ?? 1,
+      );
+
+      if (!mounted) return;
+      setState(() {
+        _isDownloadingPdf = false;
+        _cachedPdfBytes = pdfBytes;
+      });
+
+      Navigator.push(
+        context,
+        AppPageRoute(
+          builder: (_) => _PdfPreviewScreen(
+            pdfBytes: pdfBytes,
+            fileName: 'Ficha_Ejemplo_Tutorial',
+            isTutorial: true,
+            onFinishTutorial: () => widget.tabShell.exitTutorialMode(),
+          ),
+        ),
+      );
+    } catch (e) {
+      debugPrint('Error generando ticket de ejemplo: $e');
+      if (!mounted) return;
+      setState(() => _isDownloadingPdf = false);
+
+      await CossmilIosAlert.show(
+        context: context,
+        title: 'No se pudo generar el ejemplo',
+        message: 'Ocurrió un problema generando tu ficha de ejemplo. Intenta nuevamente.',
+        type: AlertType.warning,
+        confirmText: 'Aceptar',
+      );
+    }
+  }
+
   /// Verifica que el bookingState tenga todos los campos críticos antes de
   /// armar el payload de `crea-cita`. Retorna `null` si todo está OK, o un
   /// label legible del primer dato faltante para mostrar al usuario.
@@ -760,10 +815,58 @@ class _SummaryScreenState extends State<SummaryScreen>
 
   /// Intercepta el tap de "Confirmar Reserva": muestra primero el aviso de
   /// política de inasistencias y solo continúa si el usuario lo acepta.
+  ///
+  /// En modo tutorial, NUNCA se llega a `_confirmBooking` (que llama a la
+  /// API real `crea-cita`) — en su lugar se reproduce la MISMA experiencia
+  /// de éxito (splash + resumen + botones) con datos simulados. Esta es la
+  /// única razón de ser de todo el modo tutorial: garantizar que un
+  /// recorrido guiado por las pantallas reales jamás cree una cita real.
   Future<void> _onConfirmPressed() async {
     final proceed = await _showAvisoImportanteModal();
     if (proceed != true || !mounted) return;
+    if (widget.tabShell.bookingState.isTutorialMode) {
+      await _confirmTutorialBooking();
+      return;
+    }
     await _confirmBooking();
+  }
+
+  /// Simula el éxito de una reserva en modo tutorial: la MISMA animación,
+  /// encabezado y botones post-confirmación que ve un usuario real, pero
+  /// con datos ficticios — jamás llama a `crearCita`.
+  Future<void> _confirmTutorialBooking() async {
+    setState(() => _isConfirming = true);
+
+    // Pequeña espera simulada para que se sienta igual que el request real.
+    await Future.delayed(const Duration(milliseconds: 600));
+    if (!mounted) return;
+
+    final now = DateTime.now();
+    setState(() {
+      _isConfirming = false;
+      _isConfirmed = true;
+      _showSuccessSplash = true;
+      _gestion = now.year;
+      _idins = 1;
+      _idsuc = 1;
+      _idtran = 900000 + now.millisecond;
+      _dr = 1;
+    });
+
+    widget.onConfirmed?.call();
+
+    try {
+      if (SoundManager.isEnabled && !await SoundManager.isDeviceSilentOrVibrate()) {
+        _successPlayer = AudioPlayer();
+        await _successPlayer!.play(AssetSource('vof/AUDIO 5. FINAL CITA MEDICA REGISTRADA.mp3'));
+      }
+    } catch (_) {}
+
+    Future.delayed(const Duration(milliseconds: 2500), () {
+      if (!mounted) return;
+      setState(() => _showSuccessSplash = false);
+      WidgetsBinding.instance.addPostFrameCallback((_) => _pulseOnce());
+    });
   }
 
   /// Texto del aviso con frases clave resaltadas para mejor lectura.
@@ -785,7 +888,7 @@ class _SummaryScreenState extends State<SummaryScreen>
           const TextSpan(
               text: 'Estimado asegurado, le recordamos la importancia de '
                   'asistir a sus consultas. Si acumula '),
-          TextSpan(text: '3 inasistencias', style: strong(AppColors.warning)),
+          TextSpan(text: '2 inasistencias', style: strong(AppColors.warning)),
           const TextSpan(text: ', el sistema '),
           TextSpan(
               text: 'suspenderá temporalmente su acceso a la plataforma web '
@@ -822,102 +925,15 @@ class _SummaryScreenState extends State<SummaryScreen>
   /// Devuelve `true` si el usuario decide continuar con la reserva.
   Future<bool?> _showAvisoImportanteModal() {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final r = context.r;
 
-    return showGeneralDialog<bool>(
+    return showWarningModal<bool>(
       context: context,
-      barrierDismissible: true,
-      barrierLabel: 'Aviso Importante',
-      barrierColor: Colors.black54,
-      transitionDuration: const Duration(milliseconds: 300),
-      transitionBuilder: (ctx, anim, _, child) {
-        return ScaleTransition(
-          scale: CurvedAnimation(parent: anim, curve: Curves.easeOutBack),
-          child: FadeTransition(opacity: anim, child: child),
-        );
-      },
-      pageBuilder: (ctx, _, __) => Center(
-        child: Material(
-          color: Colors.transparent,
-          child: Container(
-            width: MediaQuery.of(ctx).size.width * r.modalWidthFactor,
-            constraints: BoxConstraints(
-              maxWidth: r.modalMaxWidth,
-              maxHeight: MediaQuery.of(ctx).size.height * 0.85,
-            ),
-            decoration: BoxDecoration(
-              color: AppColors.cardBg(isDark),
-              borderRadius: BorderRadius.circular(r.modalRadius),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.25),
-                  blurRadius: 30,
-                  offset: const Offset(0, 12),
-                ),
-              ],
-            ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                SizedBox(height: r.spaceXl),
-                Container(
-                  width: r.avatarMd,
-                  height: r.avatarMd,
-                  decoration: BoxDecoration(
-                    color: AppColors.warning.withValues(alpha: 0.12),
-                    shape: BoxShape.circle,
-                  ),
-                  child: Icon(
-                    CupertinoIcons.exclamationmark_triangle_fill,
-                    size: r.iconLg * 0.75,
-                    color: AppColors.warning,
-                  ),
-                ),
-                SizedBox(height: r.spaceMd),
-                Text(
-                  'Aviso Importante',
-                  textAlign: TextAlign.center,
-                  style: context.texts.headlineMedium.copyWith(
-                    fontWeight: FontWeight.w900,
-                    color: AppColors.warning,
-                    letterSpacing: 0.2,
-                    decoration: TextDecoration.none,
-                  ),
-                ),
-                SizedBox(height: r.spaceMd),
-                Flexible(
-                  child: SingleChildScrollView(
-                    padding: EdgeInsets.symmetric(horizontal: r.paddingH),
-                    child: _buildAvisoText(isDark),
-                  ),
-                ),
-                SizedBox(height: r.spaceLg),
-                Padding(
-                  padding: EdgeInsets.fromLTRB(
-                      r.paddingH, 0, r.paddingH, r.modalPadding),
-                  child: SizedBox(
-                    width: double.infinity,
-                    child: CupertinoButton(
-                      padding: EdgeInsets.symmetric(vertical: r.spaceMd),
-                      borderRadius: BorderRadius.circular(r.buttonRadius),
-                      color: AppColors.success,
-                      onPressed: () => Navigator.of(ctx).pop(true),
-                      child: Text(
-                        'Entiendo, continuar con la reserva',
-                        textAlign: TextAlign.center,
-                        style: context.texts.titleMedium.copyWith(
-                          fontWeight: FontWeight.w700,
-                          color: AppColors.white,
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
+      icon: CupertinoIcons.exclamationmark_triangle_fill,
+      accentColor: AppColors.warning,
+      title: 'Aviso Importante',
+      buttonLabel: 'Entiendo, continuar con la reserva',
+      onButtonPressed: (ctx) => Navigator.of(ctx).pop(true),
+      body: _buildAvisoText(isDark),
     );
   }
 
@@ -1109,13 +1125,21 @@ class _SummaryScreenState extends State<SummaryScreen>
 }
 
 /// Pantalla de previsualizador de PDF con opciones de Descargar/Imprimir, Compartir.
+///
+/// En modo tutorial (`isTutorial: true`) no se ofrece descargar/imprimir/
+/// compartir — es solo una previsualización del ticket de ejemplo, con una
+/// barra final que cierra el tutorial ([onFinishTutorial]).
 class _PdfPreviewScreen extends StatelessWidget {
   final Uint8List pdfBytes;
   final String fileName;
+  final bool isTutorial;
+  final VoidCallback? onFinishTutorial;
 
   const _PdfPreviewScreen({
     required this.pdfBytes,
     required this.fileName,
+    this.isTutorial = false,
+    this.onFinishTutorial,
   });
 
   @override
@@ -1126,7 +1150,7 @@ class _PdfPreviewScreen extends StatelessWidget {
       backgroundColor: AppColors.scaffoldBg(isDark),
       navigationBar: CupertinoNavigationBar(
         middle: Text(
-          'Cita Médica',
+          isTutorial ? 'Ficha de Ejemplo' : 'Cita Médica',
           style: TextStyle(
             fontWeight: FontWeight.w800,
             color: AppColors.textPrimaryC(isDark),
@@ -1134,29 +1158,31 @@ class _PdfPreviewScreen extends StatelessWidget {
         ),
         backgroundColor: AppColors.scaffoldBg(isDark).withValues(alpha: 0.94),
         border: null,
-        trailing: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            CupertinoButton(
-              padding: EdgeInsets.zero,
-              onPressed: () => _sharePdf(context),
-              child: Icon(
-                CupertinoIcons.share,
-                size: 22,
-                color: AppColors.accentForTheme(isDark),
+        trailing: isTutorial
+            ? null
+            : Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  CupertinoButton(
+                    padding: EdgeInsets.zero,
+                    onPressed: () => _sharePdf(context),
+                    child: Icon(
+                      CupertinoIcons.share,
+                      size: 22,
+                      color: AppColors.accentForTheme(isDark),
+                    ),
+                  ),
+                  CupertinoButton(
+                    padding: EdgeInsets.zero,
+                    onPressed: () => _printPdf(context),
+                    child: Icon(
+                      CupertinoIcons.printer,
+                      size: 22,
+                      color: AppColors.accentForTheme(isDark),
+                    ),
+                  ),
+                ],
               ),
-            ),
-            CupertinoButton(
-              padding: EdgeInsets.zero,
-              onPressed: () => _printPdf(context),
-              child: Icon(
-                CupertinoIcons.printer,
-                size: 22,
-                color: AppColors.accentForTheme(isDark),
-              ),
-            ),
-          ],
-        ),
       ),
       child: SafeArea(
         child: Column(
@@ -1176,70 +1202,130 @@ class _PdfPreviewScreen extends StatelessWidget {
                 ),
               ),
             ),
-            // Barra de acciones inferior
-            Container(
-              padding: EdgeInsets.fromLTRB(context.r.paddingH, context.r.spaceMd, context.r.paddingH, context.r.spaceMd),
-              decoration: BoxDecoration(
-                color: AppColors.cardBg(isDark),
-                border: Border(
-                  top: BorderSide(
-                    color: isDark ? AppColors.darkDivider : const Color(0xFF191C1E).withValues(alpha: 0.08),
-                    width: 0.5,
+            if (isTutorial) _buildTutorialEndBar(context, isDark) else _buildActionsBar(context, isDark),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// Barra final del tutorial: solo previsualización, sin descargar/compartir.
+  Widget _buildTutorialEndBar(BuildContext context, bool isDark) {
+    return Container(
+      padding: EdgeInsets.fromLTRB(context.r.paddingH, context.r.spaceMd, context.r.paddingH, context.r.spaceMd),
+      decoration: BoxDecoration(
+        color: AppColors.cardBg(isDark),
+        border: Border(
+          top: BorderSide(
+            color: isDark ? AppColors.darkDivider : const Color(0xFF191C1E).withValues(alpha: 0.08),
+            width: 0.5,
+          ),
+        ),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Row(
+            children: [
+              const Icon(CupertinoIcons.checkmark_seal_fill, color: kTutorialAccent, size: 20),
+              SizedBox(width: context.r.spaceSm),
+              Expanded(
+                child: Text(
+                  'Fin del tutorial. Así se ve tu ficha cuando reservas de verdad.',
+                  style: context.texts.bodySmall.copyWith(
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.textPrimaryC(isDark),
                   ),
                 ),
               ),
+            ],
+          ),
+          SizedBox(height: context.r.spaceMd),
+          SizedBox(
+            width: double.infinity,
+            child: CupertinoButton(
+              padding: EdgeInsets.symmetric(vertical: context.r.spaceMd),
+              color: kTutorialAccent,
+              borderRadius: BorderRadius.circular(context.r.radiusMd),
+              onPressed: () {
+                Navigator.of(context).pop();
+                onFinishTutorial?.call();
+              },
+              child: Text(
+                'Finalizar tutorial',
+                style: context.texts.labelLarge.copyWith(
+                  fontWeight: FontWeight.w800,
+                  color: AppColors.white,
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Barra de acciones real: Descargar/Imprimir, Compartir.
+  Widget _buildActionsBar(BuildContext context, bool isDark) {
+    return Container(
+      padding: EdgeInsets.fromLTRB(context.r.paddingH, context.r.spaceMd, context.r.paddingH, context.r.spaceMd),
+      decoration: BoxDecoration(
+        color: AppColors.cardBg(isDark),
+        border: Border(
+          top: BorderSide(
+            color: isDark ? AppColors.darkDivider : const Color(0xFF191C1E).withValues(alpha: 0.08),
+            width: 0.5,
+          ),
+        ),
+      ),
+      child: Row(
+        children: [
+          // Descargar / Imprimir
+          Expanded(
+            child: CupertinoButton(
+              padding: EdgeInsets.symmetric(vertical: context.r.spaceMd),
+              color: AppColors.primary,
+              borderRadius: BorderRadius.circular(context.r.radiusMd),
+              onPressed: () => _printPdf(context),
               child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  // Descargar / Imprimir
-                  Expanded(
-                    child: CupertinoButton(
-                      padding: EdgeInsets.symmetric(vertical: context.r.spaceMd),
-                      color: AppColors.primary,
-                      borderRadius: BorderRadius.circular(context.r.radiusMd),
-                      onPressed: () => _printPdf(context),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          const Icon(CupertinoIcons.printer, size: 18, color: AppColors.white),
-                          SizedBox(width: context.r.spaceSm),
-                          Text(
-                            'Descargar / Imprimir',
-                            style: context.texts.labelLarge.copyWith(
-                              color: AppColors.white,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
+                  const Icon(CupertinoIcons.printer, size: 18, color: AppColors.white),
                   SizedBox(width: context.r.spaceSm),
-                  // Compartir
-                  Expanded(
-                    child: CupertinoButton(
-                      padding: EdgeInsets.symmetric(vertical: context.r.spaceMd),
-                      color: isDark ? AppColors.darkElevated : AppColors.white,
-                      borderRadius: BorderRadius.circular(context.r.radiusMd),
-                      onPressed: () => _sharePdf(context),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(CupertinoIcons.share, size: 18, color: AppColors.accentForTheme(isDark)),
-                          SizedBox(width: context.r.spaceSm),
-                          Text(
-                            'Compartir',
-                            style: context.texts.labelLarge.copyWith(
-                              color: AppColors.textPrimaryC(isDark),
-                            ),
-                          ),
-                        ],
-                      ),
+                  Text(
+                    'Descargar / Imprimir',
+                    style: context.texts.labelLarge.copyWith(
+                      color: AppColors.white,
                     ),
                   ),
                 ],
               ),
             ),
-          ],
-        ),
+          ),
+          SizedBox(width: context.r.spaceSm),
+          // Compartir
+          Expanded(
+            child: CupertinoButton(
+              padding: EdgeInsets.symmetric(vertical: context.r.spaceMd),
+              color: isDark ? AppColors.darkElevated : AppColors.white,
+              borderRadius: BorderRadius.circular(context.r.radiusMd),
+              onPressed: () => _sharePdf(context),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(CupertinoIcons.share, size: 18, color: AppColors.accentForTheme(isDark)),
+                  SizedBox(width: context.r.spaceSm),
+                  Text(
+                    'Compartir',
+                    style: context.texts.labelLarge.copyWith(
+                      color: AppColors.textPrimaryC(isDark),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }

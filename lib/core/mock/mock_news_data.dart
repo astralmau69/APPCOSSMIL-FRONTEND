@@ -8,7 +8,7 @@ class MockNewsData {
       idpub: 1,
       title: 'Penalización por Inasistencia a Consultas Reservadas',
       description:
-          'ATENCIÓN: Si falta 3 veces consecutivas a consultas reservadas por la app, será penalizado '
+          'ATENCIÓN: Si falta 2 veces consecutivas a consultas reservadas por la app, será penalizado '
           'y no podrá reservar fichas por este medio durante 30 días.',
       date: '25 Mar 2026',
       entity: 'CORPORACION DEL SEGURO SOCIAL MILITAR',
