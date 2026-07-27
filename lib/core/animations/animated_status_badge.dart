@@ -62,10 +62,7 @@ class AnimatedStatusBadge extends StatelessWidget {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          if (showDot) ...[
-            _PulsingDot(color: color),
-            const SizedBox(width: 6),
-          ],
+          if (showDot) ...[_PulsingDot(color: color), const SizedBox(width: 6)],
           Text(
             label,
             style: TextStyle(
@@ -103,9 +100,10 @@ class _PulsingDotState extends State<_PulsingDot>
       vsync: this,
       duration: const Duration(milliseconds: 1500),
     )..repeat(reverse: true);
-    _pulse = Tween<double>(begin: 0.5, end: 1.0).animate(
-      CurvedAnimation(parent: _ctrl, curve: Curves.easeInOut),
-    );
+    _pulse = Tween<double>(
+      begin: 0.5,
+      end: 1.0,
+    ).animate(CurvedAnimation(parent: _ctrl, curve: Curves.easeInOut));
   }
 
   @override

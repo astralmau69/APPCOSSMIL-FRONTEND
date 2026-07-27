@@ -28,9 +28,10 @@ class _NewsCardState extends State<NewsCard>
       vsync: this,
       duration: const Duration(milliseconds: 100),
     );
-    _scaleAnim = Tween<double>(begin: 1.0, end: 0.98).animate(
-      CurvedAnimation(parent: _pressCtrl, curve: Curves.easeInOut),
-    );
+    _scaleAnim = Tween<double>(
+      begin: 1.0,
+      end: 0.98,
+    ).animate(CurvedAnimation(parent: _pressCtrl, curve: Curves.easeInOut));
   }
 
   @override
@@ -55,7 +56,9 @@ class _NewsCardState extends State<NewsCard>
             color: AppColors.cardBg(isDark),
             borderRadius: BorderRadius.circular(AppTheme.radiusLg),
             border: Border.all(
-              color: isDark ? AppColors.darkBorder : const Color(0xFF191C1E).withValues(alpha: 0.12),
+              color: isDark
+                  ? AppColors.darkBorder
+                  : const Color(0xFF191C1E).withValues(alpha: 0.12),
               width: isDark ? 0.8 : 0.5,
             ),
             boxShadow: AppColors.cardShadowFor(isDark),
@@ -70,10 +73,15 @@ class _NewsCardState extends State<NewsCard>
                     if (widget.item.entity.isNotEmpty) ...[
                       Flexible(
                         child: Container(
-                          padding: EdgeInsets.symmetric(horizontal: context.r.spaceSm, vertical: 4),
+                          padding: EdgeInsets.symmetric(
+                            horizontal: context.r.spaceSm,
+                            vertical: 4,
+                          ),
                           decoration: BoxDecoration(
                             color: AppColors.primary.withValues(alpha: 0.12),
-                            borderRadius: BorderRadius.circular(context.r.badgeRadius),
+                            borderRadius: BorderRadius.circular(
+                              context.r.badgeRadius,
+                            ),
                           ),
                           child: Text(
                             widget.item.entity,
@@ -88,8 +96,11 @@ class _NewsCardState extends State<NewsCard>
                       ),
                       SizedBox(width: context.r.spaceSm),
                     ],
-                    Icon(CupertinoIcons.calendar,
-                        size: 12, color: AppColors.textTertiaryC(isDark)),
+                    Icon(
+                      CupertinoIcons.calendar,
+                      size: 12,
+                      color: AppColors.textTertiaryC(isDark),
+                    ),
                     SizedBox(width: context.r.spaceXs),
                     Text(
                       widget.item.date,

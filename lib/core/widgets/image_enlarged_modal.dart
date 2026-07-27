@@ -31,7 +31,11 @@ class ImageEnlargedModal extends StatelessWidget {
     } catch (_) {
       return; // Si no es válido o está corrupto
     }
-    await _showDialog(context: context, decoded: decoded, fallbackText: fallbackText);
+    await _showDialog(
+      context: context,
+      decoded: decoded,
+      fallbackText: fallbackText,
+    );
   }
 
   /// Abre el modal directamente con bytes ya decodificados (útil cuando la
@@ -42,7 +46,11 @@ class ImageEnlargedModal extends StatelessWidget {
     String fallbackText = 'M',
   }) async {
     if (bytes.isEmpty) return;
-    await _showDialog(context: context, decoded: bytes, fallbackText: fallbackText);
+    await _showDialog(
+      context: context,
+      decoded: bytes,
+      fallbackText: fallbackText,
+    );
   }
 
   /// Abre el modal cargando la imagen desde una URL.
@@ -62,10 +70,7 @@ class ImageEnlargedModal extends StatelessWidget {
         return FadeTransition(opacity: animation, child: child);
       },
       pageBuilder: (context, _, __) {
-        return _ImageUrlEnlargedModal(
-          url: url,
-          fallbackText: fallbackText,
-        );
+        return _ImageUrlEnlargedModal(url: url, fallbackText: fallbackText);
       },
     );
   }
@@ -99,7 +104,7 @@ class ImageEnlargedModal extends StatelessWidget {
     final r = context.r;
     // Un tamaño grande (ej. 75% del ancho de la pantalla)
     final imageSize = r.screenWidth * 0.75;
-    
+
     return Material(
       color: Colors.transparent,
       child: GestureDetector(
@@ -115,7 +120,7 @@ class ImageEnlargedModal extends StatelessWidget {
                 ),
               ),
             ),
-            
+
             // Botón cerrar esquina
             Positioned(
               top: MediaQuery.of(context).padding.top + 16,
@@ -129,7 +134,11 @@ class ImageEnlargedModal extends StatelessWidget {
                     color: Colors.white24,
                     shape: BoxShape.circle,
                   ),
-                  child: const Icon(CupertinoIcons.xmark, color: Colors.white, size: 24),
+                  child: const Icon(
+                    CupertinoIcons.xmark,
+                    color: Colors.white,
+                    size: 24,
+                  ),
                 ),
               ),
             ),
@@ -147,7 +156,9 @@ class ImageEnlargedModal extends StatelessWidget {
                       shape: BoxShape.circle,
                       color: AppColors.primary,
                       border: Border.all(
-                        color: AppColors.accentForTheme(isDark).withValues(alpha: 0.8),
+                        color: AppColors.accentForTheme(
+                          isDark,
+                        ).withValues(alpha: 0.8),
                         width: 4,
                       ),
                       boxShadow: [
@@ -191,10 +202,7 @@ class _ImageUrlEnlargedModal extends StatelessWidget {
   final String url;
   final String fallbackText;
 
-  const _ImageUrlEnlargedModal({
-    required this.url,
-    required this.fallbackText,
-  });
+  const _ImageUrlEnlargedModal({required this.url, required this.fallbackText});
 
   @override
   Widget build(BuildContext context) {
@@ -211,7 +219,9 @@ class _ImageUrlEnlargedModal extends StatelessWidget {
             Positioned.fill(
               child: BackdropFilter(
                 filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
-                child: Container(color: isDark ? Colors.black87 : Colors.black54),
+                child: Container(
+                  color: isDark ? Colors.black87 : Colors.black54,
+                ),
               ),
             ),
             Positioned(
@@ -222,8 +232,15 @@ class _ImageUrlEnlargedModal extends StatelessWidget {
                 onPressed: () => Navigator.of(context).pop(),
                 child: Container(
                   padding: const EdgeInsets.all(8),
-                  decoration: const BoxDecoration(color: Colors.white24, shape: BoxShape.circle),
-                  child: const Icon(CupertinoIcons.xmark, color: Colors.white, size: 24),
+                  decoration: const BoxDecoration(
+                    color: Colors.white24,
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    CupertinoIcons.xmark,
+                    color: Colors.white,
+                    size: 24,
+                  ),
                 ),
               ),
             ),
@@ -250,7 +267,11 @@ class _ImageUrlEnlargedModal extends StatelessWidget {
                       fit: BoxFit.contain,
                       loadingBuilder: (_, child, progress) {
                         if (progress == null) return child;
-                        return const Center(child: CupertinoActivityIndicator(color: Colors.white));
+                        return const Center(
+                          child: CupertinoActivityIndicator(
+                            color: Colors.white,
+                          ),
+                        );
                       },
                       errorBuilder: (_, __, ___) => Center(
                         child: Text(

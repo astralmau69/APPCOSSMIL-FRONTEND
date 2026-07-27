@@ -20,7 +20,9 @@ flutter build apk        # Android release build
 flutter build ipa        # iOS release build
 ```
 
-**Android build:** Kotlin DSL (`build.gradle.kts`), namespace `bo.mil.cossmil.app`, core library desugaring enabled (Java 11 target), NDK 27.0.12077973. Uses debug signing as fallback when `key.properties` is missing.
+**Android build:** Kotlin DSL (`build.gradle.kts`), namespace and `applicationId` both `com.cossmil.citamedicapp`, core library desugaring enabled (Java 11 target), NDK 27.0.12077973. Uses debug signing as fallback when `key.properties` is missing; release enables R8 minify + resource shrinking.
+
+There is a single applicationId — no flavors, no id suffix — so `adb install` of any build **replaces** whatever COSSMIL app is on the device rather than installing alongside it. `install -r` keeps app data, but the login session does not survive.
 
 ## Architecture
 
@@ -69,6 +71,11 @@ Two separate auth concerns:
 
 **TabShell lifecycle integration:** `WidgetsBindingObserver` monitors app pause/resume. A 30-second polling timer checks `SecurityService.shouldLockOnInactivity()`. A `Listener(onPointerDown:)` with `HitTestBehavior.translucent` resets the activity timer on any touch. Single tap switches tab; double tap on active tab pops to root.
 
+**PHI/PII hardening** (medical data):
+- **Screen protection** — `ScreenSecurity` (`core/security/screen_security.dart`, wraps `screen_protector`): Android `FLAG_SECURE` + iOS screenshot block + blur in the app-switcher/recents. `enable()` in `TabShell.initState` (covers every authenticated entry: login, PIN unlock, session restore); `disable()` on logout. Idempotent, never throws (guarded, `kIsWeb`-safe).
+- **Log masking** — `LogSanitizer.scrub` (`core/utils/log_sanitizer.dart`) runs on all `AppLogger` output and on the raw `debugPrint`s of `ApiClient`/`ProgramacionService`. Masks Bearer/Basic/JWT, password/token fields, and CI (`ci`/`cedula`/`nrodoc`/`carnet`) — labeled-field only, so `ciudad` and plain ticket/ID numbers are untouched. (All logging is already `kDebugMode`-gated; this is defense-in-depth.)
+- **PDF sandbox** — `SecureDocsStore` (`core/services/secure_docs_store.dart`) saves generated PDFs/Word docs only under `getApplicationDocumentsDirectory()/documentos_generados` (private, name-sanitized). `wipeAll()` deletes that whole subdir and is called on logout (both UI paths + `AuthRepository.logout`), so no PHI survives sign-out.
+
 ## State & Theme
 
 - `BookingState` (mutable PODO in `tab_shell.dart`) holds the multi-step booking flow selections; passed down to booking screens
@@ -107,11 +114,11 @@ Two static in-memory singletons, populated after login and cleared on logout:
 - **`UserSession`** (`core/session/user_session.dart`) — holds `UserModel` for the authenticated user. Helpers `UserSession.ageFor(beneficiary)` and `UserSession.genderFor(beneficiary)` return the correct age/gender for filtering (titular vs. beneficiary), used by specialty filters.
 - **`AppSessionCache`** (`core/data/app_session_cache.dart`) — holds four preloaded lists: `grupoFamiliar`, `regionales`, `especialidades`, and `fechaServidor`. `isLoaded` flag indicates readiness.
 
-**`InitialDataOrchestrator`** (`core/data/initial_data_orchestrator.dart`) populates `AppSessionCache` via `Future.wait` (15 s timeout) on four parallel loads. **Currently all four `_load*` methods are stubs using `Future.delayed` mock delays.** Each has a `TODO` comment showing the real `ProgramacionService` call to substitute. `LoadingDataScreen` (`features/loading/`) calls `loadAll()` and displays animated progress; on failure shows a retry button.
+**`InitialDataOrchestrator`** (`core/data/initial_data_orchestrator.dart`) populates `AppSessionCache` on four parallel loads that call the **real `ProgramacionService`** endpoints (production; no stubs here). Each load carries its own timeout: the two **critical** ones (`regionales`, `fechaServidor`) fail fast so startup surfaces a retry; the two **non-critical** ones (`grupoFamiliar`, `especialidades`) degrade to an empty list on timeout/error so a slow endpoint never blocks the titular from booking (grupo familiar is reloaded on-demand in `TabShell._tryEnterBookingTab`). `LoadingDataScreen` (`features/loading/`) calls `loadAll()` and displays animated progress; on failure shows a retry button.
 
 ## Mock Data Mode
 
-`AppConfig.useMockData` in `core/config/app_config.dart` toggles between real HTTP calls and mock data with simulated delays. Set to `true` for offline development without the backend. Mock data files live in `core/mock/`.
+`AppConfig.useMockData` in `core/config/app_config.dart` is **strictly a local/offline development toggle** — it is `false` in production, so the app runs entirely against the real backend (`ApiClient` + Bearer token). It is a compile-time `const`, so when `false` every `if (AppConfig.useMockData) { … }` branch (and its `core/mock/` data) is tree-shaken out of release builds. Flip it to `true` only to develop without the COSSMIL VPN/backend. Mock data files live in `core/mock/`.
 
 ## Calendario Feature
 

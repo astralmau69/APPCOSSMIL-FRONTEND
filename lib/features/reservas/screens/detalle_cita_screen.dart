@@ -233,7 +233,12 @@ class _DetalleCitaScreenState extends State<DetalleCitaScreen> {
         constraints: BoxConstraints(maxWidth: r.maxContentWidth),
         child: ListView(
           key: const ValueKey('content'),
-          padding: EdgeInsets.symmetric(horizontal: r.paddingH, vertical: 16),
+          padding: EdgeInsets.fromLTRB(
+            r.paddingH,
+            16,
+            r.paddingH,
+            r.navBarBottomSpace,
+          ),
           children: [
             FadeSlideIn(
               delay: const Duration(milliseconds: 50),
@@ -1008,7 +1013,12 @@ class _PdfPreviewScreen extends StatelessWidget {
               ),
             ),
             Container(
-              padding: const EdgeInsets.fromLTRB(20, 12, 20, 16),
+              padding: EdgeInsets.fromLTRB(
+                20,
+                12,
+                20,
+                16 + context.r.navBarBottomSpace,
+              ),
               decoration: BoxDecoration(
                 color: AppColors.cardBg(isDark),
                 border: Border(

@@ -59,25 +59,31 @@ class _CarnetPdfPreviewScreenState extends State<CarnetPdfPreviewScreen> {
       await task();
     } catch (_) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-          content: Text('No se pudo completar la acción.'),
-          behavior: SnackBarBehavior.floating,
-        ));
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('No se pudo completar la acción.'),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
       }
     } finally {
       if (mounted) setState(() => _working = false);
     }
   }
 
-  Future<void> _imprimir() => _run(() => Printing.layoutPdf(
-        onLayout: (_) async => widget.pdfBytes,
-        name: widget.fileName,
-      ));
+  Future<void> _imprimir() => _run(
+    () => Printing.layoutPdf(
+      onLayout: (_) async => widget.pdfBytes,
+      name: widget.fileName,
+    ),
+  );
 
-  Future<void> _compartir() => _run(() => Printing.sharePdf(
-        bytes: widget.pdfBytes,
-        filename: '${widget.fileName}.pdf',
-      ));
+  Future<void> _compartir() => _run(
+    () => Printing.sharePdf(
+      bytes: widget.pdfBytes,
+      filename: '${widget.fileName}.pdf',
+    ),
+  );
 
   @override
   Widget build(BuildContext context) {
@@ -85,8 +91,9 @@ class _CarnetPdfPreviewScreenState extends State<CarnetPdfPreviewScreen> {
     final r = context.r;
 
     return Scaffold(
-      backgroundColor:
-          isDark ? AppColors.darkBackground : const Color(0xFFEDF4FB),
+      backgroundColor: isDark
+          ? AppColors.darkBackground
+          : const Color(0xFFEDF4FB),
       body: SafeArea(
         child: Column(
           children: [
@@ -112,16 +119,22 @@ class _CarnetPdfPreviewScreenState extends State<CarnetPdfPreviewScreen> {
               width: 42,
               height: 42,
               decoration: BoxDecoration(
-                color:
-                    isDark ? Colors.white.withValues(alpha: 0.08) : Colors.white,
+                color: isDark
+                    ? Colors.white.withValues(alpha: 0.08)
+                    : Colors.white,
                 shape: BoxShape.circle,
                 border: Border.all(
-                    color: AppColors.textTertiaryC(isDark)
-                        .withValues(alpha: isDark ? 0.25 : 0.18)),
+                  color: AppColors.textTertiaryC(
+                    isDark,
+                  ).withValues(alpha: isDark ? 0.25 : 0.18),
+                ),
                 boxShadow: isDark ? null : AppColors.softShadow,
               ),
-              child: Icon(CupertinoIcons.back,
-                  size: 20, color: AppColors.textPrimaryC(isDark)),
+              child: Icon(
+                CupertinoIcons.back,
+                size: 20,
+                color: AppColors.textPrimaryC(isDark),
+              ),
             ),
           ),
           SizedBox(width: r.spaceSm),
@@ -129,13 +142,19 @@ class _CarnetPdfPreviewScreenState extends State<CarnetPdfPreviewScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('Vista previa del carnet',
-                    style: context.texts.titleLarge.copyWith(
-                        fontWeight: FontWeight.w800,
-                        color: AppColors.textPrimaryC(isDark))),
-                Text('Documento protegido · no se puede capturar',
-                    style: context.texts.bodySmall.copyWith(
-                        color: AppColors.textSecondaryC(isDark))),
+                Text(
+                  'Vista previa del carnet',
+                  style: context.texts.titleLarge.copyWith(
+                    fontWeight: FontWeight.w800,
+                    color: AppColors.textPrimaryC(isDark),
+                  ),
+                ),
+                Text(
+                  'Documento protegido · no se puede capturar',
+                  style: context.texts.bodySmall.copyWith(
+                    color: AppColors.textSecondaryC(isDark),
+                  ),
+                ),
               ],
             ),
           ),
@@ -156,14 +175,21 @@ class _CarnetPdfPreviewScreenState extends State<CarnetPdfPreviewScreen> {
         final pages = snap.data ?? const <Uint8List>[];
         if (pages.isEmpty) {
           return Center(
-            child: Text('No se pudo generar la vista previa.',
-                style: context.texts.bodyMedium
-                    .copyWith(color: AppColors.textSecondaryC(isDark))),
+            child: Text(
+              'No se pudo generar la vista previa.',
+              style: context.texts.bodyMedium.copyWith(
+                color: AppColors.textSecondaryC(isDark),
+              ),
+            ),
           );
         }
         return SingleChildScrollView(
           padding: EdgeInsets.fromLTRB(
-              r.paddingH, r.spaceSm, r.paddingH, r.spaceLg),
+            r.paddingH,
+            r.spaceSm,
+            r.paddingH,
+            r.spaceLg,
+          ),
           child: Center(
             child: ConstrainedBox(
               constraints: const BoxConstraints(maxWidth: 520),
@@ -199,8 +225,12 @@ class _CarnetPdfPreviewScreenState extends State<CarnetPdfPreviewScreen> {
   // ── Acciones (Imprimir / Compartir) ───────────────────────────────────────
   Widget _actions(bool isDark, AppResponsive r) {
     return Container(
-      padding: EdgeInsets.fromLTRB(r.paddingH, r.spaceSm, r.paddingH,
-          r.spaceMd + r.viewPaddingBottom),
+      padding: EdgeInsets.fromLTRB(
+        r.paddingH,
+        r.spaceSm,
+        r.paddingH,
+        r.spaceMd + r.viewPaddingBottom,
+      ),
       decoration: BoxDecoration(
         color: isDark ? AppColors.darkSurface : Colors.white,
         boxShadow: [
@@ -236,14 +266,20 @@ class _CarnetPdfPreviewScreenState extends State<CarnetPdfPreviewScreen> {
                       : const Row(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            Icon(CupertinoIcons.printer_fill,
-                                size: 19, color: Colors.white),
+                            Icon(
+                              CupertinoIcons.printer_fill,
+                              size: 19,
+                              color: Colors.white,
+                            ),
                             SizedBox(width: 9),
-                            Text('Imprimir',
-                                style: TextStyle(
-                                    color: Colors.white,
-                                    fontWeight: FontWeight.w800,
-                                    fontSize: 15)),
+                            Text(
+                              'Imprimir',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.w800,
+                                fontSize: 15,
+                              ),
+                            ),
                           ],
                         ),
                 ),
@@ -270,11 +306,14 @@ class _CarnetPdfPreviewScreenState extends State<CarnetPdfPreviewScreen> {
                     children: [
                       Icon(CupertinoIcons.share, size: 18, color: _azul),
                       const SizedBox(width: 8),
-                      Text('Compartir',
-                          style: TextStyle(
-                              color: _azul,
-                              fontWeight: FontWeight.w700,
-                              fontSize: 14.5)),
+                      Text(
+                        'Compartir',
+                        style: TextStyle(
+                          color: _azul,
+                          fontWeight: FontWeight.w700,
+                          fontSize: 14.5,
+                        ),
+                      ),
                     ],
                   ),
                 ),

@@ -13,9 +13,7 @@ class TokenStorage {
       encryptedSharedPreferences: true,
       sharedPreferencesName: 'cossmil_secure_prefs',
     ),
-    iOptions: IOSOptions(
-      accessibility: KeychainAccessibility.first_unlock,
-    ),
+    iOptions: IOSOptions(accessibility: KeychainAccessibility.first_unlock),
   );
   static const _keyAccessToken = 'access_token';
   static const _keyRefreshToken = 'refresh_token';
@@ -37,7 +35,9 @@ class TokenStorage {
   /// Guarda ambos tokens tras un login exitoso.
   static Future<void> saveToken(String token) async {
     if (kIsWeb) {
-      webLsDel(_keyAccessToken); // purga copia heredada insegura en localStorage
+      webLsDel(
+        _keyAccessToken,
+      ); // purga copia heredada insegura en localStorage
       webSecureSet(_keyAccessToken, token);
       return;
     }
@@ -47,7 +47,9 @@ class TokenStorage {
   /// Guarda el refresh token.
   static Future<void> saveRefreshToken(String token) async {
     if (kIsWeb) {
-      webLsDel(_keyRefreshToken); // purga copia heredada insegura en localStorage
+      webLsDel(
+        _keyRefreshToken,
+      ); // purga copia heredada insegura en localStorage
       webSecureSet(_keyRefreshToken, token);
       return;
     }

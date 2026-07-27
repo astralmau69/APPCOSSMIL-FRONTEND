@@ -30,28 +30,33 @@ class AppointmentModel {
     return AppointmentModel(
       beneficiaryLabel: json['beneficiaryLabel'] as String? ?? '',
       patient: UserModel.fromJson(
-          json['patient'] as Map<String, dynamic>? ?? {}),
+        json['patient'] as Map<String, dynamic>? ?? {},
+      ),
       regional: RegionalModel.fromJson(
-          json['regional'] as Map<String, dynamic>? ?? {}),
+        json['regional'] as Map<String, dynamic>? ?? {},
+      ),
       hospital: HospitalModel.fromJson(
-          json['hospital'] as Map<String, dynamic>? ?? {}),
+        json['hospital'] as Map<String, dynamic>? ?? {},
+      ),
       specialty: SpecialtyModel.fromJson(
-          json['specialty'] as Map<String, dynamic>? ?? {}),
+        json['specialty'] as Map<String, dynamic>? ?? {},
+      ),
       doctor: DoctorModel.fromJson(
-          json['doctor'] as Map<String, dynamic>? ?? {}),
+        json['doctor'] as Map<String, dynamic>? ?? {},
+      ),
       date: json['date'] as String? ?? '',
       time: json['time'] as String? ?? '',
     );
   }
 
   Map<String, dynamic> toJson() => {
-        'beneficiaryLabel': beneficiaryLabel,
-        'patient': patient.toJson(),
-        'regionalId': regional.id,
-        'hospitalId': hospital.id,
-        'specialtyId': specialty.id,
-        'doctorId': doctor.id,
-        'date': date,
-        'time': time,
-      };
+    'beneficiaryLabel': beneficiaryLabel,
+    'patient': patient.toJson(),
+    'regionalId': regional.id,
+    'hospitalId': hospital.id,
+    'specialtyId': specialty.id,
+    'doctorId': doctor.id,
+    'date': date,
+    'time': time,
+  };
 }

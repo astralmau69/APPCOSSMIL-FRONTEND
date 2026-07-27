@@ -35,8 +35,9 @@ class MockAppointmentItem {
   });
 
   /// Letra para avatar.
-  String get avatarLetter =>
-      patientInitial.isNotEmpty ? patientInitial : (patientName.isNotEmpty ? patientName[0] : '?');
+  String get avatarLetter => patientInitial.isNotEmpty
+      ? patientInitial
+      : (patientName.isNotEmpty ? patientName[0] : '?');
 
   /// Si la atención pertence al titular.
   bool get isTitular => relationship == 'Titular';

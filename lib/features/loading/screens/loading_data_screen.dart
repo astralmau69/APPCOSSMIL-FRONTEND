@@ -3,12 +3,14 @@ import 'package:flutter/material.dart';
 import '../../../core/animations/animated_gradient_background.dart';
 import '../../../core/animations/optimized_animations.dart';
 import '../../../core/constants/app_colors.dart';
+import '../../../core/constants/app_sounds.dart';
 import '../../../core/data/initial_data_orchestrator.dart';
 import '../../../core/extensions/responsive_extensions.dart';
 import '../../../core/services/background_sync_service.dart';
 import '../../../core/services/notification_service.dart';
 import '../../../core/services/permissions_onboarding.dart';
 import '../../../core/theme/app_constants.dart';
+import '../../../core/theme/sound_manager.dart';
 import '../../../core/utils/app_logger.dart';
 import '../../../core/utils/app_version_helper.dart';
 import '../../../core/widgets/cossmil_loader.dart';
@@ -87,8 +89,9 @@ class _LoadingDataScreenState extends State<LoadingDataScreen> {
 
       // Re-agendar notificaciones pendientes tras login/reinicio.
       // Fire-and-forget: no bloquea la navegación si el storage tarda.
-      NotificationService.rescheduleNotificationsForCurrentUser()
-          .catchError((_) {});
+      NotificationService.rescheduleNotificationsForCurrentUser().catchError(
+        (_) {},
+      );
 
       // "Push sin Firebase": agenda la sincronización periódica en segundo
       // plano (WorkManager) que detecta citas «Completado» aunque el
@@ -107,6 +110,18 @@ class _LoadingDataScreenState extends State<LoadingDataScreen> {
       // Sin este guard, un doble tap en "Reintentar" puede lanzar dos instancias
       // que ambas intentan hacer pushReplacementNamed.
       if (!mounted || gen != _generation) return;
+
+      // Firma de bienvenida: suena al abrirse Inicio, no al entrar aquí, para
+      // que acompañe a la aparición de la app y no al spinner. Es el punto por
+      // el que pasan los TRES caminos de entrada (login, desbloqueo por PIN y
+      // desbloqueo de cuenta), así que "volver a casa" siempre suena igual.
+      //
+      // Salvo que la locución del splash siga sonando: con desbloqueo por
+      // huella se llega hasta aquí en un par de segundos y esos ~8 s de voz
+      // aún no terminaron. Dos bienvenidas a la vez sobran.
+      if (!SoundManager.isVoicePlaying) {
+        SoundManager.playUi(AppSounds.welcome, volume: 0.55);
+      }
 
       // 0.6: El delay cosmético (350ms) era necesario cuando LoadingDataScreen
       // era puro teatro. Ahora las llamadas HTTP reales aseguran tiempo mínimo visible.
@@ -214,13 +229,16 @@ class _LoadingDataScreenState extends State<LoadingDataScreen> {
                 transitionBuilder: (child, animation) => FadeTransition(
                   opacity: animation,
                   child: SlideTransition(
-                    position: Tween<Offset>(
-                      begin: const Offset(0, 0.25),
-                      end: Offset.zero,
-                    ).animate(CurvedAnimation(
-                      parent: animation,
-                      curve: Curves.easeOut,
-                    )),
+                    position:
+                        Tween<Offset>(
+                          begin: const Offset(0, 0.25),
+                          end: Offset.zero,
+                        ).animate(
+                          CurvedAnimation(
+                            parent: animation,
+                            curve: Curves.easeOut,
+                          ),
+                        ),
                     child: child,
                   ),
                 ),
@@ -273,7 +291,7 @@ class _LoadingDataScreenState extends State<LoadingDataScreen> {
 
     // BUG 4 FIX: tamaños del ícono proporcionales al sistema de tokens.
     final iconContainerSize = r.avatarMd * 1.5; // 60–78 según device
-    final iconSize = r.iconLg;                   // 28–40 según device
+    final iconSize = r.iconLg; // 28–40 según device
 
     return SizedBox(
       key: const ValueKey('error'),

@@ -13,6 +13,7 @@ class BeneficiaryModel {
   final String id;
   final String fullName;
   final String relationship;
+
   /// Cédula de identidad. El backend no siempre la envía para beneficiarios;
   /// cuando falta queda vacía y los formularios la dejan editable.
   final String ci;
@@ -20,10 +21,13 @@ class BeneficiaryModel {
   final String photoBase64;
   final int? age;
   final String gender;
+
   /// Rango militar (solo relevante para titulares). Ej: "CORONEL"
   final String grado;
+
   /// Estado de servicio del endpoint de foto (refe4). Ej: "ACTIVO"
   final String serviceStatus;
+
   /// Habilitación para atención médica. "S" = habilitado, "N" = deshabilitado.
   final String atencion;
 
@@ -51,9 +55,11 @@ class BeneficiaryModel {
       debugPrint('🪪 beneficiario: claves del backend = ${json.keys.toList()}');
     }
     // Construir nombre completo desde pat/mat/nom si no viene directo
-    String fullName = (json['nombre_completo'] as String? ??
-        json['fullName'] as String? ??
-        '').trim();
+    String fullName =
+        (json['nombre_completo'] as String? ??
+                json['fullName'] as String? ??
+                '')
+            .trim();
     if (fullName.isEmpty) {
       final pat = (json['pat'] as String? ?? '').trim();
       final mat = (json['mat'] as String? ?? '').trim();
@@ -66,51 +72,82 @@ class BeneficiaryModel {
     return BeneficiaryModel(
       id: (json['idper'] ?? json['idben'] ?? json['id'] ?? '').toString(),
       fullName: fullName.toDisplayCase,
-      relationship: (json['parentesco'] as String? ??
-          json['relationship'] as String? ??
-          '').trim().toDisplayCase,
-      ci: (json['ci'] ??
-              json['docide'] ??
-              json['cedula'] ??
-              json['nrodoc'] ??
-              json['numdoc'] ??
-              '')
-          .toString()
-          .trim(),
-      matricula: (json['mtrben'] ??
+      relationship:
+          (json['parentesco'] as String? ??
+                  json['relationship'] as String? ??
+                  '')
+              .trim()
+              .toDisplayCase,
+      ci:
+          (json['ci'] ??
+                  json['docide'] ??
+                  json['cedula'] ??
+                  json['nrodoc'] ??
+                  json['numdoc'] ??
+                  '')
+              .toString()
+              .trim(),
+      matricula:
+          (json['mtrben'] ??
                   json['matricula'] ??
                   json['nromatricula'] ??
                   json['nromat'] ??
                   json['codigo'] ??
-                  '').toString().trim(),
-      photoBase64: (json['foto'] as String? ??
-                   json['foto2'] as String? ??
-                   json['foto_base64'] as String? ??
-                   '').trim(),
+                  '')
+              .toString()
+              .trim(),
+      photoBase64:
+          (json['foto'] as String? ??
+                  json['foto2'] as String? ??
+                  json['foto_base64'] as String? ??
+                  '')
+              .trim(),
       age: json['edad'] as int? ?? json['age'] as int?,
-      gender: (json['sexo'] as String? ??
-              json['genero'] as String? ??
-              json['gender'] as String? ??
-              '').trim(),
+      gender:
+          (json['sexo'] as String? ??
+                  json['genero'] as String? ??
+                  json['gender'] as String? ??
+                  '')
+              .trim(),
       grado: (json['grado'] as String? ?? '').trim(),
-      serviceStatus: json['serviceStatus'] as String? ?? json['refe4'] as String? ?? '',
+      serviceStatus:
+          json['serviceStatus'] as String? ?? json['refe4'] as String? ?? '',
       atencion: (json['atencion'] as String? ?? 'S').trim().toUpperCase(),
     );
   }
 
   Map<String, dynamic> toJson() => {
-        'id': id,
-        'fullName': fullName,
-        'relationship': relationship,
-        'ci': ci,
-        'matricula': matricula,
-        'photoBase64': photoBase64,
-        'age': age,
-        'gender': gender,
-        'grado': grado,
-        'serviceStatus': serviceStatus,
-        'atencion': atencion,
-      };
+    'id': id,
+    'fullName': fullName,
+    'relationship': relationship,
+    'ci': ci,
+    'matricula': matricula,
+    'photoBase64': photoBase64,
+    'age': age,
+    'gender': gender,
+    'grado': grado,
+    'serviceStatus': serviceStatus,
+    'atencion': atencion,
+  };
+
+  /// Reconstruye desde [toJson] para la caché offline, SIN re-normalizar y
+  /// leyendo `photoBase64` tal cual (a diferencia de [fromJson], que espera las
+  /// claves crudas del backend `foto`/`nombre_completo` y perdería el retrato en
+  /// un round-trip). Úsese solo para leer la caché cifrada del grupo familiar.
+  factory BeneficiaryModel.fromCacheMap(Map<String, dynamic> m) =>
+      BeneficiaryModel(
+        id: m['id'] as String? ?? '',
+        fullName: m['fullName'] as String? ?? '',
+        relationship: m['relationship'] as String? ?? '',
+        ci: m['ci'] as String? ?? '',
+        matricula: m['matricula'] as String? ?? '',
+        photoBase64: m['photoBase64'] as String? ?? '',
+        age: m['age'] as int?,
+        gender: m['gender'] as String? ?? '',
+        grado: m['grado'] as String? ?? '',
+        serviceStatus: m['serviceStatus'] as String? ?? '',
+        atencion: m['atencion'] as String? ?? 'S',
+      );
 
   /// First letter of name for avatar display.
   String get initial => fullName.isNotEmpty ? fullName[0] : '?';
@@ -123,12 +160,12 @@ class BeneficiaryModel {
   ///   o solo nombre si es civil / sin grado.
   /// - **Beneficiario**: "Sr." / "Sra." según edad y género (niños sin prefijo).
   String get displayTitle => RankUtils.displayNameWithPrefix(
-        fullName: fullName,
-        isTitular: isTitular,
-        grado: isTitular ? effectiveGrado : '',
-        age: age,
-        gender: effectiveGender,
-      );
+    fullName: fullName,
+    isTitular: isTitular,
+    grado: isTitular ? effectiveGrado : '',
+    age: age,
+    gender: effectiveGender,
+  );
 
   /// Etiqueta de estado de servicio.
   String get serviceLabel => RankUtils.serviceStatusLabel(serviceStatus);
@@ -165,8 +202,10 @@ class BeneficiaryModel {
   String get effectiveGender {
     if (gender.isNotEmpty) return gender.toUpperCase();
     final rel = relationship.toUpperCase();
-    if (rel.contains('ESPOSA') || rel.contains('HIJA') || rel.contains('MADRE')) return 'FEMENINO';
-    if (rel.contains('ESPOSO') || rel.contains('HIJO') || rel.contains('PADRE')) return 'MASCULINO';
+    if (rel.contains('ESPOSA') || rel.contains('HIJA') || rel.contains('MADRE'))
+      return 'FEMENINO';
+    if (rel.contains('ESPOSO') || rel.contains('HIJO') || rel.contains('PADRE'))
+      return 'MASCULINO';
     return '';
   }
 

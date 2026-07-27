@@ -48,7 +48,8 @@ class CustomNumpad extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              leftBottomWidget ?? SizedBox(width: r.pinKeySize, height: r.pinKeySize),
+              leftBottomWidget ??
+                  SizedBox(width: r.pinKeySize, height: r.pinKeySize),
               _buildNumberKey(context, 0, r),
               _buildDeleteKey(context, r),
             ],

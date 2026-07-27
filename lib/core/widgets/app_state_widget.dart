@@ -27,26 +27,27 @@ class AppStateWidget extends StatelessWidget {
   });
 
   const AppStateWidget.loading({super.key})
-      : type = AppStateType.loading,
-        title = null,
-        message = null,
-        onRetry = null,
-        retryLabel = null,
-        icon = null;
+    : type = AppStateType.loading,
+      title = null,
+      message = null,
+      onRetry = null,
+      retryLabel = null,
+      icon = null;
 
   const AppStateWidget.empty({
     super.key,
     this.title = 'Sin información disponible',
     this.message = 'Por el momento no hay datos para mostrar en esta sección.',
     this.icon,
-  })  : type = AppStateType.empty,
-        onRetry = null,
-        retryLabel = null;
+  }) : type = AppStateType.empty,
+       onRetry = null,
+       retryLabel = null;
 
   const AppStateWidget.error({
     super.key,
     this.title = 'Ha ocurrido un inconveniente',
-    this.message = 'No se pudo completar la solicitud. Por favor, verifica tu conexión e intenta de nuevo.',
+    this.message =
+        'No se pudo completar la solicitud. Por favor, verifica tu conexión e intenta de nuevo.',
     this.onRetry,
     this.retryLabel = 'Reintentar',
     this.icon,
@@ -61,13 +62,15 @@ class AppStateWidget extends StatelessWidget {
     }
 
     final isError = type == AppStateType.error;
-    final iconData = icon ??
-        (isError ? CupertinoIcons.wifi_slash : CupertinoIcons.tray);
+    final iconData =
+        icon ?? (isError ? CupertinoIcons.wifi_slash : CupertinoIcons.tray);
     final iconColor = isError
         ? AppColors.error
         : AppColors.textTertiaryC(isDark);
-    final titleText = title ?? (isError ? 'Error de conexión' : 'Sin resultados');
-    final msgText = message ??
+    final titleText =
+        title ?? (isError ? 'Error de conexión' : 'Sin resultados');
+    final msgText =
+        message ??
         (isError
             ? 'No se pudo cargar la información.'
             : 'No hay información disponible.');
@@ -75,7 +78,10 @@ class AppStateWidget extends StatelessWidget {
     final r = context.r;
     return Center(
       child: Padding(
-        padding: EdgeInsets.symmetric(horizontal: r.paddingH * 2, vertical: r.spaceXxl),
+        padding: EdgeInsets.symmetric(
+          horizontal: r.paddingH * 2,
+          vertical: r.spaceXxl,
+        ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -87,7 +93,11 @@ class AppStateWidget extends StatelessWidget {
                 shape: BoxShape.circle,
                 color: iconColor.withValues(alpha: 0.12),
               ),
-              child: Icon(iconData, size: r.emptyIconSize * 0.50, color: iconColor),
+              child: Icon(
+                iconData,
+                size: r.emptyIconSize * 0.50,
+                color: iconColor,
+              ),
             ),
             SizedBox(height: r.spaceLg),
             Text(
@@ -102,7 +112,7 @@ class AppStateWidget extends StatelessWidget {
               textAlign: TextAlign.center,
               text: TextSpan(
                 children: _parseMarkdown(
-                  msgText, 
+                  msgText,
                   context.texts.bodyMedium.copyWith(
                     color: AppColors.textSecondaryC(isDark),
                     height: 1.5,
@@ -122,12 +132,17 @@ class AppStateWidget extends StatelessWidget {
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(r.radiusMd),
                   border: Border.all(
-                    color: isDark ? AppColors.darkBorder : const Color(0xFF191C1E).withValues(alpha: 0.15),
+                    color: isDark
+                        ? AppColors.darkBorder
+                        : const Color(0xFF191C1E).withValues(alpha: 0.15),
                     width: 0.8,
                   ),
                 ),
                 child: CupertinoButton(
-                  padding: EdgeInsets.symmetric(horizontal: r.paddingH * 1.5, vertical: 0),
+                  padding: EdgeInsets.symmetric(
+                    horizontal: r.paddingH * 1.5,
+                    vertical: 0,
+                  ),
                   color: AppColors.accentForTheme(isDark),
                   borderRadius: BorderRadius.circular(r.radiusMd),
                   onPressed: onRetry,
@@ -157,7 +172,12 @@ class AppStateWidget extends StatelessWidget {
       ),
     );
   }
-  List<TextSpan> _parseMarkdown(String text, TextStyle normalStyle, TextStyle boldStyle) {
+
+  List<TextSpan> _parseMarkdown(
+    String text,
+    TextStyle normalStyle,
+    TextStyle boldStyle,
+  ) {
     if (!text.contains('**')) {
       return [TextSpan(text: text, style: normalStyle)];
     }
@@ -166,10 +186,9 @@ class AppStateWidget extends StatelessWidget {
     for (int i = 0; i < parts.length; i++) {
       if (parts[i].isEmpty) continue;
       final isBold = i % 2 != 0; // Odd indices are inside **...**
-      spans.add(TextSpan(
-        text: parts[i],
-        style: isBold ? boldStyle : normalStyle,
-      ));
+      spans.add(
+        TextSpan(text: parts[i], style: isBold ? boldStyle : normalStyle),
+      );
     }
     return spans;
   }

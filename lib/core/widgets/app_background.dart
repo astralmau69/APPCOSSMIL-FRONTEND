@@ -21,9 +21,7 @@ class AppBackground extends StatelessWidget {
 
     return Stack(
       children: [
-        Positioned.fill(
-          child: CustomPaint(painter: _BgPainter(isDark: true)),
-        ),
+        Positioned.fill(child: CustomPaint(painter: _BgPainter(isDark: true))),
         child,
       ],
     );
@@ -61,10 +59,7 @@ class _BgPainter extends CustomPainter {
           Colors.transparent,
         ],
       );
-      canvas.drawRect(
-        rect,
-        Paint()..shader = glowGradient.createShader(rect),
-      );
+      canvas.drawRect(rect, Paint()..shader = glowGradient.createShader(rect));
     } else {
       // ── Light: diagonal sutil — azul tenue → blanco neutro ───────────────
       final gradient = LinearGradient(

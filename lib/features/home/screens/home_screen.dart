@@ -14,8 +14,11 @@ import '../../../core/models/horario_atencion_model.dart';
 import '../../../core/models/news_item_model.dart';
 import '../../../core/models/user_model.dart';
 import '../../../core/services/cossmil_news_service.dart';
+import '../../../core/services/tutorial_flow.dart';
 import '../../../core/services/tutorial_service.dart';
+import '../../../core/widgets/guided_tap_hint.dart';
 import '../../../core/widgets/liquid_glass.dart';
+import '../../../core/widgets/tutorial_coach_overlay.dart';
 import '../../../core/widgets/tutorial_instructor.dart';
 import '../../../core/widgets/tutorial_invite_dialog.dart';
 import '../../../core/widgets/section_header.dart';
@@ -29,6 +32,7 @@ import '../../../core/models/app_notification.dart';
 import '../../../core/services/notification_preferences.dart';
 import 'contactos_screen.dart';
 import 'noticias_screen.dart';
+import '../../procedimientos/screens/procedimientos_screen.dart';
 import '../widgets/coming_soon_dialog.dart';
 
 /// Verde esmeralda sobrio de la acción héroe "Nueva Reserva" (coherente con el
@@ -53,10 +57,17 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   String? _cachedPhotoB64; // base64 que originó _cachedUserPhoto (memo)
   int _unreadNotifs = 0;
 
+  /// Acceso al coach del paso de Inicio para minimizarlo apenas el usuario
+  /// interactúa con el contenido (mismo patrón que BookingFlowScreen).
+  final _coachKey = GlobalKey<TutorialCoachOverlayState>();
+
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    // El paso de Inicio del tutorial vive en TabShell (también se relanza
+    // desde Perfil) — Home solo reacciona a sus cambios.
+    widget.tabShell.homeTutorialNotifier.addListener(_onHomeTutorialChanged);
     final photo = UserSession.currentUser.photoBase64;
     if (photo.isNotEmpty) {
       _cachedPhotoB64 = photo;
@@ -84,20 +95,38 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     await TutorialService.markFichaTutorialSeen();
     if (!mounted) return;
 
-    // Precarga la imagen de la instructora para que su entrada elástica no
-    // parpadee mientras se decodifica el asset.
-    await precacheImage(const AssetImage(kTutorialInstructorAsset), context);
+    // Precarga TODAS las poses de la instructora: entra saludando y en cuanto
+    // el usuario acepta empieza a explicar y a parpadear, así que decodificar
+    // sobre la marcha se vería como un salto.
+    for (final asset in kInstructorAssets) {
+      if (!mounted) return;
+      await precacheImage(AssetImage(asset), context);
+    }
     if (!mounted) return;
 
     await showTutorialInviteDialog(
       context,
       isDark: Theme.of(context).brightness == Brightness.dark,
-      onAccept: () => widget.tabShell.startTutorialBooking(),
+      onAccept: () => widget.tabShell.startTutorialFromHome(),
     );
+  }
+
+  void _onHomeTutorialChanged() {
+    if (mounted) setState(() {});
+  }
+
+  /// Salida del tutorial desde su paso de Inicio: misma hoja de confirmación
+  /// que en el flujo de reserva, para que "Salir del tutorial" se comporte
+  /// igual en todos los pasos.
+  Future<void> _exitHomeTutorial() async {
+    if (await confirmExitTutorial(context) && mounted) {
+      widget.tabShell.homeTutorialNotifier.value = GuidedTutorial.none;
+    }
   }
 
   @override
   void dispose() {
+    widget.tabShell.homeTutorialNotifier.removeListener(_onHomeTutorialChanged);
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
   }
@@ -154,20 +183,98 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     // (UserSession.userNotifier), por eso aquí ya no se lee currentUser.
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final r = context.r;
+    final tutorial = widget.tabShell.homeTutorialNotifier.value;
+    final tutorialActive = tutorial != GuidedTutorial.none;
 
     return CupertinoPageScaffold(
       backgroundColor: AppColors.scaffoldBg(isDark),
-      child: CustomScrollView(
-        physics: const AlwaysScrollableScrollPhysics(),
-        slivers: [
-          AdaptiveSliverNavBar(
-            largeTitle: Text(
-              'Inicio',
-              style: TextStyle(color: AppColors.textPrimaryC(isDark)),
+      child: Stack(
+        children: [
+          // En el paso de Inicio del tutorial, cualquier interacción con el
+          // contenido (tap o inicio de scroll) minimiza al coach para que no
+          // tape el menú; el Listener es translúcido y no roba gestos.
+          Listener(
+            behavior: HitTestBehavior.translucent,
+            onPointerDown: tutorialActive
+                ? (_) => _coachKey.currentState?.collapse()
+                : null,
+            child: _buildScrollContent(isDark, r),
+          ),
+          if (tutorialActive)
+            TutorialCoachOverlay(
+              key: _coachKey,
+              messages: _homeCoachMessages(tutorial),
+              isDark: isDark,
+              // Los tres recorridos comparten este primer paso, y cada uno
+              // tiene su propia longitud.
+              step: 1,
+              totalSteps: _homeTutorialSteps(tutorial),
+              voiceId: _homeVoiceId(tutorial),
+              onExit: _exitHomeTutorial,
             ),
-            backgroundColor: AppColors.navBarBg(isDark),
-            border: null,
-            trailing: Semantics(
+        ],
+      ),
+    );
+  }
+
+  /// Lo que dice la instructora en el menú, según a dónde vaya el recorrido.
+  /// Siempre nombra la tarjeta EXACTA que hay que tocar: el objetivo del paso
+  /// es que el usuario memorice la puerta de entrada, no solo el destino.
+  /// Clip de voz del paso de Inicio de cada recorrido (`<recorrido>_00.mp3`).
+  String? _homeVoiceId(GuidedTutorial t) => switch (t) {
+    GuidedTutorial.ficha => 'ficha_00',
+    GuidedTutorial.calendario => 'calendario_00',
+    GuidedTutorial.tramites => 'tramites_00',
+    GuidedTutorial.none => null,
+  };
+
+  List<String> _homeCoachMessages(GuidedTutorial t) => switch (t) {
+    GuidedTutorial.ficha => const [
+      '¡Hola! Vamos a sacar tu primera ficha juntos.',
+      'Todo empieza aquí, en Inicio: toca la primera opción del menú, el '
+          'botón verde "Nueva Reserva".',
+    ],
+    GuidedTutorial.calendario => const [
+      '¡Hola! Te voy a enseñar a consultar los horarios de los médicos.',
+      'Empezamos desde Inicio: toca la tarjeta "Calendario de Atención".',
+    ],
+    GuidedTutorial.tramites => const [
+      '¡Hola! Vamos a generar un trámite paso a paso.',
+      'Empezamos desde Inicio: toca la tarjeta "Procedimientos COSSMIL".',
+    ],
+    GuidedTutorial.none => const [],
+  };
+
+  int _homeTutorialSteps(GuidedTutorial t) => switch (t) {
+    GuidedTutorial.ficha => 7,
+    GuidedTutorial.calendario || GuidedTutorial.tramites => 5,
+    GuidedTutorial.none => 1,
+  };
+
+  /// Etiqueta del menú que hay que resaltar en el paso de Inicio. `null`
+  /// cuando el objetivo es el botón héroe, que se resalta aparte.
+  String? _homeTutorialTarget(GuidedTutorial t) => switch (t) {
+    GuidedTutorial.calendario => 'Calendario de Atención',
+    GuidedTutorial.tramites => 'Procedimientos COSSMIL',
+    _ => null,
+  };
+
+  Widget _buildScrollContent(bool isDark, AppResponsive r) {
+    final tutorialActive =
+        widget.tabShell.homeTutorialNotifier.value != GuidedTutorial.none;
+    return CustomScrollView(
+      physics: const AlwaysScrollableScrollPhysics(),
+      slivers: [
+        AdaptiveSliverNavBar(
+          largeTitle: Text(
+            'Inicio',
+            style: TextStyle(color: AppColors.textPrimaryC(isDark)),
+          ),
+          backgroundColor: AppColors.navBarBg(isDark),
+          border: null,
+          trailing: _TutorialDim(
+            dimmed: tutorialActive,
+            child: Semantics(
               label: 'Notificaciones, $_unreadNotifs no leídas',
               button: true,
               child: CupertinoButton(
@@ -218,46 +325,55 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
               ),
             ),
           ),
-          CupertinoSliverRefreshControl(onRefresh: _loadNews),
-          // Banner de estado de horario
-          if (widget.tabShell.isInHorario != null)
-            SliverToBoxAdapter(
+        ),
+        CupertinoSliverRefreshControl(onRefresh: _loadNews),
+        // Banner de estado de horario
+        if (widget.tabShell.isInHorario != null)
+          SliverToBoxAdapter(
+            child: _TutorialDim(
+              dimmed: tutorialActive,
               child: _HorarioBanner(
                 isInHorario: widget.tabShell.isInHorario!,
                 horariosApp: widget.tabShell.horariosApp,
               ),
             ),
-          SliverPadding(
-            padding: r.screenPadding,
-            sliver: SliverToBoxAdapter(
-              child: Center(
-                child: ConstrainedBox(
-                  constraints: BoxConstraints(maxWidth: r.maxContentWidth),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      FadeSlideIn(
-                        duration: AppDurations.normal,
-                        delay: const Duration(milliseconds: 0),
-                        offsetY: 10,
-                        // Reactivo: refresca la tarjeta (foto, sangre, alergias…)
-                        // apenas el enriquecimiento en segundo plano actualiza al
-                        // usuario, sin tener que reiniciar la app.
+          ),
+        SliverPadding(
+          padding: r.screenPadding,
+          sliver: SliverToBoxAdapter(
+            child: Center(
+              child: ConstrainedBox(
+                constraints: BoxConstraints(maxWidth: r.maxContentWidth),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    FadeSlideIn(
+                      duration: AppDurations.normal,
+                      delay: const Duration(milliseconds: 0),
+                      offsetY: 10,
+                      // Reactivo: refresca la tarjeta (foto, sangre, alergias…)
+                      // apenas el enriquecimiento en segundo plano actualiza al
+                      // usuario, sin tener que reiniciar la app.
+                      child: _TutorialDim(
+                        dimmed: tutorialActive,
                         child: ValueListenableBuilder<UserModel>(
                           valueListenable: UserSession.userNotifier,
                           builder: (context, liveUser, _) =>
                               _buildProfileCard(liveUser),
                         ),
                       ),
-                      SizedBox(height: r.spaceLg),
-                      // ── Acciones principales (entrada escalonada dentro) ──
-                      _buildQuickActions(),
-                      SizedBox(height: r.spaceXl),
-                      // ── COSSMIL Te Informa: header + botón en la misma línea ──
-                      FadeSlideIn(
-                        duration: AppDurations.normal,
-                        delay: const Duration(milliseconds: 100),
-                        offsetY: 10,
+                    ),
+                    SizedBox(height: r.spaceLg),
+                    // ── Acciones principales (entrada escalonada dentro) ──
+                    _buildQuickActions(),
+                    SizedBox(height: r.spaceXl),
+                    // ── COSSMIL Te Informa: header + botón en la misma línea ──
+                    FadeSlideIn(
+                      duration: AppDurations.normal,
+                      delay: const Duration(milliseconds: 100),
+                      offsetY: 10,
+                      child: _TutorialDim(
+                        dimmed: tutorialActive,
                         child: Row(
                           crossAxisAlignment: CrossAxisAlignment.center,
                           children: [
@@ -318,22 +434,25 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                           ],
                         ),
                       ),
-                      SizedBox(height: r.spaceSm),
-                      FadeSlideIn(
-                        duration: AppDurations.normal,
-                        delay: const Duration(milliseconds: 150),
-                        offsetY: 10,
+                    ),
+                    SizedBox(height: r.spaceSm),
+                    FadeSlideIn(
+                      duration: AppDurations.normal,
+                      delay: const Duration(milliseconds: 150),
+                      offsetY: 10,
+                      child: _TutorialDim(
+                        dimmed: tutorialActive,
                         child: _buildCompactNewsList(),
                       ),
-                      SizedBox(height: r.navBarBottomSpace),
-                    ],
-                  ),
+                    ),
+                    SizedBox(height: r.navBarBottomSpace),
+                  ],
                 ),
               ),
             ),
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 
@@ -382,6 +501,14 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       subtitle: 'Agendar cita médica',
       color: _kHeroGreen,
       onTap: () {
+        // Paso 1 del tutorial: este mismo tap (el gesto real de siempre)
+        // entra al flujo de reserva pero en modo demostración, sin
+        // verificaciones de negocio que puedan bloquear al usuario.
+        if (widget.tabShell.homeTutorialNotifier.value ==
+            GuidedTutorial.ficha) {
+          widget.tabShell.enterHomeTutorialTarget(context);
+          return;
+        }
         final bens = UserSession.currentUser.beneficiaries;
         final titular = bens.isNotEmpty
             ? bens.firstWhere((b) => b.isTitular, orElse: () => bens.first)
@@ -402,7 +529,9 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         icon: CupertinoIcons.person_2,
         label: 'Grupo Familiar',
         subtitle: 'Beneficiarios',
-        color: const Color(0xFF0D9488), // teal — se diferencia del verde del héroe
+        color: const Color(
+          0xFF0D9488,
+        ), // teal — se diferencia del verde del héroe
         onTap: () =>
             widget.tabShell.openSubRoute(context, (_) => const FamiliaScreen()),
       ),
@@ -423,11 +552,10 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         color: const Color(0xFF7C3AED),
         onTap: () => widget.tabShell.goToTab(3),
       ),
-      // Carnet digital y Procedimientos: visibles pero marcados "Próximamente"
-      // hasta autorización oficial de COSSMIL. Para reactivarlos: quitar
+      // Carnet digital: visible pero marcado "Próximamente" hasta
+      // autorización oficial de COSSMIL. Para reactivarlo: quitar
       // `comingSoon: true` y restaurar la navegación con openSubRoute a
-      // CarnetScreen / ProcedimientosScreen (features/carnet y
-      // features/procedimientos siguen intactos).
+      // CarnetScreen (features/carnet sigue intacto).
       if (AppConfig.carnetDigitalEnabled)
         _QuickAction(
           icon: CupertinoIcons.creditcard_fill,
@@ -447,12 +575,9 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         label: 'Procedimientos COSSMIL',
         subtitle: 'Formularios y trámites',
         color: const Color(0xFFD97706),
-        comingSoon: true,
-        onTap: () => showComingSoonDialog(
+        onTap: () => widget.tabShell.openSubRoute(
           context,
-          featureLabel: 'Procedimientos COSSMIL',
-          icon: CupertinoIcons.doc_text_fill,
-          color: const Color(0xFFD97706),
+          (_) => const ProcedimientosScreen(),
         ),
       ),
     ];
@@ -464,6 +589,9 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     // ventanas de navegador redimensionadas, donde el ancho no coincide
     // con la categoría del dispositivo. Cada tarjeta necesita ~168 px para
     // que "Mis Reservas", "Grupo Familiar", etc. respiren sin desbordar.
+    final tutorial = widget.tabShell.homeTutorialNotifier.value;
+    final objetivo = _homeTutorialTarget(tutorial);
+
     return LayoutBuilder(
       builder: (context, constraints) {
         final cols = (constraints.maxWidth / 168).floor().clamp(2, 3);
@@ -483,13 +611,34 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
             // Stagger: cada tarjeta entra 45 ms después de la anterior,
             // guiando el ojo en cascada (héroe → grilla) sin alargar la
             // percepción de carga (todo termina en < 700 ms).
+            final accion = items[i + j];
+            final esObjetivo = objetivo != null && accion.label == objetivo;
             rowChildren.add(
               Expanded(
                 child: FadeSlideIn(
                   duration: AppDurations.normal,
                   delay: Duration(milliseconds: 100 + (i + j) * 45),
                   offsetY: 12,
-                  child: _buildActionCard(items[i + j], cardWidth),
+                  child: esObjetivo
+                      ? GuidedTapHint(
+                          // Durante el tutorial, la tarjeta resaltada NO ejecuta
+                          // su navegación normal (goToTab/openSubRoute): eso deja
+                          // `homeTutorialNotifier` activo (navbar muerta) y nunca
+                          // arranca el coach. Debe pasar por enterHomeTutorialTarget,
+                          // que resetea el estado y entra al recorrido guiado.
+                          child: _buildActionCard(
+                            _QuickAction(
+                              icon: accion.icon,
+                              label: accion.label,
+                              subtitle: accion.subtitle,
+                              color: accion.color,
+                              onTap: () => widget.tabShell
+                                  .enterHomeTutorialTarget(context),
+                            ),
+                            cardWidth,
+                          ),
+                        )
+                      : _buildActionCard(accion, cardWidth),
                 ),
               ),
             );
@@ -520,16 +669,32 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
           }
         }
 
+        // Durante el paso de Inicio del tutorial, el héroe lleva el mismo
+        // borde pulsante + "Toca aquí" que las tarjetas del flujo de reserva:
+        // un solo elemento resaltado; el resto del menú se ve pero queda
+        // atenuado e inerte (_TutorialDim) para no sacar al usuario de la guía.
+        final heroCard = tutorial == GuidedTutorial.ficha
+            ? GuidedTapHint(child: _buildHeroAction(hero))
+            : _buildHeroAction(hero);
+
         return Column(
           children: [
             FadeSlideIn(
               duration: AppDurations.normal,
               delay: const Duration(milliseconds: 50),
               offsetY: 12,
-              child: _buildHeroAction(hero),
+              // Cuando el objetivo está en la grilla, el héroe se atenúa como
+              // el resto: un solo elemento resaltado por paso.
+              child: _TutorialDim(dimmed: objetivo != null, child: heroCard),
             ),
             SizedBox(height: spacing),
-            ...rows,
+            // La grilla solo se atenúa entera cuando el objetivo NO está en
+            // ella (tutorial de la ficha); si el objetivo es una de sus
+            // tarjetas, atenuarla taparía justo lo que hay que tocar.
+            _TutorialDim(
+              dimmed: tutorial == GuidedTutorial.ficha,
+              child: Column(children: rows),
+            ),
           ],
         );
       },
@@ -569,9 +734,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
             ),
             boxShadow: [
               BoxShadow(
-                color: _kHeroGreen.withValues(
-                  alpha: isDark ? 0.45 : 0.30,
-                ),
+                color: _kHeroGreen.withValues(alpha: isDark ? 0.45 : 0.30),
                 blurRadius: 20,
                 offset: const Offset(0, 8),
                 spreadRadius: -4,
@@ -706,7 +869,11 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     // extremos. Así "Procedimientos COSSMIL", "Calendario de Atención", etc.
     // nunca desbordan al reducir la ventana ni quedan diminutos en desktop.
     final t = ((cardWidth - 140.0) / 100.0).clamp(0.0, 1.0);
-    final iconBox = ui.lerpDouble(r.listAvatarSize * 0.85, r.listAvatarSize, t)!;
+    final iconBox = ui.lerpDouble(
+      r.listAvatarSize * 0.85,
+      r.listAvatarSize,
+      t,
+    )!;
     final iconSize = ui.lerpDouble(r.iconSm, r.iconMd, t)!;
     final labelSize = ui.lerpDouble(12.5, 16.0, t)!;
     final subSize = ui.lerpDouble(10.0, 13.5, t)!;
@@ -1058,6 +1225,33 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
   void _showNewsDetail(NewsItemModel item) {
     widget.tabShell.openSubRoute(context, (_) => NewsDetailScreen(item: item));
+  }
+}
+
+/// Atenúa y desactiva un bloque de Inicio mientras la instructora espera en
+/// el paso 1 del tutorial: las demás opciones siguen visibles (dan contexto
+/// del menú real) pero no responden al toque — solo "Nueva Reserva" queda
+/// activa, así la guía no se rompe por un tap accidental.
+class _TutorialDim extends StatelessWidget {
+  final bool dimmed;
+  final Widget child;
+
+  const _TutorialDim({required this.dimmed, required this.child});
+
+  @override
+  Widget build(BuildContext context) {
+    final reduceMotion = MediaQuery.disableAnimationsOf(context);
+    return IgnorePointer(
+      ignoring: dimmed,
+      child: AnimatedOpacity(
+        opacity: dimmed ? 0.38 : 1.0,
+        duration: reduceMotion
+            ? Duration.zero
+            : const Duration(milliseconds: 280),
+        curve: Curves.easeOut,
+        child: child,
+      ),
+    );
   }
 }
 

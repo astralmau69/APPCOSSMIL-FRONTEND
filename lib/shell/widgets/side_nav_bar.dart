@@ -35,10 +35,10 @@ class SideNavBar extends StatelessWidget {
         : Colors.black.withValues(alpha: 0.5);
 
     // Mismo color activo que FloatingNavBar por ítem
-    final activeColor =
-        isDark ? const Color(0xFF5BA3E6) : Colors.black;
-    final homeActiveColor =
-        isDark ? const Color(0xFF60A5FA) : const Color(0xFF2563EB);
+    final activeColor = isDark ? const Color(0xFF5BA3E6) : Colors.black;
+    final homeActiveColor = isDark
+        ? const Color(0xFF60A5FA)
+        : const Color(0xFF2563EB);
 
     return SizedBox(
       width: 88,
@@ -49,9 +49,7 @@ class SideNavBar extends StatelessWidget {
           child: Container(
             decoration: BoxDecoration(
               color: backgroundColor,
-              border: Border(
-                right: BorderSide(color: borderColor, width: 1.5),
-              ),
+              border: Border(right: BorderSide(color: borderColor, width: 1.5)),
             ),
             child: SafeArea(
               child: Padding(
@@ -61,7 +59,9 @@ class SideNavBar extends StatelessWidget {
                     // Logo institucional
                     Padding(
                       padding: const EdgeInsets.symmetric(
-                          horizontal: 16, vertical: 8),
+                        horizontal: 16,
+                        vertical: 8,
+                      ),
                       child: Image.asset(
                         'assets/images/cossmil_logo.png',
                         width: 32,
@@ -168,8 +168,7 @@ class _SideNavItem extends StatelessWidget {
           duration: const Duration(milliseconds: 220),
           curve: Curves.easeOutCubic,
           width: double.infinity,
-          padding:
-              const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
           decoration: BoxDecoration(
             color: isActive ? bgPillColor : Colors.transparent,
             borderRadius: BorderRadius.circular(16),
@@ -193,8 +192,7 @@ class _SideNavItem extends StatelessWidget {
                 duration: const Duration(milliseconds: 130),
                 style: TextStyle(
                   fontSize: 9.5,
-                  fontWeight:
-                      isActive ? FontWeight.w700 : FontWeight.w500,
+                  fontWeight: isActive ? FontWeight.w700 : FontWeight.w500,
                   color: isActive ? activeColor : inactiveColor,
                 ),
                 child: Text(

@@ -58,20 +58,25 @@ class _TramiteFormScreenState extends State<TramiteFormScreen> {
       final bens = [...user.beneficiaries]
         ..sort((a, b) => (b.isTitular ? 1 : 0).compareTo(a.isTitular ? 1 : 0));
       _personas = bens
-          .map((b) => _Persona(
-                b.fullName,
-                b.ci.isNotEmpty ? b.ci : (b.isTitular ? user.ci : ''),
-                b.isTitular
-                    ? 'Titular'
-                    : (b.relationship.isEmpty ? 'Beneficiario' : b.relationship),
-                _personKey(b.matricula, b.id, b.fullName),
-              ))
+          .map(
+            (b) => _Persona(
+              b.fullName,
+              b.ci.isNotEmpty ? b.ci : (b.isTitular ? user.ci : ''),
+              b.isTitular
+                  ? 'Titular'
+                  : (b.relationship.isEmpty ? 'Beneficiario' : b.relationship),
+              _personKey(b.matricula, b.id, b.fullName),
+            ),
+          )
           .toList();
     } else {
       _personas = [
-        _Persona(user.fullName, user.ci,
-            user.isTitular ? 'Titular' : 'Asegurado',
-            _personKey(user.matricula, user.id, user.fullName)),
+        _Persona(
+          user.fullName,
+          user.ci,
+          user.isTitular ? 'Titular' : 'Asegurado',
+          _personKey(user.matricula, user.id, user.fullName),
+        ),
       ];
     }
 
@@ -172,10 +177,12 @@ class _TramiteFormScreenState extends State<TramiteFormScreen> {
     } catch (_) {
       if (!mounted) return;
       setState(() => _generating = false);
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-        content: Text('No se pudo generar el documento. Intenta de nuevo.'),
-        behavior: SnackBarBehavior.floating,
-      ));
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('No se pudo generar el documento. Intenta de nuevo.'),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
     }
   }
 
@@ -227,7 +234,10 @@ class _TramiteFormScreenState extends State<TramiteFormScreen> {
                       if (showSelector) ...[
                         FadeSlideIn(
                           delay: const Duration(milliseconds: 60),
-                          child: _sectionLabel('¿PARA QUIÉN ES EL TRÁMITE?', isDark),
+                          child: _sectionLabel(
+                            '¿PARA QUIÉN ES EL TRÁMITE?',
+                            isDark,
+                          ),
                         ),
                         SizedBox(height: r.spaceSm),
                         FadeSlideIn(
@@ -326,8 +336,11 @@ class _TramiteFormScreenState extends State<TramiteFormScreen> {
                 SizedBox(height: r.spaceXs),
                 Row(
                   children: [
-                    Icon(CupertinoIcons.building_2_fill,
-                        size: 12, color: Colors.white.withValues(alpha: 0.85)),
+                    Icon(
+                      CupertinoIcons.building_2_fill,
+                      size: 12,
+                      color: Colors.white.withValues(alpha: 0.85),
+                    ),
                     const SizedBox(width: 5),
                     Expanded(
                       child: Text(
@@ -371,7 +384,9 @@ class _TramiteFormScreenState extends State<TramiteFormScreen> {
   Widget _personaTile(TramiteInfo info, int i, bool isDark, AppResponsive r) {
     final p = _personas[i];
     final sel = i == _selected;
-    final initial = p.nombre.trim().isNotEmpty ? p.nombre.trim()[0].toUpperCase() : '?';
+    final initial = p.nombre.trim().isNotEmpty
+        ? p.nombre.trim()[0].toUpperCase()
+        : '?';
     return OptimizedPressButton(
       onTap: () => _selectPersona(i),
       scaleDown: 0.98,
@@ -496,8 +511,11 @@ class _TramiteFormScreenState extends State<TramiteFormScreen> {
           SizedBox(height: r.spaceSm),
           Row(
             children: [
-              Icon(CupertinoIcons.checkmark_seal_fill,
-                  size: 13, color: info.color.withValues(alpha: 0.8)),
+              Icon(
+                CupertinoIcons.checkmark_seal_fill,
+                size: 13,
+                color: info.color.withValues(alpha: 0.8),
+              ),
               SizedBox(width: r.spaceXs + 2),
               Expanded(
                 child: Text(
@@ -616,8 +634,11 @@ class _TramiteFormScreenState extends State<TramiteFormScreen> {
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Icon(CupertinoIcons.checkmark_seal_fill,
-                      size: r.iconSm, color: info.color),
+                  Icon(
+                    CupertinoIcons.checkmark_seal_fill,
+                    size: r.iconSm,
+                    color: info.color,
+                  ),
                   SizedBox(width: r.spaceSm),
                   Expanded(
                     child: Text(
@@ -649,8 +670,11 @@ class _TramiteFormScreenState extends State<TramiteFormScreen> {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(CupertinoIcons.info_circle_fill,
-              size: r.iconSm, color: AppColors.warning),
+          Icon(
+            CupertinoIcons.info_circle_fill,
+            size: r.iconSm,
+            color: AppColors.warning,
+          ),
           SizedBox(width: r.spaceSm),
           Expanded(
             child: Text(
@@ -691,9 +715,7 @@ class _TramiteFormScreenState extends State<TramiteFormScreen> {
         scaleDown: 0.97,
         child: Container(
           decoration: BoxDecoration(
-            gradient: LinearGradient(
-              colors: [info.color, _darken(info.color)],
-            ),
+            gradient: LinearGradient(colors: [info.color, _darken(info.color)]),
             borderRadius: BorderRadius.circular(r.buttonRadius),
             boxShadow: [
               BoxShadow(
@@ -709,8 +731,11 @@ class _TramiteFormScreenState extends State<TramiteFormScreen> {
                 : const Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Icon(CupertinoIcons.doc_text_viewfinder,
-                          size: 20, color: Colors.white),
+                      Icon(
+                        CupertinoIcons.doc_text_viewfinder,
+                        size: 20,
+                        color: Colors.white,
+                      ),
                       SizedBox(width: 10),
                       Text(
                         'Previsualizar documento',

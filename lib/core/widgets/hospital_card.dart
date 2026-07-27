@@ -31,7 +31,11 @@ class HospitalCard extends StatelessWidget {
     final cardColor = isDark
         ? AppColors.primary.withValues(alpha: 0.15)
         : AppColors.primary.withValues(alpha: 0.05);
-    final photoW = r.isSmallPhone ? 78.0 : r.isTablet ? 128.0 : 100.0;
+    final photoW = r.isSmallPhone
+        ? 78.0
+        : r.isTablet
+        ? 128.0
+        : 100.0;
     final hasPhoto = hospital.photoBase64.isNotEmpty;
 
     return AnimatedPressButton(
@@ -56,7 +60,10 @@ class HospitalCard extends StatelessWidget {
                   bottom: 0,
                   right: 0,
                   width: photoW,
-                  child: _PhotoStrip(base64: hospital.photoBase64, isDark: isDark),
+                  child: _PhotoStrip(
+                    base64: hospital.photoBase64,
+                    isDark: isDark,
+                  ),
                 ),
               Padding(
                 padding: EdgeInsets.fromLTRB(

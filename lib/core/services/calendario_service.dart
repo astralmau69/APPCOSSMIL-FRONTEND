@@ -18,7 +18,7 @@ class CalendarioService {
   final ApiClient _api;
 
   CalendarioService({this.idsuc = 1, ApiClient? apiClient})
-      : _api = apiClient ?? ApiClient();
+    : _api = apiClient ?? ApiClient();
 
   // ── Especialidades Ventanilla ─────────────────────────────────────────────
 
@@ -30,15 +30,15 @@ class CalendarioService {
     );
     return switch (response) {
       ApiSuccess(:final data) => () {
-          final list = data is List
-              ? data
-              : (data is Map ? data['data'] as List? ?? [] : []);
-          return list
-              .whereType<Map<String, dynamic>>()
-              .map(SpecialtyModel.fromJson)
-              .where((s) => s.name.isNotEmpty)
-              .toList();
-        }(),
+        final list = data is List
+            ? data
+            : (data is Map ? data['data'] as List? ?? [] : []);
+        return list
+            .whereType<Map<String, dynamic>>()
+            .map(SpecialtyModel.fromJson)
+            .where((s) => s.name.isNotEmpty)
+            .toList();
+      }(),
       ApiError(:final message) => throw Exception(message),
     };
   }
@@ -62,15 +62,15 @@ class CalendarioService {
     );
     var medicos = switch (response) {
       ApiSuccess(:final data) => () {
-          final list = data is List
-              ? data
-              : (data is Map ? data['data'] as List? ?? [] : []);
-          return list
-              .whereType<Map<String, dynamic>>()
-              .map(MedicoSucModel.fromJson)
-              .where((m) => m.nombre.isNotEmpty)
-              .toList();
-        }(),
+        final list = data is List
+            ? data
+            : (data is Map ? data['data'] as List? ?? [] : []);
+        return list
+            .whereType<Map<String, dynamic>>()
+            .map(MedicoSucModel.fromJson)
+            .where((m) => m.nombre.isNotEmpty)
+            .toList();
+      }(),
       ApiError(:final message) => throw Exception(message),
     };
 
@@ -87,9 +87,11 @@ class CalendarioService {
       );
       if (fotos.isNotEmpty) {
         medicos = medicos
-            .map((m) => fotos.containsKey(m.idmed)
-                ? m.copyWith(foto: fotos[m.idmed])
-                : m)
+            .map(
+              (m) => fotos.containsKey(m.idmed)
+                  ? m.copyWith(foto: fotos[m.idmed])
+                  : m,
+            )
             .toList();
       }
       if (kDebugMode) {
@@ -116,26 +118,29 @@ class CalendarioService {
     );
     return switch (response) {
       ApiSuccess(:final data) => () {
-          final list = data is List
-              ? data
-              : (data is Map ? data['data'] as List? ?? [] : []);
-          final raw = list.whereType<Map<String, dynamic>>().toList();
+        final list = data is List
+            ? data
+            : (data is Map ? data['data'] as List? ?? [] : []);
+        final raw = list.whereType<Map<String, dynamic>>().toList();
 
-          // Si la respuesta trae `iddia`/`dia` sin `fecha`, calculamos la
-          // próxima fecha de ese día de la semana a partir de hoy.
-          final slots = raw.map((json) {
-            final hasFecha = (json['fecha'] ?? '').toString().isNotEmpty;
-            if (hasFecha) return HorarioMovilSlot.fromJson(json);
+        // Si la respuesta trae `iddia`/`dia` sin `fecha`, calculamos la
+        // próxima fecha de ese día de la semana a partir de hoy.
+        final slots = raw
+            .map((json) {
+              final hasFecha = (json['fecha'] ?? '').toString().isNotEmpty;
+              if (hasFecha) return HorarioMovilSlot.fromJson(json);
 
-            final iddia = int.tryParse(json['iddia']?.toString() ?? '') ?? 0;
-            final fechaCalculada = iddia > 0 ? _nextWeekday(iddia) : '';
-            final augmented = Map<String, dynamic>.from(json)
-              ..['fecha'] = fechaCalculada;
-            return HorarioMovilSlot.fromJson(augmented);
-          }).where((s) => s.fecha.isNotEmpty).toList();
+              final iddia = int.tryParse(json['iddia']?.toString() ?? '') ?? 0;
+              final fechaCalculada = iddia > 0 ? _nextWeekday(iddia) : '';
+              final augmented = Map<String, dynamic>.from(json)
+                ..['fecha'] = fechaCalculada;
+              return HorarioMovilSlot.fromJson(augmented);
+            })
+            .where((s) => s.fecha.isNotEmpty)
+            .toList();
 
-          return _groupByDay(slots);
-        }(),
+        return _groupByDay(slots);
+      }(),
       ApiError(:final message) => throw Exception(message),
     };
   }
@@ -169,8 +174,7 @@ class CalendarioService {
       if (raw == null) return false;
       final d = DateTime(raw.year, raw.month, raw.day);
       return !d.isBefore(start) && !d.isAfter(end);
-    }).toList()
-      ..sort((a, b) => a.fecha.compareTo(b.fecha));
+    }).toList()..sort((a, b) => a.fecha.compareTo(b.fecha));
   }
 
   /// Agrupa los slots por fecha en objetos [HorarioDia].
@@ -180,11 +184,10 @@ class CalendarioService {
       map.putIfAbsent(s.fecha, () => []).add(s);
     }
     return map.entries
-        .map((e) => HorarioDia(
-              fecha: e.key,
-              dia: e.value.first.dia,
-              slots: e.value,
-            ))
+        .map(
+          (e) =>
+              HorarioDia(fecha: e.key, dia: e.value.first.dia, slots: e.value),
+        )
         .toList()
       ..sort((a, b) => a.fecha.compareTo(b.fecha));
   }

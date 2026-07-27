@@ -87,7 +87,8 @@ class SecurityService {
   /// reintenta ante un error real de descifrado/lectura. Si tras los reintentos
   /// el error persiste, se relanza para que el llamador NO asuma "sin PIN".
   static Future<String?> _readResilient(String key, {int retries = 2}) async {
-    if (kIsWeb) return webLsGet(key); // localStorage: sin Keystore ni reintentos
+    if (kIsWeb)
+      return webLsGet(key); // localStorage: sin Keystore ni reintentos
     for (int attempt = 0; ; attempt++) {
       try {
         return await _storage.read(key: key);
@@ -98,15 +99,15 @@ class SecurityService {
     }
   }
 
-  static const _keyPin            = 'local_pin_hash';
-  static const _keyPinSalt        = 'local_pin_salt';
-  static const _keyUseBiometrics  = 'use_biometrics';
-  static const _keyCooldownUntil  = 'pin_cooldown_until';
+  static const _keyPin = 'local_pin_hash';
+  static const _keyPinSalt = 'local_pin_salt';
+  static const _keyUseBiometrics = 'use_biometrics';
+  static const _keyCooldownUntil = 'pin_cooldown_until';
   static const _keyFailedAttempts = 'pin_failed_attempts';
-  static const _keyLockoutCount   = 'pin_lockout_count';
-  static const _keyDisplayName    = 'user_display_name';
+  static const _keyLockoutCount = 'pin_lockout_count';
+  static const _keyDisplayName = 'user_display_name';
   static const _keyLastBackground = 'last_background_ts';
-  static const _keyLastActivity   = 'last_activity_ts';
+  static const _keyLastActivity = 'last_activity_ts';
 
   // Salt estático de app — evita que hashes idénticos entre distintas apps (usado como fallback heredado).
   static const _pinSalt = 'cossmil_sec_v1_';
@@ -135,7 +136,12 @@ class SecurityService {
   // ─── PIN ───────────────────────────────────────────────────────────────────
 
   /// Deriva una clave usando PBKDF2 con HMAC-SHA256.
-  static Uint8List _pbkdf2(String password, Uint8List salt, int iterations, int keyLength) {
+  static Uint8List _pbkdf2(
+    String password,
+    Uint8List salt,
+    int iterations,
+    int keyLength,
+  ) {
     final mac = Hmac(sha256, utf8.encode(password));
     final numBlocks = (keyLength + 31) ~/ 32;
     final result = BytesBuilder();
@@ -195,11 +201,11 @@ class SecurityService {
     if (pin.length != 4 || !RegExp(r'^\d{4}$').hasMatch(pin)) {
       throw Exception('El PIN debe contener exactamente 4 dígitos numéricos');
     }
-    
+
     // Generar un salt dinámico nuevo
     final salt = _generateSecureSalt();
     final derivedBytes = _pbkdf2(pin, salt, 10000, 32);
-    
+
     // Almacenar el Salt dinámico en Base64 y el hash derivado en Secure Storage
     await _write(_keyPinSalt, base64.encode(salt));
     await _write(_keyPin, base64.encode(derivedBytes));
@@ -211,7 +217,7 @@ class SecurityService {
     if (savedHash == null || savedHash.isEmpty) return false;
 
     final savedSaltBase64 = await _readResilient(_keyPinSalt);
-    
+
     // Si no hay salt almacenado, pero sí hay hash, es un PIN legacy (SHA-256 estático)
     if (savedSaltBase64 == null || savedSaltBase64.isEmpty) {
       final legacyHash = _hashPinLegacy(pin);
@@ -251,13 +257,11 @@ class SecurityService {
       // Bloqueo ESCALONADO: cada bloqueo dura más que el anterior, para que la
       // fuerza bruta de un PIN de 4 dígitos sea impracticable (anti brute-force).
       final lockouts =
-          (int.tryParse(await _readResilient(_keyLockoutCount) ?? '0') ?? 0) + 1;
+          (int.tryParse(await _readResilient(_keyLockoutCount) ?? '0') ?? 0) +
+          1;
       await _write(_keyLockoutCount, lockouts.toString());
       final until = DateTime.now().add(_escalatingCooldown(lockouts));
-      await _write(
-        _keyCooldownUntil,
-        until.millisecondsSinceEpoch.toString(),
-      );
+      await _write(_keyCooldownUntil, until.millisecondsSinceEpoch.toString());
       // Reiniciar la ventana de intentos; el conteo de bloqueos PERSISTE para
       // escalar el siguiente cooldown.
       await _delete(_keyFailedAttempts);
@@ -410,19 +414,23 @@ class SecurityService {
             biometricNotRecognized: 'No reconocido. Intenta de nuevo.',
             biometricSuccess: '¡Verificado!',
             deviceCredentialsRequiredTitle: 'Usa tu PIN',
-            deviceCredentialsSetupDescription: 'Configura un bloqueo de pantalla.',
+            deviceCredentialsSetupDescription:
+                'Configura un bloqueo de pantalla.',
           ),
           IOSAuthMessages(
             cancelButton: 'Cancelar',
             goToSettingsButton: 'Ajustes',
-            goToSettingsDescription: 'Por favor, configura la biometría en los ajustes.',
+            goToSettingsDescription:
+                'Por favor, configura la biometría en los ajustes.',
             lockOut: 'Demasiados intentos. Usa tu PIN.',
           ),
         ],
       );
-      return authenticated ? BiometricAuthResult.success : BiometricAuthResult.cancelled;
+      return authenticated
+          ? BiometricAuthResult.success
+          : BiometricAuthResult.cancelled;
     } on PlatformException catch (e) {
-      if (e.code == auth_error.lockedOut || 
+      if (e.code == auth_error.lockedOut ||
           e.code == auth_error.permanentlyLockedOut ||
           e.code == 'LockedOut' ||
           e.code == 'PermanentlyLockedOut') {

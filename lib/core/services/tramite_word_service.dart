@@ -95,12 +95,16 @@ $body
     if (n.isNotEmpty) buf.write('$_boldOpen$n$_boldClose<br>');
     if (conCi && c.isNotEmpty) buf.write('${_boldOpen}C.I. $c$_boldClose<br>');
     if (n.isEmpty && (!conCi || c.isEmpty)) {
-      buf.write(conCi
-          ? 'NOMBRE COMPLETO, CEDULA DE IDENTIDAD Y<br>'
-              'FIRMA DEL PACIENTE O SOLICITANTE<br>'
-          : '${_boldOpen}FIRMA DEL PACIENTE o SOLICITANTE$_boldClose<br>');
+      buf.write(
+        conCi
+            ? 'NOMBRE COMPLETO, CEDULA DE IDENTIDAD Y<br>'
+                  'FIRMA DEL PACIENTE O SOLICITANTE<br>'
+            : '${_boldOpen}FIRMA DEL PACIENTE o SOLICITANTE$_boldClose<br>',
+      );
     }
-    buf.write('Cel. ${cel.isNotEmpty ? '$_boldOpen$cel$_boldClose' : _fill(16)}');
+    buf.write(
+      'Cel. ${cel.isNotEmpty ? '$_boldOpen$cel$_boldClose' : _fill(16)}',
+    );
     buf.write('</p>');
     return buf.toString();
   }

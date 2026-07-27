@@ -14,12 +14,14 @@ import '../core/theme/sound_manager.dart';
 
 import '../core/extensions/string_extensions.dart';
 import '../core/services/security_service.dart';
+import '../core/security/screen_security.dart';
 
 import '../core/services/programacion_service.dart';
 
 import '../core/models/horario_atencion_model.dart';
 
 import '../core/constants/app_colors.dart';
+import '../core/constants/app_sounds.dart';
 
 import '../core/session/user_session.dart';
 
@@ -54,6 +56,9 @@ import '../core/storage/token_storage.dart';
 
 import '../core/services/session_restore_service.dart';
 import '../core/services/notification_service.dart';
+import '../core/routing/sound_navigator_observer.dart';
+import '../core/services/tutorial_flow.dart';
+import '../features/procedimientos/screens/procedimientos_screen.dart';
 import '../core/services/appointment_status_sync.dart';
 // Favoritos OCULTO (feature aún no funcional):
 // import '../core/services/favorites_service.dart';
@@ -192,6 +197,15 @@ class TabShellState extends State<TabShell>
 
   final reservasRefreshNotifier = ValueNotifier<int>(0);
 
+  /// Qué tutorial está esperando en su paso inicial sobre Inicio. Los TRES
+  /// recorridos empiezan aquí: la instructora pide tocar la misma tarjeta del
+  /// menú que el usuario usaría de verdad, para que aprenda el camino entero
+  /// y no solo la pantalla de destino. `none` = no hay nadie esperando.
+  /// HomeScreen lo escucha para montar el coach y resaltar la tarjeta.
+  final homeTutorialNotifier = ValueNotifier<GuidedTutorial>(
+    GuidedTutorial.none,
+  );
+
   /// IDs de la última reserva creada, para destacarla en ReservasScreen.
   ({int idtran, int dr})? lastBookingIds;
 
@@ -225,6 +239,15 @@ class TabShellState extends State<TabShell>
     GlobalKey<NavigatorState>(),
   ];
 
+  /// Un observador de sonido POR pestaña: cada uno se acopla al navegador de
+  /// su `CupertinoTabView` (un `NavigatorObserver` no puede servir a dos
+  /// navegadores). Aquí ocurre casi todo el retroceso de la app, porque la
+  /// navegación dentro de una pestaña no pasa por el navegador raíz.
+  final List<SoundNavigatorObserver> _tabSoundObservers = List.generate(
+    5,
+    (_) => SoundNavigatorObserver(),
+  );
+
   /// Contadores de refresh por tab. Se incrementan al tocar la tab activa
   /// para forzar reconstrucción completa de la pantalla.
   final List<int> _tabRefreshCounters = [0, 0, 0, 0, 0];
@@ -240,6 +263,12 @@ class TabShellState extends State<TabShell>
     _tabController = CupertinoTabController();
 
     WidgetsBinding.instance.addObserver(this);
+
+    // Protección de pantalla (FLAG_SECURE + desenfoque en recientes) para todo
+    // el área autenticada. Se activa aquí porque TabShell es el punto por el que
+    // pasan TODOS los caminos de entrada (login, desbloqueo por PIN y
+    // restauración de sesión), no solo el login. Se desactiva en el logout.
+    ScreenSecurity.enable();
 
     // Registrar actividad inicial
 
@@ -313,6 +342,8 @@ class TabShellState extends State<TabShell>
 
     reservasRefreshNotifier.dispose();
 
+    homeTutorialNotifier.dispose();
+
     WidgetsBinding.instance.removeObserver(this);
 
     _tabController.dispose();
@@ -378,8 +409,10 @@ class TabShellState extends State<TabShell>
   ///
   /// Corre al iniciar sesión y cada vez que la app vuelve al primer plano
   /// (lifecycle resumed), **independientemente** de si [ReservasScreen] está montada.
-  Future<void> _checkForCompletedAppointments() => AppointmentStatusSync
-      .checkCompletedAppointments(service: _programacionService);
+  Future<void> _checkForCompletedAppointments() =>
+      AppointmentStatusSync.checkCompletedAppointments(
+        service: _programacionService,
+      );
 
   /// Consulta el estado del horario al iniciar para mostrar banner en HomeScreen.
   Future<void> _checkHorarioStatus() async {
@@ -511,6 +544,10 @@ class TabShellState extends State<TabShell>
       // la sesión se borre incorrectamente al minimizar la app.
       _handlePaused();
     } else if (state == AppLifecycleState.resumed) {
+      // El usuario pudo mover el interruptor de silencio mientras la app
+      // estaba fuera: la próxima reproducción vuelve a consultarlo.
+      SoundManager.invalidateSilentCache();
+
       // Sin seguridad local: redirigir al login porque la sesión fue cerrada.
       if (_requiresLoginOnResume) {
         _requiresLoginOnResume = false;
@@ -623,6 +660,18 @@ class TabShellState extends State<TabShell>
   }
 
   void goToTab(int index) {
+    // Solo suena el cambio REAL de pestaña: volver a tocar la activa (gesto
+    // de "ir a la raíz") no debe repetir el blip.
+    if (index != _currentIndex) {
+      SoundManager.playUi(AppSounds.nav, volume: 0.5);
+    }
+
+    // Cambiar de tab por la barra cancela en silencio los tutoriales de
+    // pantallas push (Calendario/Trámites): el coach jamás debe quedar
+    // huérfano sobre un tab al que el usuario llegó por su cuenta. Tocar el
+    // ícono del tab ACTUAL no cancela (es el gesto de "volver a la raíz").
+    if (index != _currentIndex) TutorialFlow.stop();
+
     if (index == 2) {
       // Defensivo: esta es la entrada REAL al tab de Reservar (ícono de la
       // barra de navegación). Si el usuario salió de un tutorial a medias
@@ -631,6 +680,11 @@ class TabShellState extends State<TabShell>
       // cita real al confirmar. Solo `startTutorialBooking()` (que no pasa
       // por `goToTab`) puede activar el modo tutorial.
       bookingState.isTutorialMode = false;
+
+      // Si la instructora seguía esperando en Inicio y el usuario entró a
+      // Reservar por la barra, el tutorial se cancela en silencio: nunca
+      // deben convivir el flujo real y el resalte "Toca aquí" del Home.
+      homeTutorialNotifier.value = GuidedTutorial.none;
 
       // Tab de reservar → verificar horario primero
 
@@ -687,6 +741,26 @@ class TabShellState extends State<TabShell>
     _tryEnterBookingTab();
   }
 
+  /// Arranca el tutorial guiado desde su verdadero comienzo: el menú de
+  /// Inicio. La instructora aparece sobre Home (paso 1) y pide tocar la
+  /// primera opción — el botón verde "Nueva Reserva" — que es el mismo gesto
+  /// que el usuario repetirá cuando reserve de verdad. Recién al tocarlo se
+  /// entra al flujo de reserva en modo demostración vía
+  /// [startTutorialBooking].
+  void startTutorialFromHome() => _esperarEnInicio(GuidedTutorial.ficha);
+
+  /// Deja a la instructora esperando en el menú de Inicio para [tutorial].
+  /// Es el arranque COMÚN de los tres recorridos: sea cual sea el tema, el
+  /// usuario aprende primero por dónde se entra.
+  void _esperarEnInicio(GuidedTutorial tutorial) {
+    TutorialFlow.stop();
+    bookingState.reset();
+    setState(() => _currentIndex = 0);
+    _tabController.index = 0;
+    _tabNavKeys[0].currentState?.popUntil((route) => route.isFirst);
+    homeTutorialNotifier.value = tutorial;
+  }
+
   /// Entra al flujo REAL de Reservar en modo demostración ("Cómo sacar una
   /// ficha"): mismas pantallas, misma navegación, mismos datos reales del
   /// usuario — pero A PROPÓSITO se salta `_tryEnterBookingTab` (verificación
@@ -696,7 +770,11 @@ class TabShellState extends State<TabShell>
   /// depender de su situación real. Cada pantalla del flujo consulta
   /// `bookingState.isTutorialMode` para saltarse igualmente sus propias
   /// llamadas/bloqueos de negocio internos.
+  ///
+  /// Lo dispara el botón héroe de Home mientras la instructora espera ahí
+  /// ([startTutorialFromHome]) — el paso de Inicio termina en este momento.
   void startTutorialBooking() {
+    homeTutorialNotifier.value = GuidedTutorial.none;
     bookingState.reset();
     bookingState.isTutorialMode = true;
 
@@ -705,8 +783,9 @@ class TabShellState extends State<TabShell>
         ? bens.firstWhere((b) => b.isTitular, orElse: () => bens.first)
         : null;
     bookingState.beneficiary = titular;
-    bookingState.beneficiaryLabel =
-        (titular == null || titular.isTitular) ? 'Para mí' : titular.fullName;
+    bookingState.beneficiaryLabel = (titular == null || titular.isTitular)
+        ? 'Para mí'
+        : titular.fullName;
 
     _bookingFlowKey.currentState?.resetFlow();
     setState(() => _currentIndex = 2);
@@ -714,10 +793,69 @@ class TabShellState extends State<TabShell>
     _tabNavKeys[2].currentState?.popUntil((route) => route.isFirst);
   }
 
+  /// Arranca el tutorial guiado del Calendario (Perfil → AYUDA). Igual que
+  /// los demás, empieza en Inicio: la instructora pide tocar la tarjeta
+  /// "Calendario de Atención" del menú.
+  void startCalendarioTutorial() => _esperarEnInicio(GuidedTutorial.calendario);
+
+  /// Arranca el tutorial guiado de Trámites (Perfil → AYUDA). Empieza en
+  /// Inicio, sobre la tarjeta "Procedimientos COSSMIL".
+  void startTramitesTutorial() => _esperarEnInicio(GuidedTutorial.tramites);
+
+  /// Segundo paso de los recorridos que viven en pantallas push: el usuario
+  /// tocó la tarjeta del menú y ahora sí se entra al recorrido real. Lo llama
+  /// HomeScreen desde el `onTap` de la tarjeta resaltada.
+  void enterHomeTutorialTarget(BuildContext context) {
+    final tutorial = homeTutorialNotifier.value;
+    homeTutorialNotifier.value = GuidedTutorial.none;
+    switch (tutorial) {
+      case GuidedTutorial.calendario:
+        setState(() => _currentIndex = 3);
+        _tabController.index = 3;
+        _tabNavKeys[3].currentState?.popUntil((route) => route.isFirst);
+        TutorialFlow.start(GuidedTutorial.calendario);
+      case GuidedTutorial.tramites:
+        final nav = _tabNavKeys[0].currentState;
+        TutorialFlow.start(GuidedTutorial.tramites);
+        nav?.push(AppPageRoute(builder: (_) => const ProcedimientosScreen()));
+      case GuidedTutorial.ficha:
+        startTutorialBooking();
+      case GuidedTutorial.none:
+        break;
+    }
+  }
+
+  /// Mientras la instructora espera en Inicio (paso 1 del tutorial), la barra
+  /// de navegación se ve pero no responde: atenuada e inerte, igual que las
+  /// demás opciones del menú. Así la guía no se rompe por un tap accidental —
+  /// para salir está siempre el botón "Salir del tutorial" del coach.
+  Widget _guardNavDuringTutorial(Widget bar) {
+    return ValueListenableBuilder<GuidedTutorial>(
+      valueListenable: homeTutorialNotifier,
+      child: bar,
+      builder: (context, tutorial, child) {
+        final guiding = tutorial != GuidedTutorial.none;
+        final reduceMotion = MediaQuery.disableAnimationsOf(context);
+        return IgnorePointer(
+          ignoring: guiding,
+          child: AnimatedOpacity(
+            opacity: guiding ? 0.45 : 1.0,
+            duration: reduceMotion
+                ? Duration.zero
+                : const Duration(milliseconds: 280),
+            curve: Curves.easeOut,
+            child: child,
+          ),
+        );
+      },
+    );
+  }
+
   /// Sale del modo demostración y vuelve a Inicio. Limpia `bookingState` por
   /// completo (incluido `isTutorialMode`) para que la próxima vez que el
   /// usuario entre a Reservar sea siempre un flujo real desde cero.
   void exitTutorialMode() {
+    homeTutorialNotifier.value = GuidedTutorial.none;
     bookingState.reset();
     _bookingFlowKey.currentState?.resetFlow();
     goToTab(0);
@@ -746,6 +884,7 @@ class TabShellState extends State<TabShell>
       showAppDialog(
         context: context,
         barrierDismissible: false,
+        silent: true, // esperar no es un evento: un loader no suena
         builder: (context) => const LoaderWithMessage(
           message: 'Verificando horario de atención…',
         ),
@@ -794,7 +933,7 @@ class TabShellState extends State<TabShell>
           final matricula = UserSession.currentUser.matricula;
           final idper = int.tryParse(UserSession.currentUser.id) ?? 0;
 
-          // 1a. Penalización por inasistencias (2 faltas) → reserva presencial.
+          // 1a. Penalización por inasistencias (3 faltas) → reserva presencial.
           final inasistenciasMsg = await _programacionService
               .validarInasistencias(idper);
           if (inasistenciasMsg != null) {
@@ -1610,6 +1749,7 @@ class TabShellState extends State<TabShell>
               children: List.generate(5, (index) {
                 return CupertinoTabView(
                   navigatorKey: _tabNavKeys[index],
+                  navigatorObservers: [_tabSoundObservers[index]],
                   builder: (context) => _screenForIndex(index),
                 );
               }),
@@ -1626,9 +1766,11 @@ class TabShellState extends State<TabShell>
                 body: useSideNav
                     ? Row(
                         children: [
-                          SideNavBar(
-                            currentIndex: _currentIndex,
-                            onTap: handleNavTap,
+                          _guardNavDuringTutorial(
+                            SideNavBar(
+                              currentIndex: _currentIndex,
+                              onTap: handleNavTap,
+                            ),
                           ),
                           Expanded(child: tabs),
                         ],
@@ -1637,9 +1779,11 @@ class TabShellState extends State<TabShell>
 
                 bottomNavigationBar: useSideNav
                     ? null
-                    : FloatingNavBar(
-                        currentIndex: _currentIndex,
-                        onTap: handleNavTap,
+                    : _guardNavDuringTutorial(
+                        FloatingNavBar(
+                          currentIndex: _currentIndex,
+                          onTap: handleNavTap,
+                        ),
                       ),
               ),
             );

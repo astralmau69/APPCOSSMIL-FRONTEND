@@ -66,7 +66,8 @@ class _HolographicCardState extends State<HolographicCard>
     final ny = (e.x / 9.8).clamp(-1.0, 1.0);
     final nx = (e.y / 9.8).clamp(-1.0, 1.0);
     _targetY = (-ny) * _maxTilt; // rotación en Y según inclinación lateral
-    _targetX = (nx - 0.55) * _maxTilt * 1.4; // compensa el ángulo natural de lectura
+    _targetX =
+        (nx - 0.55) * _maxTilt * 1.4; // compensa el ángulo natural de lectura
     _targetX = _targetX.clamp(-_maxTilt, _maxTilt);
   }
 
@@ -131,126 +132,150 @@ class _HolographicCardState extends State<HolographicCard>
         // del resto de la pantalla (header, botones, etc.).
         return RepaintBoundary(
           child: GestureDetector(
-          onPanStart: _onPanStart,
-          onPanUpdate: (d) => _onPanUpdate(d, size),
-          onPanEnd: _onPanEnd,
-          child: Transform(
-            alignment: Alignment.center,
-            transform: transform,
-            child: Stack(
-              children: [
-                // Sombra dinámica que sigue la inclinación.
-                Container(
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(widget.borderRadius),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.28),
-                        blurRadius: 26,
-                        offset: Offset(-_curY * 60, _curX * 60 + 14),
-                      ),
-                    ],
+            onPanStart: _onPanStart,
+            onPanUpdate: (d) => _onPanUpdate(d, size),
+            onPanEnd: _onPanEnd,
+            child: Transform(
+              alignment: Alignment.center,
+              transform: transform,
+              child: Stack(
+                children: [
+                  // Sombra dinámica que sigue la inclinación.
+                  Container(
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(widget.borderRadius),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.28),
+                          blurRadius: 26,
+                          offset: Offset(-_curY * 60, _curX * 60 + 14),
+                        ),
+                      ],
+                    ),
                   ),
-                ),
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(widget.borderRadius),
-                  child: Stack(
-                    children: [
-                      // El contenido del carnet se cachea (RepaintBoundary): al
-                      // inclinar solo se re-compone, no se vuelve a pintar.
-                      RepaintBoundary(child: widget.child),
-                      // 1) Tornasol holográfico (arcoíris) que cambia al inclinar.
-                      Positioned.fill(
-                        child: IgnorePointer(
-                          child: DecoratedBox(
-                            decoration: BoxDecoration(
-                              backgroundBlendMode: BlendMode.plus,
-                              gradient: LinearGradient(
-                                begin: Alignment(-shineAlign.x, -shineAlign.y),
-                                end: shineAlign,
-                                colors: [
-                                  const Color(0x00FFFFFF),
-                                  const Color(0xFFFF2D9B)
-                                      .withValues(alpha: 0.16 * widget.shineStrength),
-                                  const Color(0xFF7A5CFF)
-                                      .withValues(alpha: 0.16 * widget.shineStrength),
-                                  const Color(0xFF00E0FF)
-                                      .withValues(alpha: 0.16 * widget.shineStrength),
-                                  const Color(0xFF49FF8B)
-                                      .withValues(alpha: 0.16 * widget.shineStrength),
-                                  const Color(0xFFFFE600)
-                                      .withValues(alpha: 0.16 * widget.shineStrength),
-                                  const Color(0x00FFFFFF),
-                                ],
-                                stops: const [0.0, 0.22, 0.38, 0.5, 0.62, 0.78, 1.0],
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-                      // 2) Franja de reflejo diagonal que barre la tarjeta.
-                      Positioned.fill(
-                        child: IgnorePointer(
-                          child: DecoratedBox(
-                            decoration: BoxDecoration(
-                              backgroundBlendMode: BlendMode.plus,
-                              gradient: LinearGradient(
-                                begin: Alignment.topLeft,
-                                end: Alignment.bottomRight,
-                                colors: [
-                                  const Color(0x00FFFFFF),
-                                  Colors.white.withValues(alpha: 0.0),
-                                  Colors.white
-                                      .withValues(alpha: 0.55 * widget.shineStrength),
-                                  Colors.white.withValues(alpha: 0.0),
-                                  const Color(0x00FFFFFF),
-                                ],
-                                stops: [0.0, gp(-0.16), gp(0.0), gp(0.16), 1.0],
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-                      // 3) Brillo especular suave que sigue la inclinación.
-                      Positioned.fill(
-                        child: IgnorePointer(
-                          child: DecoratedBox(
-                            decoration: BoxDecoration(
-                              backgroundBlendMode: BlendMode.softLight,
-                              gradient: RadialGradient(
-                                center: shineAlign,
-                                radius: 1.0,
-                                colors: [
-                                  Colors.white.withValues(
-                                      alpha: 0.5 * widget.shineStrength),
-                                  Colors.white.withValues(alpha: 0.0),
-                                ],
-                                stops: const [0.0, 0.55],
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-                      // 4) Panal de abeja holográfico (celdas que cambian de
-                      //    color al inclinar) — integra el holograma con el
-                      //    diseño del carnet.
-                      if (widget.honeycombShimmer)
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(widget.borderRadius),
+                    child: Stack(
+                      children: [
+                        // El contenido del carnet se cachea (RepaintBoundary): al
+                        // inclinar solo se re-compone, no se vuelve a pintar.
+                        RepaintBoundary(child: widget.child),
+                        // 1) Tornasol holográfico (arcoíris) que cambia al inclinar.
                         Positioned.fill(
                           child: IgnorePointer(
-                            child: CustomPaint(
-                              painter: _HoneycombShimmerPainter(
-                                shift: glare,
-                                strength: widget.shineStrength,
+                            child: DecoratedBox(
+                              decoration: BoxDecoration(
+                                backgroundBlendMode: BlendMode.plus,
+                                gradient: LinearGradient(
+                                  begin: Alignment(
+                                    -shineAlign.x,
+                                    -shineAlign.y,
+                                  ),
+                                  end: shineAlign,
+                                  colors: [
+                                    const Color(0x00FFFFFF),
+                                    const Color(0xFFFF2D9B).withValues(
+                                      alpha: 0.16 * widget.shineStrength,
+                                    ),
+                                    const Color(0xFF7A5CFF).withValues(
+                                      alpha: 0.16 * widget.shineStrength,
+                                    ),
+                                    const Color(0xFF00E0FF).withValues(
+                                      alpha: 0.16 * widget.shineStrength,
+                                    ),
+                                    const Color(0xFF49FF8B).withValues(
+                                      alpha: 0.16 * widget.shineStrength,
+                                    ),
+                                    const Color(0xFFFFE600).withValues(
+                                      alpha: 0.16 * widget.shineStrength,
+                                    ),
+                                    const Color(0x00FFFFFF),
+                                  ],
+                                  stops: const [
+                                    0.0,
+                                    0.22,
+                                    0.38,
+                                    0.5,
+                                    0.62,
+                                    0.78,
+                                    1.0,
+                                  ],
+                                ),
                               ),
                             ),
                           ),
                         ),
-                    ],
+                        // 2) Franja de reflejo diagonal que barre la tarjeta.
+                        Positioned.fill(
+                          child: IgnorePointer(
+                            child: DecoratedBox(
+                              decoration: BoxDecoration(
+                                backgroundBlendMode: BlendMode.plus,
+                                gradient: LinearGradient(
+                                  begin: Alignment.topLeft,
+                                  end: Alignment.bottomRight,
+                                  colors: [
+                                    const Color(0x00FFFFFF),
+                                    Colors.white.withValues(alpha: 0.0),
+                                    Colors.white.withValues(
+                                      alpha: 0.55 * widget.shineStrength,
+                                    ),
+                                    Colors.white.withValues(alpha: 0.0),
+                                    const Color(0x00FFFFFF),
+                                  ],
+                                  stops: [
+                                    0.0,
+                                    gp(-0.16),
+                                    gp(0.0),
+                                    gp(0.16),
+                                    1.0,
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                        // 3) Brillo especular suave que sigue la inclinación.
+                        Positioned.fill(
+                          child: IgnorePointer(
+                            child: DecoratedBox(
+                              decoration: BoxDecoration(
+                                backgroundBlendMode: BlendMode.softLight,
+                                gradient: RadialGradient(
+                                  center: shineAlign,
+                                  radius: 1.0,
+                                  colors: [
+                                    Colors.white.withValues(
+                                      alpha: 0.5 * widget.shineStrength,
+                                    ),
+                                    Colors.white.withValues(alpha: 0.0),
+                                  ],
+                                  stops: const [0.0, 0.55],
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                        // 4) Panal de abeja holográfico (celdas que cambian de
+                        //    color al inclinar) — integra el holograma con el
+                        //    diseño del carnet.
+                        if (widget.honeycombShimmer)
+                          Positioned.fill(
+                            child: IgnorePointer(
+                              child: CustomPaint(
+                                painter: _HoneycombShimmerPainter(
+                                  shift: glare,
+                                  strength: widget.shineStrength,
+                                ),
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
-          ),
           ),
         );
       },
@@ -345,9 +370,12 @@ class _HoneycombShimmerPainter extends CustomPainter {
       for (double x = -r + rowOffset; x < size.width + r; x += w) {
         final t = (((x + y) / diag) + shift) % 1.0;
         final hue = (t * 360.0) % 360.0;
-        paint.color = HSVColor.fromAHSV(1.0, hue, 0.82, 1.0)
-            .toColor()
-            .withValues(alpha: 0.22 * strength * zone);
+        paint.color = HSVColor.fromAHSV(
+          1.0,
+          hue,
+          0.82,
+          1.0,
+        ).toColor().withValues(alpha: 0.22 * strength * zone);
         _hex(canvas, Offset(x, y), r, paint);
       }
     }

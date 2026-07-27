@@ -10,7 +10,8 @@ class PdfService {
   static Future<void> generateAndShowBookingPdf({
     required UserModel user,
     required String paciente,
-    required String especialidad,    required String establecimiento,
+    required String especialidad,
+    required String establecimiento,
     required String consultorio,
     required String ciudad,
     required String medico,
@@ -30,9 +31,11 @@ class PdfService {
     final greyText = PdfColor.fromHex('#6B7280');
 
     final format = PdfPageFormat.roll80;
-    
+
     // Load local logo image
-    final ByteData bytes = await rootBundle.load('assets/images/logo_cossmil.png');
+    final ByteData bytes = await rootBundle.load(
+      'assets/images/logo_cossmil.png',
+    );
     final Uint8List imageBytes = bytes.buffer.asUint8List();
     final logoImage = pw.MemoryImage(imageBytes);
 
@@ -50,35 +53,32 @@ class PdfService {
                 mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
                 crossAxisAlignment: pw.CrossAxisAlignment.start,
                 children: [
-                   pw.Column(
-                     crossAxisAlignment: pw.CrossAxisAlignment.start,
-                     children: [
-                        pw.Text(
-                          'TICKET DE',
-                          style: pw.TextStyle(
-                            fontSize: 10,
-                            fontWeight: pw.FontWeight.bold,
-                            color: oliveColor,
-                          ),
+                  pw.Column(
+                    crossAxisAlignment: pw.CrossAxisAlignment.start,
+                    children: [
+                      pw.Text(
+                        'TICKET DE',
+                        style: pw.TextStyle(
+                          fontSize: 10,
+                          fontWeight: pw.FontWeight.bold,
+                          color: oliveColor,
                         ),
-                        pw.Text(
-                          'RESERVA',
-                          style: pw.TextStyle(
-                            fontSize: 14,
-                            fontWeight: pw.FontWeight.bold,
-                            color: oliveColor,
-                          ),
+                      ),
+                      pw.Text(
+                        'RESERVA',
+                        style: pw.TextStyle(
+                          fontSize: 14,
+                          fontWeight: pw.FontWeight.bold,
+                          color: oliveColor,
                         ),
-                     ]
-                   ),
-                   // Logo real a la derecha
-                   pw.Container(
-                     height: 35,
-                     child: pw.Image(logoImage),
-                   )
-                ]
+                      ),
+                    ],
+                  ),
+                  // Logo real a la derecha
+                  pw.Container(height: 35, child: pw.Image(logoImage)),
+                ],
               ),
-              
+
               pw.SizedBox(height: 12),
 
               pw.Container(
@@ -110,15 +110,18 @@ class PdfService {
 
               // 1. HOSPITAL
               _ticketRow('ESTABLECIMIENTO', establecimiento),
-              
+
               // 2. CONSULTORIO
               _ticketRow('CONSULTORIO / UBICACIÓN', consultorio),
-              
+
               // 3. FECHA Y HORA (Destacado)
               pw.SizedBox(height: 4),
               pw.Container(
                 width: double.infinity,
-                padding: const pw.EdgeInsets.symmetric(vertical: 6, horizontal: 8),
+                padding: const pw.EdgeInsets.symmetric(
+                  vertical: 6,
+                  horizontal: 8,
+                ),
                 decoration: pw.BoxDecoration(
                   color: PdfColor.fromHex('#F3F4F6'),
                   border: pw.Border.all(color: oliveColor, width: 0.5),
@@ -129,11 +132,18 @@ class PdfService {
                   children: [
                     pw.Text(
                       fecha.toUpperCase(),
-                      style: pw.TextStyle(fontSize: 8, fontWeight: pw.FontWeight.bold),
+                      style: pw.TextStyle(
+                        fontSize: 8,
+                        fontWeight: pw.FontWeight.bold,
+                      ),
                     ),
                     pw.Text(
                       hora,
-                      style: pw.TextStyle(fontSize: 12, fontWeight: pw.FontWeight.bold, color: oliveColor),
+                      style: pw.TextStyle(
+                        fontSize: 12,
+                        fontWeight: pw.FontWeight.bold,
+                        color: oliveColor,
+                      ),
                     ),
                   ],
                 ),
@@ -145,7 +155,7 @@ class PdfService {
 
               // 5. MÉDICO
               _ticketRow('MÉDICO ASIGNADO', medico),
-              
+
               pw.Divider(color: borderColor, thickness: 0.5),
               pw.SizedBox(height: 4),
 
@@ -161,10 +171,10 @@ class PdfService {
                   user.isTitular ? 'GRADO' : 'GRADO DEL TITULAR',
                   user.rank,
                 ),
-              
+
               pw.Divider(color: borderColor, thickness: 0.5),
               pw.SizedBox(height: 4),
-              
+
               // QR CODE simulado
               pw.Container(
                 height: 60,
@@ -183,23 +193,30 @@ class PdfService {
                 style: pw.TextStyle(fontSize: 7, color: greyText),
               ),
               pw.SizedBox(height: 6),
-              
+
               // ADVERTENCIA PENALIZACIÓN
               pw.Container(
                 width: double.infinity,
                 padding: const pw.EdgeInsets.all(6),
                 decoration: pw.BoxDecoration(
-                   color: PdfColor.fromHex('#FEF2F2'),
-                   border: pw.Border.all(color: PdfColor.fromHex('#FECACA'), width: 0.5),
-                   borderRadius: pw.BorderRadius.circular(4),
+                  color: PdfColor.fromHex('#FEF2F2'),
+                  border: pw.Border.all(
+                    color: PdfColor.fromHex('#FECACA'),
+                    width: 0.5,
+                  ),
+                  borderRadius: pw.BorderRadius.circular(4),
                 ),
                 child: pw.Text(
-                   'ADVERTENCIA: Si falta 2 veces a sus consultas reservadas por la app será penalizado y no podrá volver a reservar fichas.',
-                   textAlign: pw.TextAlign.center,
-                   style: pw.TextStyle(fontSize: 7, color: PdfColor.fromHex('#991B1B'), fontWeight: pw.FontWeight.bold),
+                  'ADVERTENCIA: Si falta 3 veces a sus consultas reservadas por la app será penalizado y no podrá volver a reservar fichas.',
+                  textAlign: pw.TextAlign.center,
+                  style: pw.TextStyle(
+                    fontSize: 7,
+                    color: PdfColor.fromHex('#991B1B'),
+                    fontWeight: pw.FontWeight.bold,
+                  ),
                 ),
               ),
-              
+
               pw.SizedBox(height: 6),
               pw.Text(
                 'Emitido el: $formattedDate',
@@ -226,7 +243,10 @@ class PdfService {
         children: [
           pw.Text(
             label,
-            style: pw.TextStyle(fontSize: 7, color: PdfColor.fromHex('#6B7280')),
+            style: pw.TextStyle(
+              fontSize: 7,
+              color: PdfColor.fromHex('#6B7280'),
+            ),
           ),
           pw.Text(
             value,

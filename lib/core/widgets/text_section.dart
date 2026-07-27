@@ -23,15 +23,9 @@ class TextSection extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            _title,
-            style: context.texts.titleMedium,
-          ),
+          Text(_title, style: context.texts.titleMedium),
           SizedBox(height: context.r.spaceSm),
-          Text(
-            _body,
-            style: context.texts.bodyMedium,
-          ),
+          Text(_body, style: context.texts.bodyMedium),
         ],
       ),
     );

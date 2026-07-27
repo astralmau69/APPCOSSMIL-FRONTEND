@@ -1,7 +1,9 @@
 import 'package:flutter/cupertino.dart';
 import '../animations/app_dialog.dart';
 import '../constants/app_colors.dart';
+import '../constants/app_sounds.dart';
 import '../extensions/responsive_extensions.dart';
+import '../theme/sound_manager.dart';
 
 /// Tipo semántico de alerta para colorización automática.
 enum AlertType { success, error, warning, info }
@@ -63,6 +65,10 @@ class CossmilIosAlert {
           if (cancelText != null)
             CupertinoDialogAction(
               onPressed: () {
+                // Decidir en un diálogo es una acción del usuario: suena, como
+                // cualquier otro botón de acción. Cerrar la ruta no lo hace
+                // (el observador ignora los diálogos a propósito).
+                SoundManager.playUi(AppSounds.tap, volume: 0.5);
                 Navigator.of(ctx).pop();
                 onCancel?.call();
               },
@@ -71,6 +77,7 @@ class CossmilIosAlert {
           CupertinoDialogAction(
             isDestructiveAction: isDestructive || type == AlertType.error,
             onPressed: () {
+              SoundManager.playUi(AppSounds.tap, volume: 0.5);
               Navigator.of(ctx).pop();
               onConfirm?.call();
             },

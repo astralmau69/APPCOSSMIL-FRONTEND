@@ -7,7 +7,8 @@ import '../models/news_item_model.dart';
 /// Servicio de noticias institucionales de COSSMIL.
 /// Consume el API público: https://www.cossmil.mil.bo/api/noticias/paginate/{page}/{perPage}/1
 class CossmilNewsService {
-  static const String _baseUrl = 'https://www.cossmil.mil.bo/api/noticias/paginate';
+  static const String _baseUrl =
+      'https://www.cossmil.mil.bo/api/noticias/paginate';
   static const Duration _timeout = Duration(seconds: 10);
 
   /// Obtiene una página de noticias.
@@ -19,9 +20,7 @@ class CossmilNewsService {
   }) async {
     final url = '$_baseUrl/$page/$perPage/1';
     try {
-      final response = await http
-          .get(Uri.parse(url))
-          .timeout(_timeout);
+      final response = await http.get(Uri.parse(url)).timeout(_timeout);
 
       if (response.statusCode == 200) {
         final decoded = _smartDecode(response.bodyBytes, response.body);
@@ -91,7 +90,11 @@ class CossmilNewsService {
     const replacements = <String, String>{
       'Ã¡': 'á', 'Ã©': 'é', 'Ã­': 'í', 'Ã³': 'ó', 'Ãº': 'ú',
       'Ã±': 'ñ', 'Ã¼': 'ü',
-      'Ã\u0081': 'Á', 'Ã\u0089': 'É', 'Ã\u008d': 'Í', 'Ã\u0093': 'Ó', 'Ã\u009a': 'Ú',
+      'Ã\u0081': 'Á',
+      'Ã\u0089': 'É',
+      'Ã\u008d': 'Í',
+      'Ã\u0093': 'Ó',
+      'Ã\u009a': 'Ú',
       'Ã\u0091': 'Ñ', 'Ã\u009c': 'Ü',
       'Â°': '°', 'Â¿': '¿', 'Â¡': '¡',
       'Â\u00a0': ' ', // non-breaking space
@@ -104,17 +107,26 @@ class CossmilNewsService {
     result = result.replaceAll('Â', '');
     return result;
   }
+
   /// Obtiene los detalles de una publicación (imágenes adicionales).
-  static Future<List<String>> fetchPublicationDetails(int gestion, int idpub) async {
+  static Future<List<String>> fetchPublicationDetails(
+    int gestion,
+    int idpub,
+  ) async {
     final path = ApiConstants.publicationDetail(gestion, idpub);
     final url = 'https://www.cossmil.mil.bo$path';
     try {
       final response = await http.get(Uri.parse(url)).timeout(_timeout);
       if (response.statusCode == 200) {
-        final List<dynamic> data = jsonDecode(_smartDecode(response.bodyBytes, response.body));
+        final List<dynamic> data = jsonDecode(
+          _smartDecode(response.bodyBytes, response.body),
+        );
         return data
             .where((item) => item['tipo'] == 'IMG')
-            .map((item) => ApiConstants.newsImagesBase(gestion, idpub, item['url']))
+            .map(
+              (item) =>
+                  ApiConstants.newsImagesBase(gestion, idpub, item['url']),
+            )
             .toList();
       }
     } catch (e) {

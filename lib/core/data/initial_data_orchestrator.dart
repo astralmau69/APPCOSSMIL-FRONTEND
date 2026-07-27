@@ -4,7 +4,9 @@ import '../models/specialty_model.dart';
 import '../services/programacion_service.dart';
 import '../session/user_session.dart';
 import '../utils/app_logger.dart';
+import '../utils/error_mapper.dart';
 import 'app_session_cache.dart';
+import 'grupo_familiar_cache.dart';
 
 /// Orquesta la precarga paralela de los 4 recursos de inicio de sesión.
 ///
@@ -21,36 +23,79 @@ import 'app_session_cache.dart';
 class InitialDataOrchestrator {
   static const _tag = 'InitialDataOrchestrator';
 
-  final ProgramacionService _programacion;
+  /// Tope para un recurso CRÍTICO (regionales, fecha de servidor). Si se agota,
+  /// la carga LANZA `TimeoutException` → el inicio muestra "Reintentar" en vez
+  /// de colgarse. Se corta antes del techo interno del [ApiClient]
+  /// (15 s × reintentos) para fallar rápido y con un mensaje claro.
+  static const _criticalTimeout = Duration(seconds: 12);
 
-  InitialDataOrchestrator({ProgramacionService? programacion})
-      : _programacion = programacion ?? ProgramacionService();
+  /// Tope para un recurso NO crítico (grupo familiar, especialidades). Si se
+  /// agota, la carga DEGRADA a lista vacía sin lanzar: un endpoint lento jamás
+  /// debe impedir que el titular saque su cita. Se recuperan on-demand después.
+  static const _nonCriticalTimeout = Duration(seconds: 8);
+
+  final ProgramacionService _programacion;
+  final GrupoFamiliarCache _grupoFamiliarCache;
+
+  InitialDataOrchestrator({
+    ProgramacionService? programacion,
+    GrupoFamiliarCache? grupoFamiliarCache,
+  }) : _programacion = programacion ?? ProgramacionService(),
+       _grupoFamiliarCache = grupoFamiliarCache ?? GrupoFamiliarCache();
 
   // ─── Punto de entrada ────────────────────────────────────────────────────
 
   /// Lanza las 4 peticiones simultáneamente con [Future.wait].
   ///
-  /// - Si todo va bien → guarda resultados en [AppSessionCache], `isLoaded = true`.
-  /// - Si alguna falla  → lanza la excepción original para que [LoadingDataScreen]
-  ///   la intercepte y ofrezca "Reintentar".
+  /// Cada carga se AUTO-LIMITA con su propio timeout (no hay un timeout global
+  /// que, al vencer por un recurso lento no crítico, tumbe todo el arranque):
+  /// - Críticas ([_loadRegionales], [_loadFechaServidor]) → lanzan al vencer →
+  ///   [LoadingDataScreen] intercepta y ofrece "Reintentar".
+  /// - No críticas ([_loadGrupoFamiliar], [_loadEspecialidades]) → degradan a
+  ///   lista vacía al vencer/fallar → el inicio NUNCA se bloquea por ellas.
+  ///
+  /// Como los no críticos no lanzan, [Future.wait] solo se cae si falla un
+  /// crítico — exactamente el comportamiento deseado.
   Future<void> loadAll() async {
     AppLogger.info(_tag, 'Iniciando precarga paralela de datos de sesión…');
     final sw = Stopwatch()..start();
 
     final results = await Future.wait<dynamic>([
-      _loadGrupoFamiliar(),   // índice 0
-      _loadRegionales(),      // índice 1
-      _loadEspecialidades(),  // índice 2
-      _loadFechaServidor(),   // índice 3
-    ]).timeout(const Duration(seconds: 15));
+      _loadGrupoFamiliar() // índice 0 — no crítico
+          .timeout(
+            _nonCriticalTimeout,
+            onTimeout: () {
+              AppLogger.warn(
+                _tag,
+                'Grupo familiar excedió ${_nonCriticalTimeout.inSeconds}s; se degrada a vacío',
+              );
+              return <BeneficiaryModel>[];
+            },
+          ),
+      _loadRegionales() // índice 1 — crítico (lanza al vencer)
+          .timeout(_criticalTimeout),
+      _loadEspecialidades() // índice 2 — no crítico
+          .timeout(
+            _nonCriticalTimeout,
+            onTimeout: () {
+              AppLogger.warn(
+                _tag,
+                'Especialidades excedió ${_nonCriticalTimeout.inSeconds}s; se degrada a vacío',
+              );
+              return <SpecialtyModel>[];
+            },
+          ),
+      _loadFechaServidor() // índice 3 — crítico (lanza al vencer)
+          .timeout(_criticalTimeout),
+    ]);
 
     sw.stop();
     AppLogger.info(_tag, 'Precarga completada en ${sw.elapsedMilliseconds} ms');
 
-    AppSessionCache.grupoFamiliar  = results[0] as List<BeneficiaryModel>;
-    AppSessionCache.regionales     = results[1] as List<RegionalModel>;
+    AppSessionCache.grupoFamiliar = results[0] as List<BeneficiaryModel>;
+    AppSessionCache.regionales = results[1] as List<RegionalModel>;
     AppSessionCache.especialidades = results[2] as List<SpecialtyModel>;
-    AppSessionCache.fechaServidor  = results[3] as Map<String, String>;
+    AppSessionCache.fechaServidor = results[3] as Map<String, String>;
     AppSessionCache.isLoaded = true;
   }
 
@@ -68,11 +113,28 @@ class InitialDataOrchestrator {
     try {
       final members = await _programacion.getGrupoFamiliar(idper);
       AppLogger.info(_tag, 'Grupo familiar: ${members.length} miembros');
+      // Refresca la caché offline cifrada (read-through).
+      if (members.isNotEmpty) _grupoFamiliarCache.save(idper, members);
       return members;
     } catch (e) {
-      // No crítico: el flujo de reserva puede recargar el grupo familiar
-      // cuando el usuario abre el selector de beneficiario.
-      AppLogger.warn(_tag, 'Grupo familiar no disponible (se reintentará on-demand)', e);
+      // Sin conexión: usar la última copia cacheada para que el titular vea su
+      // grupo familiar offline. Si no es error de red o no hay caché, se degrada
+      // a vacío (no crítico: se recarga on-demand al abrir el selector).
+      if (ErrorMapper.isOffline(e)) {
+        final cached = await _grupoFamiliarCache.read(idper);
+        if (cached != null) {
+          AppLogger.info(
+            _tag,
+            'Grupo familiar desde caché offline: ${cached.miembros.length} miembros',
+          );
+          return cached.miembros;
+        }
+      }
+      AppLogger.warn(
+        _tag,
+        'Grupo familiar no disponible (se reintentará on-demand)',
+        e,
+      );
       return [];
     }
   }
@@ -94,7 +156,11 @@ class InitialDataOrchestrator {
       AppLogger.info(_tag, 'Especialidades: ${list.length} especialidades');
       return list;
     } catch (e) {
-      AppLogger.warn(_tag, 'Especialidades no disponibles (se cargarán por hospital)', e);
+      AppLogger.warn(
+        _tag,
+        'Especialidades no disponibles (se cargarán por hospital)',
+        e,
+      );
       return [];
     }
   }

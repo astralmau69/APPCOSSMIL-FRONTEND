@@ -31,8 +31,9 @@ class UserSession {
   /// cuando datos que llegan en SEGUNDO PLANO tras el login (la foto, grupo
   /// sanguíneo, alergias, etc.) actualizan al usuario. Cada asignación a
   /// [currentUser] dispara la notificación automáticamente.
-  static final ValueNotifier<UserModel> userNotifier =
-      ValueNotifier<UserModel>(_empty);
+  static final ValueNotifier<UserModel> userNotifier = ValueNotifier<UserModel>(
+    _empty,
+  );
 
   /// Datos del usuario actualmente autenticado.
   ///
@@ -65,12 +66,12 @@ class UserSession {
     if (beneficiary == null || beneficiary.isTitular) {
       return currentUser.gender;
     }
-    
+
     // Usar género efectivo (basado en parentesco si el campo 'gender' es nulo)
     if (beneficiary.effectiveGender.isNotEmpty) {
       return beneficiary.effectiveGender;
     }
-    
+
     // Fallback final: si no hay datos, retornamos vacío para no sesgar el filtro
     return beneficiary.gender.isNotEmpty ? beneficiary.gender : '';
   }

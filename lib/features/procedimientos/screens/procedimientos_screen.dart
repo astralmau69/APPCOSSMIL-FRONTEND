@@ -4,16 +4,19 @@ import 'package:flutter/material.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/extensions/responsive_extensions.dart';
 import '../../../core/animations/optimized_animations.dart';
+import '../../../core/services/tutorial_flow.dart';
 import '../../../core/widgets/adaptive_sliver_nav_bar.dart';
-import '../../../core/widgets/liquid_glass.dart';
-import '../tramite_catalog.dart';
-import 'formularios_screen.dart';
+import '../../../core/widgets/guided_tap_hint.dart';
+import '../../../core/widgets/section_header.dart';
+import '../../../core/widgets/tutorial_flow_host.dart';
+import 'gerencia_salud_screen.dart';
 
 /// Hub de procedimientos COSSMIL.
 ///
-/// Agrupa los trámites por categoría. Hoy la única categoría es "Formularios"
-/// (los documentos oficiales en PDF); nuevas categorías se agregan como más
-/// tarjetas [_CategoryCard] en la lista.
+/// Los trámites se organizan POR GERENCIA, reflejando la estructura
+/// institucional: gerencia → dependencia → documentos (p. ej. Gerencia de
+/// Salud → Hospital → Formularios). Nuevas gerencias se agregan como más
+/// tarjetas [GerenciaNavCard] en la lista.
 class ProcedimientosScreen extends StatelessWidget {
   const ProcedimientosScreen({super.key});
 
@@ -24,60 +27,85 @@ class ProcedimientosScreen extends StatelessWidget {
 
     return CupertinoPageScaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-      child: CustomScrollView(
-        physics: const BouncingScrollPhysics(
-          parent: AlwaysScrollableScrollPhysics(),
-        ),
-        slivers: [
-          AdaptiveSliverNavBar(
-            largeTitle: Text(
-              'Procedimientos',
-              style: TextStyle(color: AppColors.textPrimaryC(isDark)),
+      // Paso 1 del tutorial de Trámites. Este hub es la raíz del recorrido:
+      // si el usuario lo abandona con "atrás", el tutorial se cancela solo
+      // (stopOnDispose).
+      child: TutorialFlowHost(
+        tutorial: GuidedTutorial.tramites,
+        step: 2,
+        totalSteps: 5,
+        voiceId: 'tramites_01',
+        stopOnDispose: true,
+        messages: const [
+          'Aquí puedes generar documentos oficiales con tus datos ya '
+              'cargados.',
+          'Los trámites se organizan por gerencia: entra a '
+              '"Gerencia de Salud".',
+        ],
+        builder: (context, tutorialActive) {
+          final gerenciaCard = GerenciaNavCard(
+            icon: CupertinoIcons.heart_circle_fill,
+            color: const Color(0xFF059669),
+            title: 'Gerencia de Salud',
+            subtitle: 'Hospital y servicios de salud',
+            onTap: () => Navigator.of(context).push(
+              CupertinoPageRoute(builder: (_) => const GerenciaSaludScreen()),
             ),
-            backgroundColor: isDark
-                ? AppColors.darkSurface.withValues(alpha: 0.92)
-                : AppColors.white.withValues(alpha: 0.92),
-            border: Border(
-              bottom: BorderSide(
-                color: AppColors.cardBorder(isDark).withValues(alpha: 0.5),
-                width: 0.5,
-              ),
+          );
+          return CustomScrollView(
+            physics: const BouncingScrollPhysics(
+              parent: AlwaysScrollableScrollPhysics(),
             ),
-          ),
-          SliverPadding(
-            padding: EdgeInsets.fromLTRB(
-              r.paddingH,
-              12,
-              r.paddingH,
-              r.navBarBottomSpace,
-            ),
-            sliver: SliverList(
-              delegate: SliverChildListDelegate([
-                FadeSlideIn(
-                  child: Padding(
-                    padding: EdgeInsets.only(bottom: r.spaceLg),
-                    child: _HeaderBanner(isDark: isDark, r: r),
+            slivers: [
+              AdaptiveSliverNavBar(
+                largeTitle: Text(
+                  'Procedimientos',
+                  style: TextStyle(color: AppColors.textPrimaryC(isDark)),
+                ),
+                backgroundColor: isDark
+                    ? AppColors.darkSurface.withValues(alpha: 0.92)
+                    : AppColors.white.withValues(alpha: 0.92),
+                border: Border(
+                  bottom: BorderSide(
+                    color: AppColors.cardBorder(isDark).withValues(alpha: 0.5),
+                    width: 0.5,
                   ),
                 ),
-                FadeSlideIn(
-                  delay: const Duration(milliseconds: 80),
-                  child: _CategoryCard(
-                    icon: CupertinoIcons.doc_on_doc_fill,
-                    color: const Color(0xFFD97706),
-                    title: 'Formularios',
-                    subtitle: 'Documentos oficiales en PDF y Word',
-                    items: kTramites,
-                    onTap: () => Navigator.of(context).push(
-                      CupertinoPageRoute(
-                        builder: (_) => const FormulariosScreen(),
+              ),
+              SliverPadding(
+                padding: EdgeInsets.fromLTRB(
+                  r.paddingH,
+                  12,
+                  r.paddingH,
+                  r.navBarBottomSpace,
+                ),
+                sliver: SliverList(
+                  delegate: SliverChildListDelegate([
+                    FadeSlideIn(
+                      child: Padding(
+                        padding: EdgeInsets.only(bottom: r.spaceLg),
+                        child: _HeaderBanner(isDark: isDark, r: r),
                       ),
                     ),
-                  ),
+                    FadeSlideIn(
+                      delay: const Duration(milliseconds: 60),
+                      child: Padding(
+                        padding: EdgeInsets.only(bottom: r.spaceMd),
+                        child: const SectionHeader(text: 'POR GERENCIA'),
+                      ),
+                    ),
+                    FadeSlideIn(
+                      delay: const Duration(milliseconds: 100),
+                      child: tutorialActive
+                          ? GuidedTapHint(child: gerenciaCard)
+                          : gerenciaCard,
+                    ),
+                  ]),
                 ),
-              ]),
-            ),
-          ),
-        ],
+              ),
+            ],
+          );
+        },
       ),
     );
   }
@@ -104,7 +132,9 @@ class _HeaderBanner extends StatelessWidget {
         ),
         borderRadius: BorderRadius.circular(r.cardRadius),
         border: Border.all(
-          color: const Color(0xFF005EB8).withValues(alpha: isDark ? 0.35 : 0.18),
+          color: const Color(
+            0xFF005EB8,
+          ).withValues(alpha: isDark ? 0.35 : 0.18),
         ),
       ),
       child: Row(
@@ -128,8 +158,11 @@ class _HeaderBanner extends StatelessWidget {
                 ),
               ],
             ),
-            child: Icon(CupertinoIcons.doc_text_fill,
-                size: r.iconMd, color: Colors.white),
+            child: Icon(
+              CupertinoIcons.doc_text_fill,
+              size: r.iconMd,
+              color: Colors.white,
+            ),
           ),
           SizedBox(width: r.spaceMd),
           Expanded(
@@ -158,167 +191,6 @@ class _HeaderBanner extends StatelessWidget {
             ),
           ),
         ],
-      ),
-    );
-  }
-}
-
-/// Tarjeta de categoría: cabecera con ícono, título y contador, más un índice
-/// de su contenido (los trámites que agrupa). Toda la tarjeta es un único
-/// destino táctil que abre el listado completo de la categoría.
-class _CategoryCard extends StatelessWidget {
-  final IconData icon;
-  final Color color;
-  final String title;
-  final String subtitle;
-  final List<TramiteInfo> items;
-  final VoidCallback onTap;
-
-  const _CategoryCard({
-    required this.icon,
-    required this.color,
-    required this.title,
-    required this.subtitle,
-    required this.items,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final r = context.r;
-    final texts = context.texts;
-
-    return Semantics(
-      label: '$title: $subtitle. Contiene ${items.length} documentos.',
-      hint: 'Toca para ver los formularios',
-      button: true,
-      child: OptimizedPressButton(
-        onTap: onTap,
-        scaleDown: 0.98,
-        haptic: true,
-        child: LiquidGlass(
-          isDark: isDark,
-          borderRadius: BorderRadius.circular(r.cardRadius),
-          shadow: AppColors.cardShadowFor(isDark),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              // Cabecera de la categoría
-              Padding(
-                padding: EdgeInsets.all(r.cardPadding),
-                child: Row(
-                  children: [
-                    Container(
-                      width: r.listAvatarSize,
-                      height: r.listAvatarSize,
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                          colors: [
-                            color.withValues(alpha: isDark ? 0.28 : 0.16),
-                            color.withValues(alpha: isDark ? 0.16 : 0.08),
-                          ],
-                        ),
-                        borderRadius: BorderRadius.circular(r.radiusMd),
-                      ),
-                      child: Icon(icon, size: r.iconMd, color: color),
-                    ),
-                    SizedBox(width: r.spaceMd),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            title,
-                            style: texts.titleMedium.copyWith(
-                              fontWeight: FontWeight.w800,
-                              color: AppColors.textPrimaryC(isDark),
-                              letterSpacing: -0.2,
-                              height: 1.15,
-                            ),
-                          ),
-                          SizedBox(height: r.spaceXs),
-                          Text(
-                            subtitle,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: texts.bodySmall.copyWith(
-                              color: AppColors.textSecondaryC(isDark),
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    SizedBox(width: r.spaceSm),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 8,
-                        vertical: 3,
-                      ),
-                      decoration: BoxDecoration(
-                        color: color.withValues(alpha: 0.10),
-                        borderRadius: BorderRadius.circular(r.chipRadius),
-                      ),
-                      child: Text(
-                        '${items.length}',
-                        style: texts.labelSmall.copyWith(
-                          color: color,
-                          fontWeight: FontWeight.w800,
-                        ),
-                      ),
-                    ),
-                    SizedBox(width: r.spaceSm),
-                    Icon(
-                      CupertinoIcons.chevron_right,
-                      size: r.iconSm * 0.7,
-                      color: AppColors.textTertiaryC(isDark),
-                    ),
-                  ],
-                ),
-              ),
-              Container(
-                height: 0.5,
-                color: AppColors.cardBorder(isDark).withValues(alpha: 0.7),
-              ),
-              // Índice del contenido: qué documentos viven dentro de la categoría
-              Padding(
-                padding: EdgeInsets.symmetric(
-                  horizontal: r.cardPadding,
-                  vertical: r.spaceSm,
-                ),
-                child: Column(
-                  children: [
-                    for (final t in items)
-                      Padding(
-                        padding: EdgeInsets.symmetric(vertical: r.spaceXs),
-                        child: Row(
-                          children: [
-                            Icon(t.icon, size: r.iconSm * 0.8, color: t.color),
-                            SizedBox(width: r.spaceSm),
-                            Expanded(
-                              child: Text(
-                                t.titulo,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: texts.bodySmall.copyWith(
-                                  color: AppColors.textSecondaryC(isDark),
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                  ],
-                ),
-              ),
-              SizedBox(height: r.spaceXs),
-            ],
-          ),
-        ),
       ),
     );
   }

@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import '../utils/app_version_helper.dart';
+import '../utils/log_sanitizer.dart';
 import '../config/app_config.dart';
 import '../constants/api_constants.dart';
 import '../models/doctor_agenda_model.dart';
@@ -127,9 +128,11 @@ class ProgramacionService {
       );
       if (fotos.isNotEmpty) {
         medicos = medicos
-            .map((m) => fotos.containsKey(m.idmed)
-                ? m.copyWith(foto: fotos[m.idmed])
-                : m)
+            .map(
+              (m) => fotos.containsKey(m.idmed)
+                  ? m.copyWith(foto: fotos[m.idmed])
+                  : m,
+            )
             .toList();
       }
       if (kDebugMode) {
@@ -230,7 +233,8 @@ class ProgramacionService {
 
     return switch (response) {
       ApiSuccess(:final data) => () {
-        if (kDebugMode) debugPrint('📦 regionales raw response: $data');
+        if (kDebugMode)
+          debugPrint(LogSanitizer.scrub('📦 regionales raw response: $data'));
         return _parseRegionales(data);
       }(),
       ApiError(:final message) => throw Exception(message),
@@ -327,9 +331,9 @@ class ProgramacionService {
     }
   }
 
-  // ── Validar inasistencias (penalización por 2 faltas) ──────────────────
+  // ── Validar inasistencias (penalización por 3 faltas) ──────────────────
 
-  /// Verifica si el asegurado está penalizado por acumular 2 inasistencias.
+  /// Verifica si el asegurado está penalizado por acumular 3 inasistencias.
   ///
   /// El backend retorna `data:true` cuando está penalizado (debe reservar de
   /// forma presencial en ventanilla) y `data:false` cuando puede reservar
@@ -426,7 +430,10 @@ class ProgramacionService {
 
     return switch (response) {
       ApiSuccess(:final data) => () {
-        if (kDebugMode) debugPrint('📦 horarios-atencion raw response: $data');
+        if (kDebugMode)
+          debugPrint(
+            LogSanitizer.scrub('📦 horarios-atencion raw response: $data'),
+          );
         return _parseHorariosAtencion(data);
       }(),
       ApiError(:final message) => throw Exception(message),
@@ -598,7 +605,10 @@ class ProgramacionService {
 
     return switch (response) {
       ApiSuccess(:final data) => () {
-        if (kDebugMode) debugPrint('📦 historial-citas raw response: $data');
+        if (kDebugMode)
+          debugPrint(
+            LogSanitizer.scrub('📦 historial-citas raw response: $data'),
+          );
         final List<ReservaModel> reservas = _parseReservas(data);
         // Extraer paginación
         int totalElements = 0;
@@ -640,7 +650,11 @@ class ProgramacionService {
     return switch (response) {
       ApiSuccess(:final data) => () {
         if (kDebugMode) {
-          debugPrint('📦 historial-citas-canceladas raw response: $data');
+          debugPrint(
+            LogSanitizer.scrub(
+              '📦 historial-citas-canceladas raw response: $data',
+            ),
+          );
         }
         final List<ReservaModel> reservas = _parseReservas(data);
         // Extraer paginación
@@ -735,7 +749,9 @@ class ProgramacionService {
           final sample = Map<String, dynamic>.of(
             list.first as Map<String, dynamic>,
           )..removeWhere((k, v) => v is String && v.length > 120);
-          debugPrint('📦 grupo-familiar campos (sin fotos): $sample');
+          debugPrint(
+            LogSanitizer.scrub('📦 grupo-familiar campos (sin fotos): $sample'),
+          );
         }
         return list
             .map((e) => BeneficiaryModel.fromJson(e as Map<String, dynamic>))
@@ -910,7 +926,8 @@ class ProgramacionService {
   }
 
   MedicoAsignadoModel _parseMedicoAsignado(dynamic body) {
-    if (kDebugMode) debugPrint('📦 Parsing medico-asignado body: $body');
+    if (kDebugMode)
+      debugPrint(LogSanitizer.scrub('📦 Parsing medico-asignado body: $body'));
     if (body is Map<String, dynamic>) {
       final data = body['data'];
       if (kDebugMode) debugPrint('   ↳ data field: $data');

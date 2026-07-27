@@ -337,6 +337,10 @@ class _SplashScreenState extends State<SplashScreen>
       await _audioPlayer!.setReleaseMode(ReleaseMode.stop);
       await _audioPlayer!.setSource(AssetSource('vof/AUDIO 1. BIENVENIDA.mp3'));
       await _audioPlayer!.resume();
+      // Esta locución dura ~8 s y puede seguir sonando cuando el usuario ya
+      // entró (sobre todo si desbloquea con huella). Registrarla evita que la
+      // firma de bienvenida se le encime.
+      SoundManager.registerVoice(_audioPlayer!);
     } catch (e) {
       // Permitir reintento en el próximo gesto (relevante en web).
       _welcomeAudioStarted = false;

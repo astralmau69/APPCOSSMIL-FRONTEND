@@ -174,7 +174,11 @@ class _CarnetValidadorScreenState extends State<CarnetValidadorScreen>
     return Container(
       width: double.infinity,
       padding: EdgeInsets.fromLTRB(
-          24, 18, 24, 24 + MediaQuery.of(context).viewPadding.bottom),
+        24,
+        18,
+        24,
+        24 + MediaQuery.of(context).viewPadding.bottom,
+      ),
       child: const Text(
         'Apunte al código QR del carnet para validar su vigencia.',
         textAlign: TextAlign.center,
@@ -194,8 +198,9 @@ class _CarnetValidadorScreenState extends State<CarnetValidadorScreen>
     final color = ok ? const Color(0xFF1E8E3E) : const Color(0xFFC62828);
     final r = context.r;
     return Scaffold(
-      backgroundColor:
-          isDark ? AppColors.darkBackground : const Color(0xFFF5F8FC),
+      backgroundColor: isDark
+          ? AppColors.darkBackground
+          : const Color(0xFFF5F8FC),
       body: SafeArea(
         child: Padding(
           padding: EdgeInsets.symmetric(horizontal: r.paddingH),
@@ -207,8 +212,10 @@ class _CarnetValidadorScreenState extends State<CarnetValidadorScreen>
                 child: Padding(
                   padding: const EdgeInsets.only(top: 8),
                   child: IconButton(
-                    icon: Icon(CupertinoIcons.back,
-                        color: AppColors.textPrimaryC(isDark)),
+                    icon: Icon(
+                      CupertinoIcons.back,
+                      color: AppColors.textPrimaryC(isDark),
+                    ),
                     onPressed: () => Navigator.of(context).maybePop(),
                   ),
                 ),
@@ -286,8 +293,11 @@ class _CarnetValidadorScreenState extends State<CarnetValidadorScreen>
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Icon(CupertinoIcons.qrcode_viewfinder,
-                            color: Colors.white, size: 20),
+                        Icon(
+                          CupertinoIcons.qrcode_viewfinder,
+                          color: Colors.white,
+                          size: 20,
+                        ),
                         SizedBox(width: 9),
                         Text(
                           'Escanear otro carnet',
@@ -330,9 +340,7 @@ class _CarnetValidadorScreenState extends State<CarnetValidadorScreen>
       margin: const EdgeInsets.symmetric(horizontal: 8),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: isDark
-            ? Colors.white.withValues(alpha: 0.06)
-            : Colors.white,
+        color: isDark ? Colors.white.withValues(alpha: 0.06) : Colors.white,
         borderRadius: BorderRadius.circular(18),
         border: Border.all(
           color: AppColors.textTertiaryC(isDark).withValues(alpha: 0.2),
@@ -423,7 +431,10 @@ class _ScanFrame extends StatelessWidget {
         width: side,
         height: side,
         decoration: BoxDecoration(
-          border: Border.all(color: Colors.white.withValues(alpha: 0.9), width: 3),
+          border: Border.all(
+            color: Colors.white.withValues(alpha: 0.9),
+            width: 3,
+          ),
           borderRadius: BorderRadius.circular(20),
         ),
       ),

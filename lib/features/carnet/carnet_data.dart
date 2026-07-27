@@ -53,7 +53,9 @@ class CarnetData {
       fuerza: _normalizeFuerza(u.fuerza),
       // Grado militar del titular (ej. "CORONEL"). El backend lo entrega en
       // `rank`; "Asegurado" es el valor por defecto cuando no hay grado.
-      grado: (u.rank.trim().isNotEmpty && u.rank.trim().toLowerCase() != 'asegurado')
+      grado:
+          (u.rank.trim().isNotEmpty &&
+              u.rank.trim().toLowerCase() != 'asegurado')
           ? u.rank.trim().toUpperCase()
           : '',
       tipoAsegurado: u.isTitular ? 'TITULAR' : 'BENEFICIARIO',
@@ -66,7 +68,9 @@ class CarnetData {
       // "Telf. de referencia" del carnet = celular del afiliado.
       telefonoReferencia: u.numCel.trim().isNotEmpty
           ? u.numCel.trim()
-          : (u.phone.trim().isNotEmpty ? u.phone.trim() : u.emergencyPhone.trim()),
+          : (u.phone.trim().isNotEmpty
+                ? u.phone.trim()
+                : u.emergencyPhone.trim()),
       // TODO(backend): la API móvil aún no entrega emisión/vencimiento.
       // Datos mock provisionales (vencimiento 2027) hasta conectar el servicio.
       fechaEmision: '01/05/2025',
@@ -78,15 +82,15 @@ class CarnetData {
   }
 
   /// Host de verificación de carnets COSSMIL.
-  static const String verifyBaseUrl = 'https://www.cossmil.mil.bo/carnet/verificar';
+  static const String verifyBaseUrl =
+      'https://www.cossmil.mil.bo/carnet/verificar';
 
   /// QR FIJO del carnet de seguro de salud (verificación en línea).
   ///
   /// Por ahora es un valor estático apuntando a la verificación COSSMIL.
   /// TODO(backend): reemplazar por el QR firmado que entregue el servicio de
   /// verificación, que se actualizará cada cierto tiempo (token rotativo).
-  static const String fixedHealthQrPayload =
-      '$verifyBaseUrl?src=app&v=1';
+  static const String fixedHealthQrPayload = '$verifyBaseUrl?src=app&v=1';
 
   // ─── QR ROTATIVO (hash que cambia cada 15 s) ──────────────────────────────
 
@@ -129,15 +133,17 @@ class CarnetData {
   String rotatingQrPayload([DateTime? now]) {
     final win = currentWindow(now);
     final rh = rotatingHash(matricula, codigo, win);
-    final uri = Uri.parse(verifyBaseUrl).replace(queryParameters: {
-      'mat': matricula,
-      'cod': codigo,
-      'w': '$win',
-      'rh': rh,
-      'nom': nombreCompleto,
-      'gra': grado,
-      'tip': tipoAsegurado,
-    });
+    final uri = Uri.parse(verifyBaseUrl).replace(
+      queryParameters: {
+        'mat': matricula,
+        'cod': codigo,
+        'w': '$win',
+        'rh': rh,
+        'nom': nombreCompleto,
+        'gra': grado,
+        'tip': tipoAsegurado,
+      },
+    );
     return uri.toString();
   }
 
@@ -150,8 +156,11 @@ class CarnetData {
   /// Valida un QR rotativo y devuelve además los datos de identidad que lleva
   /// (nombre, grado y tipo de asegurado), para mostrarlos en el validador.
   /// Retorna `null` si el QR no es un carnet COSSMIL legible.
-  static RotatingValidation? validateRotating(String raw,
-      {DateTime? now, int tolerance = 1}) {
+  static RotatingValidation? validateRotating(
+    String raw, {
+    DateTime? now,
+    int tolerance = 1,
+  }) {
     try {
       final uri = Uri.parse(raw.trim());
       final mat = uri.queryParameters['mat'] ?? '';
@@ -182,7 +191,8 @@ class CarnetData {
   /// alguien alteró los parámetros del QR. NO es firma criptográfica (eso
   /// requiere clave del backend), pero sí valida que el QR no fue manipulado.
   static String integrityHash(String matricula, String codigo) {
-    final raw = 'COSSMIL-CARNET|${matricula.trim().toUpperCase()}|${codigo.trim()}';
+    final raw =
+        'COSSMIL-CARNET|${matricula.trim().toUpperCase()}|${codigo.trim()}';
     return sha256.convert(utf8.encode(raw)).toString().substring(0, 12);
   }
 
@@ -208,8 +218,11 @@ class CarnetData {
   }
 
   /// `true` si el hash del QR coincide (no fue alterado).
-  static bool isQrIntegrityValid(String matricula, String codigo, String hash) =>
-      hash.isNotEmpty && hash == integrityHash(matricula, codigo);
+  static bool isQrIntegrityValid(
+    String matricula,
+    String codigo,
+    String hash,
+  ) => hash.isNotEmpty && hash == integrityHash(matricula, codigo);
 
   /// Normaliza la fuerza/rama institucional a su nombre legible.
   /// "EC" o "CIVIL" → "EMPLEADO CIVIL"; el resto se muestra en mayúsculas.
@@ -230,7 +243,12 @@ class CarnetData {
     final s = raw.trim();
     if (s.isEmpty) return '';
     // Intentar varios formatos comunes del backend.
-    for (final fmt in ['yyyy-MM-dd', 'dd/MM/yyyy', 'yyyy/MM/dd', 'dd-MM-yyyy']) {
+    for (final fmt in [
+      'yyyy-MM-dd',
+      'dd/MM/yyyy',
+      'yyyy/MM/dd',
+      'dd-MM-yyyy',
+    ]) {
       try {
         final dt = DateFormat(fmt).parseStrict(s.split('T').first);
         return DateFormat('dd-MM-yyyy').format(dt);

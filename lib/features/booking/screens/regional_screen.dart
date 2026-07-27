@@ -619,6 +619,7 @@ class _RegionalScreenState extends State<RegionalScreen> {
       showAppDialog<void>(
         context: context,
         barrierDismissible: false,
+        silent: true, // esperar no es un evento: un loader no suena
         builder: (_) =>
             const LoaderWithMessage(message: 'Cargando familiares…'),
       );
@@ -760,12 +761,13 @@ class _RegionalScreenState extends State<RegionalScreen> {
         showAppDialog<void>(
           context: context,
           barrierDismissible: false,
+          silent: true, // esperar no es un evento: un loader no suena
           builder: (_) =>
               const LoaderWithMessage(message: 'Verificando disponibilidad…'),
         );
         loaderOpen = true;
 
-        // 1a. Penalización por inasistencias (2 faltas) del familiar elegido.
+        // 1a. Penalización por inasistencias (3 faltas) del familiar elegido.
         //     Se consulta con el idper de la persona que va a ser atendida; si
         //     está penalizada (data:true) debe reservar de forma presencial.
         final inasistenciasMsg = await _service.validarInasistencias(idper);
@@ -892,7 +894,8 @@ class _RegionalScreenState extends State<RegionalScreen> {
                               r.paddingH,
                               r.listItemSpacing,
                             ),
-                            child: (widget.tabShell.bookingState.isTutorialMode &&
+                            child:
+                                (widget.tabShell.bookingState.isTutorialMode &&
                                     deptoStartIndex == 0 &&
                                     i == 0)
                                 ? GuidedTapHint(

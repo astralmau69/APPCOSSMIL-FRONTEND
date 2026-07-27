@@ -963,7 +963,9 @@ class _LoginScreenState extends State<LoginScreen>
             : AppColors.white.withValues(alpha: 0.90),
         borderRadius: BorderRadius.circular(r.cardRadius + 4),
         border: Border.all(
-          color: AppColors.cardBorder(isDark).withValues(alpha: isDark ? 0.9 : 0.6),
+          color: AppColors.cardBorder(
+            isDark,
+          ).withValues(alpha: isDark ? 0.9 : 0.6),
         ),
         boxShadow: AppColors.cardShadowFor(isDark),
       ),
@@ -1102,59 +1104,59 @@ class _LoginScreenState extends State<LoginScreen>
           child: Row(
             children: [
               Icon(icon, size: r.iconMd, color: accent),
-            SizedBox(width: r.spaceMd),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    label,
-                    style: texts.labelSmall.copyWith(
-                      color: AppColors.textSecondary,
-                      fontWeight: FontWeight.w600,
+              SizedBox(width: r.spaceMd),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      label,
+                      style: texts.labelSmall.copyWith(
+                        color: AppColors.textSecondary,
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
-                  ),
-                  SizedBox(height: r.spaceXs),
-                  CupertinoTextField(
-                    controller: controller,
-                    focusNode: focusNode,
-                    obscureText: obscureText,
-                    enabled: !_isLoading,
-                    textCapitalization: textCapitalization,
-                    onChanged: onChanged,
-                    inputFormatters: inputFormatters,
-                    padding: EdgeInsets.zero,
-                    decoration: null,
-                    // +140 y no +24: al enfocar, el scroll deja visible el
-                    // campo Y el botón "Iniciar Sesión" que está debajo
-                    // (botón ~52 + espaciados + padding de la tarjeta).
-                    scrollPadding: EdgeInsets.only(
-                      bottom: MediaQuery.of(context).viewInsets.bottom + 140,
+                    SizedBox(height: r.spaceXs),
+                    CupertinoTextField(
+                      controller: controller,
+                      focusNode: focusNode,
+                      obscureText: obscureText,
+                      enabled: !_isLoading,
+                      textCapitalization: textCapitalization,
+                      onChanged: onChanged,
+                      inputFormatters: inputFormatters,
+                      padding: EdgeInsets.zero,
+                      decoration: null,
+                      // +140 y no +24: al enfocar, el scroll deja visible el
+                      // campo Y el botón "Iniciar Sesión" que está debajo
+                      // (botón ~52 + espaciados + padding de la tarjeta).
+                      scrollPadding: EdgeInsets.only(
+                        bottom: MediaQuery.of(context).viewInsets.bottom + 140,
+                      ),
+                      placeholder: placeholder,
+                      placeholderStyle: texts.bodyLarge.copyWith(
+                        color: AppColors.textTertiaryC(
+                          isDark,
+                        ).withValues(alpha: 0.6),
+                      ),
+                      style: texts.bodyLarge.copyWith(
+                        color: AppColors.textPrimaryC(isDark),
+                        fontWeight: FontWeight.w500,
+                      ),
+                      textInputAction: isLast
+                          ? TextInputAction.done
+                          : TextInputAction.next,
+                      onSubmitted: isLast ? (_) => _onLoginPressed() : null,
                     ),
-                    placeholder: placeholder,
-                    placeholderStyle: texts.bodyLarge.copyWith(
-                      color: AppColors.textTertiaryC(
-                        isDark,
-                      ).withValues(alpha: 0.6),
-                    ),
-                    style: texts.bodyLarge.copyWith(
-                      color: AppColors.textPrimaryC(isDark),
-                      fontWeight: FontWeight.w500,
-                    ),
-                    textInputAction: isLast
-                        ? TextInputAction.done
-                        : TextInputAction.next,
-                    onSubmitted: isLast ? (_) => _onLoginPressed() : null,
-                  ),
-                ],
+                  ],
+                ),
               ),
-            ),
-            if (trailing != null) ...[SizedBox(width: r.spaceXs), trailing],
-          ],
-        ),
-      ), // AnimatedContainer
-    ); // GestureDetector
+              if (trailing != null) ...[SizedBox(width: r.spaceXs), trailing],
+            ],
+          ),
+        ), // AnimatedContainer
+      ); // GestureDetector
     }
 
     if (focusNode == null) return buildField();

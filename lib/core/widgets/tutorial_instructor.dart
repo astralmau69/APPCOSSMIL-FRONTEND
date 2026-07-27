@@ -1,32 +1,167 @@
+import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:flutter/cupertino.dart';
 
-/// Asset de la instructora del tutorial (personaje chibi militar, PNG con
-/// transparencia real, ~460×750 px — sobra resolución hasta para tablets).
-const String kTutorialInstructorAsset = 'assets/images/instructora_tutorial.png';
+/// Poses de la instructora. Cada una es una ilustración distinta recortada de
+/// las láminas del personaje con `tools/extract_instructor_frames.py`.
+enum InstructorPose {
+  /// De pie, relajada, con la tablet al costado. Para cuando no está dando
+  /// instrucciones (coach minimizado).
+  reposo,
 
-/// Instructora militar que guía los tutoriales: el personaje ilustrado de la
-/// app en vez de un dibujo procedural. Está VIVA:
+  /// Señalando la tablet: la pose de "te estoy explicando". Es la única con
+  /// gemelas de ojos cerrados y de guiño, así que es la única que hace
+  /// micro-expresiones.
+  explica,
+
+  /// Sonriendo con el visto verde en la tablet: misión cumplida. Al celebrar
+  /// alterna con [festeja] para que el festejo tenga movimiento.
+  celebra,
+
+  /// Riendo con la mano en alto: festejo. Solo aparece alternando con
+  /// [celebra] durante la celebración.
+  festeja,
+
+  /// Ojos cerrados, pensativa: "déjame ver…". Se usa mientras el coach
+  /// "escribe" la próxima burbuja.
+  piensa,
+
+  /// Saludo militar. Presentación del tutorial.
+  saludo,
+}
+
+const String _kReposo = 'assets/images/instructora_reposo.png';
+const String _kExplica = 'assets/images/instructora_explica.png';
+const String _kParpadeo = 'assets/images/instructora_parpadeo.png';
+const String _kGuino = 'assets/images/instructora_guino.png';
+const String _kCelebra = 'assets/images/instructora_celebra.png';
+const String _kFesteja = 'assets/images/instructora_festeja.png';
+const String _kPiensa = 'assets/images/instructora_piensa.png';
+const String _kSaludo = 'assets/images/instructora_saludo.png';
+
+/// Ciclo de caminata de perfil (mirando a la derecha), 7 fotogramas alineados
+/// por cabeza y pies con `tools/build_instructor_walk.py`. Se reproducen en
+/// secuencia para la entrada "camina hasta su sitio".
+const List<String> kInstructorWalkFrames = [
+  'assets/images/instructora_walk_1.png',
+  'assets/images/instructora_walk_2.png',
+  'assets/images/instructora_walk_3.png',
+  'assets/images/instructora_walk_4.png',
+  'assets/images/instructora_walk_5.png',
+  'assets/images/instructora_walk_6.png',
+  'assets/images/instructora_walk_7.png',
+];
+
+/// Fotograma del ciclo con las piernas casi juntas (silueta más parecida a la
+/// pose de pie): en él termina la caminata para que el relevo a la pose
+/// estática no dé un salto.
+const int _kWalkSettleFrame = 3; // instructora_walk_4
+
+/// Todas las ilustraciones del personaje, para precargarlas antes de que
+/// aparezca (evita el parpadeo en blanco del primer fotograma).
+const List<String> kInstructorAssets = [
+  _kReposo,
+  _kExplica,
+  _kParpadeo,
+  _kGuino,
+  _kCelebra,
+  _kFesteja,
+  _kPiensa,
+  _kSaludo,
+  ...kInstructorWalkFrames,
+];
+
+/// Asset de la pose por defecto — el que conviene precargar si solo se va a
+/// precargar uno.
+const String kTutorialInstructorAsset = _kExplica;
+
+/// Corrección de escala por asset, para que la CABEZA mida lo mismo en todas
+/// las poses.
 ///
-/// - Reposo: flota y se balancea suavemente en bucle (respira / saluda).
-/// - [celebrate]: saltitos enérgicos de "misión cumplida" con sacudida.
-/// - [entrance]: aparición elástica (pop desde los pies) al montarse — para
-///   diálogos y presentaciones.
+/// `piensa` y `festeja` salieron de otra lámina de Gemini (~240 px nativos
+/// reescalados a 520, frente a los ~700 px del resto) y, como cada pose se
+/// recorta a su propio bbox y se dibuja con `height: h`, a igual altura de
+/// render su cabeza quedaba un ~10% más grande. Resultado: la instructora
+/// pegaba un SALTO DE TAMAÑO en cada cambio de pose — y `explica → piensa`
+/// ocurre entre cada par de burbujas, mientras que `celebra ↔ festeja` alterna
+/// cada segundo durante el festejo.
+///
+/// El 0.91 sale de dos métricas independientes que coinciden dentro del 1%:
+/// ancho de cabeza (0.905 / 0.916) y ancho de boina (0.916 / 0.907). Las otras
+/// seis poses quedan dentro de ±1.5% entre sí, que es ruido de medición: no se
+/// corrigen para no introducir error donde no lo hay.
+///
+/// Es un PARCHE hasta que llegue el juego de poses regenerado con encuadre
+/// común (ver `tools/instructor_prompts.md`); cuando esté, esta tabla se borra.
+const Map<String, double> _kPoseScale = {_kPiensa: 0.91, _kFesteja: 0.91};
+
+double _poseScale(String asset) => _kPoseScale[asset] ?? 1.0;
+
+String _assetFor(InstructorPose pose) => switch (pose) {
+  InstructorPose.reposo => _kReposo,
+  InstructorPose.explica => _kExplica,
+  InstructorPose.celebra => _kCelebra,
+  InstructorPose.festeja => _kFesteja,
+  InstructorPose.piensa => _kPiensa,
+  InstructorPose.saludo => _kSaludo,
+};
+
+/// Instructora militar que guía los tutoriales. Está VIVA en tres capas:
+///
+/// - **Pose**: cambia de ilustración según lo que esté haciendo
+///   ([InstructorPose]), con un fundido corto entre una y otra.
+/// - **Parpadeo**: en [InstructorPose.explica] cierra los ojos cada pocos
+///   segundos. Es el detalle que más hace por que un dibujo quieto parezca
+///   estar presente; los intervalos son irregulares a propósito, porque un
+///   parpadeo metronómico se nota falso.
+/// - **Cuerpo**: flota y se balancea en bucle; en [InstructorPose.celebra]
+///   son saltitos enérgicos.
+///
+/// La entrada tiene dos modos: [entrance] da una aparición elástica al
+/// montarse; con [walkIn] la instructora ENTRA CAMINANDO desde fuera del borde
+/// izquierdo hasta su sitio (ciclo de 7 fotogramas de perfil) y recién ahí pasa
+/// a su pose y empieza a flotar/parpadear. Es lo que la hace sentir "de
+/// verdad": no aparece, llega.
 ///
 /// Solo anima transform + opacidad (propiedades del compositor): seguro en
 /// web/CanvasKit y GPUs débiles. Con reduce-motion queda estática en su pose
-/// neutral y la entrada salta directo al final.
+/// neutral, sin parpadeo, sin caminata y con la entrada saltada.
 class TutorialInstructor extends StatefulWidget {
   final double height;
-  final bool celebrate;
+  final InstructorPose pose;
   final bool entrance;
+
+  /// Entra caminando desde el borde izquierdo hasta su sitio antes de posar.
+  /// Requiere [entrance]. Ignorado con reduce-motion (aparece ya parada).
+  final bool walkIn;
+
+  /// Si el bucle de flote/balanceo debe correr. Se apaga cuando la instructora
+  /// está minimizada en la esquina (coach colapsado): ahí casi no se mueve, así
+  /// que dejar un AnimationController repintando a 60 fps es puro desperdicio en
+  /// GPUs débiles. Con `false` queda quieta en su postura de reposo; la entrada
+  /// elástica y el cambio de pose siguen funcionando.
+  final bool idle;
+
+  /// true mientras suena la locución del paso. Habilita la coreografía de
+  /// festejo SOLO si además es el paso de éxito ([pose] == celebra); en pasos
+  /// regulares no cambia la pose (narra con explica). Ver [_talking].
+  final bool speaking;
+
+  /// Duración de la locución en curso. En el paso de éxito, la alternancia
+  /// check↔risa se AJUSTA para caber exactamente en ese tiempo (una pasada,
+  /// ~una pose por segundo con clamp 2..10). Sincroniza el gesto con la voz.
+  final Duration? speakDuration;
 
   const TutorialInstructor({
     super.key,
     required this.height,
-    this.celebrate = false,
+    this.pose = InstructorPose.explica,
     this.entrance = false,
+    this.walkIn = false,
+    this.idle = true,
+    this.speaking = false,
+    this.speakDuration,
   });
 
   @override
@@ -38,100 +173,571 @@ class _TutorialInstructorState extends State<TutorialInstructor>
   late final AnimationController _idle;
   late final AnimationController _pop;
 
+  /// Entrada caminando: recorre el ciclo mientras se traslada hasta su sitio.
+  late final AnimationController _walk;
+
+  /// Golpe de cambio de pose: una compresión corta con rebote que corre SOBRE
+  /// el fundido cruzado.
+  ///
+  /// Un fundido entre dos dibujos DISTINTOS se lee como una disolvencia
+  /// fantasmal (la tablet se desvanece en el aire, el brazo se materializa
+  /// arriba). Acompañarlo de movimiento hace que el ojo lea el movimiento como
+  /// la causa del cambio y la disolvencia deje de saltar a la vista — truco
+  /// clásico de animación 2D. Es un paliativo mientras no existan los cuadros
+  /// intermedios (ver `tools/instructor_prompts.md`); cuando lleguen, este
+  /// golpe se queda igual y sirve de acento.
+  late final AnimationController _swap;
+  static const _swapDur = Duration(milliseconds: 260);
+
+  /// Punto del golpe en el que se releva el dibujo: el pico de compresión.
+  ///
+  /// El relevo es un CORTE SECO, no un fundido. Se comprobó volcando los
+  /// fotogramas (`test/core/tutorial_instructor_frames_test.dart`): con el
+  /// fundido cruzado de 180 ms se veían ~11 cuadros con DOS personajes
+  /// superpuestos —dos boinas, dos coletas, dos caras—, que es exactamente lo
+  /// que se percibía como "no fluido". La animación 2D nunca disuelve entre
+  /// poses: corta en el fotograma clave y esconde el cambio en el extremo de la
+  /// deformación, que es lo que hace este valor.
+  static const _kSwapCut = 0.32;
+
+  /// Pose que se estaba pintando al empezar el golpe; se sigue mostrando hasta
+  /// el corte. Nula cuando no hay relevo en curso.
+  InstructorPose? _poseDesde;
+
+  /// Equivalente para la alternancia celebra↔festeja, que no pasa por
+  /// didUpdateWidget.
+  int _talkIdxDesde = 0;
+
+  /// Última casilla de la alternancia festejo vista, para disparar el golpe
+  /// solo cuando el asset REALMENTE cambia (no en cada frame).
+  int _lastTalkIdx = -1;
+
+  /// Los seis controladores fundidos en un solo Listenable, creado UNA vez.
+  /// Construirlo dentro de `build` (como estaba) le daba al AnimatedBuilder un
+  /// objeto distinto en cada reconstrucción, así que desenganchaba y volvía a
+  /// enganchar los cinco listeners en cada parpadeo y en cada cambio de pose.
+  late final Listenable _loop;
+
   static const _idleCalm = Duration(milliseconds: 2600);
   static const _idleParty = Duration(milliseconds: 1500);
+
+  /// Duración de la caminata de entrada y cuántos pasos (ciclos del set de 7)
+  /// da en ese trayecto — ~11 fps, que es donde una caminada chibi lee natural.
+  static const _walkDur = Duration(milliseconds: 1300);
+  static const _walkCycles = 2.3;
+
+  /// true mientras la caminata de entrada está en curso.
+  bool get _walking => widget.walkIn && !_reduceMotion && _walk.value < 1.0;
+
+  /// Cuánto dura cada micro-expresión y cada cuánto vuelve (con margen
+  /// aleatorio). Un guiño dura bastante más que un parpadeo: es un gesto
+  /// dirigido a ti, no un reflejo.
+  static const _blinkDur = Duration(milliseconds: 130);
+  static const _winkDur = Duration(milliseconds: 780);
+  static const _blinkMinGap = 2600;
+  static const _blinkJitter = 3200;
+
+  /// De cada tantas micro-expresiones, una es guiño. Poco frecuente a
+  /// propósito: si guiñara a menudo dejaría de sentirse espontáneo.
+  static const _winkEveryN = 4;
+
+  final _rng = math.Random();
+  Timer? _blinkTimer;
+
+  /// Asset de la micro-expresión activa (ojos cerrados o guiño); nulo cuando
+  /// está con su cara normal.
+  String? _microExpr;
+  bool _reduceMotion = false;
+
+  /// Recorre la alternancia celebra↔festeja mientras "habla"/celebra. Su
+  /// duración se ajusta a la locución (o a un periodo por defecto en bucle),
+  /// así el conteo de poses cabe exactamente en el audio.
+  late final AnimationController _talk;
+
+  /// Cabeceo suave de "estoy hablando" para los pasos NORMALES. No hay
+  /// fotograma de boca abierta, así que el movimiento es lo que comunica que
+  /// ella dice las palabras: corre en bucle SOLO mientras suena la locución y
+  /// se detiene en cuanto calla, para que el gesto quede atado a la voz.
+  late final AnimationController _speak;
+
+  /// Se marca la primera vez que se precargan las poses, para no repetir el
+  /// trabajo en cada `didChangeDependencies`.
+  bool _precached = false;
+
+  bool get _celebrating => widget.pose == InstructorPose.celebra;
+
+  /// true cuando corresponde el cabeceo de "hablar" de un paso normal: suena
+  /// la voz, no es el paso de éxito (ese ya festeja) y hay movimiento.
+  bool get _speakBob => !_reduceMotion && widget.speaking && !_celebrating;
+
+  /// true SOLO cuando corresponde la alternancia dinámica de festejo
+  /// (check verde ↔ risa). Se reserva —a propósito— al paso de ÉXITO (pose
+  /// [InstructorPose.celebra]) y únicamente mientras suena su locución. En los
+  /// pasos regulares la instructora narra con su pose neutral (explica): en una
+  /// app de citas médicas festejar en cada paso desentona. Sin audio o al
+  /// terminar, cae al `else` del build → su pose de reposo (nunca festejo).
+  bool get _talking => !_reduceMotion && _celebrating && widget.speaking;
+
+  /// Cuántas veces alterna check↔risa. Con audio, ~una por segundo (4–5 en 5 s);
+  /// sin audio, un número par para que el bucle cierre limpio.
+  int get _talkSwaps {
+    final d = widget.speakDuration;
+    if (d != null) return (d.inMilliseconds / 1050).round().clamp(2, 10);
+    return 6;
+  }
+
+  /// Cuánto dura una pasada completa de la alternancia.
+  Duration get _talkPeriod =>
+      widget.speakDuration ?? Duration(milliseconds: _talkSwaps * 950);
+
+  /// Cadencia del cabeceo cuando no hay duración de locución que seguir.
+  static const _speakBobDefault = Duration(milliseconds: 650);
+
+  /// Cuánto dura UN asentimiento. Con locución se ajusta para que quepa un
+  /// número ENTERO de cabeceos en el audio: así el último se cierra justo
+  /// cuando ella calla, en vez de quedar cortado a media caída. Antes era un
+  /// bucle fijo de 650 ms sin ninguna relación con el clip, de modo que el
+  /// gesto y la voz iban cada uno por su lado por mucho que el comentario
+  /// dijera "sincronizado".
+  Duration get _speakBobPeriod {
+    final d = widget.speakDuration;
+    if (d == null || d == Duration.zero) return _speakBobDefault;
+    // ~un asentimiento por segundo, redondeado a un divisor exacto del clip.
+    final n = (d.inMilliseconds / 900).round().clamp(1, 12);
+    return Duration(milliseconds: (d.inMilliseconds / n).round());
+  }
 
   @override
   void initState() {
     super.initState();
     _idle = AnimationController(
       vsync: this,
-      duration: widget.celebrate ? _idleParty : _idleCalm,
+      duration: _celebrating ? _idleParty : _idleCalm,
     );
     _pop = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 750),
     );
-    if (!widget.entrance) _pop.value = 1.0;
+    _walk = AnimationController(vsync: this, duration: _walkDur);
+    _talk = AnimationController(vsync: this, duration: _talkPeriod);
+    _speak = AnimationController(vsync: this, duration: _speakBobPeriod);
+    _swap = AnimationController(vsync: this, duration: _swapDur);
+    _loop = Listenable.merge([_idle, _pop, _walk, _talk, _speak, _swap]);
+    // La alternancia check↔risa no pasa por didUpdateWidget (la mueve _talk),
+    // así que el golpe se engancha a su cruce de casilla.
+    _talk.addListener(_watchTalkSwap);
+    // Al caminar hasta su sitio, la aparición elástica sobra (llegaría dando un
+    // respingo tras el último paso): la pose ya entra fundida desde el andar.
+    if (!widget.entrance || widget.walkIn) _pop.value = 1.0;
+    _walk.addStatusListener((s) {
+      // Al llegar, arranca la vida "de pie": flote, parpadeo y la pose real
+      // relevan al último fotograma de caminata.
+      if (s == AnimationStatus.completed && mounted) {
+        setState(() {});
+        _syncIdle();
+        _syncBlinking();
+        // Aterrizaje: el relevo perfil→frente es el fundido más brusco de
+        // todos, y el golpe lo lee como "llegó y se plantó".
+        _kickSwap();
+      }
+    });
   }
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    if (MediaQuery.disableAnimationsOf(context)) {
-      _idle.stop();
-      _idle.value = 0;
-      _pop.value = 1.0;
-    } else {
-      if (!_idle.isAnimating) _idle.repeat();
-      if (_pop.value < 1.0 && !_pop.isAnimating) _pop.forward();
+    // Precarga TODAS las poses la primera vez (no solo las gemelas de parpadeo
+    // y los fotogramas de caminata). Al lanzar el tutorial desde Perfil → Ayuda
+    // NO se pasa por la precarga de la invitación de Inicio, así que sin esto
+    // cada cambio de pose (explica↔piensa↔celebra↔festeja) y cada fotograma del
+    // andar se decodificaban sobre la marcha — la causa principal de los
+    // tirones. Ya en caché, el relevo entre poses es instantáneo. Es async y
+    // fuera del hilo de UI, así que no bloquea el primer frame.
+    if (!_precached) {
+      _precached = true;
+      for (final asset in kInstructorAssets) {
+        precacheImage(AssetImage(asset), context);
+      }
     }
+
+    _reduceMotion = MediaQuery.disableAnimationsOf(context);
+    if (_reduceMotion) {
+      _pop.value = 1.0;
+      _walk.value = 1.0;
+      _stopBlinking();
+    } else {
+      // Arranca la caminata de entrada una sola vez.
+      if (widget.walkIn && _walk.value == 0 && !_walk.isAnimating) {
+        _walk.forward();
+      } else if (!widget.walkIn && _pop.value < 1.0 && !_pop.isAnimating) {
+        _pop.forward();
+      }
+      // Mientras camina, la vida "de pie" (flote/parpadeo) espera a que llegue.
+      if (!_walking) _syncBlinking();
+    }
+    if (!_walking) _syncIdle();
+    _syncTalk();
+    _syncSpeak();
   }
 
   @override
   void didUpdateWidget(covariant TutorialInstructor oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.celebrate != widget.celebrate) {
-      _idle.duration = widget.celebrate ? _idleParty : _idleCalm;
-      if (_idle.isAnimating) _idle.repeat();
+    final poseChanged = oldWidget.pose != widget.pose;
+    final speakChanged =
+        oldWidget.speaking != widget.speaking ||
+        oldWidget.speakDuration != widget.speakDuration;
+    if (poseChanged) {
+      _syncBlinking();
+      // Se sigue pintando la pose vieja hasta el pico de compresión.
+      _poseDesde = oldWidget.pose;
+      _kickSwap();
+    }
+    // La cadencia (calmo ↔ saltitos de festejo) la resuelve _syncIdle
+    // comparando duraciones: solo interrumpe el bucle cuando REALMENTE cambia
+    // el ritmo, y esperando a que cierre el ciclo. Pasar de explica a piensa ya
+    // no reinicia el flote.
+    _syncIdle();
+    // Reinicia la coreografía de voz si empezó a hablar o cambió la locución.
+    _syncTalk(restart: speakChanged || poseChanged);
+    if (speakChanged || poseChanged) _syncSpeak();
+  }
+
+  /// Arranca/detiene la coreografía de "hablar" (alternancia check↔risa). Con
+  /// audio ([TutorialInstructor.speakDuration]) hace UNA pasada que cubre justo
+  /// esa duración; sin audio (celebración), va en bucle. El fundido suave entre
+  /// poses lo pone el AnimatedSwitcher (easeInOutCubic, ~180 ms).
+  void _syncTalk({bool restart = false}) {
+    if (_talking) {
+      _talk.duration = _talkPeriod;
+      if (widget.speakDuration != null) {
+        if (!_talk.isAnimating || restart) _talk.forward(from: 0);
+      } else {
+        if (!_talk.isAnimating || restart) _talk.repeat();
+      }
+    } else {
+      if (_talk.isAnimating) _talk.stop();
+      if (_talk.value != 0) _talk.value = 0;
+    }
+  }
+
+  /// Dispara el golpe del cambio de pose. Con reduce-motion no hay golpe: el
+  /// relevo de imagen es instantáneo y añadirle rebote sería justo el tipo de
+  /// movimiento que ese ajuste pide evitar.
+  void _kickSwap() {
+    if (_reduceMotion || _walking) return;
+    _swap.forward(from: 0);
+  }
+
+  /// Vigila el cruce de casilla de la alternancia celebra↔festeja para acentuar
+  /// cada relevo con el golpe.
+  void _watchTalkSwap() {
+    if (!_talking) {
+      _lastTalkIdx = -1;
+      return;
+    }
+    final idx = (_talk.value * _talkSwaps).floor();
+    if (idx == _lastTalkIdx) return;
+    final primera = _lastTalkIdx < 0;
+    _talkIdxDesde = primera ? idx : _lastTalkIdx;
+    _lastTalkIdx = idx;
+    if (!primera) _kickSwap();
+  }
+
+  /// Apaga un bucle SIN teletransportar la figura: lo deja terminar el ciclo en
+  /// curso y recién ahí llama a [onSettled].
+  ///
+  /// Es el arreglo del tirón más visible del coach. Estos bucles son senoidales
+  /// sobre la fase `value * 2π`, así que la fase 1 dibuja exactamente lo mismo
+  /// que la fase 0: dejar correr lo que falta del ciclo es indistinguible del
+  /// reposo, pero continuo. Cortar con `value = 0` (como estaba) hacía que la
+  /// instructora SALTARA desde donde estuviera el flote — al minimizarse, al
+  /// callar y en cada cambio de pose.
+  void _settle(AnimationController c, {required VoidCallback onSettled}) {
+    if (!c.isAnimating) {
+      onSettled();
+      return;
+    }
+    final total = c.duration ?? Duration.zero;
+    c
+        .animateTo(
+          1.0,
+          duration: total * (1 - c.value),
+          curve: Curves.linear, // el bucle ya trae su propia curva senoidal
+        )
+        .whenComplete(() {
+          if (mounted) onSettled();
+        });
+  }
+
+  /// Enciende/apaga el cabeceo de "hablar" de los pasos normales. Atado a la
+  /// voz: corre mientras suena y se cierra al callar, para que el movimiento
+  /// sea consistente con la locución. Transform-only, no toca la pose.
+  void _syncSpeak() {
+    if (!_speakBob) {
+      if (_speak.isAnimating) {
+        _settle(
+          _speak,
+          onSettled: () {
+            if (_speakBob) _syncSpeak(); // volvió a hablar mientras cerraba
+          },
+        );
+      }
+      return;
+    }
+    final period = _speakBobPeriod;
+    if (!_speak.isAnimating) {
+      _speak.duration = period;
+      _speak.repeat();
+    } else if (_speak.duration != period) {
+      // Locución nueva con otra cadencia: cierra el asentimiento en curso y
+      // arranca con el periodo del clip nuevo.
+      _settle(_speak, onSettled: _syncSpeak);
+    }
+  }
+
+  /// Enciende o apaga el bucle de flote según reduce-motion y
+  /// [TutorialInstructor.idle], y adopta la cadencia de la pose activa (el
+  /// festejo es más rápido que el flote calmo). Los cambios de cadencia esperan
+  /// a que cierre el ciclo en curso: `repeat()` en caliente reinicia la fase a
+  /// 0, que es justo el brinco que se veía al cambiar de pose.
+  void _syncIdle() {
+    if (_reduceMotion || !widget.idle) {
+      if (_idle.isAnimating) _settle(_idle, onSettled: _syncIdle);
+      return;
+    }
+    final period = _celebrating ? _idleParty : _idleCalm;
+    if (!_idle.isAnimating) {
+      _idle.duration = period;
+      _idle.repeat();
+    } else if (_idle.duration != period) {
+      _settle(_idle, onSettled: _syncIdle);
     }
   }
 
   @override
   void dispose() {
+    _blinkTimer?.cancel();
+    _talk.removeListener(_watchTalkSwap);
     _idle.dispose();
     _pop.dispose();
+    _walk.dispose();
+    _talk.dispose();
+    _speak.dispose();
+    _swap.dispose();
     super.dispose();
+  }
+
+  /// Solo parpadea la pose que tiene gemela de ojos cerrados (y nunca mientras
+  /// camina: entra de perfil, no mira al usuario).
+  void _syncBlinking() {
+    final debe =
+        !_reduceMotion && !_walking && widget.pose == InstructorPose.explica;
+    if (debe) {
+      if (_blinkTimer == null) _scheduleBlink();
+    } else {
+      _stopBlinking();
+    }
+  }
+
+  void _stopBlinking() {
+    _blinkTimer?.cancel();
+    _blinkTimer = null;
+    if (_microExpr != null && mounted) setState(() => _microExpr = null);
+  }
+
+  void _scheduleBlink() {
+    final gap = _blinkMinGap + _rng.nextInt(_blinkJitter);
+    _blinkTimer = Timer(Duration(milliseconds: gap), () {
+      if (!mounted) return;
+      final guina = _rng.nextInt(_winkEveryN) == 0;
+      setState(() => _microExpr = guina ? _kGuino : _kParpadeo);
+      _blinkTimer = Timer(guina ? _winkDur : _blinkDur, () {
+        if (!mounted) return;
+        setState(() => _microExpr = null);
+        _scheduleBlink();
+      });
+    });
+  }
+
+  /// Fotograma del ciclo para un progreso de caminata [p] (0..1). En el último
+  /// tramo fija el fotograma de piernas juntas: es donde termina el andar para
+  /// que el relevo a la pose de pie no dé un respingo.
+  int _walkFrameIndex(double p) {
+    final n = kInstructorWalkFrames.length;
+    if (p >= 0.9) return _kWalkSettleFrame;
+    return (p * _walkCycles * n).floor() % n;
   }
 
   @override
   Widget build(BuildContext context) {
     final h = widget.height;
+
     return RepaintBoundary(
       child: AnimatedBuilder(
-        animation: Listenable.merge([_idle, _pop]),
-        builder: (context, child) {
-          final phase = _idle.value * 2 * math.pi;
-          final double dy;
-          final double tilt;
-          if (widget.celebrate) {
-            // Dos saltitos por ciclo + sacudida rápida de festejo.
-            dy = -math.sin(phase * 2).abs() * h * 0.055;
-            tilt = math.sin(phase * 4) * 0.05;
+        animation: _loop,
+        // El Image va DENTRO del builder (no como child cacheado): durante la
+        // caminata y el habla el fotograma cambia en cada frame.
+        builder: (context, _) {
+          final walking = _walking;
+          // ¿Estamos ANTES del corte? Mientras el golpe comprime, se sigue
+          // pintando la pose SALIENTE; el relevo ocurre de golpe en el pico de
+          // compresión. Ver [_kSwapCut].
+          final antesDelCorte = _swap.isAnimating && _swap.value < _kSwapCut;
+
+          final String asset;
+          if (walking) {
+            asset = kInstructorWalkFrames[_walkFrameIndex(_walk.value)];
+          } else if (_talking) {
+            // Festejo del paso de éxito: check↔risa según el progreso de la
+            // locución (el número de poses cabe justo en la duración del audio).
+            final idx = antesDelCorte
+                ? _talkIdxDesde
+                : (_talk.value * _talkSwaps).floor();
+            asset = idx.isEven ? _kCelebra : _kFesteja;
           } else {
-            // Flote respirado + balanceo apenas perceptible, desfasados para
-            // que el movimiento no se sienta mecánico.
-            dy = math.sin(phase) * h * 0.018;
-            tilt = math.sin(phase + 0.8) * 0.022;
+            // Reposo/narración: pose neutral (explica) o la que fije el coach.
+            // Las micro-expresiones no esperan al corte: un parpadeo tiene que
+            // ser instantáneo.
+            final pose = (antesDelCorte && _poseDesde != null)
+                ? _poseDesde!
+                : widget.pose;
+            asset = _microExpr ?? _assetFor(pose);
           }
 
-          // Entrada elástica: crece desde los pies mientras aparece.
-          final scale = 0.4 + 0.6 * Curves.elasticOut.transform(_pop.value);
-          final opacity = (_pop.value * 3).clamp(0.0, 1.0);
+          final double dx; // desplazamiento horizontal (solo al caminar)
+          final double dy;
+          final double tilt;
+          final double scale;
+          final double opacity;
+          if (walking) {
+            // Entra desde fuera del borde izquierdo y desacelera hasta su sitio.
+            final ease = Curves.easeOutCubic.transform(_walk.value);
+            dx = -h * 1.25 * (1 - ease);
+            dy = 0;
+            tilt = 0;
+            scale = 1.0;
+            opacity = 1.0;
+          } else {
+            final phase = _idle.value * 2 * math.pi;
+            if (_celebrating) {
+              // Dos saltitos por ciclo + sacudida rápida de festejo.
+              dy = -math.sin(phase * 2).abs() * h * 0.055;
+              tilt = math.sin(phase * 4) * 0.05;
+            } else {
+              // Al hablar, UN asentimiento suave por ciclo SOBRE el flote:
+              // parece que ella dice las palabras. `(1-cos)/2` es una caída y
+              // regreso limpios (nada de tembleque); un leve vaivén lateral lo
+              // acompaña. Empieza y termina con la voz (ver [_syncSpeak]), así
+              // el gesto va sincronizado con ella.
+              final s = _speak.value * 2 * math.pi;
+              final nod = (1 - math.cos(s)) / 2; // 0→1→0, un cabeceo por ciclo
+              final bobY = _speakBob ? -nod * h * 0.02 : 0.0;
+              final bobTilt = _speakBob ? math.sin(s) * 0.014 : 0.0;
+              // Flote respirado + balanceo apenas perceptible, desfasados para
+              // que el movimiento no se sienta mecánico.
+              dy = math.sin(phase) * h * 0.018 + bobY;
+              tilt = math.sin(phase + 0.8) * 0.022 + bobTilt;
+            }
+            dx = 0;
+            // Entrada elástica: crece desde los pies mientras aparece.
+            scale = 0.4 + 0.6 * Curves.elasticOut.transform(_pop.value);
+            opacity = (_pop.value * 3).clamp(0.0, 1.0);
+          }
+
+          // Qué tan "en el aire" está (0 = apoyada, 1 = punto más alto del
+          // salto). La sombra de contacto se encoge y aclara con la altura:
+          // es lo que ancla el flote al piso en vez de verse recortada.
+          final lift = (-dy / (h * 0.055)).clamp(-1.0, 1.0);
+
+          // Golpe del cambio de pose (0 = en reposo, 1 = máxima compresión):
+          // baja rápido en el primer tercio y vuelve con un rebote corto. Se
+          // ancla en los pies, así que comprime "de rodillas" sin despegarla
+          // del piso — que es como reacciona una figura de pie.
+          final double golpe;
+          final sw = _swap.value;
+          if (sw == 0 || sw == 1) {
+            golpe = 0.0;
+          } else if (sw < 0.32) {
+            golpe = Curves.easeOut.transform(sw / 0.32);
+          } else {
+            golpe = 1 - Curves.easeOutBack.transform((sw - 0.32) / 0.68);
+          }
+          // Volumen constante: lo que pierde de alto lo gana de ancho. La
+          // amplitud es la que es porque ahora el golpe carga con TODO el peso
+          // de vender el relevo (antes lo acompañaba un fundido): con menos, el
+          // corte seco se leía como un salto.
+          final squashY = 1 - golpe * 0.080;
+          final squashX = 1 + golpe * 0.055;
+
+          // Un solo Image, sin AnimatedSwitcher: TODOS los relevos son cortes
+          // secos. El fundido cruzado que había antes superponía los dos
+          // dibujos durante ~11 fotogramas y se veía como una doble exposición
+          // (ver [_kSwapCut]); quitarlo es lo que arregla la sensación de
+          // "fantasma". Lo que vende el cambio es el golpe de compresión, que
+          // ocurre justo encima del corte.
+          final figura = Image.asset(
+            asset,
+            height: h * _poseScale(asset),
+            fit: BoxFit.contain,
+            // La figura se mueve/escala cada frame: `low` (bilineal) es el
+            // filtrado recomendado para imágenes animadas — descarga a la GPU
+            // frente a `medium` (cúbico) y quita tirones en equipos flojos.
+            filterQuality: FilterQuality.low,
+            excludeFromSemantics: true,
+          );
 
           return Opacity(
             opacity: opacity,
             child: Transform.translate(
-              offset: Offset(0, dy),
-              child: Transform.rotate(
-                angle: tilt,
+              offset: Offset(dx, 0),
+              child: Stack(
                 alignment: Alignment.bottomCenter,
-                child: Transform.scale(
-                  scale: scale,
-                  alignment: Alignment.bottomCenter,
-                  child: child,
-                ),
+                clipBehavior: Clip.none,
+                children: [
+                  // Sombra elíptica bajo los pies — NO se traslada con dy.
+                  // Se ensancha con el golpe: más peso apoyado en el suelo.
+                  Transform.scale(
+                    scaleX: (1.0 - 0.20 * lift) * scale * squashX,
+                    scaleY: scale,
+                    alignment: Alignment.bottomCenter,
+                    child: Container(
+                      width: h * 0.40,
+                      height: h * 0.045,
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.all(
+                          Radius.elliptical(h * 0.20, h * 0.0225),
+                        ),
+                        gradient: RadialGradient(
+                          colors: [
+                            const Color(
+                              0xFF000000,
+                            ).withValues(alpha: 0.20 - 0.08 * lift),
+                            const Color(0x00000000),
+                          ],
+                          stops: const [0.0, 1.0],
+                        ),
+                      ),
+                    ),
+                  ),
+                  Transform.translate(
+                    offset: Offset(0, dy),
+                    child: Transform.rotate(
+                      angle: tilt,
+                      alignment: Alignment.bottomCenter,
+                      child: Transform.scale(
+                        scaleX: scale * squashX,
+                        scaleY: scale * squashY,
+                        alignment: Alignment.bottomCenter,
+                        child: figura,
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ),
           );
         },
-        child: Image.asset(
-          kTutorialInstructorAsset,
-          height: h,
-          fit: BoxFit.contain,
-          filterQuality: FilterQuality.medium,
-          excludeFromSemantics: true,
-        ),
       ),
     );
   }

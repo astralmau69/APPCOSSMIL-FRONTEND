@@ -20,8 +20,13 @@ class SpecialtyModel {
   factory SpecialtyModel.fromJson(Map<String, dynamic> json) {
     return SpecialtyModel(
       id: (json['idesp'] ?? json['id'] ?? '').toString(),
-      name: (json['especialidad'] as String? ?? json['name'] as String? ?? '').toDisplayCase,
-      description: (json['descripcion'] as String? ?? json['description'] as String? ?? '').toDisplayCase,
+      name: (json['especialidad'] as String? ?? json['name'] as String? ?? '')
+          .toDisplayCase,
+      description:
+          (json['descripcion'] as String? ??
+                  json['description'] as String? ??
+                  '')
+              .toDisplayCase,
       isInterconsulta: json['interconsulta'] as bool? ?? false,
       isAuthorized: json['autorizada'] as bool? ?? false,
       referredBy: json['referido_por'] as String?,
@@ -29,11 +34,11 @@ class SpecialtyModel {
   }
 
   Map<String, dynamic> toJson() => {
-        'id': id,
-        'name': name,
-        'description': description,
-        'isInterconsulta': isInterconsulta,
-        'isAuthorized': isAuthorized,
-        'referredBy': referredBy,
-      };
+    'id': id,
+    'name': name,
+    'description': description,
+    'isInterconsulta': isInterconsulta,
+    'isAuthorized': isAuthorized,
+    'referredBy': referredBy,
+  };
 }

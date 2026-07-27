@@ -32,6 +32,19 @@ migrate_working_dir/
 .pub-cache/
 .pub/
 /build/
+# En esta máquina `build` es un SYMLINK a ~/.cache/post2-build (el proyecto vive
+# en NTFS y compilar ahí es lento). El patrón `/build/` de arriba solo casa
+# directorios, así que el symlink se colaba como archivo sin trackear.
+/build
+
+# Proyecto de backend aparte que quedó anidado dentro del repo de la app
+# (123 MB). No pertenece a este repositorio.
+/ventanilla-mau-avancemau-backend/
+
+# Artefactos de herramientas locales (ruflo / claude-flow), no del proyecto.
+/.claude-flow/
+/.swarm/
+/package-lock.json
 
 # Symbolication related
 app.*.symbols

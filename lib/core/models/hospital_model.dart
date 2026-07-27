@@ -22,8 +22,12 @@ class HospitalModel {
   });
 
   factory HospitalModel.fromJson(Map<String, dynamic> json) {
-    double? rawLat = json['latitud'] != null ? double.tryParse(json['latitud'].toString()) : json['latitude'] as double?;
-    double? rawLng = json['longitud'] != null ? double.tryParse(json['longitud'].toString()) : json['longitude'] as double?;
+    double? rawLat = json['latitud'] != null
+        ? double.tryParse(json['latitud'].toString())
+        : json['latitude'] as double?;
+    double? rawLng = json['longitud'] != null
+        ? double.tryParse(json['longitud'].toString())
+        : json['longitude'] as double?;
 
     if (rawLat != null && rawLng != null) {
       // Corrección de error de backend: latitud y longitud invertidos (Longitud de Bolivia es -57 a -69)
@@ -39,10 +43,18 @@ class HospitalModel {
 
     return HospitalModel(
       id: (json['idsuc'] ?? json['id'] ?? '').toString(),
-      name: (json['sucursal'] as String? ?? json['name'] as String? ?? '').toDisplayCase,
-      shortName: json['sigla'] as String? ?? json['sucursal_corto'] as String? ?? json['shortName'] as String? ?? '',
-      city: (json['ciudad'] as String? ?? json['city'] as String? ?? '').toDisplayCase,
-      address: (json['direccion'] as String? ?? json['address'] as String? ?? '').toDisplayCase,
+      name: (json['sucursal'] as String? ?? json['name'] as String? ?? '')
+          .toDisplayCase,
+      shortName:
+          json['sigla'] as String? ??
+          json['sucursal_corto'] as String? ??
+          json['shortName'] as String? ??
+          '',
+      city: (json['ciudad'] as String? ?? json['city'] as String? ?? '')
+          .toDisplayCase,
+      address:
+          (json['direccion'] as String? ?? json['address'] as String? ?? '')
+              .toDisplayCase,
       latitude: rawLat,
       longitude: rawLng,
       photoBase64: json['foto'] as String? ?? '',
@@ -53,13 +65,13 @@ class HospitalModel {
   String get displayName => '$name — $city';
 
   Map<String, dynamic> toJson() => {
-        'id': id,
-        'name': name,
-        'shortName': shortName,
-        'city': city,
-        'address': address,
-        'latitude': latitude,
-        'longitude': longitude,
-        'foto': photoBase64,
-      };
+    'id': id,
+    'name': name,
+    'shortName': shortName,
+    'city': city,
+    'address': address,
+    'latitude': latitude,
+    'longitude': longitude,
+    'foto': photoBase64,
+  };
 }

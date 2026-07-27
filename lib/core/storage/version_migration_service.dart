@@ -47,5 +47,4 @@ class VersionMigrationService {
       return false;
     }
   }
-
 }

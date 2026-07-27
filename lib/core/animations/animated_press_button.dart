@@ -74,10 +74,7 @@ class _AnimatedPressButtonState extends State<AnimatedPressButton>
       onTap: widget.onTap,
       behavior: HitTestBehavior.opaque,
       // Pure ScaleTransition — avoids Impeller SetInheritedOpacity errors
-      child: ScaleTransition(
-        scale: _scaleAnim,
-        child: widget.child,
-      ),
+      child: ScaleTransition(scale: _scaleAnim, child: widget.child),
     );
   }
 }

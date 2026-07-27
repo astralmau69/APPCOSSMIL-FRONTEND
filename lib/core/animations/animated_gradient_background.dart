@@ -22,13 +22,12 @@ class AnimatedGradientBackground extends StatefulWidget {
 
 class _AnimatedGradientBackgroundState
     extends State<AnimatedGradientBackground> {
-
   @override
   Widget build(BuildContext context) {
     // Solid background — no gradient per Design System "Clinical Serenity".
     return Container(
       color: widget.isDark
-          ? const Color(0xFF101214)  // darkBackground
+          ? const Color(0xFF101214) // darkBackground
           : const Color(0xFFF7F9FB), // surface base
       child: widget.child,
     );

@@ -8,8 +8,11 @@ import '../../../core/models/specialty_model.dart';
 import '../../../core/services/calendario_service.dart';
 import '../../../core/animations/app_page_route.dart';
 import '../../../core/animations/optimized_animations.dart';
+import '../../../core/services/tutorial_flow.dart';
 import '../../../core/widgets/app_state_widget.dart';
+import '../../../core/widgets/guided_tap_hint.dart';
 import '../../../core/widgets/liquid_glass.dart';
+import '../../../core/widgets/tutorial_flow_host.dart';
 import 'doctor_schedule_screen.dart';
 
 class DoctorSelectionScreen extends StatefulWidget {
@@ -110,12 +113,24 @@ class _DoctorSelectionScreenState extends State<DoctorSelectionScreen> {
         ),
       ),
       child: SafeArea(
-        child: _buildBody(isDark, r),
+        // Paso 3 del tutorial del Calendario: elegir el médico.
+        child: TutorialFlowHost(
+          tutorial: GuidedTutorial.calendario,
+          step: 4,
+          totalSteps: 5,
+          voiceId: 'calendario_03',
+          messages: const [
+            'Estos son los médicos de esa especialidad.',
+            'Toca uno para ver su horario de atención.',
+          ],
+          builder: (context, tutorialActive) =>
+              _buildBody(isDark, r, tutorialActive),
+        ),
       ),
     );
   }
 
-  Widget _buildBody(bool isDark, AppResponsive r) {
+  Widget _buildBody(bool isDark, AppResponsive r, bool tutorialActive) {
     if (_isLoading) {
       return Center(
         child: Column(
@@ -146,27 +161,42 @@ class _DoctorSelectionScreenState extends State<DoctorSelectionScreen> {
     if (_doctors.isEmpty) {
       return AppStateWidget.empty(
         title: 'Sin médicos disponibles',
-        message: 'No hay médicos atendiendo ${widget.specialty.name} actualmente.',
+        message:
+            'No hay médicos atendiendo ${widget.specialty.name} actualmente.',
         icon: CupertinoIcons.person_2_alt,
       );
     }
 
-    final filteredDoctors = _searchQuery.isEmpty 
-        ? _doctors 
-        : _doctors.where((d) => 
-            d.nombre.toLowerCase().contains(_searchQuery.toLowerCase()) || 
-            d.consultorio.toLowerCase().contains(_searchQuery.toLowerCase())
-          ).toList();
+    final filteredDoctors = _searchQuery.isEmpty
+        ? _doctors
+        : _doctors
+              .where(
+                (d) =>
+                    d.nombre.toLowerCase().contains(
+                      _searchQuery.toLowerCase(),
+                    ) ||
+                    d.consultorio.toLowerCase().contains(
+                      _searchQuery.toLowerCase(),
+                    ),
+              )
+              .toList();
 
     return CustomScrollView(
-      physics: const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
+      physics: const BouncingScrollPhysics(
+        parent: AlwaysScrollableScrollPhysics(),
+      ),
       slivers: [
         SliverToBoxAdapter(
           child: Center(
             child: ConstrainedBox(
               constraints: BoxConstraints(maxWidth: r.maxContentWidth),
               child: Padding(
-                padding: EdgeInsets.fromLTRB(r.paddingH, r.spaceLg, r.paddingH, r.spaceXl),
+                padding: EdgeInsets.fromLTRB(
+                  r.paddingH,
+                  r.spaceLg,
+                  r.paddingH,
+                  r.navBarBottomSpace,
+                ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -180,8 +210,12 @@ class _DoctorSelectionScreenState extends State<DoctorSelectionScreen> {
                     ),
                     _buildSectionHeader(isDark, r, filteredDoctors.length),
                     SizedBox(height: r.spaceSm),
-                    _buildDoctorsList(isDark, r, filteredDoctors),
-                    SizedBox(height: r.spaceXl),
+                    _buildDoctorsList(
+                      isDark,
+                      r,
+                      filteredDoctors,
+                      highlightFirst: tutorialActive,
+                    ),
                   ],
                 ),
               ),
@@ -227,7 +261,12 @@ class _DoctorSelectionScreenState extends State<DoctorSelectionScreen> {
     );
   }
 
-  Widget _buildDoctorsList(bool isDark, AppResponsive r, List<MedicoSucModel> doctors) {
+  Widget _buildDoctorsList(
+    bool isDark,
+    AppResponsive r,
+    List<MedicoSucModel> doctors, {
+    bool highlightFirst = false,
+  }) {
     if (doctors.isEmpty) {
       return Padding(
         padding: EdgeInsets.only(top: r.spaceXl),
@@ -247,50 +286,54 @@ class _DoctorSelectionScreenState extends State<DoctorSelectionScreen> {
         children: List.generate(doctors.length, (i) {
           final doc = doctors[i];
           final isLast = i == doctors.length - 1;
+          final tile = CupertinoButton(
+            padding: EdgeInsets.zero,
+            onPressed: () => _onTap(doc),
+            child: Padding(
+              padding: EdgeInsets.symmetric(
+                horizontal: r.tileHorizontalPad,
+                vertical: r.tileVerticalPad,
+              ),
+              child: Row(
+                children: [
+                  _buildAvatar(doc, isDark, r),
+                  SizedBox(width: r.spaceMd),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          doc.displayName,
+                          style: context.texts.titleMedium.copyWith(
+                            color: AppColors.textPrimaryC(isDark),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  SizedBox(width: r.spaceSm),
+                  Icon(
+                    CupertinoIcons.chevron_right,
+                    size: 14,
+                    color: AppColors.textTertiaryC(isDark),
+                  ),
+                ],
+              ),
+            ),
+          );
           return FadeSlideIn(
             delay: Duration(milliseconds: i * 40),
             offsetY: 8,
             child: Column(
               children: [
-                CupertinoButton(
-                  padding: EdgeInsets.zero,
-                  onPressed: () => _onTap(doc),
-                  child: Padding(
-                    padding: EdgeInsets.symmetric(
-                      horizontal: r.tileHorizontalPad,
-                      vertical: r.tileVerticalPad,
-                    ),
-                    child: Row(
-                      children: [
-                        _buildAvatar(doc, isDark, r),
-                        SizedBox(width: r.spaceMd),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                doc.displayName,
-                                style: context.texts.titleMedium.copyWith(
-                                  color: AppColors.textPrimaryC(isDark),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        SizedBox(width: r.spaceSm),
-                        Icon(
-                          CupertinoIcons.chevron_right,
-                          size: 14,
-                          color: AppColors.textTertiaryC(isDark),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
+                (highlightFirst && i == 0) ? GuidedTapHint(child: tile) : tile,
                 if (!isLast)
                   Padding(
                     padding: EdgeInsets.symmetric(horizontal: r.cardPadding),
-                    child: Container(height: 0.5, color: AppColors.dividerC(isDark)),
+                    child: Container(
+                      height: 0.5,
+                      color: AppColors.dividerC(isDark),
+                    ),
                   ),
               ],
             ),
@@ -317,7 +360,12 @@ class _DoctorSelectionScreenState extends State<DoctorSelectionScreen> {
       ),
       child: ClipOval(
         child: photo != null
-            ? Image.memory(photo, fit: BoxFit.cover, width: radius * 2, height: radius * 2)
+            ? Image.memory(
+                photo,
+                fit: BoxFit.cover,
+                width: radius * 2,
+                height: radius * 2,
+              )
             : Center(
                 child: Text(
                   doc.initials,

@@ -42,7 +42,10 @@ class PermissionsOnboarding {
       await LocationService().requestPermissionOnly();
 
       await prefs.setBool(_kDone, true);
-      AppLogger.info(_tag, 'Permisos solicitados por primera vez — flag guardado');
+      AppLogger.info(
+        _tag,
+        'Permisos solicitados por primera vez — flag guardado',
+      );
     } catch (e, st) {
       AppLogger.error(_tag, 'runOnce failed', e, st);
     }

@@ -60,22 +60,22 @@ class SavedAccount {
   }
 
   Map<String, dynamic> toJson() => {
-        'matricula': matricula,
-        'displayName': displayName,
-        'photoBase64': photoBase64,
-        'pinHash': pinHash,
-        'pinSalt': pinSalt,
-        'biometricEnabled': biometricEnabled,
-        'lastUsedMs': lastUsedMs,
-      };
+    'matricula': matricula,
+    'displayName': displayName,
+    'photoBase64': photoBase64,
+    'pinHash': pinHash,
+    'pinSalt': pinSalt,
+    'biometricEnabled': biometricEnabled,
+    'lastUsedMs': lastUsedMs,
+  };
 
   factory SavedAccount.fromJson(Map<String, dynamic> json) => SavedAccount(
-        matricula: json['matricula'] as String? ?? '',
-        displayName: json['displayName'] as String? ?? '',
-        photoBase64: json['photoBase64'] as String? ?? '',
-        pinHash: json['pinHash'] as String? ?? '',
-        pinSalt: json['pinSalt'] as String? ?? '',
-        biometricEnabled: json['biometricEnabled'] as bool? ?? false,
-        lastUsedMs: json['lastUsedMs'] as int? ?? 0,
-      );
+    matricula: json['matricula'] as String? ?? '',
+    displayName: json['displayName'] as String? ?? '',
+    photoBase64: json['photoBase64'] as String? ?? '',
+    pinHash: json['pinHash'] as String? ?? '',
+    pinSalt: json['pinSalt'] as String? ?? '',
+    biometricEnabled: json['biometricEnabled'] as bool? ?? false,
+    lastUsedMs: json['lastUsedMs'] as int? ?? 0,
+  );
 }

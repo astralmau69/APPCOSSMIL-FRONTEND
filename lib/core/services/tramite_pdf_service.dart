@@ -31,16 +31,17 @@ class TramitePdfService {
 
   static pw.TextStyle get _base =>
       pw.TextStyle(fontSize: _fs, color: _ink, height: 1.42);
-  static pw.TextStyle get _bold => _base.copyWith(fontWeight: pw.FontWeight.bold);
+  static pw.TextStyle get _bold =>
+      _base.copyWith(fontWeight: pw.FontWeight.bold);
 
   static pw.TextSpan _t(String s) => pw.TextSpan(text: s, style: _base);
   static pw.TextSpan _b(String s) => pw.TextSpan(text: s, style: _bold);
 
   /// Tramo de puntos suspensivos (campo en blanco para llenar a mano).
   static pw.TextSpan _fill([int n = 48]) => pw.TextSpan(
-        text: '.' * n,
-        style: _base.copyWith(color: _dot),
-      );
+    text: '.' * n,
+    style: _base.copyWith(color: _dot),
+  );
 
   /// Valor autocompletado, resaltado en negrita.
   static pw.TextSpan _val(String s) => _b(s);
@@ -73,8 +74,11 @@ class TramitePdfService {
   /// Espacio vertical en blanco.
   static pw.Widget _gap([double h = 10]) => pw.SizedBox(height: h);
 
-  static pw.Widget _p(List<pw.TextSpan> spans,
-      {pw.TextAlign align = pw.TextAlign.justify, double bottom = 7}) {
+  static pw.Widget _p(
+    List<pw.TextSpan> spans, {
+    pw.TextAlign align = pw.TextAlign.justify,
+    double bottom = 7,
+  }) {
     return pw.Padding(
       padding: pw.EdgeInsets.only(bottom: bottom),
       child: pw.RichText(
@@ -85,17 +89,17 @@ class TramitePdfService {
   }
 
   /// Ítem de lista con viñeta o numeración manual.
-  static pw.Widget _li(String marker, List<pw.TextSpan> spans,
-      {double bottom = 3}) {
+  static pw.Widget _li(
+    String marker,
+    List<pw.TextSpan> spans, {
+    double bottom = 3,
+  }) {
     return pw.Padding(
       padding: pw.EdgeInsets.only(bottom: bottom, left: 14),
       child: pw.Row(
         crossAxisAlignment: pw.CrossAxisAlignment.start,
         children: [
-          pw.SizedBox(
-            width: 20,
-            child: pw.Text(marker, style: _base),
-          ),
+          pw.SizedBox(width: 20, child: pw.Text(marker, style: _base)),
           pw.Expanded(
             child: pw.RichText(
               textAlign: pw.TextAlign.justify,
@@ -114,13 +118,16 @@ class TramitePdfService {
       alignment: pw.Alignment.centerRight,
       margin: const pw.EdgeInsets.only(bottom: 22),
       child: pw.RichText(
-        text: pw.TextSpan(style: _base, children: [
-          _t('La Paz '),
-          _fill(8),
-          _t(' de '),
-          _fill(24),
-          _t(' de $anio'),
-        ]),
+        text: pw.TextSpan(
+          style: _base,
+          children: [
+            _t('La Paz '),
+            _fill(8),
+            _t(' de '),
+            _fill(24),
+            _t(' de $anio'),
+          ],
+        ),
       ),
     );
   }
@@ -166,20 +173,26 @@ class TramitePdfService {
     return [
       _fechaHeader(),
       _p([_t('Sr. Tcnl. DIM. José Antonio Guerrero Flores')], bottom: 1),
-      _p([_b('DIRECTOR GENERAL HOSPITAL MILITAR CENTRAL "COSSMIL"')],
-          bottom: 1),
+      _p([
+        _b('DIRECTOR GENERAL HOSPITAL MILITAR CENTRAL "COSSMIL"'),
+      ], bottom: 1),
       _p([_t('Presente. -')], bottom: 16),
       _p([_t('Señor Teniente Coronel:')], bottom: 14),
       _p([
-        _t('        Tengo a bien dirigirme a Usted, a objeto de solicitar el '
-            'llenado del '),
+        _t(
+          '        Tengo a bien dirigirme a Usted, a objeto de solicitar el '
+          'llenado del ',
+        ),
         _b('FORMULARIO MÉDICO DE DERIVACIÓN (FMD)'),
-        _t(', para iniciar el trámite en la Gestora Pública de la Seguridad '
-            'Social de Largo Plazo con las siguientes especialidades:'),
+        _t(
+          ', para iniciar el trámite en la Gestora Pública de la Seguridad '
+          'Social de Largo Plazo con las siguientes especialidades:',
+        ),
       ], bottom: 12),
       // Renglones subrayados amplios para escribir a mano la especialidad y el
       // médico de cada derivación (más espacio de escritura).
-      for (int i = 0; i < 4; i++) _writeLine(label: 'Especialidad y médico:', bottom: 18),
+      for (int i = 0; i < 4; i++)
+        _writeLine(label: 'Especialidad y médico:', bottom: 18),
       _gap(6),
       _p([_t('Para este fin adjunto documentación requerida:')], bottom: 5),
       _li('·', [_t('Fotocopia de CI')]),
@@ -205,17 +218,23 @@ class TramitePdfService {
                 child: pw.Text('C.I. $c', style: _bold),
               ),
             if (n.isEmpty && c.isEmpty) ...[
-              pw.Text('NOMBRE COMPLETO, CEDULA DE IDENTIDAD Y',
-                  style: _base, textAlign: pw.TextAlign.center),
-              pw.Text('FIRMA DEL PACIENTE O SOLICITANTE',
-                  style: _base, textAlign: pw.TextAlign.center),
+              pw.Text(
+                'NOMBRE COMPLETO, CEDULA DE IDENTIDAD Y',
+                style: _base,
+                textAlign: pw.TextAlign.center,
+              ),
+              pw.Text(
+                'FIRMA DEL PACIENTE O SOLICITANTE',
+                style: _base,
+                textAlign: pw.TextAlign.center,
+              ),
             ],
             pw.SizedBox(height: 6),
             pw.RichText(
-              text: pw.TextSpan(style: _base, children: [
-                _t('Cel. '),
-                cel.isNotEmpty ? _val(cel) : _fill(16),
-              ]),
+              text: pw.TextSpan(
+                style: _base,
+                children: [_t('Cel. '), cel.isNotEmpty ? _val(cel) : _fill(16)],
+              ),
             ),
           ],
         ),
@@ -228,72 +247,91 @@ class TramitePdfService {
     return [
       _li('1.', [
         _b('COBROS EXCEPCIONALES: '),
-        _t('PARA LA DEVOLUCION A TERCERAS PERSONAS (ESPOSA (O), HIJA(O), PADRE '
-            'O MADRE DEL MENOR DE EDAD LLENE Y ADJUNTE:'),
+        _t(
+          'PARA LA DEVOLUCION A TERCERAS PERSONAS (ESPOSA (O), HIJA(O), PADRE '
+          'O MADRE DEL MENOR DE EDAD LLENE Y ADJUNTE:',
+        ),
       ], bottom: 5),
       _li('·', [_t('Fotocopia de Carnet de identidad')]),
       _li('·', [
-        _t('Fotocopia de carnet de asegurado de COSSMIL, de no contar con el '
-            'seguro, adjuntar certificado de matrimonio para esposo (a) y/o '
-            'certificado de nacimiento del hijo (a) o del paciente menor de edad.'),
+        _t(
+          'Fotocopia de carnet de asegurado de COSSMIL, de no contar con el '
+          'seguro, adjuntar certificado de matrimonio para esposo (a) y/o '
+          'certificado de nacimiento del hijo (a) o del paciente menor de edad.',
+        ),
       ]),
       _li('·', [
-        _t('Cuenta del Banco Unión (Extracto Bancario, Comprobante de depósito, '
-            'o Captura impresa de UNINET)'),
+        _t(
+          'Cuenta del Banco Unión (Extracto Bancario, Comprobante de depósito, '
+          'o Captura impresa de UNINET)',
+        ),
       ], bottom: 10),
       pw.Padding(
         padding: const pw.EdgeInsets.only(left: 14, bottom: 4),
-        child: pw.Text('DECLARACIÓN JURADA PARA DEVOLUCION A PARIENTES DEL PACIENTE',
-            style: _bold),
+        child: pw.Text(
+          'DECLARACIÓN JURADA PARA DEVOLUCION A PARIENTES DEL PACIENTE',
+          style: _bold,
+        ),
       ),
       pw.Padding(
         padding: const pw.EdgeInsets.only(left: 14, bottom: 8),
         child: pw.RichText(
           textAlign: pw.TextAlign.justify,
           text: pw.TextSpan(
-              style: _base.copyWith(height: 2.1),
-              children: [
-                _t('Yo '),
-                _fill(40),
-                _t(' con C.I. N° '),
-                _fill(16),
-                _t(' en calidad de '),
-                _fill(20),
-                _b(' DECLARO '),
-                _t('ser la persona que erogó los gastos médicos solicitados, '
-                    'deslindando de toda responsabilidad administrativa y legal al '
-                    'HMC-COSSMIL que pudiera surgir posteriormente.'),
-              ]),
+            style: _base.copyWith(height: 2.1),
+            children: [
+              _t('Yo '),
+              _fill(40),
+              _t(' con C.I. N° '),
+              _fill(16),
+              _t(' en calidad de '),
+              _fill(20),
+              _b(' DECLARO '),
+              _t(
+                'ser la persona que erogó los gastos médicos solicitados, '
+                'deslindando de toda responsabilidad administrativa y legal al '
+                'HMC-COSSMIL que pudiera surgir posteriormente.',
+              ),
+            ],
+          ),
         ),
       ),
       _gap(6),
       _li('2.', [
-        _b('PARA DEVOLUCION A TRAVÉS DE DEPÓSITO BANCARIO SOLO A BANCO UNION '
-            'LLENE AQUÍ:'),
+        _b(
+          'PARA DEVOLUCION A TRAVÉS DE DEPÓSITO BANCARIO SOLO A BANCO UNION '
+          'LLENE AQUÍ:',
+        ),
       ], bottom: 6),
       pw.Padding(
         padding: const pw.EdgeInsets.only(left: 14, bottom: 26),
         child: pw.RichText(
           textAlign: pw.TextAlign.justify,
           text: pw.TextSpan(
-              style: _base.copyWith(height: 2.1),
-              children: [
-                _t('Yo '),
-                _fill(40),
-                _t(' en calidad de '),
-                _fill(18),
-                _b(' AUTORIZO '),
-                _t('a la U.A.F. del H.M.C. la devolución del gasto a través de '
-                    'depósito bancario al Banco Unión según Extracto Bancario, '
-                    'Comprobante de depósito, o UNINET adjunto.'),
-              ]),
+            style: _base.copyWith(height: 2.1),
+            children: [
+              _t('Yo '),
+              _fill(40),
+              _t(' en calidad de '),
+              _fill(18),
+              _b(' AUTORIZO '),
+              _t(
+                'a la U.A.F. del H.M.C. la devolución del gasto a través de '
+                'depósito bancario al Banco Unión según Extracto Bancario, '
+                'Comprobante de depósito, o UNINET adjunto.',
+              ),
+            ],
+          ),
         ),
       ),
     ];
   }
 
-  static pw.Widget _firmaSolicitante(String n, String cel,
-      {String refLabel = 'Otro celular de Referencia para la Devolución:'}) {
+  static pw.Widget _firmaSolicitante(
+    String n,
+    String cel, {
+    String refLabel = 'Otro celular de Referencia para la Devolución:',
+  }) {
     // Bajo la línea de firma va directamente el nombre autocompletado, sin la
     // etiqueta "Nombre del solicitante" adelante; la etiqueta genérica solo se
     // imprime como respaldo cuando no hay nombre.
@@ -315,17 +353,17 @@ class TramitePdfService {
         ),
         pw.SizedBox(height: 14),
         pw.RichText(
-          text: pw.TextSpan(style: _base, children: [
-            _b('Cel. '),
-            cel.isNotEmpty ? _val(cel) : _fill(18),
-          ]),
+          text: pw.TextSpan(
+            style: _base,
+            children: [_b('Cel. '), cel.isNotEmpty ? _val(cel) : _fill(18)],
+          ),
         ),
         pw.SizedBox(height: 12),
         pw.RichText(
-          text: pw.TextSpan(style: _base, children: [
-            _b('$refLabel '),
-            _fill(24),
-          ]),
+          text: pw.TextSpan(
+            style: _base,
+            children: [_b('$refLabel '), _fill(24)],
+          ),
         ),
       ],
     );
@@ -346,8 +384,11 @@ class TramitePdfService {
         _fill(20),
       ], bottom: 6),
       n.isNotEmpty
-          ? _p([_t('Nombre el paciente: '), _val(n)],
-              align: pw.TextAlign.left, bottom: 8)
+          ? _p(
+              [_t('Nombre el paciente: '), _val(n)],
+              align: pw.TextAlign.left,
+              bottom: 8,
+            )
           : _writeLine(label: 'Nombre el paciente:', bottom: 14),
       c.isNotEmpty
           ? _p([_t('C.I. N°: '), _val(c)], align: pw.TextAlign.left, bottom: 8)
@@ -358,21 +399,31 @@ class TramitePdfService {
       _li('1.', [_t('Factura Original')]),
       _li('2.', [_t('Fotocopia simple de la Factura')]),
       _li('3.', [
-        _t('Fotocopia LEGALIZADA de la factura (por el médico o clínica) para '
-            'montos igual o mayor a Bs 2.500.-'),
+        _t(
+          'Fotocopia LEGALIZADA de la factura (por el médico o clínica) para '
+          'montos igual o mayor a Bs 2.500.-',
+        ),
       ]),
-      _li('4.', [_t('Fotocopia de resultados del estudio y/o informe médico realizado')]),
+      _li('4.', [
+        _t('Fotocopia de resultados del estudio y/o informe médico realizado'),
+      ]),
       _li('5.', [
-        _t('Original o fotocopia del Formulario de Compra de Servicios (del '
-            'estudio realizado)'),
+        _t(
+          'Original o fotocopia del Formulario de Compra de Servicios (del '
+          'estudio realizado)',
+        ),
       ]),
       _li('6.', [
-        _t('Fotocopia de carnet de Identidad del paciente y de asegurado de '
-            'COSSMIL del paciente biometrizado y vigente'),
+        _t(
+          'Fotocopia de carnet de Identidad del paciente y de asegurado de '
+          'COSSMIL del paciente biometrizado y vigente',
+        ),
       ]),
       _li('7.', [
-        _t('Cuenta del Banco Unión (Extracto Bancario, Comprobante de depósito, '
-            'o Captura impresa de UNINET)'),
+        _t(
+          'Cuenta del Banco Unión (Extracto Bancario, Comprobante de depósito, '
+          'o Captura impresa de UNINET)',
+        ),
       ], bottom: 14),
       ..._bloqueTerceros(),
       _gap(30),
@@ -381,23 +432,33 @@ class TramitePdfService {
   }
 
   // ── Documento 3: Devolución de Medicamentos sin stock ────────────────────
-  static List<pw.Widget> _devolucionMedicamentos(String n, String c, String cel) {
+  static List<pw.Widget> _devolucionMedicamentos(
+    String n,
+    String c,
+    String cel,
+  ) {
     return [
       _fechaHeader(),
       _p([_t('Sr. Sof. 2do. DEPSS. Franklin Luis Quispe Yujra')], bottom: 1),
-      _p([_b('JEFE DE LA UNIDAD ADMINISTRATIVA FINANCIERA  - H.M.C. "COSSMIL')],
-          bottom: 1),
+      _p([
+        _b('JEFE DE LA UNIDAD ADMINISTRATIVA FINANCIERA  - H.M.C. "COSSMIL'),
+      ], bottom: 1),
       _p([_t('Presente. -')], bottom: 14),
       _p([_t('Señor Suboficial:')], bottom: 12),
       _p([
         _t('        Tengo a bien dirigirme a Usted, a objeto de '),
-        _b('SOLICITAR LA DEVOLUCION DE GASTOS POR COMPRA DE MEDICAMENTOS SIN '
-            'STOCK EN FARMACIA H.M.C. '),
+        _b(
+          'SOLICITAR LA DEVOLUCION DE GASTOS POR COMPRA DE MEDICAMENTOS SIN '
+          'STOCK EN FARMACIA H.M.C. ',
+        ),
         _t('según detalle:'),
       ], bottom: 6),
       n.isNotEmpty
-          ? _p([_t('Nombre el paciente: '), _val(n)],
-              align: pw.TextAlign.left, bottom: 8)
+          ? _p(
+              [_t('Nombre el paciente: '), _val(n)],
+              align: pw.TextAlign.left,
+              bottom: 8,
+            )
           : _writeLine(label: 'Nombre el paciente:', bottom: 14),
       c.isNotEmpty
           ? _p([_t('C.I. N°: '), _val(c)], align: pw.TextAlign.left, bottom: 8)
@@ -407,23 +468,30 @@ class TramitePdfService {
       _p([_t('Para este fin adjunto documentación requerida:')], bottom: 5),
       _li('1.', [_t('Factura Original sellada por Serv. Médicos')]),
       _li('2.', [
-        _t('Receta emita en COSSMIL original con sello SIN STOCK de Farmacia y '
-            'sellada por Jefatura de Servicios Médicos (Dirección Médica).'),
+        _t(
+          'Receta emita en COSSMIL original con sello SIN STOCK de Farmacia y '
+          'sellada por Jefatura de Servicios Médicos (Dirección Médica).',
+        ),
       ]),
       _li('3.', [_t('Fotocopia de la Factura')]),
-      _li('4.', [_t('Fotocopia de carnet de Identidad del paciente (vigente)')]),
+      _li('4.', [
+        _t('Fotocopia de carnet de Identidad del paciente (vigente)'),
+      ]),
       _li('5.', [
-        _t('Fotocopia de carnet de asegurado de COSSMIL del paciente '
-            'biometrizado y vigente'),
+        _t(
+          'Fotocopia de carnet de asegurado de COSSMIL del paciente '
+          'biometrizado y vigente',
+        ),
       ]),
       _li('6.', [
-        _t('Cuenta del Banco Unión (Extracto Bancario, Comprobante de depósito, '
-            'o Captura impresa de UNINET)'),
+        _t(
+          'Cuenta del Banco Unión (Extracto Bancario, Comprobante de depósito, '
+          'o Captura impresa de UNINET)',
+        ),
       ], bottom: 14),
       ..._bloqueTerceros(),
       _gap(30),
-      _firmaSolicitante(n, cel,
-          refLabel: 'Otro Telf. De Referencia :'),
+      _firmaSolicitante(n, cel, refLabel: 'Otro Telf. De Referencia :'),
     ];
   }
 }

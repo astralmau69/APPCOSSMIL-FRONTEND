@@ -10,11 +10,7 @@ class SuccessCheckAnimation extends StatefulWidget {
   final double size;
   final Color? color;
 
-  const SuccessCheckAnimation({
-    super.key,
-    this.size = 100,
-    this.color,
-  });
+  const SuccessCheckAnimation({super.key, this.size = 100, this.color});
 
   @override
   State<SuccessCheckAnimation> createState() => _SuccessCheckAnimationState();
@@ -55,8 +51,10 @@ class _SuccessCheckAnimationState extends State<SuccessCheckAnimation>
       vsync: this,
       duration: const Duration(milliseconds: 700),
     );
-    _particleAnim =
-        CurvedAnimation(parent: _particleCtrl, curve: Curves.easeOut);
+    _particleAnim = CurvedAnimation(
+      parent: _particleCtrl,
+      curve: Curves.easeOut,
+    );
 
     // 4. Scale bounce on the whole widget
     _scaleCtrl = AnimationController(
@@ -103,8 +101,12 @@ class _SuccessCheckAnimationState extends State<SuccessCheckAnimation>
       width: size * 1.6,
       height: size * 1.6,
       child: AnimatedBuilder(
-        animation: Listenable.merge(
-            [_ringAnim, _checkAnim, _particleAnim, _scaleAnim]),
+        animation: Listenable.merge([
+          _ringAnim,
+          _checkAnim,
+          _particleAnim,
+          _scaleAnim,
+        ]),
         builder: (context, _) {
           return CustomPaint(
             painter: _SuccessPainter(
@@ -149,7 +151,8 @@ class _SuccessPainter extends CustomPainter {
 
     // ── Glow behind ring ──
     if (ringProgress > 0.5) {
-      final glowOpacity = (ringProgress - 0.5) * 0.3 * (1 - particleProgress * 0.5);
+      final glowOpacity =
+          (ringProgress - 0.5) * 0.3 * (1 - particleProgress * 0.5);
       final glowPaint = Paint()
         ..color = color.withValues(alpha: glowOpacity)
         ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 20);
@@ -231,8 +234,14 @@ class _SuccessPainter extends CustomPainter {
       for (int i = 0; i < particleCount; i++) {
         final angle = (2 * pi / particleCount) * i + rng.nextDouble() * 0.5;
         // Ease out explosion distance
-        final curveValue = particleProgress >= 1.0 ? 1.0 : 1.0 - pow(1.0 - particleProgress, 3);
-        final dist = radius + (particleRadius - radius) * (0.4 + 0.6 * rng.nextDouble()) * curveValue;
+        final curveValue = particleProgress >= 1.0
+            ? 1.0
+            : 1.0 - pow(1.0 - particleProgress, 3);
+        final dist =
+            radius +
+            (particleRadius - radius) *
+                (0.4 + 0.6 * rng.nextDouble()) *
+                curveValue;
         final opacity = (1.0 - particleProgress).clamp(0.0, 1.0);
         final dotSize = (3.0 + rng.nextDouble() * 3.5) * opacity;
 
@@ -246,8 +255,8 @@ class _SuccessPainter extends CustomPainter {
         final dotColor = isGold
             ? Colors.amber.withValues(alpha: opacity)
             : i.isEven
-                ? color.withValues(alpha: opacity)
-                : color.withValues(alpha: opacity * 0.6);
+            ? color.withValues(alpha: opacity)
+            : color.withValues(alpha: opacity * 0.6);
 
         canvas.drawCircle(pos, dotSize, Paint()..color = dotColor);
       }

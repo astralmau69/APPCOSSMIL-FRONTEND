@@ -22,12 +22,14 @@ class DoctorModel {
   factory DoctorModel.fromJson(Map<String, dynamic> json) {
     return DoctorModel(
       id: (json['idmed'] ?? json['id'] ?? '').toString(),
-      fullName: (json['nombre_completo'] as String? ??
-          json['fullName'] as String? ??
-          '').toDisplayCase,
-      office: (json['consultorio'] as String? ??
-          json['office'] as String? ??
-          '').toDisplayCase,
+      fullName:
+          (json['nombre_completo'] as String? ??
+                  json['fullName'] as String? ??
+                  '')
+              .toDisplayCase,
+      office:
+          (json['consultorio'] as String? ?? json['office'] as String? ?? '')
+              .toDisplayCase,
       fecha: json['fecha'] as String? ?? '',
       dia: json['dia'] as String? ?? '',
       // toString: tolera que el backend mande la foto como lista de enteros
@@ -37,10 +39,10 @@ class DoctorModel {
   }
 
   Map<String, dynamic> toJson() => {
-        'id': id,
-        'fullName': fullName,
-        'office': office,
-      };
+    'id': id,
+    'fullName': fullName,
+    'office': office,
+  };
 
   /// Returns "Dra." if the last word of fullName ends with 'A' and has ≥3 chars,
   /// otherwise returns "Dr.".

@@ -47,7 +47,9 @@ class _NewsDetailScreenState extends State<NewsDetailScreen> {
     return CupertinoPageScaffold(
       backgroundColor: AppColors.scaffoldBg(isDark),
       child: CustomScrollView(
-        physics: const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
+        physics: const BouncingScrollPhysics(
+          parent: AlwaysScrollableScrollPhysics(),
+        ),
         slivers: [
           AdaptiveSliverNavBar(
             largeTitle: const Text('Comunicado'),
@@ -73,7 +75,8 @@ class _NewsDetailScreenState extends State<NewsDetailScreen> {
                         child: Image.network(
                           widget.item.imageUrl,
                           fit: BoxFit.cover,
-                          errorBuilder: (_, __, ___) => _buildPlaceholder(isDark),
+                          errorBuilder: (_, __, ___) =>
+                              _buildPlaceholder(isDark),
                         ),
                       ),
                     ),
@@ -89,7 +92,10 @@ class _NewsDetailScreenState extends State<NewsDetailScreen> {
                         children: [
                           if (widget.item.entity.isNotEmpty)
                             Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 8,
+                                vertical: 4,
+                              ),
                               decoration: BoxDecoration(
                                 color: AppColors.primary.withValues(alpha: 0.1),
                                 borderRadius: BorderRadius.circular(6),
@@ -114,9 +120,9 @@ class _NewsDetailScreenState extends State<NewsDetailScreen> {
                           ),
                         ],
                       ),
-                      
+
                       SizedBox(height: r.spaceLg),
-                      
+
                       // Título
                       FadeSlideIn(
                         offsetY: 20,
@@ -129,9 +135,9 @@ class _NewsDetailScreenState extends State<NewsDetailScreen> {
                           ),
                         ),
                       ),
-                      
+
                       SizedBox(height: r.spaceLg),
-                      
+
                       // Descripción
                       FadeSlideIn(
                         delay: const Duration(milliseconds: 100),
@@ -164,7 +170,7 @@ class _NewsDetailScreenState extends State<NewsDetailScreen> {
                         SizedBox(height: r.spaceMd),
                         _buildGallery(r),
                       ],
-                      
+
                       SizedBox(height: r.navBarBottomSpace + 40),
                     ],
                   ),
@@ -201,7 +207,8 @@ class _NewsDetailScreenState extends State<NewsDetailScreen> {
             child: Image.network(
               url,
               fit: BoxFit.cover,
-              errorBuilder: (_, __, ___) => const Center(child: Icon(CupertinoIcons.photo)),
+              errorBuilder: (_, __, ___) =>
+                  const Center(child: Icon(CupertinoIcons.photo)),
             ),
           ),
         );
@@ -212,7 +219,11 @@ class _NewsDetailScreenState extends State<NewsDetailScreen> {
   Widget _buildPlaceholder(bool isDark) {
     return Container(
       color: isDark ? AppColors.darkElevated : const Color(0xFFF0F2F4),
-      child: Icon(CupertinoIcons.photo, size: 48, color: AppColors.textTertiaryC(isDark)),
+      child: Icon(
+        CupertinoIcons.photo,
+        size: 48,
+        color: AppColors.textTertiaryC(isDark),
+      ),
     );
   }
 }

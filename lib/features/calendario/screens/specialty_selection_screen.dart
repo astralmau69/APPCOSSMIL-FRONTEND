@@ -6,9 +6,12 @@ import '../../../core/models/specialty_model.dart';
 import '../../../core/services/calendario_service.dart';
 import '../../../core/animations/app_page_route.dart';
 import '../../../core/animations/optimized_animations.dart';
+import '../../../core/services/tutorial_flow.dart';
 import '../../../core/widgets/skeleton_loading.dart';
 import '../../../core/widgets/app_state_widget.dart';
+import '../../../core/widgets/guided_tap_hint.dart';
 import '../../../core/widgets/liquid_glass.dart';
+import '../../../core/widgets/tutorial_flow_host.dart';
 import 'doctor_selection_screen.dart';
 
 class SpecialtySelectionScreen extends StatefulWidget {
@@ -104,15 +107,32 @@ class _SpecialtySelectionScreenState extends State<SpecialtySelectionScreen> {
         ),
       ),
       child: SafeArea(
-        child: _buildBody(isDark, r),
+        // Paso 2 del tutorial del Calendario: elegir la especialidad.
+        child: TutorialFlowHost(
+          tutorial: GuidedTutorial.calendario,
+          step: 3,
+          totalSteps: 5,
+          voiceId: 'calendario_02',
+          messages: const [
+            '¡Muy bien!',
+            'Ahora elige la especialidad que quieres consultar.',
+          ],
+          builder: (context, tutorialActive) =>
+              _buildBody(isDark, r, tutorialActive),
+        ),
       ),
     );
   }
 
-  Widget _buildBody(bool isDark, AppResponsive r) {
+  Widget _buildBody(bool isDark, AppResponsive r, bool tutorialActive) {
     if (_isLoading) {
       return SingleChildScrollView(
-        padding: EdgeInsets.fromLTRB(r.paddingH, r.spaceLg, r.paddingH, r.spaceXl),
+        padding: EdgeInsets.fromLTRB(
+          r.paddingH,
+          r.spaceLg,
+          r.paddingH,
+          r.navBarBottomSpace,
+        ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -135,24 +155,37 @@ class _SpecialtySelectionScreenState extends State<SpecialtySelectionScreen> {
     if (_specialties.isEmpty) {
       return const AppStateWidget.empty(
         title: 'Sin especialidades disponibles',
-        message: 'No hay especialidades activas para ventanilla en este momento.',
+        message:
+            'No hay especialidades activas para ventanilla en este momento.',
         icon: CupertinoIcons.calendar_badge_minus,
       );
     }
 
-    final filteredSpecialties = _searchQuery.isEmpty 
-        ? _specialties 
-        : _specialties.where((s) => s.name.toLowerCase().contains(_searchQuery.toLowerCase())).toList();
+    final filteredSpecialties = _searchQuery.isEmpty
+        ? _specialties
+        : _specialties
+              .where(
+                (s) =>
+                    s.name.toLowerCase().contains(_searchQuery.toLowerCase()),
+              )
+              .toList();
 
     return CustomScrollView(
-      physics: const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
+      physics: const BouncingScrollPhysics(
+        parent: AlwaysScrollableScrollPhysics(),
+      ),
       slivers: [
         SliverToBoxAdapter(
           child: Center(
             child: ConstrainedBox(
               constraints: BoxConstraints(maxWidth: r.maxContentWidth),
               child: Padding(
-                padding: EdgeInsets.fromLTRB(r.paddingH, r.spaceLg, r.paddingH, r.spaceXl),
+                padding: EdgeInsets.fromLTRB(
+                  r.paddingH,
+                  r.spaceLg,
+                  r.paddingH,
+                  r.navBarBottomSpace,
+                ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -166,8 +199,12 @@ class _SpecialtySelectionScreenState extends State<SpecialtySelectionScreen> {
                     SizedBox(height: r.spaceLg),
                     _buildSectionHeader(isDark, r, filteredSpecialties.length),
                     SizedBox(height: r.spaceSm),
-                    _buildSpecialtyCard(isDark, r, filteredSpecialties),
-                    SizedBox(height: r.spaceXl),
+                    _buildSpecialtyCard(
+                      isDark,
+                      r,
+                      filteredSpecialties,
+                      highlightFirst: tutorialActive,
+                    ),
                   ],
                 ),
               ),
@@ -180,18 +217,18 @@ class _SpecialtySelectionScreenState extends State<SpecialtySelectionScreen> {
 
   Widget _buildInfoBanner(bool isDark, AppResponsive r) {
     return Container(
-        padding: EdgeInsets.all(r.cardPadding),
-        decoration: BoxDecoration(
+      padding: EdgeInsets.all(r.cardPadding),
+      decoration: BoxDecoration(
+        color: isDark
+            ? AppColors.darkCard.withValues(alpha: 0.7)
+            : AppColors.primaryLight,
+        borderRadius: BorderRadius.circular(r.radiusMd),
+        border: Border.all(
           color: isDark
-              ? AppColors.darkCard.withValues(alpha: 0.7)
-              : AppColors.primaryLight,
-          borderRadius: BorderRadius.circular(r.radiusMd),
-          border: Border.all(
-            color: isDark
-                ? AppColors.darkBorder
-                : AppColors.primary.withValues(alpha: 0.15),
-          ),
+              ? AppColors.darkBorder
+              : AppColors.primary.withValues(alpha: 0.15),
         ),
+      ),
       child: Row(
         children: [
           Container(
@@ -273,7 +310,12 @@ class _SpecialtySelectionScreenState extends State<SpecialtySelectionScreen> {
     );
   }
 
-  Widget _buildSpecialtyCard(bool isDark, AppResponsive r, List<SpecialtyModel> items) {
+  Widget _buildSpecialtyCard(
+    bool isDark,
+    AppResponsive r,
+    List<SpecialtyModel> items, {
+    bool highlightFirst = false,
+  }) {
     if (items.isEmpty) {
       return Padding(
         padding: EdgeInsets.only(top: r.spaceMd),
@@ -296,16 +338,29 @@ class _SpecialtySelectionScreenState extends State<SpecialtySelectionScreen> {
             offsetY: 8,
             child: Column(
               children: [
-                _SpecialtyTile(
-                  specialty: sp,
-                  index: i,
-                  isDark: isDark,
-                  onTap: () => _onTap(sp),
-                ),
+                if (highlightFirst && i == 0)
+                  GuidedTapHint(
+                    child: _SpecialtyTile(
+                      specialty: sp,
+                      index: i,
+                      isDark: isDark,
+                      onTap: () => _onTap(sp),
+                    ),
+                  )
+                else
+                  _SpecialtyTile(
+                    specialty: sp,
+                    index: i,
+                    isDark: isDark,
+                    onTap: () => _onTap(sp),
+                  ),
                 if (!isLast)
                   Padding(
                     padding: EdgeInsets.symmetric(horizontal: r.cardPadding),
-                    child: Container(height: 0.5, color: AppColors.dividerC(isDark)),
+                    child: Container(
+                      height: 0.5,
+                      color: AppColors.dividerC(isDark),
+                    ),
                   ),
               ],
             ),
@@ -395,18 +450,26 @@ class _SpecialtyTile extends StatelessWidget {
     final n = name.toLowerCase();
     if (n.contains('cardio')) return CupertinoIcons.heart_fill;
     if (n.contains('pediatr')) return CupertinoIcons.person_2_fill;
-    if (n.contains('ginec') || n.contains('obstet')) return CupertinoIcons.person_fill;
-    if (n.contains('traumat') || n.contains('ortop')) return CupertinoIcons.bandage_fill;
+    if (n.contains('ginec') || n.contains('obstet'))
+      return CupertinoIcons.person_fill;
+    if (n.contains('traumat') || n.contains('ortop'))
+      return CupertinoIcons.bandage_fill;
     if (n.contains('neurol')) return CupertinoIcons.waveform_path;
-    if (n.contains('oftalm') || n.contains('ocul')) return CupertinoIcons.eye_fill;
+    if (n.contains('oftalm') || n.contains('ocul'))
+      return CupertinoIcons.eye_fill;
     if (n.contains('dermat')) return CupertinoIcons.paintbrush_fill;
-    if (n.contains('odonto') || n.contains('dental')) return CupertinoIcons.smiley_fill;
-    if (n.contains('psiquiat') || n.contains('psicol')) return CupertinoIcons.person_circle_fill;
+    if (n.contains('odonto') || n.contains('dental'))
+      return CupertinoIcons.smiley_fill;
+    if (n.contains('psiquiat') || n.contains('psicol'))
+      return CupertinoIcons.person_circle_fill;
     if (n.contains('ciru')) return CupertinoIcons.scissors_alt;
-    if (n.contains('radiol') || n.contains('imagen')) return CupertinoIcons.photo_fill;
-    if (n.contains('neumol') || n.contains('pulmon')) return CupertinoIcons.wind;
+    if (n.contains('radiol') || n.contains('imagen'))
+      return CupertinoIcons.photo_fill;
+    if (n.contains('neumol') || n.contains('pulmon'))
+      return CupertinoIcons.wind;
     if (n.contains('gastro')) return CupertinoIcons.layers_fill;
-    if (n.contains('endocrin') || n.contains('diabet')) return CupertinoIcons.chart_bar_fill;
+    if (n.contains('endocrin') || n.contains('diabet'))
+      return CupertinoIcons.chart_bar_fill;
     if (n.contains('urolog')) return CupertinoIcons.drop_fill;
     return CupertinoIcons.heart_circle_fill;
   }

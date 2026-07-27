@@ -69,15 +69,13 @@ class SecureStorageServiceImpl implements ISecureStorageService {
   final FlutterSecureStorage _storage;
 
   SecureStorageServiceImpl()
-      : _storage = const FlutterSecureStorage(
-          aOptions: AndroidOptions(
-            encryptedSharedPreferences: true,
-            sharedPreferencesName: 'cossmil_secure_prefs',
-          ),
-          iOptions: IOSOptions(
-            accessibility: KeychainAccessibility.first_unlock,
-          ),
-        );
+    : _storage = const FlutterSecureStorage(
+        aOptions: AndroidOptions(
+          encryptedSharedPreferences: true,
+          sharedPreferencesName: 'cossmil_secure_prefs',
+        ),
+        iOptions: IOSOptions(accessibility: KeychainAccessibility.first_unlock),
+      );
 
   @override
   Future<void> write({required String key, required String value}) =>

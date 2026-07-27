@@ -4,8 +4,10 @@ import 'package:flutter/material.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/extensions/responsive_extensions.dart';
 import '../../../core/animations/optimized_animations.dart';
+import '../../../core/services/tutorial_flow.dart';
 import '../../../core/widgets/adaptive_sliver_nav_bar.dart';
 import '../../../core/widgets/liquid_glass.dart';
+import '../../../core/widgets/tutorial_flow_host.dart';
 import '../tramite_catalog.dart';
 import 'tramite_form_screen.dart';
 
@@ -24,53 +26,74 @@ class FormulariosScreen extends StatelessWidget {
 
     return CupertinoPageScaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-      child: CustomScrollView(
-        physics: const BouncingScrollPhysics(
-          parent: AlwaysScrollableScrollPhysics(),
-        ),
-        slivers: [
-          AdaptiveSliverNavBar(
-            largeTitle: Text(
-              'Formularios',
-              style: TextStyle(color: AppColors.textPrimaryC(isDark)),
-            ),
-            backgroundColor: isDark
-                ? AppColors.darkSurface.withValues(alpha: 0.92)
-                : AppColors.white.withValues(alpha: 0.92),
-            border: Border(
-              bottom: BorderSide(
-                color: AppColors.cardBorder(isDark).withValues(alpha: 0.5),
-                width: 0.5,
-              ),
-            ),
-          ),
-          SliverPadding(
-            padding: EdgeInsets.fromLTRB(
-              r.paddingH,
-              12,
-              r.paddingH,
-              r.navBarBottomSpace,
-            ),
-            sliver: SliverList(
-              delegate: SliverChildListDelegate([
-                FadeSlideIn(
-                  child: Padding(
-                    padding: EdgeInsets.only(bottom: r.spaceLg),
-                    child: _IntroBanner(isDark: isDark, r: r),
-                  ),
-                ),
-                for (int i = 0; i < kTramites.length; i++) ...[
-                  FadeSlideIn(
-                    delay: Duration(milliseconds: 80 + i * 70),
-                    child: _TramiteCard(info: kTramites[i]),
-                  ),
-                  SizedBox(height: r.spaceMd),
-                ],
-              ]),
-            ),
-          ),
+      // Paso final del tutorial de Trámites: la instructora celebra y explica
+      // qué hace cada tarjeta. Termina ANTES de generar ningún documento;
+      // salir aquí ya no pide confirmación.
+      child: TutorialFlowHost(
+        tutorial: GuidedTutorial.tramites,
+        step: 5,
+        totalSteps: 5,
+        voiceId: 'tramites_04',
+        celebrate: true,
+        confirmOnExit: false,
+        messages: const [
+          '¡Listo! 🎖️',
+          'Cada tarjeta abre un formulario con tu nombre y cédula ya '
+              'completados, listo para imprimir, compartir o descargar. '
+              'Puedes repetir este tutorial desde tu Perfil.',
         ],
+        builder: (context, _) => _buildContent(context, isDark, r),
       ),
+    );
+  }
+
+  Widget _buildContent(BuildContext context, bool isDark, AppResponsive r) {
+    return CustomScrollView(
+      physics: const BouncingScrollPhysics(
+        parent: AlwaysScrollableScrollPhysics(),
+      ),
+      slivers: [
+        AdaptiveSliverNavBar(
+          largeTitle: Text(
+            'Formularios',
+            style: TextStyle(color: AppColors.textPrimaryC(isDark)),
+          ),
+          backgroundColor: isDark
+              ? AppColors.darkSurface.withValues(alpha: 0.92)
+              : AppColors.white.withValues(alpha: 0.92),
+          border: Border(
+            bottom: BorderSide(
+              color: AppColors.cardBorder(isDark).withValues(alpha: 0.5),
+              width: 0.5,
+            ),
+          ),
+        ),
+        SliverPadding(
+          padding: EdgeInsets.fromLTRB(
+            r.paddingH,
+            12,
+            r.paddingH,
+            r.navBarBottomSpace,
+          ),
+          sliver: SliverList(
+            delegate: SliverChildListDelegate([
+              FadeSlideIn(
+                child: Padding(
+                  padding: EdgeInsets.only(bottom: r.spaceLg),
+                  child: _IntroBanner(isDark: isDark, r: r),
+                ),
+              ),
+              for (int i = 0; i < kTramites.length; i++) ...[
+                FadeSlideIn(
+                  delay: Duration(milliseconds: 80 + i * 70),
+                  child: _TramiteCard(info: kTramites[i]),
+                ),
+                SizedBox(height: r.spaceMd),
+              ],
+            ]),
+          ),
+        ),
+      ],
     );
   }
 }
@@ -96,7 +119,9 @@ class _IntroBanner extends StatelessWidget {
         ),
         borderRadius: BorderRadius.circular(r.cardRadius),
         border: Border.all(
-          color: const Color(0xFF059669).withValues(alpha: isDark ? 0.35 : 0.20),
+          color: const Color(
+            0xFF059669,
+          ).withValues(alpha: isDark ? 0.35 : 0.20),
         ),
       ),
       child: Row(
@@ -120,8 +145,11 @@ class _IntroBanner extends StatelessWidget {
                 ),
               ],
             ),
-            child: Icon(CupertinoIcons.checkmark_seal_fill,
-                size: r.iconMd, color: Colors.white),
+            child: Icon(
+              CupertinoIcons.checkmark_seal_fill,
+              size: r.iconMd,
+              color: Colors.white,
+            ),
           ),
           SizedBox(width: r.spaceMd),
           Expanded(
@@ -165,9 +193,9 @@ class _TramiteCard extends StatelessWidget {
     final r = context.r;
 
     return OptimizedPressButton(
-      onTap: () => Navigator.of(context).push(
-        CupertinoPageRoute(builder: (_) => TramiteFormScreen(info: info)),
-      ),
+      onTap: () => Navigator.of(
+        context,
+      ).push(CupertinoPageRoute(builder: (_) => TramiteFormScreen(info: info))),
       scaleDown: 0.98,
       haptic: true,
       child: LiquidGlass(
@@ -176,90 +204,93 @@ class _TramiteCard extends StatelessWidget {
         padding: EdgeInsets.all(r.cardPadding),
         shadow: AppColors.cardShadowFor(isDark),
         child: Row(
-            children: [
-              // Chip de ícono con degradado tenue
-              Container(
-                width: r.listAvatarSize,
-                height: r.listAvatarSize,
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                    colors: [
-                      info.color.withValues(alpha: isDark ? 0.28 : 0.16),
-                      info.color.withValues(alpha: isDark ? 0.16 : 0.08),
-                    ],
-                  ),
-                  borderRadius: BorderRadius.circular(r.radiusMd),
-                ),
-                child: Icon(info.icon, size: r.iconMd, color: info.color),
-              ),
-              SizedBox(width: r.spaceMd),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      info.titulo,
-                      style: context.texts.titleMedium.copyWith(
-                        fontWeight: FontWeight.w800,
-                        color: AppColors.textPrimaryC(isDark),
-                        letterSpacing: -0.2,
-                        height: 1.15,
-                      ),
-                    ),
-                    SizedBox(height: r.spaceXs),
-                    Text(
-                      info.descripcion,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: context.texts.bodySmall.copyWith(
-                        color: AppColors.textSecondaryC(isDark),
-                        height: 1.35,
-                      ),
-                    ),
-                    SizedBox(height: r.spaceSm),
-                    Row(
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 8,
-                            vertical: 3,
-                          ),
-                          decoration: BoxDecoration(
-                            color: info.color.withValues(alpha: 0.10),
-                            borderRadius: BorderRadius.circular(r.chipRadius),
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(CupertinoIcons.doc_text_fill,
-                                  size: 11, color: info.color),
-                              const SizedBox(width: 4),
-                              Text(
-                                'PDF · Word',
-                                style: context.texts.labelSmall.copyWith(
-                                  color: info.color,
-                                  fontWeight: FontWeight.w800,
-                                  letterSpacing: 0.4,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
+          children: [
+            // Chip de ícono con degradado tenue
+            Container(
+              width: r.listAvatarSize,
+              height: r.listAvatarSize,
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [
+                    info.color.withValues(alpha: isDark ? 0.28 : 0.16),
+                    info.color.withValues(alpha: isDark ? 0.16 : 0.08),
                   ],
                 ),
+                borderRadius: BorderRadius.circular(r.radiusMd),
               ),
-              SizedBox(width: r.spaceXs),
-              Icon(
-                CupertinoIcons.chevron_right,
-                size: r.iconSm * 0.7,
-                color: AppColors.textTertiaryC(isDark),
+              child: Icon(info.icon, size: r.iconMd, color: info.color),
+            ),
+            SizedBox(width: r.spaceMd),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    info.titulo,
+                    style: context.texts.titleMedium.copyWith(
+                      fontWeight: FontWeight.w800,
+                      color: AppColors.textPrimaryC(isDark),
+                      letterSpacing: -0.2,
+                      height: 1.15,
+                    ),
+                  ),
+                  SizedBox(height: r.spaceXs),
+                  Text(
+                    info.descripcion,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: context.texts.bodySmall.copyWith(
+                      color: AppColors.textSecondaryC(isDark),
+                      height: 1.35,
+                    ),
+                  ),
+                  SizedBox(height: r.spaceSm),
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 3,
+                        ),
+                        decoration: BoxDecoration(
+                          color: info.color.withValues(alpha: 0.10),
+                          borderRadius: BorderRadius.circular(r.chipRadius),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              CupertinoIcons.doc_text_fill,
+                              size: 11,
+                              color: info.color,
+                            ),
+                            const SizedBox(width: 4),
+                            Text(
+                              'PDF · Word',
+                              style: context.texts.labelSmall.copyWith(
+                                color: info.color,
+                                fontWeight: FontWeight.w800,
+                                letterSpacing: 0.4,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
               ),
-            ],
-          ),
+            ),
+            SizedBox(width: r.spaceXs),
+            Icon(
+              CupertinoIcons.chevron_right,
+              size: r.iconSm * 0.7,
+              color: AppColors.textTertiaryC(isDark),
+            ),
+          ],
+        ),
       ),
     );
   }

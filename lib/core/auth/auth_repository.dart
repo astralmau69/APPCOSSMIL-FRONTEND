@@ -1,6 +1,10 @@
 import 'package:flutter/foundation.dart';
 
+import '../data/citas_cache.dart';
+import '../data/grupo_familiar_cache.dart';
+import '../security/screen_security.dart';
 import '../services/auth_service.dart';
+import '../services/secure_docs_store.dart';
 import '../services/session_restore_service.dart';
 import '../session/user_session.dart';
 import '../storage/token_storage.dart';
@@ -94,7 +98,7 @@ class AuthRepositoryImpl implements AuthRepository {
   final AuthService _authService;
 
   AuthRepositoryImpl({AuthService? authService})
-      : _authService = authService ?? AuthService();
+    : _authService = authService ?? AuthService();
 
   // ── Login ───────────────────────────────────────────────────────────────────
 
@@ -143,6 +147,14 @@ class AuthRepositoryImpl implements AuthRepository {
 
       // Paso 4: limpiar el singleton en memoria (sincrónico, siempre último).
       UserSession.clear();
+
+      // Paso 5: borrar PHI en disco (PDFs/documentos generados), la caché
+      // offline de citas y desactivar la protección de pantalla. Tolerantes a
+      // fallos: no rompen el logout.
+      await SecureDocsStore.wipeAll();
+      await CitasCache().clearAll();
+      await GrupoFamiliarCache().clearAll();
+      await ScreenSecurity.disable();
 
       AppLogger.info('AUTH_REPO', 'Logout completado — sesión limpia');
     } catch (e) {

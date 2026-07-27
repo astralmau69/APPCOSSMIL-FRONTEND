@@ -8,10 +8,7 @@ import '../models/beneficiary_model.dart';
 class BeneficiaryDetailsModal extends StatelessWidget {
   final BeneficiaryModel beneficiary;
 
-  const BeneficiaryDetailsModal({
-    super.key,
-    required this.beneficiary,
-  });
+  const BeneficiaryDetailsModal({super.key, required this.beneficiary});
 
   static Future<void> show({
     required BuildContext context,
@@ -41,7 +38,9 @@ class BeneficiaryDetailsModal extends StatelessWidget {
     final r = context.r;
     final b = beneficiary;
     final isTitular = b.isTitular;
-    final accentColor = isTitular ? AppColors.accentForTheme(isDark) : AppColors.primary;
+    final accentColor = isTitular
+        ? AppColors.accentForTheme(isDark)
+        : AppColors.primary;
 
     return Center(
       child: Material(
@@ -52,7 +51,12 @@ class BeneficiaryDetailsModal extends StatelessWidget {
           decoration: BoxDecoration(
             color: AppColors.cardBg(isDark),
             borderRadius: BorderRadius.circular(r.modalRadius),
-            border: isTitular ? Border.all(color: accentColor.withValues(alpha: 0.5), width: 1.5) : null,
+            border: isTitular
+                ? Border.all(
+                    color: accentColor.withValues(alpha: 0.5),
+                    width: 1.5,
+                  )
+                : null,
             boxShadow: [
               BoxShadow(
                 color: Colors.black.withValues(alpha: 0.2),
@@ -73,7 +77,9 @@ class BeneficiaryDetailsModal extends StatelessWidget {
                     height: 90,
                     decoration: BoxDecoration(
                       color: accentColor.withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.vertical(top: Radius.circular(r.modalRadius)),
+                      borderRadius: BorderRadius.vertical(
+                        top: Radius.circular(r.modalRadius),
+                      ),
                     ),
                   ),
                   Positioned(
@@ -82,9 +88,8 @@ class BeneficiaryDetailsModal extends StatelessWidget {
                   ),
                 ],
               ),
-              
-              const SizedBox(height: 70), // Espacio para la foto salida
 
+              const SizedBox(height: 70), // Espacio para la foto salida
               // Info principal
               Padding(
                 padding: EdgeInsets.symmetric(horizontal: r.modalPadding),
@@ -102,15 +107,24 @@ class BeneficiaryDetailsModal extends StatelessWidget {
                     ),
                     const SizedBox(height: 6),
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 4,
+                      ),
                       decoration: BoxDecoration(
-                        color: isTitular ? accentColor.withValues(alpha: 0.1) : AppColors.dividerC(isDark),
+                        color: isTitular
+                            ? accentColor.withValues(alpha: 0.1)
+                            : AppColors.dividerC(isDark),
                         borderRadius: BorderRadius.circular(16),
                       ),
                       child: Text(
-                        isTitular ? 'Titular de la Cuenta' : b.relationship.toUpperCase(),
+                        isTitular
+                            ? 'Titular de la Cuenta'
+                            : b.relationship.toUpperCase(),
                         style: TextStyle(
-                          color: isTitular ? accentColor : AppColors.textSecondaryC(isDark),
+                          color: isTitular
+                              ? accentColor
+                              : AppColors.textSecondaryC(isDark),
                           fontWeight: FontWeight.w800,
                           fontSize: 11,
                           letterSpacing: 0.5,
@@ -118,24 +132,62 @@ class BeneficiaryDetailsModal extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(height: 24),
-                    
+
                     // Grid Info
                     Row(
                       children: [
-                        Expanded(child: _InfoTile(icon: CupertinoIcons.number, label: 'Matrícula', value: b.matricula.isNotEmpty ? b.matricula : 'No disp.', isDark: isDark)),
+                        Expanded(
+                          child: _InfoTile(
+                            icon: CupertinoIcons.number,
+                            label: 'Matrícula',
+                            value: b.matricula.isNotEmpty
+                                ? b.matricula
+                                : 'No disp.',
+                            isDark: isDark,
+                          ),
+                        ),
                         const SizedBox(width: 8),
-                        Expanded(child: _InfoTile(icon: CupertinoIcons.calendar, label: 'Edad', value: b.age != null ? '${b.age} años' : 'No disp.', isDark: isDark)),
+                        Expanded(
+                          child: _InfoTile(
+                            icon: CupertinoIcons.calendar,
+                            label: 'Edad',
+                            value: b.age != null ? '${b.age} años' : 'No disp.',
+                            isDark: isDark,
+                          ),
+                        ),
                       ],
                     ),
                     const SizedBox(height: 8),
                     Row(
                       children: [
-                        Expanded(child: _InfoTile(icon: b.effectiveGender == 'FEMENINO' ? Icons.female : Icons.male, label: 'Género', value: b.displayGender.isNotEmpty ? b.displayGender : 'No disp.', isDark: isDark)),
+                        Expanded(
+                          child: _InfoTile(
+                            icon: b.effectiveGender == 'FEMENINO'
+                                ? Icons.female
+                                : Icons.male,
+                            label: 'Género',
+                            value: b.displayGender.isNotEmpty
+                                ? b.displayGender
+                                : 'No disp.',
+                            isDark: isDark,
+                          ),
+                        ),
                         const SizedBox(width: 8),
-                        Expanded(child: _InfoTile(icon: CupertinoIcons.person_badge_plus, label: 'Grado', value: isTitular ? (b.displayGrado.isNotEmpty ? b.displayGrado : 'N/A') : 'N/A', isDark: isDark)),
+                        Expanded(
+                          child: _InfoTile(
+                            icon: CupertinoIcons.person_badge_plus,
+                            label: 'Grado',
+                            value: isTitular
+                                ? (b.displayGrado.isNotEmpty
+                                      ? b.displayGrado
+                                      : 'N/A')
+                                : 'N/A',
+                            isDark: isDark,
+                          ),
+                        ),
                       ],
                     ),
-                    
+
                     const SizedBox(height: 24),
                   ],
                 ),
@@ -143,7 +195,12 @@ class BeneficiaryDetailsModal extends StatelessWidget {
 
               // Botón de Cierre
               Padding(
-                padding: EdgeInsets.fromLTRB(r.modalPadding, 0, r.modalPadding, r.modalPadding),
+                padding: EdgeInsets.fromLTRB(
+                  r.modalPadding,
+                  0,
+                  r.modalPadding,
+                  r.modalPadding,
+                ),
                 child: SizedBox(
                   width: double.infinity,
                   child: CupertinoButton(
@@ -173,7 +230,11 @@ class BeneficiaryDetailsModal extends StatelessWidget {
     if (b.photoBase64.isNotEmpty) {
       try {
         final bytes = base64Decode(b.photoBase64);
-        imageContent = Image.memory(bytes, fit: BoxFit.cover, errorBuilder: (_, __, ___) => _initial(b));
+        imageContent = Image.memory(
+          bytes,
+          fit: BoxFit.cover,
+          errorBuilder: (_, __, ___) => _initial(b),
+        );
       } catch (_) {
         imageContent = _initial(b);
       }
@@ -204,7 +265,11 @@ class BeneficiaryDetailsModal extends StatelessWidget {
     return Center(
       child: Text(
         b.initial,
-        style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 36, color: Colors.grey),
+        style: const TextStyle(
+          fontWeight: FontWeight.w800,
+          fontSize: 36,
+          color: Colors.grey,
+        ),
       ),
     );
   }
@@ -241,14 +306,21 @@ class _InfoTile extends StatelessWidget {
               const SizedBox(width: 6),
               Text(
                 label,
-                style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: AppColors.textTertiaryC(isDark)),
+                style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.textTertiaryC(isDark),
+                ),
               ),
             ],
           ),
           const SizedBox(height: 4),
           Text(
             value,
-            style: TextStyle(fontWeight: FontWeight.w700, color: AppColors.textPrimaryC(isDark)),
+            style: TextStyle(
+              fontWeight: FontWeight.w700,
+              color: AppColors.textPrimaryC(isDark),
+            ),
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
           ),

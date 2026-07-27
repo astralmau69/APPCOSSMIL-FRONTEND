@@ -119,9 +119,10 @@ class _SummaryScreenState extends State<SummaryScreen>
       vsync: this,
       duration: const Duration(milliseconds: 900),
     );
-    _pulseScale = Tween<double>(begin: 1.0, end: 1.04).animate(
-      CurvedAnimation(parent: _pulseCtrl, curve: Curves.easeInOut),
-    );
+    _pulseScale = Tween<double>(
+      begin: 1.0,
+      end: 1.04,
+    ).animate(CurvedAnimation(parent: _pulseCtrl, curve: Curves.easeInOut));
     // Pulse de llamada de atención: se dispara una vez en la primera frame
     // (después de que MediaQuery esté disponible) para no drenar GPU/batería
     // con `repeat(reverse: true)`. Respeta `disableAnimations`.
@@ -157,227 +158,261 @@ class _SummaryScreenState extends State<SummaryScreen>
     // its own CupertinoPageScaffold + NavigationBar + BookingStepper.
     // We return only the content to avoid double navigation bars.
     return AnimatedSwitcher(
-          duration: const Duration(milliseconds: 600),
-          switchInCurve: Curves.easeOutCubic,
-          switchOutCurve: Curves.easeInCubic,
-          child: _showSuccessSplash
-              ? Center(
-                  key: const ValueKey('splash'),
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
+      duration: const Duration(milliseconds: 600),
+      switchInCurve: Curves.easeOutCubic,
+      switchOutCurve: Curves.easeInCubic,
+      child: _showSuccessSplash
+          ? Center(
+              key: const ValueKey('splash'),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  SuccessCheckAnimation(
+                    size: context.r.isTablet
+                        ? 180
+                        : (context.r.isSmallPhone ? 110 : 140),
+                  ),
+                  SizedBox(height: context.r.spaceXl),
+                  Text(
+                    '¡Reserva Exitosa!',
+                    style: context.texts.displayLarge.copyWith(
+                      color: AppColors.accentForTheme(isDark),
+                    ),
+                  ),
+                  SizedBox(height: context.r.spaceSm),
+                  Text(
+                    'Generando confirmación...',
+                    style: TextStyle(
+                      color: AppColors.textSecondaryC(isDark),
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ],
+              ),
+            )
+          : ListView(
+              key: const ValueKey('content'),
+              controller: _scrollController,
+              padding: EdgeInsets.only(
+                left: context.r.paddingH,
+                right: context.r.paddingH,
+                top: 8,
+                bottom: context.r.navBarBottomSpace + 16,
+              ),
+              children: [
+                _buildHeader(),
+                SizedBox(height: context.r.spaceMd),
+
+                // ── 1. Hospital Regional ──
+                _infoRow(
+                  isDark: isDark,
+                  icon: CupertinoIcons.building_2_fill,
+                  label: 'Hospital',
+                  value: bs.hospital?.name ?? '',
+                ),
+
+                _divider(isDark),
+
+                // ── 2. Consultorio ──
+                _infoRow(
+                  isDark: isDark,
+                  icon: Icons.meeting_room,
+                  label: 'Consultorio',
+                  value: bs.doctor?.office ?? 'No especificado',
+                ),
+
+                _divider(isDark),
+
+                // ── 3. Hora y Fecha ──
+                Padding(
+                  padding: EdgeInsets.symmetric(vertical: context.r.spaceSm),
+                  child: Row(
                     children: [
-                      SuccessCheckAnimation(size: context.r.isTablet ? 180 : (context.r.isSmallPhone ? 110 : 140)),
-                      SizedBox(height: context.r.spaceXl),
-                      Text(
-                        '¡Reserva Exitosa!',
-                        style: context.texts.displayLarge.copyWith(
-                          color: AppColors.accentForTheme(isDark),
+                      Icon(
+                        CupertinoIcons.calendar_badge_plus,
+                        size: 18,
+                        color: AppColors.textTertiaryC(isDark),
+                      ),
+                      SizedBox(width: context.r.spaceSm),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              _fechaReserva,
+                              style: context.texts.titleMedium.copyWith(
+                                fontWeight: FontWeight.w700,
+                                color: AppColors.textPrimaryC(isDark),
+                              ),
+                            ),
+                          ],
                         ),
                       ),
-                      SizedBox(height: context.r.spaceSm),
-                      Text(
-                        'Generando confirmación...',
-                        style: TextStyle(
-                          color: AppColors.textSecondaryC(isDark),
-                          fontWeight: FontWeight.w500,
+                      Container(
+                        padding: EdgeInsets.symmetric(
+                          horizontal: context.r.spaceSm,
+                          vertical: context.r.chipPaddingV,
+                        ),
+                        decoration: BoxDecoration(
+                          color: AppColors.accentForTheme(
+                            isDark,
+                          ).withValues(alpha: 0.12),
+                          borderRadius: BorderRadius.circular(
+                            context.r.radiusSm,
+                          ),
+                        ),
+                        child: Text(
+                          _formatTimeAmPm(bs.selectedTime),
+                          style: TextStyle(
+                            fontWeight: FontWeight.w800,
+                            color: AppColors.accentForTheme(isDark),
+                          ),
                         ),
                       ),
                     ],
                   ),
-                )
-              : ListView(
-                  key: const ValueKey('content'),
-                  controller: _scrollController,
-                  padding: EdgeInsets.only(
-                    left: context.r.paddingH,
-                    right: context.r.paddingH,
-                    top: 8,
-                    bottom: context.r.navBarBottomSpace + 16,
-                  ),
-                        children: [
-                          _buildHeader(),
-                          SizedBox(height: context.r.spaceMd),
-
-                          // ── 1. Hospital Regional ──
-                          _infoRow(
-                            isDark: isDark,
-                            icon: CupertinoIcons.building_2_fill,
-                            label: 'Hospital',
-                            value: bs.hospital?.name ?? '',
-                          ),
-
-                          _divider(isDark),
-
-                          // ── 2. Consultorio ──
-                          _infoRow(
-                            isDark: isDark,
-                            icon: Icons.meeting_room,
-                            label: 'Consultorio',
-                            value: bs.doctor?.office ?? 'No especificado',
-                          ),
-
-                          _divider(isDark),
-
-                          // ── 3. Hora y Fecha ──
-                          Padding(
-                            padding: EdgeInsets.symmetric(vertical: context.r.spaceSm),
-                            child: Row(
-                              children: [
-                                Icon(CupertinoIcons.calendar_badge_plus, size: 18, color: AppColors.textTertiaryC(isDark)),
-                                SizedBox(width: context.r.spaceSm),
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        _fechaReserva,
-                                        style: context.texts.titleMedium.copyWith(
-                                          fontWeight: FontWeight.w700,
-                                          color: AppColors.textPrimaryC(isDark),
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                                Container(
-                                  padding: EdgeInsets.symmetric(horizontal: context.r.spaceSm, vertical: context.r.chipPaddingV),
-                                  decoration: BoxDecoration(
-                                    color: AppColors.accentForTheme(isDark).withValues(alpha: 0.12),
-                                    borderRadius: BorderRadius.circular(context.r.radiusSm),
-                                  ),
-                                  child: Text(
-                                    _formatTimeAmPm(bs.selectedTime),
-                                    style: TextStyle(
-                                      fontWeight: FontWeight.w800,
-                                      color: AppColors.accentForTheme(isDark),
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-
-                          _divider(isDark),
-
-                          // ── 4. Especialidad + Médico ──
-                          Padding(
-                            padding: EdgeInsets.symmetric(vertical: context.r.spaceSm),
-                            child: Row(
-                              children: [
-                                // Foto del médico
-                                GestureDetector(
-                                  onTap: (bs.doctor?.foto != null && bs.doctor!.foto.isNotEmpty)
-                                      ? () => _showDoctorPhotoEnlarged(bs.doctor!.foto, bs.doctor!.fullName)
-                                      : null,
-                                  child: Container(
-                                    width: 48,
-                                    height: 48,
-                                    decoration: BoxDecoration(
-                                      color: AppColors.accentForTheme(isDark).withValues(alpha: 0.08),
-                                      borderRadius: BorderRadius.circular(context.r.radiusMd),
-                                    ),
-                                    child: ClipRRect(
-                                      borderRadius: BorderRadius.circular(context.r.radiusMd),
-                                      child: _buildPhoto(bs.doctor?.foto, isDark, icon: CupertinoIcons.person_fill),
-                                    ),
-                                  ),
-                                ),
-                                SizedBox(width: context.r.spaceMd),
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        bs.specialty?.name ?? '',
-                                        style: TextStyle(
-                                          fontWeight: FontWeight.w700,
-                                          color: AppColors.accentForTheme(isDark),
-                                          letterSpacing: 0.5,
-                                        ),
-                                      ),
-                                      SizedBox(height: context.r.spaceXs),
-                                      Text(
-                                        bs.doctor?.fullName ?? 'Sin médico',
-                                        style: context.texts.titleMedium.copyWith(
-                                          fontWeight: FontWeight.w800,
-                                          color: AppColors.textPrimaryC(isDark),
-                                          height: 1.2,
-                                        ),
-                                        maxLines: 2,
-                                        overflow: TextOverflow.ellipsis,
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-
-                          _divider(isDark),
-
-                          // ── 5. Paciente ──
-                          Padding(
-                            padding: EdgeInsets.symmetric(vertical: context.r.spaceSm),
-                            child: Row(
-                              children: [
-                                // Foto del paciente
-                                Container(
-                                  width: 48,
-                                  height: 48,
-                                  decoration: BoxDecoration(
-                                    color: AppColors.primary.withValues(alpha: 0.08),
-                                    borderRadius: BorderRadius.circular(context.r.radiusMd),
-                                  ),
-                                  child: ClipRRect(
-                                    borderRadius: BorderRadius.circular(context.r.radiusMd),
-                                    // Reactivo: la foto puede llegar en segundo plano.
-                                    child: ValueListenableBuilder<UserModel>(
-                                      valueListenable: UserSession.userNotifier,
-                                      builder: (context, liveUser, _) => _buildPhoto(
-                                        _patientPhotoB64(bs.beneficiary, liveUser),
-                                        isDark,
-                                        icon: CupertinoIcons.person_crop_circle_fill,
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                                SizedBox(width: context.r.spaceMd),
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        bs.beneficiary?.fullName ?? user.fullName,
-                                        style: context.texts.titleMedium.copyWith(
-                                          fontWeight: FontWeight.w800,
-                                          color: AppColors.textPrimaryC(isDark),
-                                          height: 1.2,
-                                        ),
-                                        maxLines: 2,
-                                        overflow: TextOverflow.ellipsis,
-                                      ),
-                                      SizedBox(height: context.r.spaceXs),
-                                      Text(
-                                        'Mat. ${bs.beneficiary?.matricula ?? user.matricula}',
-                                        style: TextStyle(
-                                          fontWeight: FontWeight.w500,
-                                          color: AppColors.textSecondaryC(isDark),
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-
-                          SizedBox(height: context.r.spaceLg),
-
-                          // Botones
-                          _buildActionButtons(isDark),
-                          SizedBox(height: context.r.spaceLg),
-                        ],
                 ),
+
+                _divider(isDark),
+
+                // ── 4. Especialidad + Médico ──
+                Padding(
+                  padding: EdgeInsets.symmetric(vertical: context.r.spaceSm),
+                  child: Row(
+                    children: [
+                      // Foto del médico
+                      GestureDetector(
+                        onTap:
+                            (bs.doctor?.foto != null &&
+                                bs.doctor!.foto.isNotEmpty)
+                            ? () => _showDoctorPhotoEnlarged(
+                                bs.doctor!.foto,
+                                bs.doctor!.fullName,
+                              )
+                            : null,
+                        child: Container(
+                          width: 48,
+                          height: 48,
+                          decoration: BoxDecoration(
+                            color: AppColors.accentForTheme(
+                              isDark,
+                            ).withValues(alpha: 0.08),
+                            borderRadius: BorderRadius.circular(
+                              context.r.radiusMd,
+                            ),
+                          ),
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(
+                              context.r.radiusMd,
+                            ),
+                            child: _buildPhoto(
+                              bs.doctor?.foto,
+                              isDark,
+                              icon: CupertinoIcons.person_fill,
+                            ),
+                          ),
+                        ),
+                      ),
+                      SizedBox(width: context.r.spaceMd),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              bs.specialty?.name ?? '',
+                              style: TextStyle(
+                                fontWeight: FontWeight.w700,
+                                color: AppColors.accentForTheme(isDark),
+                                letterSpacing: 0.5,
+                              ),
+                            ),
+                            SizedBox(height: context.r.spaceXs),
+                            Text(
+                              bs.doctor?.fullName ?? 'Sin médico',
+                              style: context.texts.titleMedium.copyWith(
+                                fontWeight: FontWeight.w800,
+                                color: AppColors.textPrimaryC(isDark),
+                                height: 1.2,
+                              ),
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+
+                _divider(isDark),
+
+                // ── 5. Paciente ──
+                Padding(
+                  padding: EdgeInsets.symmetric(vertical: context.r.spaceSm),
+                  child: Row(
+                    children: [
+                      // Foto del paciente
+                      Container(
+                        width: 48,
+                        height: 48,
+                        decoration: BoxDecoration(
+                          color: AppColors.primary.withValues(alpha: 0.08),
+                          borderRadius: BorderRadius.circular(
+                            context.r.radiusMd,
+                          ),
+                        ),
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(
+                            context.r.radiusMd,
+                          ),
+                          // Reactivo: la foto puede llegar en segundo plano.
+                          child: ValueListenableBuilder<UserModel>(
+                            valueListenable: UserSession.userNotifier,
+                            builder: (context, liveUser, _) => _buildPhoto(
+                              _patientPhotoB64(bs.beneficiary, liveUser),
+                              isDark,
+                              icon: CupertinoIcons.person_crop_circle_fill,
+                            ),
+                          ),
+                        ),
+                      ),
+                      SizedBox(width: context.r.spaceMd),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              bs.beneficiary?.fullName ?? user.fullName,
+                              style: context.texts.titleMedium.copyWith(
+                                fontWeight: FontWeight.w800,
+                                color: AppColors.textPrimaryC(isDark),
+                                height: 1.2,
+                              ),
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            SizedBox(height: context.r.spaceXs),
+                            Text(
+                              'Mat. ${bs.beneficiary?.matricula ?? user.matricula}',
+                              style: TextStyle(
+                                fontWeight: FontWeight.w500,
+                                color: AppColors.textSecondaryC(isDark),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+
+                SizedBox(height: context.r.spaceLg),
+
+                // Botones
+                _buildActionButtons(isDark),
+                SizedBox(height: context.r.spaceLg),
+              ],
+            ),
     );
   }
 
@@ -387,7 +422,12 @@ class _SummaryScreenState extends State<SummaryScreen>
     required String label,
     required String value,
   }) {
-    return SummaryInfoRow(icon: icon, label: label, value: value, isDark: isDark);
+    return SummaryInfoRow(
+      icon: icon,
+      label: label,
+      value: value,
+      isDark: isDark,
+    );
   }
 
   Widget _divider(bool isDark) {
@@ -434,8 +474,11 @@ class _SummaryScreenState extends State<SummaryScreen>
   }
 
   Widget _buildPhoto(String? foto, bool isDark, {required IconData icon}) {
-    final fallback = Icon(icon, size: context.r.iconMd,
-        color: AppColors.accentForTheme(isDark).withValues(alpha: 0.6));
+    final fallback = Icon(
+      icon,
+      size: context.r.iconMd,
+      color: AppColors.accentForTheme(isDark).withValues(alpha: 0.6),
+    );
     if (foto == null || foto.isEmpty) return fallback;
 
     final bytes = _decodePhoto(foto);
@@ -456,8 +499,9 @@ class _SummaryScreenState extends State<SummaryScreen>
   /// reciente de la sesión (las fotos llegan en segundo plano tras el login).
   String _patientPhotoB64(BeneficiaryModel? beneficiary, UserModel user) {
     if (beneficiary != null) {
-      final fresh = user.beneficiaries
-          .where((b) => b.id == beneficiary.id && b.photoBase64.isNotEmpty);
+      final fresh = user.beneficiaries.where(
+        (b) => b.id == beneficiary.id && b.photoBase64.isNotEmpty,
+      );
       if (fresh.isNotEmpty) return fresh.first.photoBase64;
       if (beneficiary.photoBase64.isNotEmpty) return beneficiary.photoBase64;
     }
@@ -477,7 +521,9 @@ class _SummaryScreenState extends State<SummaryScreen>
               color: isDark ? AppColors.darkElevated : AppColors.white,
               borderRadius: BorderRadius.circular(context.r.cardRadius),
               border: Border.all(
-                color: isDark ? AppColors.darkBorder : const Color(0xFF191C1E).withValues(alpha: 0.15),
+                color: isDark
+                    ? AppColors.darkBorder
+                    : const Color(0xFF191C1E).withValues(alpha: 0.15),
                 width: 0.8,
               ),
             ),
@@ -510,17 +556,24 @@ class _SummaryScreenState extends State<SummaryScreen>
           // insignia, mantiene ambos botones perfectamente sincronizados.
           child: _wrapWithTutorialHint(
             ScaleTransition(
-              scale: _isConfirming ? const AlwaysStoppedAnimation(1.0) : _pulseScale,
+              scale: _isConfirming
+                  ? const AlwaysStoppedAnimation(1.0)
+                  : _pulseScale,
               child: Container(
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(context.r.cardRadius),
                   border: Border.all(
-                    color: isDark ? AppColors.darkBorder : const Color(0xFF191C1E).withValues(alpha: 0.15),
+                    color: isDark
+                        ? AppColors.darkBorder
+                        : const Color(0xFF191C1E).withValues(alpha: 0.15),
                     width: 0.8,
                   ),
                 ),
                 child: CupertinoButton(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 14,
+                  ),
                   color: AppColors.success,
                   borderRadius: BorderRadius.circular(context.r.cardRadius),
                   onPressed: _isConfirming ? null : () => _onConfirmPressed(),
@@ -568,12 +621,17 @@ class _SummaryScreenState extends State<SummaryScreen>
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(context.r.cardRadius),
                   border: Border.all(
-                    color: isDark ? AppColors.darkBorder : const Color(0xFF191C1E).withValues(alpha: 0.15),
+                    color: isDark
+                        ? AppColors.darkBorder
+                        : const Color(0xFF191C1E).withValues(alpha: 0.15),
                     width: 0.8,
                   ),
                 ),
                 child: CupertinoButton.filled(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 14,
+                  ),
                   borderRadius: BorderRadius.circular(context.r.cardRadius),
                   onPressed: _isDownloadingPdf ? null : _openPdfPreview,
                   child: _isDownloadingPdf
@@ -585,7 +643,10 @@ class _SummaryScreenState extends State<SummaryScreen>
                             SizedBox(width: 10),
                             Text(
                               'Ver Imagen de la Cita Médica',
-                              style: context.texts.bodyMedium.copyWith(fontWeight: FontWeight.w800, letterSpacing: 0.3),
+                              style: context.texts.bodyMedium.copyWith(
+                                fontWeight: FontWeight.w800,
+                                letterSpacing: 0.3,
+                              ),
                             ),
                           ],
                         ),
@@ -605,7 +666,9 @@ class _SummaryScreenState extends State<SummaryScreen>
               color: isDark ? AppColors.darkElevated : AppColors.white,
               borderRadius: BorderRadius.circular(context.r.cardRadius),
               border: Border.all(
-                color: isDark ? AppColors.darkBorder : const Color(0xFF191C1E).withValues(alpha: 0.15),
+                color: isDark
+                    ? AppColors.darkBorder
+                    : const Color(0xFF191C1E).withValues(alpha: 0.15),
                 width: 0.8,
               ),
             ),
@@ -639,11 +702,16 @@ class _SummaryScreenState extends State<SummaryScreen>
       return;
     }
 
-    if (_gestion == null || _idins == null || _idsuc == null || _idtran == null || _dr == null) {
+    if (_gestion == null ||
+        _idins == null ||
+        _idsuc == null ||
+        _idtran == null ||
+        _dr == null) {
       await CossmilIosAlert.show(
         context: context,
         title: 'PDF no disponible',
-        message: 'No se encontraron los datos necesarios para generar el PDF. Intenta nuevamente.',
+        message:
+            'No se encontraron los datos necesarios para generar el PDF. Intenta nuevamente.',
         type: AlertType.warning,
         confirmText: 'Aceptar',
       );
@@ -658,10 +726,8 @@ class _SummaryScreenState extends State<SummaryScreen>
       Navigator.push(
         context,
         AppPageRoute(
-          builder: (_) => _PdfPreviewScreen(
-            pdfBytes: _cachedPdfBytes!,
-            fileName: fileName,
-          ),
+          builder: (_) =>
+              _PdfPreviewScreen(pdfBytes: _cachedPdfBytes!, fileName: fileName),
         ),
       );
       return;
@@ -689,7 +755,8 @@ class _SummaryScreenState extends State<SummaryScreen>
         await CossmilIosAlert.show(
           context: context,
           title: 'PDF no disponible',
-          message: 'No se pudo obtener el PDF de la cita en este momento. Intenta nuevamente más tarde.',
+          message:
+              'No se pudo obtener el PDF de la cita en este momento. Intenta nuevamente más tarde.',
           type: AlertType.warning,
           confirmText: 'Aceptar',
         );
@@ -700,10 +767,8 @@ class _SummaryScreenState extends State<SummaryScreen>
       Navigator.push(
         context,
         AppPageRoute(
-          builder: (_) => _PdfPreviewScreen(
-            pdfBytes: pdfBytes,
-            fileName: fileName,
-          ),
+          builder: (_) =>
+              _PdfPreviewScreen(pdfBytes: pdfBytes, fileName: fileName),
         ),
       );
     } catch (e) {
@@ -781,7 +846,8 @@ class _SummaryScreenState extends State<SummaryScreen>
       await CossmilIosAlert.show(
         context: context,
         title: 'No se pudo generar el ejemplo',
-        message: 'Ocurrió un problema generando tu ficha de ejemplo. Intenta nuevamente.',
+        message:
+            'Ocurrió un problema generando tu ficha de ejemplo. Intenta nuevamente.',
         type: AlertType.warning,
         confirmText: 'Aceptar',
       );
@@ -796,7 +862,8 @@ class _SummaryScreenState extends State<SummaryScreen>
     final user = UserSession.currentUser;
 
     if ((int.tryParse(bs.hospital?.id ?? '') ?? 0) == 0) return 'el hospital';
-    if ((int.tryParse(bs.specialty?.id ?? '') ?? 0) == 0) return 'la especialidad';
+    if ((int.tryParse(bs.specialty?.id ?? '') ?? 0) == 0)
+      return 'la especialidad';
     if ((bs.doctor?.id ?? '').isEmpty) return 'el médico';
     if ((bs.doctor?.fecha ?? '').isEmpty) return 'la fecha de la cita';
     if ((bs.idagenda ?? '').isEmpty) return 'la agenda del médico';
@@ -856,9 +923,12 @@ class _SummaryScreenState extends State<SummaryScreen>
     widget.onConfirmed?.call();
 
     try {
-      if (SoundManager.isEnabled && !await SoundManager.isDeviceSilentOrVibrate()) {
+      if (SoundManager.isEnabled &&
+          !await SoundManager.isDeviceSilentOrVibrate()) {
         _successPlayer = AudioPlayer();
-        await _successPlayer!.play(AssetSource('vof/AUDIO 5. FINAL CITA MEDICA REGISTRADA.mp3'));
+        await _successPlayer!.play(
+          AssetSource('vof/AUDIO 5. FINAL CITA MEDICA REGISTRADA.mp3'),
+        );
       }
     } catch (_) {}
 
@@ -886,31 +956,43 @@ class _SummaryScreenState extends State<SummaryScreen>
         style: base,
         children: [
           const TextSpan(
-              text: 'Estimado asegurado, le recordamos la importancia de '
-                  'asistir a sus consultas. Si acumula '),
-          TextSpan(text: '2 inasistencias', style: strong(AppColors.warning)),
+            text:
+                'Estimado asegurado, nos permitimos recordarle '
+                'amablemente la importancia de asistir a sus consultas '
+                'programadas. Si acumula ',
+          ),
+          TextSpan(text: '3 inasistencias', style: strong(AppColors.warning)),
           const TextSpan(text: ', el sistema '),
           TextSpan(
-              text: 'suspenderá temporalmente su acceso a la plataforma web '
-                  'y móvil',
-              style: strong(AppColors.warning)),
+            text:
+                'suspenderá temporalmente su acceso a la plataforma web '
+                'y móvil',
+            style: strong(AppColors.warning),
+          ),
           const TextSpan(
-              text: '. Recuerde que puede cancelar su cita médica hasta las '),
+            text: '. Recuerde que puede cancelar su cita médica hasta las ',
+          ),
           TextSpan(
-              text: '06:00 a. m.',
-              style: strong(AppColors.accentForTheme(isDark))),
+            text: '06:00 a. m.',
+            style: strong(AppColors.accentForTheme(isDark)),
+          ),
           const TextSpan(text: ' del día asignado.\n\n'),
           const TextSpan(
-              text: 'En caso de requerir el desbloqueo de su cuenta, le '
-                  'pedimos acercarse a la '),
+            text:
+                'En caso de requerir el desbloqueo de su cuenta, se '
+                'agradece aproximarse a la ',
+          ),
           TextSpan(
-              text: 'agencia regional más cercana',
-              style: strong(AppColors.textPrimaryC(isDark))),
+            text: 'agencia regional más cercana',
+            style: strong(AppColors.textPrimaryC(isDark)),
+          ),
           const TextSpan(
-              text: ' y solicitar asistencia al responsable de '
-                  'Citas Médicas.\n\n'),
+            text:
+                ' y solicitar amablemente la asistencia del responsable '
+                'de Citas Médicas.\n\n',
+          ),
           TextSpan(
-            text: 'Muchas gracias por su atención.',
+            text: 'Muchas gracias por su atención y comprensión.',
             style: base.copyWith(
               fontStyle: FontStyle.italic,
               color: AppColors.textSecondaryC(isDark),
@@ -945,7 +1027,8 @@ class _SummaryScreenState extends State<SummaryScreen>
       await CossmilIosAlert.show(
         context: context,
         title: 'Faltan datos',
-        message: 'No se pudo confirmar la reserva porque falta $missing. '
+        message:
+            'No se pudo confirmar la reserva porque falta $missing. '
             'Por favor regresa a los pasos anteriores y verifica que todo esté completo.',
         type: AlertType.warning,
         confirmText: 'Aceptar',
@@ -984,7 +1067,7 @@ class _SummaryScreenState extends State<SummaryScreen>
         "idseg": user.idseg ?? 101,
         "uc": user.uc ?? "1195",
         "obs": "",
-        "modalidad": "ASE"
+        "modalidad": "ASE",
       };
 
       debugPrint('🚀 Enviando crea-cita con payload: $payload');
@@ -1012,9 +1095,12 @@ class _SummaryScreenState extends State<SummaryScreen>
 
       // Reproducir audio de cita registrada exitosamente (respeta modo silencio/vibración)
       try {
-        if (SoundManager.isEnabled && !await SoundManager.isDeviceSilentOrVibrate()) {
+        if (SoundManager.isEnabled &&
+            !await SoundManager.isDeviceSilentOrVibrate()) {
           _successPlayer = AudioPlayer();
-          await _successPlayer!.play(AssetSource('vof/AUDIO 5. FINAL CITA MEDICA REGISTRADA.mp3'));
+          await _successPlayer!.play(
+            AssetSource('vof/AUDIO 5. FINAL CITA MEDICA REGISTRADA.mp3'),
+          );
         }
       } catch (_) {}
 
@@ -1023,24 +1109,33 @@ class _SummaryScreenState extends State<SummaryScreen>
         final fechaStr = bs.doctor?.fecha ?? '';
         final horaStr = bs.selectedTime ?? '';
         // Normalizar hora: eliminar segundos si viene como "HH:mm:ss"
-        final horaNorm = (horaStr.length > 5) ? horaStr.substring(0, 5) : horaStr;
+        final horaNorm = (horaStr.length > 5)
+            ? horaStr.substring(0, 5)
+            : horaStr;
         // Parse fecha (dd/MM/yyyy) + hora (HH:mm) into DateTime
         DateTime? apptDateTime;
         if (fechaStr.isNotEmpty && horaNorm.isNotEmpty) {
           try {
-            apptDateTime = DateFormat('dd/MM/yyyy HH:mm').parse('$fechaStr $horaNorm');
+            apptDateTime = DateFormat(
+              'dd/MM/yyyy HH:mm',
+            ).parse('$fechaStr $horaNorm');
           } catch (_) {
             try {
-              apptDateTime = DateFormat('yyyy-MM-dd HH:mm').parse('$fechaStr $horaNorm');
+              apptDateTime = DateFormat(
+                'yyyy-MM-dd HH:mm',
+              ).parse('$fechaStr $horaNorm');
             } catch (_) {}
           }
         }
         if (apptDateTime == null) {
-          debugPrint('⚠️ [SummaryScreen] apptDateTime es null — notificaciones NO programadas. '
-              'fechaStr=$fechaStr, horaStr=$horaStr, horaNorm=$horaNorm');
+          debugPrint(
+            '⚠️ [SummaryScreen] apptDateTime es null — notificaciones NO programadas. '
+            'fechaStr=$fechaStr, horaStr=$horaStr, horaNorm=$horaNorm',
+          );
         }
         if (apptDateTime != null) {
-          final ticketNum = responseData?['idtran']?.toString() ?? '${bs.slotNumber ?? 0}';
+          final ticketNum =
+              responseData?['idtran']?.toString() ?? '${bs.slotNumber ?? 0}';
           final pacienteName = bs.beneficiary?.fullName ?? user.fullName;
           await NotificationService.showBookingConfirmed(
             especialidad: bs.specialty?.name ?? '',
@@ -1108,7 +1203,9 @@ class _SummaryScreenState extends State<SummaryScreen>
         Text(
           _isConfirmed ? 'Cita Médica Confirmada' : 'Resumen de su Cita Médica',
           style: context.texts.displayLarge.copyWith(
-            color: _isConfirmed ? AppColors.accent : AppColors.accentForTheme(isDark),
+            color: _isConfirmed
+                ? AppColors.accent
+                : AppColors.accentForTheme(isDark),
           ),
         ),
         SizedBox(height: context.r.spaceSm),
@@ -1202,7 +1299,10 @@ class _PdfPreviewScreen extends StatelessWidget {
                 ),
               ),
             ),
-            if (isTutorial) _buildTutorialEndBar(context, isDark) else _buildActionsBar(context, isDark),
+            if (isTutorial)
+              _buildTutorialEndBar(context, isDark)
+            else
+              _buildActionsBar(context, isDark),
           ],
         ),
       ),
@@ -1212,12 +1312,19 @@ class _PdfPreviewScreen extends StatelessWidget {
   /// Barra final del tutorial: solo previsualización, sin descargar/compartir.
   Widget _buildTutorialEndBar(BuildContext context, bool isDark) {
     return Container(
-      padding: EdgeInsets.fromLTRB(context.r.paddingH, context.r.spaceMd, context.r.paddingH, context.r.spaceMd),
+      padding: EdgeInsets.fromLTRB(
+        context.r.paddingH,
+        context.r.spaceMd,
+        context.r.paddingH,
+        context.r.spaceMd + context.r.navBarBottomSpace,
+      ),
       decoration: BoxDecoration(
         color: AppColors.cardBg(isDark),
         border: Border(
           top: BorderSide(
-            color: isDark ? AppColors.darkDivider : const Color(0xFF191C1E).withValues(alpha: 0.08),
+            color: isDark
+                ? AppColors.darkDivider
+                : const Color(0xFF191C1E).withValues(alpha: 0.08),
             width: 0.5,
           ),
         ),
@@ -1227,7 +1334,11 @@ class _PdfPreviewScreen extends StatelessWidget {
         children: [
           Row(
             children: [
-              const Icon(CupertinoIcons.checkmark_seal_fill, color: kTutorialAccent, size: 20),
+              const Icon(
+                CupertinoIcons.checkmark_seal_fill,
+                color: kTutorialAccent,
+                size: 20,
+              ),
               SizedBox(width: context.r.spaceSm),
               Expanded(
                 child: Text(
@@ -1268,12 +1379,19 @@ class _PdfPreviewScreen extends StatelessWidget {
   /// Barra de acciones real: Descargar/Imprimir, Compartir.
   Widget _buildActionsBar(BuildContext context, bool isDark) {
     return Container(
-      padding: EdgeInsets.fromLTRB(context.r.paddingH, context.r.spaceMd, context.r.paddingH, context.r.spaceMd),
+      padding: EdgeInsets.fromLTRB(
+        context.r.paddingH,
+        context.r.spaceMd,
+        context.r.paddingH,
+        context.r.spaceMd + context.r.navBarBottomSpace,
+      ),
       decoration: BoxDecoration(
         color: AppColors.cardBg(isDark),
         border: Border(
           top: BorderSide(
-            color: isDark ? AppColors.darkDivider : const Color(0xFF191C1E).withValues(alpha: 0.08),
+            color: isDark
+                ? AppColors.darkDivider
+                : const Color(0xFF191C1E).withValues(alpha: 0.08),
             width: 0.5,
           ),
         ),
@@ -1290,7 +1408,11 @@ class _PdfPreviewScreen extends StatelessWidget {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  const Icon(CupertinoIcons.printer, size: 18, color: AppColors.white),
+                  const Icon(
+                    CupertinoIcons.printer,
+                    size: 18,
+                    color: AppColors.white,
+                  ),
                   SizedBox(width: context.r.spaceSm),
                   Text(
                     'Descargar / Imprimir',
@@ -1313,7 +1435,11 @@ class _PdfPreviewScreen extends StatelessWidget {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(CupertinoIcons.share, size: 18, color: AppColors.accentForTheme(isDark)),
+                  Icon(
+                    CupertinoIcons.share,
+                    size: 18,
+                    color: AppColors.accentForTheme(isDark),
+                  ),
                   SizedBox(width: context.r.spaceSm),
                   Text(
                     'Compartir',
@@ -1331,16 +1457,10 @@ class _PdfPreviewScreen extends StatelessWidget {
   }
 
   void _printPdf(BuildContext context) {
-    Printing.layoutPdf(
-      onLayout: (_) async => pdfBytes,
-      name: fileName,
-    );
+    Printing.layoutPdf(onLayout: (_) async => pdfBytes, name: fileName);
   }
 
   void _sharePdf(BuildContext context) {
-    Printing.sharePdf(
-      bytes: pdfBytes,
-      filename: '$fileName.pdf',
-    );
+    Printing.sharePdf(bytes: pdfBytes, filename: '$fileName.pdf');
   }
 }

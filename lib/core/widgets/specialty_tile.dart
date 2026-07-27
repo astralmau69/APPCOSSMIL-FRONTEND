@@ -49,7 +49,10 @@ class SpecialtyTile extends StatelessWidget {
       behavior: HitTestBehavior.opaque,
       onTap: onTap,
       child: Padding(
-        padding: EdgeInsets.symmetric(horizontal: r.cardPadding, vertical: r.cardPadding),
+        padding: EdgeInsets.symmetric(
+          horizontal: r.cardPadding,
+          vertical: r.cardPadding,
+        ),
         child: Row(
           children: [
             Container(
@@ -64,7 +67,9 @@ class SpecialtyTile extends StatelessWidget {
               child: Icon(
                 iconFor(specialty.name),
                 size: r.iconMd,
-                color: showBadge ? AppColors.accent : AppColors.accentForTheme(isDark),
+                color: showBadge
+                    ? AppColors.accent
+                    : AppColors.accentForTheme(isDark),
               ),
             ),
             SizedBox(width: r.spaceMd),
@@ -101,17 +106,26 @@ class SpecialtyTile extends StatelessWidget {
             ),
             if (showBadge && specialty.isAuthorized) ...[
               Container(
-                padding: EdgeInsets.symmetric(horizontal: r.chipPaddingH, vertical: r.chipPaddingV),
+                padding: EdgeInsets.symmetric(
+                  horizontal: r.chipPaddingH,
+                  vertical: r.chipPaddingV,
+                ),
                 decoration: BoxDecoration(
-                  color: isDark ? AppColors.accent.withValues(alpha: 0.15) : AppColors.accentLight,
+                  color: isDark
+                      ? AppColors.accent.withValues(alpha: 0.15)
+                      : AppColors.accentLight,
                   borderRadius: BorderRadius.circular(r.radiusSm),
-                  border: Border.all(color: AppColors.accent.withValues(alpha: 0.3)),
+                  border: Border.all(
+                    color: AppColors.accent.withValues(alpha: 0.3),
+                  ),
                 ),
                 child: Text(
                   'AUTORIZADO',
                   style: TextStyle(
                     fontWeight: FontWeight.w800,
-                    color: isDark ? AppColors.accentLight : AppColors.accentDark,
+                    color: isDark
+                        ? AppColors.accentLight
+                        : AppColors.accentDark,
                     letterSpacing: 0.8,
                   ),
                 ),

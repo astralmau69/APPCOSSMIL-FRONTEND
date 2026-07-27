@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -29,25 +31,27 @@ void main() async {
   try {
     await Firebase.initializeApp(
       options: DefaultFirebaseOptions.currentPlatform,
-    ).timeout(kIsWeb ? const Duration(seconds: 8) : const Duration(seconds: 30));
+    ).timeout(
+      kIsWeb ? const Duration(seconds: 8) : const Duration(seconds: 30),
+    );
     // FCM en web exige service worker + API Notification, que solo existen en
     // contextos seguros (https o localhost). Desde http://IP:puerto no hay
     // forma de que funcione: se omite para no lanzar errores en consola.
-    final webPushSupported = !kIsWeb ||
+    final webPushSupported =
+        !kIsWeb ||
         Uri.base.scheme == 'https' ||
         Uri.base.host == 'localhost' ||
         Uri.base.host == '127.0.0.1';
     if (webPushSupported) {
-      await PushNotificationService.initialize()
-          .timeout(kIsWeb ? const Duration(seconds: 8) : const Duration(seconds: 30));
+      await PushNotificationService.initialize().timeout(
+        kIsWeb ? const Duration(seconds: 8) : const Duration(seconds: 30),
+      );
     }
   } catch (e) {
     debugPrint('Error inicializando Firebase: $e');
   }
 
-  await SystemChrome.setPreferredOrientations([
-    DeviceOrientation.portraitUp,
-  ]);
+  await SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
   // Initialize Spanish locale for date formatting
   await initializeDateFormatting('es');
   // Initialize notification channels + timezone before app launch (mobile only)
@@ -68,18 +72,22 @@ void main() async {
   if (!kIsWeb) {
     await AudioPlayer.global.setAudioContext(
       AudioContext(
-        iOS: AudioContextIOS(
-          category: AVAudioSessionCategory.ambient,
-        ),
+        iOS: AudioContextIOS(category: AVAudioSessionCategory.ambient),
         android: const AudioContextAndroid(
           isSpeakerphoneOn: false,
           stayAwake: false,
           contentType: AndroidContentType.music,
-          usageType: AndroidUsageType.media, // <-- Cambiado a 'media' para screen mirroring
-          audioFocus: AndroidAudioFocus.gainTransientMayDuck, // <-- Focus más gentil para sonidos cortos
+          usageType: AndroidUsageType
+              .media, // <-- Cambiado a 'media' para screen mirroring
+          audioFocus: AndroidAudioFocus
+              .gainTransientMayDuck, // <-- Focus más gentil para sonidos cortos
         ),
       ),
     );
+    // Precalienta el motor de sonidos de interfaz DESPUÉS de fijar el
+    // AudioContext (hereda esa configuración). Sin await: la primera pantalla
+    // no espera por audio.
+    unawaited(SoundManager.warmUp());
   }
   runApp(const CossmilApp());
 }

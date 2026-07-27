@@ -58,8 +58,7 @@ class NotificationService {
   /// Recibe el payload decodificado (gestion, idins, idsuc, idtran, dr).
   static void registerCancelCitaHandler(
     Future<void> Function(Map<String, dynamic> data) fn,
-  ) =>
-      NotificationUiHandler.registerCancelCitaHandler(fn);
+  ) => NotificationUiHandler.registerCancelCitaHandler(fn);
 
   static void switchTab(int tab) => NotificationUiHandler.switchTab(tab);
 
@@ -77,20 +76,19 @@ class NotificationService {
     int? idsuc,
     int? idtran,
     int? dr,
-  }) =>
-      NotificationScheduler.showBookingConfirmed(
-        especialidad: especialidad,
-        medico: medico,
-        fecha: fecha,
-        hora: hora,
-        paciente: paciente,
-        ticketNumber: ticketNumber,
-        gestion: gestion,
-        idins: idins,
-        idsuc: idsuc,
-        idtran: idtran,
-        dr: dr,
-      );
+  }) => NotificationScheduler.showBookingConfirmed(
+    especialidad: especialidad,
+    medico: medico,
+    fecha: fecha,
+    hora: hora,
+    paciente: paciente,
+    ticketNumber: ticketNumber,
+    gestion: gestion,
+    idins: idins,
+    idsuc: idsuc,
+    idtran: idtran,
+    dr: dr,
+  );
 
   static Future<void> scheduleAppointmentReminders({
     required String ticketNumber,
@@ -106,22 +104,21 @@ class NotificationService {
     int? idtran,
     int? dr,
     bool rescheduleOnly = false,
-  }) =>
-      NotificationScheduler.scheduleAppointmentReminders(
-        ticketNumber: ticketNumber,
-        appointmentDateTime: appointmentDateTime,
-        especialidad: especialidad,
-        medico: medico,
-        paciente: paciente,
-        fecha: fecha,
-        hora: hora,
-        gestion: gestion,
-        idins: idins,
-        idsuc: idsuc,
-        idtran: idtran,
-        dr: dr,
-        rescheduleOnly: rescheduleOnly,
-      );
+  }) => NotificationScheduler.scheduleAppointmentReminders(
+    ticketNumber: ticketNumber,
+    appointmentDateTime: appointmentDateTime,
+    especialidad: especialidad,
+    medico: medico,
+    paciente: paciente,
+    fecha: fecha,
+    hora: hora,
+    gestion: gestion,
+    idins: idins,
+    idsuc: idsuc,
+    idtran: idtran,
+    dr: dr,
+    rescheduleOnly: rescheduleOnly,
+  );
 
   static Future<void> cancelAppointmentReminders(String idtran) =>
       NotificationScheduler.cancelAppointmentReminders(idtran);
@@ -142,13 +139,12 @@ class NotificationService {
     required String paciente,
     int? idtran,
     int? dr,
-  }) =>
-      NotificationScheduler.showRatingReminder(
-        ticketNumber: ticketNumber,
-        especialidad: especialidad,
-        medico: medico,
-        paciente: paciente,
-        idtran: idtran,
-        dr: dr,
-      );
+  }) => NotificationScheduler.showRatingReminder(
+    ticketNumber: ticketNumber,
+    especialidad: especialidad,
+    medico: medico,
+    paciente: paciente,
+    idtran: idtran,
+    dr: dr,
+  );
 }

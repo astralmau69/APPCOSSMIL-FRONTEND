@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 
 /// Sistema de tema responsive completo para COSSMIL.
 /// Soporta múltiples breakpoints: phones pequeños, phones medianos, phones grandes, tablets, landscape.
-/// 
+///
 /// Uso:
 /// ```dart
 /// final sizes = ResponsiveTheme.of(context);
@@ -10,10 +10,11 @@ import 'package:flutter/material.dart';
 /// ```
 class ResponsiveTheme {
   // Breakpoints para diferentes dispositivos
-  static const double _phoneMd = 375;   // iPhone base
-  static const double _phoneLg = 428;   // iPhone Pro, large Android
-  static const double _tabletSm = 600;  // iPad mini horizontal / Android tablets start
-  static const double _tabletMd = 768;  // iPad normal
+  static const double _phoneMd = 375; // iPhone base
+  static const double _phoneLg = 428; // iPhone Pro, large Android
+  static const double _tabletSm =
+      600; // iPad mini horizontal / Android tablets start
+  static const double _tabletMd = 768; // iPad normal
   static const double _tabletLg = 1024; // iPad Pro
 
   final double screenWidth;
@@ -278,12 +279,12 @@ class ResponsiveTheme {
 
 /// Categoría de dispositivo
 enum DeviceCategory {
-  phoneSmall,      // < 375dp
-  phoneMedium,     // 375-428dp
-  phoneLarge,      // 428-600dp
-  tabletSmall,     // 600-768dp
-  tabletMedium,    // 768-1024dp
-  tabletLarge,     // >= 1024dp
+  phoneSmall, // < 375dp
+  phoneMedium, // 375-428dp
+  phoneLarge, // 428-600dp
+  tabletSmall, // 600-768dp
+  tabletMedium, // 768-1024dp
+  tabletLarge, // >= 1024dp
 }
 
 /// Sistema de tipografía responsive.

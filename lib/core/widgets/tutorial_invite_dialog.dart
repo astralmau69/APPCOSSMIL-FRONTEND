@@ -4,7 +4,10 @@ import 'package:flutter/cupertino.dart';
 
 import '../animations/app_dialog.dart';
 import '../constants/app_colors.dart';
+import '../constants/app_sounds.dart';
 import '../extensions/responsive_extensions.dart';
+import '../services/tutorial_voice.dart';
+import '../theme/sound_manager.dart';
 import 'liquid_glass.dart';
 import 'tutorial_instructor.dart';
 import 'tutorial_coach_overlay.dart' show kTutorialAccent;
@@ -18,9 +21,15 @@ Future<void> showTutorialInviteDialog(
   required bool isDark,
   required VoidCallback onAccept,
 }) {
+  // Pop suave sincronizado con la entrada elástica de la instructora.
+  SoundManager.playUi(AppSounds.coach);
+  // Locución de bienvenida (si existe el clip; si no, en silencio).
+  TutorialVoice.play('invite');
   return showAppDialog(
     context: context,
     barrierLabel: 'Invitación al tutorial',
+    // La instructora ya trae su propio pop: nada de doble sonido.
+    silent: true,
     builder: (ctx) {
       final r = ctx.r;
       final width = math.min(r.modalMaxWidth, ctx.width * r.modalWidthFactor);
@@ -45,6 +54,7 @@ Future<void> showTutorialInviteDialog(
                   image: true,
                   child: TutorialInstructor(
                     height: r.profileAvatarSize * 1.5,
+                    pose: InstructorPose.saludo,
                     entrance: true,
                   ),
                 ),

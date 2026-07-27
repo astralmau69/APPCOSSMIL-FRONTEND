@@ -46,7 +46,10 @@ class UpdateService {
       }
       if (!info.flexibleUpdateAllowed) {
         // El release no permite modo flexible (ej. prioridad muy alta).
-        AppLogger.info(_tag, 'Update disponible, pero no permite modo flexible.');
+        AppLogger.info(
+          _tag,
+          'Update disponible, pero no permite modo flexible.',
+        );
         return;
       }
 
@@ -55,7 +58,10 @@ class UpdateService {
 
       final result = await InAppUpdate.startFlexibleUpdate();
       if (result == AppUpdateResult.success) {
-        AppLogger.info(_tag, 'Descarga flexible completada. Lista para instalar.');
+        AppLogger.info(
+          _tag,
+          'Descarga flexible completada. Lista para instalar.',
+        );
         onReadyToInstall?.call();
       } else {
         // userDeniedUpdate / inAppUpdateFailed → permitir reintentar luego.
@@ -64,7 +70,11 @@ class UpdateService {
     } catch (e) {
       // No está en Play, sin red, etc. → ignorar silenciosamente.
       _inProgress = false;
-      AppLogger.warn(_tag, 'No se pudo verificar/descargar la actualización.', e);
+      AppLogger.warn(
+        _tag,
+        'No se pudo verificar/descargar la actualización.',
+        e,
+      );
     }
   }
 
@@ -74,7 +84,11 @@ class UpdateService {
     try {
       await InAppUpdate.completeFlexibleUpdate();
     } catch (e) {
-      AppLogger.warn(_tag, 'No se pudo completar la instalación de la actualización.', e);
+      AppLogger.warn(
+        _tag,
+        'No se pudo completar la instalación de la actualización.',
+        e,
+      );
     }
   }
 }

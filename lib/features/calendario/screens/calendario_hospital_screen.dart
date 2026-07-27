@@ -9,8 +9,11 @@ import '../../../core/data/app_session_cache.dart';
 import '../../../core/utils/app_logger.dart';
 import '../../../core/animations/app_page_route.dart';
 import '../../../core/animations/optimized_animations.dart';
+import '../../../core/services/tutorial_flow.dart';
 import '../../../core/widgets/skeleton_loading.dart';
 import '../../../core/widgets/app_state_widget.dart';
+import '../../../core/widgets/guided_tap_hint.dart';
+import '../../../core/widgets/tutorial_flow_host.dart';
 import 'specialty_selection_screen.dart';
 
 class CalendarioHospitalScreen extends StatefulWidget {
@@ -42,11 +45,14 @@ class _CalendarioHospitalScreenState extends State<CalendarioHospitalScreen> {
     try {
       // 0.2: Consumir caché de sesión si ya fue poblado por el orchestrator.
       // Solo hace HTTP si el caché está vacío (cold start o pull-to-refresh).
-      final regionals = AppSessionCache.isLoaded && AppSessionCache.regionales.isNotEmpty
+      final regionals =
+          AppSessionCache.isLoaded && AppSessionCache.regionales.isNotEmpty
           ? AppSessionCache.regionales
           : await _service.getRegionalesPorDepartamento(1);
-      AppLogger.info('CalendarioHospitalScreen',
-          'Regionales desde ${AppSessionCache.isLoaded ? "caché" : "API"}: ${regionals.length}');
+      AppLogger.info(
+        'CalendarioHospitalScreen',
+        'Regionales desde ${AppSessionCache.isLoaded ? "caché" : "API"}: ${regionals.length}',
+      );
 
       // Sin filtro local: mostramos todos los establecimientos que devuelve
       // el servicio (el backend ya entrega solo los habilitados).
@@ -119,15 +125,34 @@ class _CalendarioHospitalScreenState extends State<CalendarioHospitalScreen> {
         ),
       ),
       child: SafeArea(
-        child: _buildBody(isDark, r),
+        // Paso 1 del tutorial del Calendario: la instructora presenta la
+        // sección y pide elegir el establecimiento.
+        child: TutorialFlowHost(
+          tutorial: GuidedTutorial.calendario,
+          step: 2,
+          totalSteps: 5,
+          voiceId: 'calendario_01',
+          messages: const [
+            'Aquí puedes ver los días y horarios en que atiende cada '
+                'médico — sin reservar nada.',
+            'Empieza eligiendo tu hospital o policlínico.',
+          ],
+          builder: (context, tutorialActive) =>
+              _buildBody(isDark, r, tutorialActive),
+        ),
       ),
     );
   }
 
-  Widget _buildBody(bool isDark, AppResponsive r) {
+  Widget _buildBody(bool isDark, AppResponsive r, bool tutorialActive) {
     if (_isLoading) {
       return SingleChildScrollView(
-        padding: EdgeInsets.fromLTRB(r.paddingH, r.spaceLg, r.paddingH, r.spaceXl),
+        padding: EdgeInsets.fromLTRB(
+          r.paddingH,
+          r.spaceLg,
+          r.paddingH,
+          r.navBarBottomSpace,
+        ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -156,8 +181,9 @@ class _CalendarioHospitalScreenState extends State<CalendarioHospitalScreen> {
     }
 
     return CustomScrollView(
-      physics:
-          const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
+      physics: const BouncingScrollPhysics(
+        parent: AlwaysScrollableScrollPhysics(),
+      ),
       slivers: [
         CupertinoSliverRefreshControl(onRefresh: _load),
         SliverToBoxAdapter(
@@ -166,7 +192,11 @@ class _CalendarioHospitalScreenState extends State<CalendarioHospitalScreen> {
               constraints: BoxConstraints(maxWidth: r.maxContentWidth),
               child: Padding(
                 padding: EdgeInsets.fromLTRB(
-                    r.paddingH, r.spaceLg, r.paddingH, r.spaceXl),
+                  r.paddingH,
+                  r.spaceLg,
+                  r.paddingH,
+                  r.navBarBottomSpace,
+                ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -196,22 +226,23 @@ class _CalendarioHospitalScreenState extends State<CalendarioHospitalScreen> {
                         '11' => const Color(0xFFEF4444),
                         _ => const Color(0xFF3B82F6),
                       };
+                      final card = _HospitalCard(
+                        hospital: h,
+                        accentColor: color,
+                        isDark: isDark,
+                        onTap: () => _onSelect(h),
+                      );
                       return FadeSlideIn(
                         delay: Duration(milliseconds: 100 + i * 60),
                         offsetY: 10,
                         child: Padding(
                           padding: EdgeInsets.only(bottom: r.spaceMd),
-                          child: _HospitalCard(
-                            hospital: h,
-                            accentColor: color,
-                            isDark: isDark,
-                            onTap: () => _onSelect(h),
-                          ),
+                          child: (tutorialActive && i == 0)
+                              ? GuidedTapHint(child: card)
+                              : card,
                         ),
                       );
                     }),
-
-                    SizedBox(height: r.spaceXl),
                   ],
                 ),
               ),
@@ -321,7 +352,11 @@ class _HospitalCard extends StatelessWidget {
     final r = context.r;
     final cardColor = AppColors.cardBg(isDark);
     // Ancho de la tira fotográfica — escala con el tamaño de pantalla
-    final photoW = r.isSmallPhone ? 78.0 : r.isTablet ? 128.0 : 100.0;
+    final photoW = r.isSmallPhone
+        ? 78.0
+        : r.isTablet
+        ? 128.0
+        : 100.0;
     final hasPhoto = hospital.photoBase64.isNotEmpty;
 
     return CupertinoButton(
@@ -334,10 +369,7 @@ class _HospitalCard extends StatelessWidget {
           decoration: BoxDecoration(
             color: cardColor,
             borderRadius: BorderRadius.circular(r.cardRadius),
-            border: Border.all(
-              color: AppColors.cardBorder(isDark),
-              width: 0.5,
-            ),
+            border: Border.all(color: AppColors.cardBorder(isDark), width: 0.5),
             boxShadow: AppColors.cardShadowFor(isDark),
           ),
           child: Stack(
@@ -349,7 +381,10 @@ class _HospitalCard extends StatelessWidget {
                   bottom: 0,
                   right: 0,
                   width: photoW,
-                  child: _buildFadedHospitalPhoto(hospital.photoBase64, cardColor),
+                  child: _buildFadedHospitalPhoto(
+                    hospital.photoBase64,
+                    cardColor,
+                  ),
                 ),
 
               // ── Contenido — padding derecho reserva la zona de la foto ──

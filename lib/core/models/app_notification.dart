@@ -2,10 +2,10 @@ import 'dart:convert';
 
 /// Tipos de notificación soportados por COSSMIL.
 enum AppNotificationType {
-  reminder,    // Recordatorio de cita
-  booking,     // Confirmación de reserva
-  rating,      // Solicitud de calificación
-  cazador,     // Cazador de fichas
+  reminder, // Recordatorio de cita
+  booking, // Confirmación de reserva
+  rating, // Solicitud de calificación
+  cazador, // Cazador de fichas
 }
 
 /// Modelo inmutable de una notificación en el historial del usuario.
@@ -49,14 +49,14 @@ class AppNotification {
   }
 
   Map<String, dynamic> toJson() => {
-        'id': id,
-        'type': type.name,
-        'title': title,
-        'body': body,
-        'createdAt': createdAt.toIso8601String(),
-        'isRead': isRead,
-        if (payload != null) 'payload': payload,
-      };
+    'id': id,
+    'type': type.name,
+    'title': title,
+    'body': body,
+    'createdAt': createdAt.toIso8601String(),
+    'isRead': isRead,
+    if (payload != null) 'payload': payload,
+  };
 
   factory AppNotification.fromJson(Map<String, dynamic> json) {
     return AppNotification(
@@ -67,7 +67,9 @@ class AppNotification {
       ),
       title: json['title'] as String? ?? '',
       body: json['body'] as String? ?? '',
-      createdAt: DateTime.tryParse(json['createdAt'] as String? ?? '') ?? DateTime.now(),
+      createdAt:
+          DateTime.tryParse(json['createdAt'] as String? ?? '') ??
+          DateTime.now(),
       isRead: json['isRead'] as bool? ?? false,
       payload: json['payload'] as Map<String, dynamic>?,
     );
@@ -76,9 +78,9 @@ class AppNotification {
   /// Ícono representativo del tipo.
   static const Map<AppNotificationType, int> _icons = {
     AppNotificationType.reminder: 0xF4C3, // clock.fill (CupertinoIcons)
-    AppNotificationType.booking:  0xF437, // checkmark.seal.fill
-    AppNotificationType.rating:   0xF48A, // star.fill
-    AppNotificationType.cazador:  0xF4B3, // bell.fill
+    AppNotificationType.booking: 0xF437, // checkmark.seal.fill
+    AppNotificationType.rating: 0xF48A, // star.fill
+    AppNotificationType.cazador: 0xF4B3, // bell.fill
   };
 
   int get iconCodePoint => _icons[type] ?? 0xF4B3;
@@ -137,7 +139,9 @@ class AppNotificationRepository {
       final list = jsonDecode(raw) as List<dynamic>;
       _items
         ..clear()
-        ..addAll(list.map((e) => AppNotification.fromJson(e as Map<String, dynamic>)));
+        ..addAll(
+          list.map((e) => AppNotification.fromJson(e as Map<String, dynamic>)),
+        );
     } catch (_) {}
   }
 

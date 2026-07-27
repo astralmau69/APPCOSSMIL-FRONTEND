@@ -14,8 +14,9 @@ class ThemeManager {
   );
   static const _key = 'app_theme_mode';
 
-  static final ValueNotifier<ThemeMode> themeNotifier =
-      ValueNotifier(ThemeMode.system);
+  static final ValueNotifier<ThemeMode> themeNotifier = ValueNotifier(
+    ThemeMode.system,
+  );
 
   /// Initialise from persisted preference. Call once in main() / splash.
   static Future<void> init() async {
@@ -44,14 +45,14 @@ class ThemeManager {
   }
 
   static String _toString(ThemeMode m) => switch (m) {
-        ThemeMode.dark => 'dark',
-        ThemeMode.light => 'light',
-        _ => 'system',
-      };
+    ThemeMode.dark => 'dark',
+    ThemeMode.light => 'light',
+    _ => 'system',
+  };
 
   static ThemeMode _fromString(String s) => switch (s) {
-        'dark' => ThemeMode.dark,
-        'light' => ThemeMode.light,
-        _ => ThemeMode.system,
-      };
+    'dark' => ThemeMode.dark,
+    'light' => ThemeMode.light,
+    _ => ThemeMode.system,
+  };
 }

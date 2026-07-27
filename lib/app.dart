@@ -10,6 +10,7 @@ import 'features/auth/screens/pin_setup_screen.dart';
 import 'features/loading/screens/loading_data_screen.dart';
 import 'features/perfil/screens/security_setup_screen.dart';
 import 'shell/tab_shell.dart';
+import 'core/routing/sound_navigator_observer.dart';
 import 'core/theme/theme_manager.dart';
 
 class CossmilApp extends StatefulWidget {
@@ -23,6 +24,12 @@ class CossmilApp extends StatefulWidget {
 }
 
 class _CossmilAppState extends State<CossmilApp> {
+  /// Sonoriza el retroceso en el navegador raíz (login, carga, /home y las
+  /// pantallas que se abren sobre todo el shell). Se crea una sola vez: el
+  /// `build` se repite con cada cambio de tema y un observador nuevo por
+  /// build haría que el navegador lo reenganchara sin parar.
+  final _soundObserver = SoundNavigatorObserver();
+
   @override
   Widget build(BuildContext context) {
     return ValueListenableBuilder<ThemeMode>(
@@ -33,8 +40,9 @@ class _CossmilAppState extends State<CossmilApp> {
             final mq = MediaQuery.of(context);
             final screenWidth = mq.size.width;
             final isDark = currentThemeMode == ThemeMode.dark;
-            final defaultColor =
-                isDark ? AppColors.darkTextPrimary : AppColors.textPrimary;
+            final defaultColor = isDark
+                ? AppColors.darkTextPrimary
+                : AppColors.textPrimary;
 
             // Web: escala fija 1:1 — el sistema responsive (AppResponsive)
             // se encarga del tamaño de fuentes y espaciado según el ancho real.
@@ -43,7 +51,9 @@ class _CossmilAppState extends State<CossmilApp> {
                 data: mq.copyWith(textScaler: const TextScaler.linear(1.0)),
                 child: DefaultTextStyle(
                   style: TextStyle(
-                      decoration: TextDecoration.none, color: defaultColor),
+                    decoration: TextDecoration.none,
+                    color: defaultColor,
+                  ),
                   child: appChild!,
                 ),
               );
@@ -53,20 +63,23 @@ class _CossmilAppState extends State<CossmilApp> {
             // 320px → 0.85x | 375px → 1.0x | 428px → 1.08x | 600px → 1.2x
             const double refW = 375.0;
             final double wScale = (screenWidth / refW).clamp(0.85, 1.2);
-            final double sysScale =
-                mq.textScaler.scale(1.0).clamp(0.8, 2.0);
+            final double sysScale = mq.textScaler.scale(1.0).clamp(0.8, 2.0);
 
             return MediaQuery(
               data: mq.copyWith(
-                  textScaler: TextScaler.linear(wScale * sysScale)),
+                textScaler: TextScaler.linear(wScale * sysScale),
+              ),
               child: DefaultTextStyle(
                 style: TextStyle(
-                    decoration: TextDecoration.none, color: defaultColor),
+                  decoration: TextDecoration.none,
+                  color: defaultColor,
+                ),
                 child: appChild!,
               ),
             );
           },
           navigatorKey: CossmilApp.navigatorKey,
+          navigatorObservers: [_soundObserver],
           title: 'COSSMIL',
           debugShowCheckedModeBanner: false,
           theme: AppTheme.light(context),

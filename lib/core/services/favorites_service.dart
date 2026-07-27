@@ -16,13 +16,16 @@ class FavoritesService {
   static Future<List<Map<String, dynamic>>> getFavoriteDoctors() async {
     final prefs = await SharedPreferences.getInstance();
     final list = prefs.getStringList(_keyFavorites) ?? [];
-    return list.map((s) {
-      try {
-        return Map<String, dynamic>.from(jsonDecode(s) as Map);
-      } catch (_) {
-        return <String, dynamic>{};
-      }
-    }).where((m) => m.isNotEmpty).toList();
+    return list
+        .map((s) {
+          try {
+            return Map<String, dynamic>.from(jsonDecode(s) as Map);
+          } catch (_) {
+            return <String, dynamic>{};
+          }
+        })
+        .where((m) => m.isNotEmpty)
+        .toList();
   }
 
   /// Retorna la lista de los IDs de los médicos favoritos.
@@ -43,8 +46,10 @@ class FavoritesService {
   /// Añade o quita un médico de la lista de favoritos (solo local).
   ///
   /// Retorna `true` si el médico fue agregado, y `false` si fue removido.
-  static Future<bool> toggleFavorite(String doctorId,
-      {Map<String, dynamic>? details}) async {
+  static Future<bool> toggleFavorite(
+    String doctorId, {
+    Map<String, dynamic>? details,
+  }) async {
     if (doctorId.isEmpty) return false;
 
     final prefs = await SharedPreferences.getInstance();

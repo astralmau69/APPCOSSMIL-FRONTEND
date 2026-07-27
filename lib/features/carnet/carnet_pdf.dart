@@ -30,8 +30,13 @@ class CarnetPdf {
     pw.MemoryImage? foto;
     if (d.photoBase64.isNotEmpty) {
       try {
-        foto = pw.MemoryImage(base64Decode(
-            d.photoBase64.contains(',') ? d.photoBase64.split(',').last : d.photoBase64));
+        foto = pw.MemoryImage(
+          base64Decode(
+            d.photoBase64.contains(',')
+                ? d.photoBase64.split(',').last
+                : d.photoBase64,
+          ),
+        );
       } catch (_) {}
     }
 
@@ -52,12 +57,15 @@ class CarnetPdf {
               _header(logo, d, ahora),
               pw.SizedBox(height: 22),
               pw.Center(
-                child: pw.Text('CARNET DE ASEGURADO',
-                    style: pw.TextStyle(
-                        fontSize: 15,
-                        fontWeight: pw.FontWeight.bold,
-                        color: _azulOsc,
-                        letterSpacing: 1)),
+                child: pw.Text(
+                  'CARNET DE ASEGURADO',
+                  style: pw.TextStyle(
+                    fontSize: 15,
+                    fontWeight: pw.FontWeight.bold,
+                    color: _azulOsc,
+                    letterSpacing: 1,
+                  ),
+                ),
               ),
               pw.SizedBox(height: 4),
               pw.Center(
@@ -117,9 +125,10 @@ class CarnetPdf {
           border: pw.Border.all(color: PdfColors.grey500, width: 0.8),
           boxShadow: [
             pw.BoxShadow(
-                color: PdfColors.grey400,
-                blurRadius: 4,
-                offset: const PdfPoint(0, 2)),
+              color: PdfColors.grey400,
+              blurRadius: 4,
+              offset: const PdfPoint(0, 2),
+            ),
           ],
         ),
         // Pequeño margen interior blanco para que se note el borde del carnet.
@@ -147,16 +156,20 @@ class CarnetPdf {
               _header(logo, d, ahora),
               pw.SizedBox(height: 22),
               pw.Center(
-                child: pw.Text('CARNET DE ASEGURADO',
-                    style: pw.TextStyle(
-                        fontSize: 15,
-                        fontWeight: pw.FontWeight.bold,
-                        color: _azulOsc,
-                        letterSpacing: 1)),
+                child: pw.Text(
+                  'CARNET DE ASEGURADO',
+                  style: pw.TextStyle(
+                    fontSize: 15,
+                    fontWeight: pw.FontWeight.bold,
+                    color: _azulOsc,
+                    letterSpacing: 1,
+                  ),
+                ),
               ),
               pw.SizedBox(height: 4),
               pw.Center(
-                  child: pw.Container(width: 120, height: 2, color: _amarillo)),
+                child: pw.Container(width: 120, height: 2, color: _amarillo),
+              ),
               pw.SizedBox(height: 26),
               pw.Center(child: card(frontImg)),
               pw.SizedBox(height: 20),
@@ -239,7 +252,9 @@ class CarnetPdf {
     return pw.Container(
       padding: const pw.EdgeInsets.symmetric(horizontal: 14, vertical: 10),
       decoration: pw.BoxDecoration(
-        gradient: const pw.LinearGradient(colors: [_azulOsc, _azul, _azulClaro]),
+        gradient: const pw.LinearGradient(
+          colors: [_azulOsc, _azul, _azulClaro],
+        ),
         borderRadius: pw.BorderRadius.circular(8),
       ),
       child: pw.Row(
@@ -261,11 +276,14 @@ class CarnetPdf {
             child: pw.Column(
               crossAxisAlignment: pw.CrossAxisAlignment.start,
               children: [
-                pw.Text('CORPORACIÓN DEL SEGURO SOCIAL MILITAR',
-                    style: pw.TextStyle(
-                        color: PdfColors.white,
-                        fontSize: 12,
-                        fontWeight: pw.FontWeight.bold)),
+                pw.Text(
+                  'CORPORACIÓN DEL SEGURO SOCIAL MILITAR',
+                  style: pw.TextStyle(
+                    color: PdfColors.white,
+                    fontSize: 12,
+                    fontWeight: pw.FontWeight.bold,
+                  ),
+                ),
               ],
             ),
           ),
@@ -283,23 +301,33 @@ class CarnetPdf {
   }
 
   static pw.Widget _tag(String k, String v) => pw.Padding(
-        padding: const pw.EdgeInsets.only(bottom: 1),
-        child: pw.RichText(
-          text: pw.TextSpan(children: [
-            pw.TextSpan(
-                text: '$k: ',
-                style: pw.TextStyle(color: PdfColors.white, fontSize: 7)),
-            pw.TextSpan(
-                text: v,
-                style: pw.TextStyle(
-                    color: PdfColors.white, fontSize: 7.5, fontWeight: pw.FontWeight.bold)),
-          ]),
-        ),
-      );
+    padding: const pw.EdgeInsets.only(bottom: 1),
+    child: pw.RichText(
+      text: pw.TextSpan(
+        children: [
+          pw.TextSpan(
+            text: '$k: ',
+            style: pw.TextStyle(color: PdfColors.white, fontSize: 7),
+          ),
+          pw.TextSpan(
+            text: v,
+            style: pw.TextStyle(
+              color: PdfColors.white,
+              fontSize: 7.5,
+              fontWeight: pw.FontWeight.bold,
+            ),
+          ),
+        ],
+      ),
+    ),
+  );
 
   // ── Frente del carnet ───────────────────────────────────────────────────
   static pw.Widget _frente(
-      CarnetData d, pw.MemoryImage? logo, pw.MemoryImage? foto) {
+    CarnetData d,
+    pw.MemoryImage? logo,
+    pw.MemoryImage? foto,
+  ) {
     const w = 360.0;
     const h = w / 1.586;
     return pw.Container(
@@ -310,29 +338,39 @@ class CarnetPdf {
         borderRadius: pw.BorderRadius.circular(10),
         border: pw.Border.all(color: _azul, width: 1),
         boxShadow: [
-          pw.BoxShadow(color: PdfColors.grey400, blurRadius: 3, offset: const PdfPoint(0, 2)),
+          pw.BoxShadow(
+            color: PdfColors.grey400,
+            blurRadius: 3,
+            offset: const PdfPoint(0, 2),
+          ),
         ],
       ),
       child: pw.Stack(
         children: [
           // Banda azul superior.
           pw.Positioned(
-            left: 0, top: 0, right: 0,
+            left: 0,
+            top: 0,
+            right: 0,
             child: pw.Container(
               height: h * 0.50,
               decoration: pw.BoxDecoration(
                 gradient: const pw.LinearGradient(
-                    colors: [_azulOsc, _azul, _azulClaro],
-                    begin: pw.Alignment.topLeft,
-                    end: pw.Alignment.bottomRight),
+                  colors: [_azulOsc, _azul, _azulClaro],
+                  begin: pw.Alignment.topLeft,
+                  end: pw.Alignment.bottomRight,
+                ),
                 borderRadius: const pw.BorderRadius.only(
-                    topLeft: pw.Radius.circular(10), topRight: pw.Radius.circular(10)),
+                  topLeft: pw.Radius.circular(10),
+                  topRight: pw.Radius.circular(10),
+                ),
               ),
             ),
           ),
           // Panal de abeja sobre la banda.
           pw.Positioned(
-            left: 0, top: 0,
+            left: 0,
+            top: 0,
             child: pw.SizedBox(
               width: w,
               height: h * 0.50,
@@ -345,24 +383,29 @@ class CarnetPdf {
           ),
           // Logo + título.
           pw.Positioned(
-            left: 12, top: 10,
+            left: 12,
+            top: 10,
             child: pw.Row(
               crossAxisAlignment: pw.CrossAxisAlignment.center,
               children: [
                 if (logo != null)
                   pw.Container(width: 34, height: 34, child: pw.Image(logo)),
                 pw.SizedBox(width: 8),
-                pw.Text('CORPORACIÓN DEL\nSEGURO SOCIAL MILITAR',
-                    style: pw.TextStyle(
-                        color: PdfColors.white,
-                        fontSize: 9,
-                        fontWeight: pw.FontWeight.bold)),
+                pw.Text(
+                  'CORPORACIÓN DEL\nSEGURO SOCIAL MILITAR',
+                  style: pw.TextStyle(
+                    color: PdfColors.white,
+                    fontSize: 9,
+                    fontWeight: pw.FontWeight.bold,
+                  ),
+                ),
               ],
             ),
           ),
           // Foto.
           pw.Positioned(
-            right: 14, top: 10,
+            right: 14,
+            top: 10,
             child: pw.Container(
               width: w * 0.27,
               height: h * 0.42,
@@ -377,7 +420,8 @@ class CarnetPdf {
           ),
           // Matrícula y CI: abajo-derecha de la banda, debajo de la foto.
           pw.Positioned(
-            right: 14, top: h * 0.40,
+            right: 14,
+            top: h * 0.40,
             child: pw.Column(
               crossAxisAlignment: pw.CrossAxisAlignment.end,
               children: [
@@ -388,24 +432,64 @@ class CarnetPdf {
           ),
           // Datos inferiores.
           pw.Positioned(
-            left: 12, top: h * 0.55, right: 12,
+            left: 12,
+            top: h * 0.55,
+            right: 12,
             child: pw.Column(
               crossAxisAlignment: pw.CrossAxisAlignment.start,
               children: [
-                pw.Text('Nombre Completo:',
-                    style: pw.TextStyle(color: _label, fontSize: 7.5, fontWeight: pw.FontWeight.bold)),
-                pw.Text(d.nombreCompleto.toUpperCase(),
-                    style: pw.TextStyle(
-                        color: PdfColors.black, fontSize: 11, fontWeight: pw.FontWeight.bold)),
+                pw.Text(
+                  'Nombre Completo:',
+                  style: pw.TextStyle(
+                    color: _label,
+                    fontSize: 7.5,
+                    fontWeight: pw.FontWeight.bold,
+                  ),
+                ),
+                pw.Text(
+                  d.nombreCompleto.toUpperCase(),
+                  style: pw.TextStyle(
+                    color: PdfColors.black,
+                    fontSize: 11,
+                    fontWeight: pw.FontWeight.bold,
+                  ),
+                ),
                 pw.SizedBox(height: 6),
-                pw.Row(children: [
-                  pw.Expanded(child: _kv('Fuerza', d.fuerza, _label, PdfColors.black)),
-                  pw.Expanded(child: _kv('Matrícula Tit.', CarnetData.orDash(d.matriculaTitular), _label, PdfColors.black)),
-                ]),
-                pw.Row(children: [
-                  pw.Expanded(child: _kv('Fecha Nac.', d.fechaNacimiento, _label, PdfColors.black)),
-                  pw.Expanded(child: _kv('Estado Civil', CarnetData.orDash(d.estadoCivil), _label, PdfColors.black)),
-                ]),
+                pw.Row(
+                  children: [
+                    pw.Expanded(
+                      child: _kv('Fuerza', d.fuerza, _label, PdfColors.black),
+                    ),
+                    pw.Expanded(
+                      child: _kv(
+                        'Matrícula Tit.',
+                        CarnetData.orDash(d.matriculaTitular),
+                        _label,
+                        PdfColors.black,
+                      ),
+                    ),
+                  ],
+                ),
+                pw.Row(
+                  children: [
+                    pw.Expanded(
+                      child: _kv(
+                        'Fecha Nac.',
+                        d.fechaNacimiento,
+                        _label,
+                        PdfColors.black,
+                      ),
+                    ),
+                    pw.Expanded(
+                      child: _kv(
+                        'Estado Civil',
+                        CarnetData.orDash(d.estadoCivil),
+                        _label,
+                        PdfColors.black,
+                      ),
+                    ),
+                  ],
+                ),
               ],
             ),
           ),
@@ -427,7 +511,11 @@ class CarnetPdf {
         borderRadius: pw.BorderRadius.circular(10),
         border: pw.Border.all(color: _azul, width: 1),
         boxShadow: [
-          pw.BoxShadow(color: PdfColors.grey400, blurRadius: 3, offset: const PdfPoint(0, 2)),
+          pw.BoxShadow(
+            color: PdfColors.grey400,
+            blurRadius: 3,
+            offset: const PdfPoint(0, 2),
+          ),
         ],
       ),
       child: pw.Column(
@@ -437,21 +525,36 @@ class CarnetPdf {
             textAlign: pw.TextAlign.justify,
             text: pw.TextSpan(
               style: pw.TextStyle(
-                  fontSize: 8, color: _azulOsc, lineSpacing: 1.5,
-                  fontWeight: pw.FontWeight.normal),
+                fontSize: 8,
+                color: _azulOsc,
+                lineSpacing: 1.5,
+                fontWeight: pw.FontWeight.normal,
+              ),
               children: [
                 pw.TextSpan(
-                    text: 'LEY DE SEGURIDAD SOCIAL MILITAR: ',
-                    style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 8.5)),
+                  text: 'LEY DE SEGURIDAD SOCIAL MILITAR: ',
+                  style: pw.TextStyle(
+                    fontWeight: pw.FontWeight.bold,
+                    fontSize: 8.5,
+                  ),
+                ),
                 pw.TextSpan(
-                    text: 'Art. 186 Inc. c) Las Prestaciones de Salud dejarán de otorgarse después de 6 meses del último aporte. ',
-                    style: const pw.TextStyle(color: PdfColors.black)),
+                  text:
+                      'Art. 186 Inc. c) Las Prestaciones de Salud dejarán de otorgarse después de 6 meses del último aporte. ',
+                  style: const pw.TextStyle(color: PdfColors.black),
+                ),
                 pw.TextSpan(
-                    text: 'REGLAMENTO DE PRESTACIONES DE SALUD: ',
-                    style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 8.5)),
+                  text: 'REGLAMENTO DE PRESTACIONES DE SALUD: ',
+                  style: pw.TextStyle(
+                    fontWeight: pw.FontWeight.bold,
+                    fontSize: 8.5,
+                  ),
+                ),
                 pw.TextSpan(
-                    text: 'Art. 100° (Riesgo Extraordinario) Se considera riesgo extraordinario a la lesión orgánica o trastorno funcional producido por la acción súbita y violenta de una causa externa a las cuales se exponga el asegurado o beneficiario.',
-                    style: const pw.TextStyle(color: PdfColors.black)),
+                  text:
+                      'Art. 100° (Riesgo Extraordinario) Se considera riesgo extraordinario a la lesión orgánica o trastorno funcional producido por la acción súbita y violenta de una causa externa a las cuales se exponga el asegurado o beneficiario.',
+                  style: const pw.TextStyle(color: PdfColors.black),
+                ),
               ],
             ),
           ),
@@ -464,12 +567,42 @@ class CarnetPdf {
                   child: pw.Column(
                     crossAxisAlignment: pw.CrossAxisAlignment.start,
                     children: [
-                      _kv('Grupo sanguíneo', d.grupoSanguineo, PdfColors.black, PdfColors.black),
-                      _kv('Alergias', d.alergias, PdfColors.black, PdfColors.black),
-                      _kv('Telf. de referencia', d.telefonoReferencia, PdfColors.black, PdfColors.black),
-                      _kv('Fecha de emisión', d.fechaEmision, PdfColors.black, PdfColors.black),
-                      _kv('Fecha de vencimiento', d.fechaVencimiento, PdfColors.black, PdfColors.black),
-                      _kv('Atención', d.atencion, PdfColors.black, PdfColors.black),
+                      _kv(
+                        'Grupo sanguíneo',
+                        d.grupoSanguineo,
+                        PdfColors.black,
+                        PdfColors.black,
+                      ),
+                      _kv(
+                        'Alergias',
+                        d.alergias,
+                        PdfColors.black,
+                        PdfColors.black,
+                      ),
+                      _kv(
+                        'Telf. de referencia',
+                        d.telefonoReferencia,
+                        PdfColors.black,
+                        PdfColors.black,
+                      ),
+                      _kv(
+                        'Fecha de emisión',
+                        d.fechaEmision,
+                        PdfColors.black,
+                        PdfColors.black,
+                      ),
+                      _kv(
+                        'Fecha de vencimiento',
+                        d.fechaVencimiento,
+                        PdfColors.black,
+                        PdfColors.black,
+                      ),
+                      _kv(
+                        'Atención',
+                        d.atencion,
+                        PdfColors.black,
+                        PdfColors.black,
+                      ),
                     ],
                   ),
                 ),
@@ -496,7 +629,12 @@ class CarnetPdf {
 
   /// Dibuja un patrón de panal de abeja (hexágonos) sobre el lienzo PDF.
   static void _honeycomb(
-      PdfGraphics g, PdfPoint sz, double r, PdfColor color, double opacity) {
+    PdfGraphics g,
+    PdfPoint sz,
+    double r,
+    PdfColor color,
+    double opacity,
+  ) {
     g.setGraphicState(PdfGraphicState(strokeOpacity: opacity));
     g.setStrokeColor(color);
     g.setLineWidth(0.6);
@@ -527,14 +665,22 @@ class CarnetPdf {
     return pw.Padding(
       padding: const pw.EdgeInsets.only(bottom: 3),
       child: pw.RichText(
-        text: pw.TextSpan(children: [
-          pw.TextSpan(
+        text: pw.TextSpan(
+          children: [
+            pw.TextSpan(
               text: '$k : ',
-              style: pw.TextStyle(color: lc, fontSize: 7.5)),
-          pw.TextSpan(
+              style: pw.TextStyle(color: lc, fontSize: 7.5),
+            ),
+            pw.TextSpan(
               text: CarnetData.orDash(v),
-              style: pw.TextStyle(color: vc, fontSize: 8.5, fontWeight: pw.FontWeight.bold)),
-        ]),
+              style: pw.TextStyle(
+                color: vc,
+                fontSize: 8.5,
+                fontWeight: pw.FontWeight.bold,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

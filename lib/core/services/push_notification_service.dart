@@ -13,7 +13,10 @@ import '../models/app_notification.dart';
 Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   // Cuando se recibe en segundo plano o cerrada
   await Firebase.initializeApp();
-  AppLogger.debug('PushNotificationService', 'Mensaje FCM recibido en background: ${message.messageId}');
+  AppLogger.debug(
+    'PushNotificationService',
+    'Mensaje FCM recibido en background: ${message.messageId}',
+  );
 }
 
 /// Servicio central para gestionar las Notificaciones Push de Firebase (FCM).
@@ -32,7 +35,9 @@ class PushNotificationService {
 
     try {
       // 1. Registrar handler de background
-      FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
+      FirebaseMessaging.onBackgroundMessage(
+        _firebaseMessagingBackgroundHandler,
+      );
 
       // 2. Solicitar permisos para iOS y web (en Android se solicitan localmente)
       NotificationSettings settings = await _messaging.requestPermission(
@@ -42,14 +47,26 @@ class PushNotificationService {
         provisional: false,
       );
 
-      AppLogger.info(_tag, 'Permiso de notificaciones push: ${settings.authorizationStatus}');
+      AppLogger.info(
+        _tag,
+        'Permiso de notificaciones push: ${settings.authorizationStatus}',
+      );
 
       // 3. Obtener token de FCM
       final token = await _messaging.getToken();
-      AppLogger.info(_tag, '════════════════════════════════════════════════════════════');
-      AppLogger.info(_tag, 'FCM Token (Copiar para pruebas en Consola Firebase):');
+      AppLogger.info(
+        _tag,
+        '════════════════════════════════════════════════════════════',
+      );
+      AppLogger.info(
+        _tag,
+        'FCM Token (Copiar para pruebas en Consola Firebase):',
+      );
       AppLogger.info(_tag, '$token');
-      AppLogger.info(_tag, '════════════════════════════════════════════════════════════');
+      AppLogger.info(
+        _tag,
+        '════════════════════════════════════════════════════════════',
+      );
 
       // 4. Escuchar cambios de token
       _messaging.onTokenRefresh.listen((newToken) {
@@ -59,20 +76,29 @@ class PushNotificationService {
 
       // 5. Configurar listener para mensajes en primer plano (Foreground)
       FirebaseMessaging.onMessage.listen((RemoteMessage message) {
-        AppLogger.debug(_tag, 'Mensaje FCM recibido en primer plano (Foreground): ${message.notification?.title}');
+        AppLogger.debug(
+          _tag,
+          'Mensaje FCM recibido en primer plano (Foreground): ${message.notification?.title}',
+        );
         _showLocalNotification(message);
       });
 
       // 6. Configurar listener cuando el usuario abre la app desde la notificación
       FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {
-        AppLogger.debug(_tag, 'App abierta desde notificación FCM: ${message.data}');
+        AppLogger.debug(
+          _tag,
+          'App abierta desde notificación FCM: ${message.data}',
+        );
         NotificationUiHandler.handleNotificationData(message.data);
       });
 
       // 7. Configurar getInitialMessage (cuando la app estaba cerrada y se abre por notificación)
       final initialMessage = await _messaging.getInitialMessage();
       if (initialMessage != null) {
-        AppLogger.debug(_tag, 'App iniciada desde notificación FCM cerrada: ${initialMessage.data}');
+        AppLogger.debug(
+          _tag,
+          'App iniciada desde notificación FCM cerrada: ${initialMessage.data}',
+        );
         // Esperar un momento a que termine de inicializarse la UI antes de abrir la sección
         Future.delayed(const Duration(milliseconds: 1000), () {
           NotificationUiHandler.handleNotificationData(initialMessage.data);
@@ -81,7 +107,12 @@ class PushNotificationService {
 
       _initialized = true;
     } catch (e, st) {
-      AppLogger.error(_tag, 'Error al inicializar PushNotificationService', e, st);
+      AppLogger.error(
+        _tag,
+        'Error al inicializar PushNotificationService',
+        e,
+        st,
+      );
     }
   }
 
@@ -92,7 +123,12 @@ class PushNotificationService {
       await _messaging.subscribeToTopic('doctor_$doctorId');
       AppLogger.info(_tag, 'Suscrito con éxito al tema: doctor_$doctorId');
     } catch (e, st) {
-      AppLogger.error(_tag, 'Error al suscribirse al tema doctor_$doctorId', e, st);
+      AppLogger.error(
+        _tag,
+        'Error al suscribirse al tema doctor_$doctorId',
+        e,
+        st,
+      );
     }
   }
 
@@ -101,9 +137,17 @@ class PushNotificationService {
     if (doctorId.isEmpty) return;
     try {
       await _messaging.unsubscribeFromTopic('doctor_$doctorId');
-      AppLogger.info(_tag, 'Suscripción cancelada con éxito para el tema: doctor_$doctorId');
+      AppLogger.info(
+        _tag,
+        'Suscripción cancelada con éxito para el tema: doctor_$doctorId',
+      );
     } catch (e, st) {
-      AppLogger.error(_tag, 'Error al cancelar la suscripción del tema doctor_$doctorId', e, st);
+      AppLogger.error(
+        _tag,
+        'Error al cancelar la suscripción del tema doctor_$doctorId',
+        e,
+        st,
+      );
     }
   }
 
@@ -133,7 +177,10 @@ class PushNotificationService {
         sound: 'notificacion_cita.mp3',
       );
 
-      const details = NotificationDetails(android: androidDetails, iOS: iosDetails);
+      const details = NotificationDetails(
+        android: androidDetails,
+        iOS: iosDetails,
+      );
 
       // Decodificar payload si existe en message.data
       final payloadMap = <String, dynamic>{
@@ -156,10 +203,10 @@ class PushNotificationService {
         final type = typeStr == 'cazador'
             ? AppNotificationType.cazador
             : typeStr == 'rating'
-                ? AppNotificationType.rating
-                : typeStr == 'booking'
-                    ? AppNotificationType.booking
-                    : AppNotificationType.reminder;
+            ? AppNotificationType.rating
+            : typeStr == 'booking'
+            ? AppNotificationType.booking
+            : AppNotificationType.reminder;
 
         await NotificationPreferences.addToHistory(
           userId,

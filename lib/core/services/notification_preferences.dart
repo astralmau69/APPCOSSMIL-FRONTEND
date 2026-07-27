@@ -20,13 +20,14 @@ class NotificationPreferences {
 
   // ── Claves (prefijadas por userId) ─────────────────────────────────────────
 
-  static String _key(String userId, String pref) => 'notif_pref_${userId}_$pref';
+  static String _key(String userId, String pref) =>
+      'notif_pref_${userId}_$pref';
 
-  static const _kReminders     = 'reminders';
+  static const _kReminders = 'reminders';
   static const _kConfirmations = 'confirmations';
-  static const _kRatings       = 'ratings';
-  static const _kCazador       = 'cazador';
-  static const _kHistory       = 'history';
+  static const _kRatings = 'ratings';
+  static const _kCazador = 'cazador';
+  static const _kHistory = 'history';
 
   // ── Getters ────────────────────────────────────────────────────────────────
 
@@ -71,7 +72,8 @@ class NotificationPreferences {
         // Purgar notificaciones de más de 30 días
         final cutoff = DateTime.now().subtract(const Duration(days: 30));
         final all = AppNotificationRepository.all;
-        for (final n in all.where((n) => n.createdAt.isBefore(cutoff)).toList()) {
+        for (final n
+            in all.where((n) => n.createdAt.isBefore(cutoff)).toList()) {
           AppNotificationRepository.remove(n.id);
         }
       }

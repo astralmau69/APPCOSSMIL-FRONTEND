@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../theme/app_constants.dart';
+import '../theme/sound_manager.dart';
 
 /// Animación de entrada fade + slide optimizada para listas (sin animate_do dependency).
 /// Usa compositing-optimized FadeTransition + SlideTransition + RepaintBoundary.
@@ -33,17 +34,17 @@ class _FadeSlideInState extends State<FadeSlideIn>
   @override
   void initState() {
     super.initState();
-    _controller = AnimationController(
-      vsync: this,
-      duration: widget.duration,
-    );
+    _controller = AnimationController(vsync: this, duration: widget.duration);
 
     final curvedAnimation = CurvedAnimation(
       parent: _controller,
       curve: widget.curve,
     );
 
-    _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(curvedAnimation);
+    _fadeAnimation = Tween<double>(
+      begin: 0.0,
+      end: 1.0,
+    ).animate(curvedAnimation);
     _slideAnimation = Tween<Offset>(
       begin: Offset(0, widget.offsetY / 100),
       end: Offset.zero,
@@ -88,6 +89,12 @@ class OptimizedPressButton extends StatefulWidget {
   final Duration duration;
   final bool haptic;
 
+  /// Sonido a reproducir al pulsar (una constante de `AppSounds`). Nulo por
+  /// defecto: este botón envuelve también tarjetas de listas largas, y
+  /// sonorizarlas todas volvería ruidosa la app. Se activa solo en acciones
+  /// principales.
+  final String? sound;
+
   const OptimizedPressButton({
     super.key,
     required this.child,
@@ -95,6 +102,7 @@ class OptimizedPressButton extends StatefulWidget {
     this.scaleDown = 0.96,
     this.duration = AppDurations.fast,
     this.haptic = false,
+    this.sound,
   });
 
   @override
@@ -115,8 +123,10 @@ class _OptimizedPressButtonState extends State<OptimizedPressButton>
       reverseDuration: const Duration(milliseconds: 200),
     );
 
-    _scaleAnimation = Tween<double>(begin: 1.0, end: widget.scaleDown)
-        .animate(CurvedAnimation(parent: _controller, curve: Curves.easeOutCubic));
+    _scaleAnimation = Tween<double>(
+      begin: 1.0,
+      end: widget.scaleDown,
+    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOutCubic));
   }
 
   @override
@@ -131,6 +141,10 @@ class _OptimizedPressButtonState extends State<OptimizedPressButton>
       if (widget.haptic) {
         HapticFeedback.selectionClick();
       }
+      // En tapDown, no en tapUp: el sonido debe llegar con el dedo, igual que
+      // el háptico. Esperar a soltar lo haría sentir retrasado.
+      final s = widget.sound;
+      if (s != null) SoundManager.playUi(s, volume: 0.5);
     }
   }
 
@@ -183,10 +197,7 @@ class _OptimizedColorTweenState extends State<OptimizedColorTween>
   @override
   void initState() {
     super.initState();
-    _controller = AnimationController(
-      vsync: this,
-      duration: widget.duration,
-    );
+    _controller = AnimationController(vsync: this, duration: widget.duration);
 
     _colorAnimation = ColorTween(
       begin: widget.startColor,
@@ -218,7 +229,8 @@ class _OptimizedColorTweenState extends State<OptimizedColorTween>
   Widget build(BuildContext context) {
     return AnimatedBuilder(
       animation: _colorAnimation,
-      builder: (context, _) => widget.builder(_colorAnimation.value ?? widget.startColor),
+      builder: (context, _) =>
+          widget.builder(_colorAnimation.value ?? widget.startColor),
     );
   }
 }
@@ -246,14 +258,8 @@ class OptimizedPageRoute<T> extends MaterialPageRoute<T> {
       position: Tween<Offset>(
         begin: const Offset(1, 0),
         end: Offset.zero,
-      ).animate(CurvedAnimation(
-        parent: animation,
-        curve: Curves.easeOutCubic,
-      )),
-      child: FadeTransition(
-        opacity: animation,
-        child: child,
-      ),
+      ).animate(CurvedAnimation(parent: animation, curve: Curves.easeOutCubic)),
+      child: FadeTransition(opacity: animation, child: child),
     );
   }
 }

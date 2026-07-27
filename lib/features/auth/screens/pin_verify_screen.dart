@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/services.dart';
 import '../../../core/constants/app_colors.dart';
+import '../../../core/constants/app_sounds.dart';
+import '../../../core/theme/sound_manager.dart';
 import '../../../core/services/security_service.dart';
 import '../../../core/animations/optimized_animations.dart';
 import '../../../core/extensions/responsive_extensions.dart';
@@ -46,9 +48,10 @@ class _PinVerifyScreenState extends State<PinVerifyScreen>
       vsync: this,
       duration: const Duration(milliseconds: 400),
     );
-    _shakeAnim = Tween<double>(begin: 0, end: 1).animate(
-      CurvedAnimation(parent: _shakeCtrl, curve: Curves.elasticIn),
-    );
+    _shakeAnim = Tween<double>(
+      begin: 0,
+      end: 1,
+    ).animate(CurvedAnimation(parent: _shakeCtrl, curve: Curves.elasticIn));
   }
 
   @override
@@ -83,6 +86,7 @@ class _PinVerifyScreenState extends State<PinVerifyScreen>
     if (isValid) {
       Navigator.pop(context, true);
     } else {
+      SoundManager.playUi(AppSounds.error, volume: 0.5);
       await _shakeCtrl.forward(from: 0);
       HapticFeedback.vibrate();
       setState(() {
@@ -107,7 +111,10 @@ class _PinVerifyScreenState extends State<PinVerifyScreen>
         leading: CupertinoButton(
           padding: EdgeInsets.zero,
           onPressed: () => Navigator.pop(context, false),
-          child: const Text('Cancelar', style: TextStyle(color: AppColors.primary)),
+          child: const Text(
+            'Cancelar',
+            style: TextStyle(color: AppColors.primary),
+          ),
         ),
       ),
       body: SafeArea(
@@ -137,7 +144,9 @@ class _PinVerifyScreenState extends State<PinVerifyScreen>
                   SizedBox(height: r.spaceLg),
                   Text(
                     widget.title,
-                    style: context.texts.titleLarge.copyWith(fontWeight: FontWeight.w700),
+                    style: context.texts.titleLarge.copyWith(
+                      fontWeight: FontWeight.w700,
+                    ),
                   ),
                   SizedBox(height: r.spaceSm),
                   Padding(
@@ -161,8 +170,13 @@ class _PinVerifyScreenState extends State<PinVerifyScreen>
             AnimatedBuilder(
               animation: _shakeAnim,
               builder: (context, child) {
-                final offset = _shakeCtrl.isAnimating ? _shakeOffset(_shakeAnim.value) : 0.0;
-                return Transform.translate(offset: Offset(offset, 0), child: child);
+                final offset = _shakeCtrl.isAnimating
+                    ? _shakeOffset(_shakeAnim.value)
+                    : 0.0;
+                return Transform.translate(
+                  offset: Offset(offset, 0),
+                  child: child,
+                );
               },
               child: _buildPinIndicators(isDark, r),
             ),
@@ -226,8 +240,8 @@ class _PinVerifyScreenState extends State<PinVerifyScreen>
             color: isError && isActive
                 ? AppColors.error
                 : isActive
-                    ? AppColors.primary
-                    : (isDark ? Colors.white12 : Colors.grey.shade200),
+                ? AppColors.primary
+                : (isDark ? Colors.white12 : Colors.grey.shade200),
             border: isActive
                 ? Border.all(
                     color: isError ? AppColors.error : AppColors.primary,

@@ -1,6 +1,8 @@
 import 'package:flutter/cupertino.dart';
 
+import '../constants/app_sounds.dart';
 import '../theme/app_constants.dart';
+import '../theme/sound_manager.dart';
 
 /// Presenta un diálogo con una transición **consistente** en toda la app:
 ///
@@ -17,14 +19,21 @@ import '../theme/app_constants.dart';
 ///
 /// Es seguro en Flutter web/CanvasKit: solo anima opacidad y transform
 /// (propiedades del compositor), sin provocar relayout.
+///
+/// Al abrirse suena [AppSounds.sheet] — al ser el único camino a los diálogos
+/// de la app, la apertura queda sonorizada en un solo sitio. Pásale
+/// `silent: true` cuando quien llama ya reproduce su propio sonido (un modal
+/// de advertencia, la instructora del tutorial) y no quieras dos capas.
 Future<T?> showAppDialog<T>({
   required BuildContext context,
   required WidgetBuilder builder,
   bool barrierDismissible = false,
   Color barrierColor = const Color(0x8A000000), // = Colors.black54
   String barrierLabel = 'Diálogo',
+  bool silent = false,
 }) {
   final reduceMotion = MediaQuery.maybeOf(context)?.disableAnimations ?? false;
+  if (!silent) SoundManager.playUi(AppSounds.sheet, volume: 0.45);
 
   return showGeneralDialog<T>(
     context: context,

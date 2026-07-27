@@ -25,9 +25,7 @@ class SessionRestoreService {
       encryptedSharedPreferences: true,
       sharedPreferencesName: 'cossmil_secure_prefs',
     ),
-    iOptions: IOSOptions(
-      accessibility: KeychainAccessibility.first_unlock,
-    ),
+    iOptions: IOSOptions(accessibility: KeychainAccessibility.first_unlock),
   );
 
   static const _keyUserData = 'user_session_data';
@@ -112,10 +110,13 @@ class SessionRestoreService {
         await _storage.write(key: _keyUserData, value: jsonStr);
       }
       if (kDebugMode) {
-        debugPrint('💾 SessionRestore: sesión guardada (${jsonStr.length} chars)');
+        debugPrint(
+          '💾 SessionRestore: sesión guardada (${jsonStr.length} chars)',
+        );
       }
     } catch (e) {
-      if (kDebugMode) debugPrint('❌ SessionRestore: error al guardar sesión: $e');
+      if (kDebugMode)
+        debugPrint('❌ SessionRestore: error al guardar sesión: $e');
     }
   }
 
@@ -183,7 +184,8 @@ class SessionRestoreService {
       }
       return true;
     } catch (e) {
-      if (kDebugMode) debugPrint('❌ SessionRestore: error al restaurar sesión: $e');
+      if (kDebugMode)
+        debugPrint('❌ SessionRestore: error al restaurar sesión: $e');
       return false;
     }
   }
@@ -197,15 +199,30 @@ class SessionRestoreService {
         final data = response.data as Map<String, dynamic>;
         final rawPhoto = data['foto2'] as String? ?? '';
         final cleanPhoto = AuthService.cleanBase64(rawPhoto);
-        
-        final eBloodType = (data['gruposan'] as String? ?? data['grupoSanguineo'] as String? ?? data['grupo_sanguineo'] as String? ?? '').trim();
-        final eAllergies = (data['alergia'] as String? ?? data['alergias'] as String? ?? data['allergies'] as String? ?? '').trim();
-        final eGrado = (data['grado']?.toString() ??
-                        data['Grado']?.toString() ??
-                        data['rango']?.toString() ??
-                        data['Rango']?.toString() ?? '').trim();
+
+        final eBloodType =
+            (data['gruposan'] as String? ??
+                    data['grupoSanguineo'] as String? ??
+                    data['grupo_sanguineo'] as String? ??
+                    '')
+                .trim();
+        final eAllergies =
+            (data['alergia'] as String? ??
+                    data['alergias'] as String? ??
+                    data['allergies'] as String? ??
+                    '')
+                .trim();
+        final eGrado =
+            (data['grado']?.toString() ??
+                    data['Grado']?.toString() ??
+                    data['rango']?.toString() ??
+                    data['Rango']?.toString() ??
+                    '')
+                .trim();
         final eRefe4 = (data['refe4'] as String? ?? '').trim();
-        final eFuerza = (data['fuerza'] as String? ?? data['desfue'] as String? ?? '').trim();
+        final eFuerza =
+            (data['fuerza'] as String? ?? data['desfue'] as String? ?? '')
+                .trim();
         final eAbrgra = (data['abrgra']?.toString() ?? '').trim();
         final eTipopersonal = (data['tipopersonal'] as String? ?? '').trim();
         // tipo == 'T' es la fuente autoritativa para Titular (ver auth_service.dart)
@@ -219,19 +236,42 @@ class SessionRestoreService {
             !UserSession.currentUser.isTitular &&
             UserSession.currentUser.role.isNotEmpty;
         final shouldUpgradeToTitular =
-            isFotoTitular && !UserSession.currentUser.isTitular && !savedRoleIsExplicitBeneficiary;
+            isFotoTitular &&
+            !UserSession.currentUser.isTitular &&
+            !savedRoleIsExplicitBeneficiary;
 
-        if (cleanPhoto.isNotEmpty || eBloodType.isNotEmpty || eAllergies.isNotEmpty || eGrado.isNotEmpty || eRefe4.isNotEmpty || eFuerza.isNotEmpty || eTipopersonal.isNotEmpty || shouldUpgradeToTitular) {
+        if (cleanPhoto.isNotEmpty ||
+            eBloodType.isNotEmpty ||
+            eAllergies.isNotEmpty ||
+            eGrado.isNotEmpty ||
+            eRefe4.isNotEmpty ||
+            eFuerza.isNotEmpty ||
+            eTipopersonal.isNotEmpty ||
+            shouldUpgradeToTitular) {
           UserSession.currentUser = UserSession.currentUser.copyWith(
-            photoBase64: cleanPhoto.isNotEmpty ? cleanPhoto : UserSession.currentUser.photoBase64,
-            bloodType: eBloodType.isNotEmpty ? eBloodType : UserSession.currentUser.bloodType,
-            allergies: eAllergies.isNotEmpty ? eAllergies : UserSession.currentUser.allergies,
+            photoBase64: cleanPhoto.isNotEmpty
+                ? cleanPhoto
+                : UserSession.currentUser.photoBase64,
+            bloodType: eBloodType.isNotEmpty
+                ? eBloodType
+                : UserSession.currentUser.bloodType,
+            allergies: eAllergies.isNotEmpty
+                ? eAllergies
+                : UserSession.currentUser.allergies,
             // tipo='B': guardar abrgra como rank para combinar con fuerza en UI ("SOF.1RO. - EJERCITO").
-            rank: (eTipo == 'B') ? eAbrgra : (eGrado.isNotEmpty ? eGrado : UserSession.currentUser.rank),
+            rank: (eTipo == 'B')
+                ? eAbrgra
+                : (eGrado.isNotEmpty ? eGrado : UserSession.currentUser.rank),
             role: shouldUpgradeToTitular ? 'Titular' : null,
-            serviceStatus: eRefe4.isNotEmpty ? eRefe4 : UserSession.currentUser.serviceStatus,
-            fuerza: eFuerza.isNotEmpty ? eFuerza : UserSession.currentUser.fuerza,
-            tipopersonal: eTipopersonal.isNotEmpty ? eTipopersonal : UserSession.currentUser.tipopersonal,
+            serviceStatus: eRefe4.isNotEmpty
+                ? eRefe4
+                : UserSession.currentUser.serviceStatus,
+            fuerza: eFuerza.isNotEmpty
+                ? eFuerza
+                : UserSession.currentUser.fuerza,
+            tipopersonal: eTipopersonal.isNotEmpty
+                ? eTipopersonal
+                : UserSession.currentUser.tipopersonal,
           );
 
           // Si promovimos a Titular y no hay entrada titular en la lista, intentar
@@ -255,9 +295,17 @@ class SessionRestoreService {
                 age: existing.age,
                 gender: existing.gender,
                 matricula: existing.matricula,
-                photoBase64: cleanPhoto.isNotEmpty ? cleanPhoto : existing.photoBase64,
-                grado: eGrado.isNotEmpty ? eGrado : (existing.grado.isNotEmpty ? existing.grado : UserSession.currentUser.rank),
-                serviceStatus: eRefe4.isNotEmpty ? eRefe4 : existing.serviceStatus,
+                photoBase64: cleanPhoto.isNotEmpty
+                    ? cleanPhoto
+                    : existing.photoBase64,
+                grado: eGrado.isNotEmpty
+                    ? eGrado
+                    : (existing.grado.isNotEmpty
+                          ? existing.grado
+                          : UserSession.currentUser.rank),
+                serviceStatus: eRefe4.isNotEmpty
+                    ? eRefe4
+                    : existing.serviceStatus,
               );
             } else {
               updatedBens = [
@@ -269,7 +317,9 @@ class SessionRestoreService {
                   gender: UserSession.currentUser.gender,
                   matricula: userMatricula,
                   photoBase64: cleanPhoto,
-                  grado: eGrado.isNotEmpty ? eGrado : UserSession.currentUser.rank,
+                  grado: eGrado.isNotEmpty
+                      ? eGrado
+                      : UserSession.currentUser.rank,
                   serviceStatus: eRefe4,
                 ),
                 ...currentBens,
@@ -285,7 +335,9 @@ class SessionRestoreService {
                   age: b.age,
                   gender: b.gender,
                   matricula: b.matricula,
-                  photoBase64: cleanPhoto.isNotEmpty ? cleanPhoto : b.photoBase64,
+                  photoBase64: cleanPhoto.isNotEmpty
+                      ? cleanPhoto
+                      : b.photoBase64,
                   grado: eGrado.isNotEmpty ? eGrado : b.grado,
                   serviceStatus: eRefe4.isNotEmpty ? eRefe4 : b.serviceStatus,
                 );
@@ -293,13 +345,17 @@ class SessionRestoreService {
               return b;
             }).toList();
           }
-          UserSession.currentUser = UserSession.currentUser.copyWith(beneficiaries: List<BeneficiaryModel>.from(updatedBens));
+          UserSession.currentUser = UserSession.currentUser.copyWith(
+            beneficiaries: List<BeneficiaryModel>.from(updatedBens),
+          );
           BeneficiaryModel.titularRankFallback = UserSession.currentUser.rank;
 
           // Persistir la foto actualizada
           await saveUserSession(UserSession.currentUser);
           if (kDebugMode) {
-            debugPrint('📸 SessionRestore: foto titular actualizada en background');
+            debugPrint(
+              '📸 SessionRestore: foto titular actualizada en background',
+            );
           }
         }
       }
@@ -312,18 +368,25 @@ class SessionRestoreService {
     }
   }
 
-  static Future<void> _tryRefreshBeneficiaryPhoto(BeneficiaryModel beneficiary) async {
+  static Future<void> _tryRefreshBeneficiaryPhoto(
+    BeneficiaryModel beneficiary,
+  ) async {
     final api = ApiClient();
     try {
-      final response = await api.get(ApiConstants.aseguradoFoto(beneficiary.matricula));
+      final response = await api.get(
+        ApiConstants.aseguradoFoto(beneficiary.matricula),
+      );
       if (response is ApiSuccess && response.data is Map<String, dynamic>) {
         final data = response.data as Map<String, dynamic>;
         final rawPhoto = data['foto2'] as String? ?? '';
         final cleanPhoto = AuthService.cleanBase64(rawPhoto);
-        final bGrado = (data['grado']?.toString() ?? 
-                        data['Grado']?.toString() ?? 
-                        data['rango']?.toString() ?? 
-                        data['Rango']?.toString() ?? '').trim();
+        final bGrado =
+            (data['grado']?.toString() ??
+                    data['Grado']?.toString() ??
+                    data['rango']?.toString() ??
+                    data['Rango']?.toString() ??
+                    '')
+                .trim();
         final bRefe4 = (data['refe4'] as String? ?? '').trim();
         if (cleanPhoto.isNotEmpty || bGrado.isNotEmpty || bRefe4.isNotEmpty) {
           final updatedBens = UserSession.currentUser.beneficiaries.map((b) {
@@ -342,8 +405,10 @@ class SessionRestoreService {
             }
             return b;
           }).toList();
-          
-          UserSession.currentUser = UserSession.currentUser.copyWith(beneficiaries: List<BeneficiaryModel>.from(updatedBens));
+
+          UserSession.currentUser = UserSession.currentUser.copyWith(
+            beneficiaries: List<BeneficiaryModel>.from(updatedBens),
+          );
           await saveUserSession(UserSession.currentUser);
           if (kDebugMode) {
             debugPrint('📸 SessionRestore: foto de beneficiario actualizada');
@@ -352,7 +417,9 @@ class SessionRestoreService {
       }
     } catch (e) {
       if (kDebugMode) {
-        debugPrint('⚠️ SessionRestore: no se pudo actualizar foto de beneficiario: $e');
+        debugPrint(
+          '⚠️ SessionRestore: no se pudo actualizar foto de beneficiario: $e',
+        );
       }
     } finally {
       api.close();
@@ -379,7 +446,10 @@ class SessionRestoreService {
 
   /// Borra la sesión persistida. Llamar siempre en logout.
   static Future<void> clearUserSession() async {
-    if (kIsWeb) { webLsDel(_keyUserData); return; }
+    if (kIsWeb) {
+      webLsDel(_keyUserData);
+      return;
+    }
     await _storage.delete(key: _keyUserData);
   }
 }

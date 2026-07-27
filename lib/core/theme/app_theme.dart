@@ -44,8 +44,12 @@ class AppTheme {
       ),
       textTheme: TextTheme(
         displayLarge: texts.displayLarge.copyWith(color: AppColors.textPrimary),
-        headlineLarge: texts.headlineLarge.copyWith(color: AppColors.textPrimary),
-        headlineMedium: texts.headlineMedium.copyWith(color: AppColors.textPrimary),
+        headlineLarge: texts.headlineLarge.copyWith(
+          color: AppColors.textPrimary,
+        ),
+        headlineMedium: texts.headlineMedium.copyWith(
+          color: AppColors.textPrimary,
+        ),
         titleLarge: texts.titleLarge.copyWith(color: AppColors.textPrimary),
         titleMedium: texts.titleMedium.copyWith(color: AppColors.textPrimary),
         bodyLarge: texts.bodyLarge.copyWith(color: AppColors.textPrimary),
@@ -102,16 +106,26 @@ class AppTheme {
         iconTheme: const IconThemeData(color: AppColors.darkTextPrimary),
       ),
       textTheme: TextTheme(
-        displayLarge: texts.displayLarge.copyWith(color: AppColors.darkTextPrimary),
-        headlineLarge: texts.headlineLarge.copyWith(color: AppColors.darkTextPrimary),
-        headlineMedium: texts.headlineMedium.copyWith(color: AppColors.darkTextPrimary),
+        displayLarge: texts.displayLarge.copyWith(
+          color: AppColors.darkTextPrimary,
+        ),
+        headlineLarge: texts.headlineLarge.copyWith(
+          color: AppColors.darkTextPrimary,
+        ),
+        headlineMedium: texts.headlineMedium.copyWith(
+          color: AppColors.darkTextPrimary,
+        ),
         titleLarge: texts.titleLarge.copyWith(color: AppColors.darkTextPrimary),
-        titleMedium: texts.titleMedium.copyWith(color: AppColors.darkTextPrimary),
+        titleMedium: texts.titleMedium.copyWith(
+          color: AppColors.darkTextPrimary,
+        ),
         bodyLarge: texts.bodyLarge.copyWith(color: AppColors.darkTextPrimary),
         bodyMedium: texts.bodyMedium.copyWith(color: AppColors.darkTextPrimary),
         bodySmall: texts.bodySmall.copyWith(color: AppColors.darkTextSecondary),
         labelLarge: texts.labelLarge.copyWith(color: AppColors.darkTextPrimary),
-        labelSmall: texts.labelSmall.copyWith(color: AppColors.darkTextTertiary),
+        labelSmall: texts.labelSmall.copyWith(
+          color: AppColors.darkTextTertiary,
+        ),
       ),
       cardTheme: CardThemeData(
         color: AppColors.darkCard,

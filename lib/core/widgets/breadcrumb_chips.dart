@@ -29,13 +29,18 @@ class BreadcrumbChips extends StatelessWidget {
     );
   }
 
-  Widget _chip(BuildContext context, String label, bool isLast, AppResponsive r) {
+  Widget _chip(
+    BuildContext context,
+    String label,
+    bool isLast,
+    AppResponsive r,
+  ) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final primaryColor = AppColors.accentForTheme(isDark);
     final fs = r.isSmallPhone ? 12.0 : 14.0;
     final pH = r.isSmallPhone ? 10.0 : 16.0;
     final pV = r.isSmallPhone ? 6.0 : 8.0;
-    
+
     return Container(
       padding: EdgeInsets.symmetric(horizontal: pH, vertical: pV),
       decoration: BoxDecoration(
@@ -67,7 +72,9 @@ class BreadcrumbChips extends StatelessWidget {
       child: Icon(
         Icons.chevron_right,
         size: 14,
-        color: AppColors.textTertiaryC(Theme.of(context).brightness == Brightness.dark).withValues(alpha: 0.5),
+        color: AppColors.textTertiaryC(
+          Theme.of(context).brightness == Brightness.dark,
+        ).withValues(alpha: 0.5),
       ),
     );
   }

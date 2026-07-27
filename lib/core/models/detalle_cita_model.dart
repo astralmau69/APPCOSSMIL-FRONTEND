@@ -76,17 +76,36 @@ class DetalleCitaModel {
       estadoConfirmacion: json['estadoConfirmacion'] as String? ?? '',
       estadoAtencion: json['estadoAtencion'] as String? ?? '',
       fechaCreacion: json['fechaCreacion'] as String? ?? '',
-      fotoMedico: json['fotoMedico'] as String? ?? json['foto'] as String? ?? json['base64'] as String?,
+      fotoMedico:
+          json['fotoMedico'] as String? ??
+          json['foto'] as String? ??
+          json['base64'] as String?,
     );
   }
 
   static String _normalizeHospital(String name) {
     if (name.isEmpty) return '';
     final upper = name.toUpperCase();
-    if (upper.contains('HMC')) return name.replaceAll(RegExp(r'HMC', caseSensitive: false), 'Hospital Militar Central');
-    if (upper.contains('HMU')) return name.replaceAll(RegExp(r'HMU', caseSensitive: false), 'Hospital Militar Universitario');
-    if (upper.contains('HMA')) return name.replaceAll(RegExp(r'HMA', caseSensitive: false), 'Hospital Militar de Área');
-    if (upper.contains('HMB')) return name.replaceAll(RegExp(r'HMB', caseSensitive: false), 'Hospital Militar de Base');
+    if (upper.contains('HMC'))
+      return name.replaceAll(
+        RegExp(r'HMC', caseSensitive: false),
+        'Hospital Militar Central',
+      );
+    if (upper.contains('HMU'))
+      return name.replaceAll(
+        RegExp(r'HMU', caseSensitive: false),
+        'Hospital Militar Universitario',
+      );
+    if (upper.contains('HMA'))
+      return name.replaceAll(
+        RegExp(r'HMA', caseSensitive: false),
+        'Hospital Militar de Área',
+      );
+    if (upper.contains('HMB'))
+      return name.replaceAll(
+        RegExp(r'HMB', caseSensitive: false),
+        'Hospital Militar de Base',
+      );
     return name;
   }
 

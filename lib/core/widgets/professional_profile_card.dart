@@ -133,9 +133,7 @@ class ProfessionalProfileCard extends StatelessWidget {
 
   Widget _buildDecorativePattern(bool isDark) {
     return Positioned.fill(
-      child: CustomPaint(
-        painter: _PatternPainter(isDark: isDark),
-      ),
+      child: CustomPaint(painter: _PatternPainter(isDark: isDark)),
     );
   }
 
@@ -160,8 +158,11 @@ class ProfessionalProfileCard extends StatelessWidget {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   // tipo='B': tipopersonal arriba + abrgra-fuerza/civil abajo
-                  if (user.tipopersonal.toUpperCase().contains('BENEFICIARIO') &&
-                      (user.tipopersonal.isNotEmpty || user.fuerza.isNotEmpty)) ...[
+                  if (user.tipopersonal.toUpperCase().contains(
+                        'BENEFICIARIO',
+                      ) &&
+                      (user.tipopersonal.isNotEmpty ||
+                          user.fuerza.isNotEmpty)) ...[
                     if (user.tipopersonal.isNotEmpty)
                       _buildRankLabel(
                         icon: CupertinoIcons.shield_fill,
@@ -173,14 +174,17 @@ class ProfessionalProfileCard extends StatelessWidget {
                         text: user.fuerza.trim().toUpperCase() == 'CIVIL'
                             ? 'Ref. Titular · Personal con Ítem'
                             : (user.rank.isNotEmpty
-                                ? 'Grado del titular · ${user.rank} - ${user.fuerza}'
-                                : user.fuerza),
+                                  ? 'Grado del titular · ${user.rank} - ${user.fuerza}'
+                                  : user.fuerza),
                       ),
-                  // tipo='T': ramo institucional con acentuación correcta
-                  ] else if (user.fuerza.isNotEmpty || user.tipopersonal.isNotEmpty)
+                    // tipo='T': ramo institucional con acentuación correcta
+                  ] else if (user.fuerza.isNotEmpty ||
+                      user.tipopersonal.isNotEmpty)
                     _buildRankLabel(
                       icon: CupertinoIcons.shield_fill,
-                      text: user.fuerza.isNotEmpty ? 'Fuerza: ${user.displayFuerza}' : user.tipopersonal,
+                      text: user.fuerza.isNotEmpty
+                          ? 'Fuerza: ${user.displayFuerza}'
+                          : user.tipopersonal,
                     ),
                   // Grado del titular — solo para tipo='T' (no para tipo='B' que usa abrgra+fuerza)
                   if (RankUtils.isValidRankForDisplay(user.rank) &&
@@ -243,7 +247,7 @@ class ProfessionalProfileCard extends StatelessWidget {
 
   Widget _buildAvatar(AppResponsive r) {
     final avatarSize = r.avatarLg + 8;
-    
+
     return Container(
       padding: const EdgeInsets.all(3),
       decoration: BoxDecoration(
@@ -313,11 +317,7 @@ class ProfessionalProfileCard extends StatelessWidget {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(
-            icon,
-            size: 11,
-            color: Colors.white.withValues(alpha: 0.85),
-          ),
+          Icon(icon, size: 11, color: Colors.white.withValues(alpha: 0.85)),
           const SizedBox(width: 5),
           Flexible(
             child: Text(
@@ -381,7 +381,7 @@ class ProfessionalProfileCard extends StatelessWidget {
   Widget _buildStatusChip(AppResponsive r) {
     final isActive = RankUtils.isServiceActive(user.serviceStatus);
     final statusColor = isActive
-        ? const Color(0xFF10B981)  // Verde esmeralda
+        ? const Color(0xFF10B981) // Verde esmeralda
         : const Color(0xFFF59E0B); // Ámbar
 
     return Container(
@@ -392,10 +392,7 @@ class ProfessionalProfileCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: statusColor.withValues(alpha: 0.2),
         borderRadius: BorderRadius.circular(r.chipRadius + 4),
-        border: Border.all(
-          color: statusColor.withValues(alpha: 0.5),
-          width: 1,
-        ),
+        border: Border.all(color: statusColor.withValues(alpha: 0.5), width: 1),
         boxShadow: [
           BoxShadow(
             color: statusColor.withValues(alpha: 0.3),
@@ -469,12 +466,14 @@ class ProfessionalProfileCard extends StatelessWidget {
       // update-profile sí persiste, por lo que se mantiene tras re-loguear.
       // `numCel` viene de aseg-tipo-gpo (otra tabla) y no lo toca la edición,
       // así que revertía al valor viejo. Fallback a numCel si phone está vacío.
-      value: user.phone.isNotEmpty ? user.phone : (user.numCel.isNotEmpty ? user.numCel : '—'),
+      value: user.phone.isNotEmpty
+          ? user.phone
+          : (user.numCel.isNotEmpty ? user.numCel : '—'),
     );
     final emergencyPhone = _InfoItem(
       icon: CupertinoIcons.phone_circle_fill,
       label: 'Tel. Emergencia',
-      value: user.emergencyPhone.isNotEmpty 
+      value: user.emergencyPhone.isNotEmpty
           ? '${user.emergencyPhone} ${user.referencia.isNotEmpty ? '(${user.referencia})' : ''}'
           : '—',
     );
@@ -602,7 +601,7 @@ class _PatternPainter extends CustomPainter {
       size.width * 0.25,
       paint,
     );
-    
+
     canvas.drawCircle(
       Offset(size.width * 0.1, size.height * 0.9),
       size.width * 0.2,

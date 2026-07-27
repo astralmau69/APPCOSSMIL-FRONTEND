@@ -84,7 +84,9 @@ class SummaryDivider extends StatelessWidget {
       child: Divider(
         height: 1,
         thickness: 0.5,
-        color: isDark ? AppColors.darkDivider : const Color(0xFF191C1E).withValues(alpha: 0.05),
+        color: isDark
+            ? AppColors.darkDivider
+            : const Color(0xFF191C1E).withValues(alpha: 0.05),
       ),
     );
   }

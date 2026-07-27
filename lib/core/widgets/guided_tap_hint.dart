@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/cupertino.dart';
 
 import 'tutorial_coach_overlay.dart' show kTutorialAccent;
@@ -30,14 +32,18 @@ class GuidedTapHint extends StatefulWidget {
   State<GuidedTapHint> createState() => _GuidedTapHintState();
 }
 
-class _GuidedTapHintState extends State<GuidedTapHint> with SingleTickerProviderStateMixin {
+class _GuidedTapHintState extends State<GuidedTapHint>
+    with SingleTickerProviderStateMixin {
   late final AnimationController _ctrl;
   late final Animation<double> _pulse;
 
   @override
   void initState() {
     super.initState();
-    _ctrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 1100));
+    _ctrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1100),
+    );
     _pulse = CurvedAnimation(parent: _ctrl, curve: Curves.easeInOut);
   }
 
@@ -60,28 +66,40 @@ class _GuidedTapHintState extends State<GuidedTapHint> with SingleTickerProvider
 
   @override
   Widget build(BuildContext context) {
-    final pulsingBorder = AnimatedBuilder(
-      animation: _pulse,
-      builder: (context, child) {
-        return Container(
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(
-              color: kTutorialAccent.withValues(alpha: 0.35 + _pulse.value * 0.55),
-              width: 2 + _pulse.value * 1.5,
-            ),
-            boxShadow: [
-              BoxShadow(
-                color: kTutorialAccent.withValues(alpha: 0.12 + _pulse.value * 0.18),
-                blurRadius: 8 + _pulse.value * 10,
-                spreadRadius: _pulse.value * 2,
+    // RepaintBoundary: el borde + glow se repintan cada frame, y estas tarjetas
+    // viven dentro de listas que scrollean. Aislar el repintado evita que la
+    // animación ensucie la capa de la lista y provoque tirones en GPUs débiles.
+    final pulsingBorder = RepaintBoundary(
+      child: AnimatedBuilder(
+        animation: _pulse,
+        builder: (context, child) {
+          final p = _pulse.value;
+          return Transform.scale(
+            // Respiración muy leve: la tarjeta objetivo "late" para atraer el
+            // ojo. Transform.scale no reajusta el layout, así que las tarjetas
+            // vecinas no se mueven.
+            scale: 1.0 + p * 0.02,
+            child: Container(
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(
+                  color: kTutorialAccent.withValues(alpha: 0.35 + p * 0.55),
+                  width: 2 + p * 1.6,
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: kTutorialAccent.withValues(alpha: 0.14 + p * 0.22),
+                    blurRadius: 9 + p * 12,
+                    spreadRadius: p * 2.5,
+                  ),
+                ],
               ),
-            ],
-          ),
-          child: child,
-        );
-      },
-      child: widget.child,
+              child: child,
+            ),
+          );
+        },
+        child: widget.child,
+      ),
     );
 
     if (!widget.showBadge) return pulsingBorder;
@@ -134,12 +152,21 @@ class _TapBadge extends StatelessWidget {
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Icon(
-                  CupertinoIcons.hand_point_right_fill,
-                  size: 12,
-                  color: Color(0xFFFFFFFF),
+                // Mano apuntando a la tarjeta de abajo: la de la derecha girada
+                // un cuarto de vuelta (no existe una que apunte hacia abajo en
+                // CupertinoIcons). Da un golpecito hacia la tarjeta al pulsar.
+                Transform.translate(
+                  offset: Offset(0, pulse.value * 2.5),
+                  child: Transform.rotate(
+                    angle: math.pi / 2,
+                    child: const Icon(
+                      CupertinoIcons.hand_point_right_fill,
+                      size: 13,
+                      color: Color(0xFFFFFFFF),
+                    ),
+                  ),
                 ),
-                const SizedBox(width: 4),
+                const SizedBox(width: 5),
                 Text(
                   label,
                   style: const TextStyle(

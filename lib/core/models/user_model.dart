@@ -16,6 +16,7 @@ class UserModel {
   final String email;
   final String phone;
   final String ci;
+
   /// Matrícula del titular del seguro (para el carnet). Campo `mtrtit` del login.
   final String matriculaTitular;
   final String photoBase64;
@@ -23,16 +24,22 @@ class UserModel {
   final int? idseg;
   final String? uc;
   final String allergies;
+
   /// Estado de servicio del endpoint de foto (refe4). Ej: "ACTIVO", "PASIVO".
   final String serviceStatus;
+
   /// Teléfono de emergencia registrado en el backend (campo telfemerg).
   final String emergencyPhone;
+
   /// Dirección o referencia domiciliaria registrada en el backend.
   final String referencia;
+
   /// Celular del afiliado devuelto por el endpoint de foto/perfil (campo numcel).
   final String numCel;
+
   /// Fuerza/rama militar (ej. "EJERCITO", "ARMADA", "FUERZA AÉREA").
   final String fuerza;
+
   /// Tipo de personal (ej. "Personal - Militar", "Personal - Civil").
   final String tipopersonal;
   final List<BeneficiaryModel> beneficiaries;
@@ -128,82 +135,91 @@ class UserModel {
   factory UserModel.fromJson(Map<String, dynamic> json) {
     return UserModel(
       id: (json['idper'] ?? json['id'] ?? '').toString(),
-      fullName: (json['nombre_completo'] as String? ??
-          json['fullName'] as String? ??
-          '').toDisplayCase,
+      fullName:
+          (json['nombre_completo'] as String? ??
+                  json['fullName'] as String? ??
+                  '')
+              .toDisplayCase,
       rank: () {
-        final r = (json['grado'] as String? ?? json['rank'] as String? ?? '').toDisplayCase.trim();
+        final r = (json['grado'] as String? ?? json['rank'] as String? ?? '')
+            .toDisplayCase
+            .trim();
         return r.isNotEmpty ? r : 'Asegurado';
       }(),
       matricula: json['matricula'] as String? ?? '',
-      bloodType: json['tipo_sangre'] as String? ??
-          json['bloodType'] as String? ??
-          '',
+      bloodType:
+          json['tipo_sangre'] as String? ?? json['bloodType'] as String? ?? '',
       age: json['edad'] as int? ?? json['age'] as int? ?? 0,
       gender: json['genero'] as String? ?? json['gender'] as String? ?? '',
       role: json['rol'] as String? ?? json['role'] as String? ?? '',
-      isEnabled: json['habilitado'] as bool? ??
-          json['isEnabled'] as bool? ??
-          true,
-      hasMedicalAppointment: json['tiene_cita'] as bool? ??
+      isEnabled:
+          json['habilitado'] as bool? ?? json['isEnabled'] as bool? ?? true,
+      hasMedicalAppointment:
+          json['tiene_cita'] as bool? ??
           json['hasMedicalAppointment'] as bool? ??
           false,
       email: json['correo'] as String? ?? json['email'] as String? ?? '',
       phone: json['celular'] as String? ?? json['phone'] as String? ?? '',
       ci: json['ci'] as String? ?? '',
-      matriculaTitular: json['matriculaTitular'] as String? ?? json['mtrtit'] as String? ?? '',
-      photoBase64: json['foto2'] as String? ??
-          json['photoBase64'] as String? ??
+      matriculaTitular:
+          json['matriculaTitular'] as String? ??
+          json['mtrtit'] as String? ??
           '',
+      photoBase64:
+          json['foto2'] as String? ?? json['photoBase64'] as String? ?? '',
       birthDate:
           json['fecnac'] as String? ?? json['birthDate'] as String? ?? '',
-      beneficiaries: (json['beneficiarios'] as List<dynamic>?)
-              ?.map(
-                  (e) => BeneficiaryModel.fromJson(e as Map<String, dynamic>))
+      beneficiaries:
+          (json['beneficiarios'] as List<dynamic>?)
+              ?.map((e) => BeneficiaryModel.fromJson(e as Map<String, dynamic>))
               .toList() ??
           (json['beneficiaries'] as List<dynamic>?)
-              ?.map(
-                  (e) => BeneficiaryModel.fromJson(e as Map<String, dynamic>))
+              ?.map((e) => BeneficiaryModel.fromJson(e as Map<String, dynamic>))
               .toList() ??
           [],
-      allergies: (json['alergias'] as String? ??
-          json['allergies'] as String? ??
-          '').toDisplayCase,
-      serviceStatus: json['serviceStatus'] as String? ?? json['refe4'] as String? ?? '',
-      emergencyPhone: json['emergencyPhone'] as String? ?? json['telfemerg'] as String? ?? '',
+      allergies:
+          (json['alergias'] as String? ?? json['allergies'] as String? ?? '')
+              .toDisplayCase,
+      serviceStatus:
+          json['serviceStatus'] as String? ?? json['refe4'] as String? ?? '',
+      emergencyPhone:
+          json['emergencyPhone'] as String? ??
+          json['telfemerg'] as String? ??
+          '',
       referencia: json['referencia'] as String? ?? '',
-      numCel: (json['numCel'] as String? ?? json['numcel'] as String? ?? '').trim(),
+      numCel: (json['numCel'] as String? ?? json['numcel'] as String? ?? '')
+          .trim(),
       fuerza: (json['fuerza'] as String? ?? '').trim(),
       tipopersonal: (json['tipopersonal'] as String? ?? '').trim(),
     );
   }
 
   Map<String, dynamic> toJson() => {
-        'id': id,
-        'fullName': fullName,
-        'rank': rank,
-        'matricula': matricula,
-        'bloodType': bloodType,
-        'age': age,
-        'gender': gender,
-        'role': role,
-        'isEnabled': isEnabled,
-        'hasMedicalAppointment': hasMedicalAppointment,
-        'email': email,
-        'phone': phone,
-        'ci': ci,
-        'matriculaTitular': matriculaTitular,
-        'photoBase64': photoBase64,
-        'birthDate': birthDate,
-        'allergies': allergies,
-        'serviceStatus': serviceStatus,
-        'emergencyPhone': emergencyPhone,
-        'referencia': referencia,
-        'numCel': numCel,
-        'fuerza': fuerza,
-        'tipopersonal': tipopersonal,
-        'beneficiaries': beneficiaries.map((b) => b.toJson()).toList(),
-      };
+    'id': id,
+    'fullName': fullName,
+    'rank': rank,
+    'matricula': matricula,
+    'bloodType': bloodType,
+    'age': age,
+    'gender': gender,
+    'role': role,
+    'isEnabled': isEnabled,
+    'hasMedicalAppointment': hasMedicalAppointment,
+    'email': email,
+    'phone': phone,
+    'ci': ci,
+    'matriculaTitular': matriculaTitular,
+    'photoBase64': photoBase64,
+    'birthDate': birthDate,
+    'allergies': allergies,
+    'serviceStatus': serviceStatus,
+    'emergencyPhone': emergencyPhone,
+    'referencia': referencia,
+    'numCel': numCel,
+    'fuerza': fuerza,
+    'tipopersonal': tipopersonal,
+    'beneficiaries': beneficiaries.map((b) => b.toJson()).toList(),
+  };
 
   /// Nombre con tratamiento Sr./Sra. para UI.
   ///

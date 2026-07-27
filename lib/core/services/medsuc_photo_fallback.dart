@@ -52,11 +52,9 @@ Future<Map<String, String>> fetchMedSucBuscarFotos({
         for (final item in list) {
           if (item is! Map) continue;
           final idmed = (item['idmed'] ?? '').toString();
-          final foto = (item['foto'] ??
-                  item['fotoMedico'] ??
-                  item['base64'] ??
-                  '')
-              .toString();
+          final foto =
+              (item['foto'] ?? item['fotoMedico'] ?? item['base64'] ?? '')
+                  .toString();
           if (idmed.isNotEmpty && foto.isNotEmpty) map[idmed] = foto;
         }
         return map;

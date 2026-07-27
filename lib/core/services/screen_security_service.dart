@@ -1,4 +1,5 @@
-import 'package:flutter/foundation.dart' show kIsWeb, defaultTargetPlatform, TargetPlatform;
+import 'package:flutter/foundation.dart'
+    show kIsWeb, defaultTargetPlatform, TargetPlatform;
 import 'package:flutter/services.dart';
 
 /// Bloqueo de capturas y grabación de pantalla (Android `FLAG_SECURE`).
@@ -9,8 +10,9 @@ import 'package:flutter/services.dart';
 class ScreenSecurityService {
   ScreenSecurityService._();
 
-  static const MethodChannel _channel =
-      MethodChannel('cossmil.security/screenshot');
+  static const MethodChannel _channel = MethodChannel(
+    'cossmil.security/screenshot',
+  );
 
   static bool get _supported =>
       !kIsWeb && defaultTargetPlatform == TargetPlatform.android;

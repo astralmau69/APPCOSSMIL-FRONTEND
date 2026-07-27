@@ -25,10 +25,10 @@ class AppColors {
   static const Color razer = Color(0xFF44D62C);
 
   // ── Surfaces (Design System tonal hierarchy) ──────────────────────────────
-  static const Color background = Color(0xFFF7F9FB);          // surface base
+  static const Color background = Color(0xFFF7F9FB); // surface base
   static const Color surfaceContainerLow = Color(0xFFF2F4F6); // low priority
-  static const Color surface = Color(0xFFFFFFFF);              // active cards (max lift)
-  static const Color surfaceVariant = Color(0xFFE0E3E5);       // recessed/disabled
+  static const Color surface = Color(0xFFFFFFFF); // active cards (max lift)
+  static const Color surfaceVariant = Color(0xFFE0E3E5); // recessed/disabled
   static const Color white = Color(0xFFFFFFFF);
 
   // ── Dark mode surfaces (navy-tinted depth, coherente con azul institucional)
@@ -98,13 +98,16 @@ class AppColors {
   static Color elevatedBg(bool isDark) => isDark ? darkElevated : white;
 
   /// Primary text color for current theme.
-  static Color textPrimaryC(bool isDark) => isDark ? darkTextPrimary : textPrimary;
+  static Color textPrimaryC(bool isDark) =>
+      isDark ? darkTextPrimary : textPrimary;
 
   /// Secondary text color for current theme.
-  static Color textSecondaryC(bool isDark) => isDark ? darkTextSecondary : textSecondary;
+  static Color textSecondaryC(bool isDark) =>
+      isDark ? darkTextSecondary : textSecondary;
 
   /// Tertiary text color for current theme.
-  static Color textTertiaryC(bool isDark) => isDark ? darkTextTertiary : textTertiary;
+  static Color textTertiaryC(bool isDark) =>
+      isDark ? darkTextTertiary : textTertiary;
 
   /// Card border for current theme.
   static Color cardBorder(bool isDark) => isDark ? darkBorder : border;
@@ -113,7 +116,8 @@ class AppColors {
   static Color dividerC(bool isDark) => isDark ? darkDivider : divider;
 
   /// Accent color for dark mode actions (highlights, active states).
-  static Color accentForTheme(bool isDark) => isDark ? const Color(0xFF5BA3E6) : primary;
+  static Color accentForTheme(bool isDark) =>
+      isDark ? const Color(0xFF5BA3E6) : primary;
 
   /// Subtle accent background.
   static Color accentBg(bool isDark) =>
@@ -137,26 +141,26 @@ class AppColors {
       : cardShadow;
 
   static List<BoxShadow> get cardShadow => [
-        BoxShadow(
-          color: const Color(0xFF191C1E).withValues(alpha: 0.04),
-          blurRadius: 32,
-          offset: const Offset(0, 8),
-        ),
-      ];
+    BoxShadow(
+      color: const Color(0xFF191C1E).withValues(alpha: 0.04),
+      blurRadius: 32,
+      offset: const Offset(0, 8),
+    ),
+  ];
 
   static List<BoxShadow> get softShadow => [
-        BoxShadow(
-          color: const Color(0xFF191C1E).withValues(alpha: 0.03),
-          blurRadius: 32,
-          offset: const Offset(0, 4),
-        ),
-      ];
+    BoxShadow(
+      color: const Color(0xFF191C1E).withValues(alpha: 0.03),
+      blurRadius: 32,
+      offset: const Offset(0, 4),
+    ),
+  ];
 
   static List<BoxShadow> get elevatedShadow => [
-        BoxShadow(
-          color: const Color(0xFF191C1E).withValues(alpha: 0.04),
-          blurRadius: 40,
-          offset: const Offset(0, 12),
-        ),
-      ];
+    BoxShadow(
+      color: const Color(0xFF191C1E).withValues(alpha: 0.04),
+      blurRadius: 40,
+      offset: const Offset(0, 12),
+    ),
+  ];
 }

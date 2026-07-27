@@ -17,10 +17,7 @@ import '../constants/app_colors.dart';
 class LoaderWithMessage extends StatelessWidget {
   final String message;
 
-  const LoaderWithMessage({
-    super.key,
-    this.message = 'Cargando…',
-  });
+  const LoaderWithMessage({super.key, this.message = 'Cargando…'});
 
   @override
   Widget build(BuildContext context) {

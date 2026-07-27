@@ -126,7 +126,10 @@ class _ModalContent extends StatelessWidget {
                   child: Align(
                     alignment: Alignment.centerLeft,
                     child: Text(
-                      'Selecciona el miembro de tu grupo familiar',
+                      beneficiaries.length == 1
+                          ? 'Tu grupo familiar tiene 1 miembro registrado'
+                          : 'Tu grupo familiar tiene ${beneficiaries.length} '
+                                'miembros registrados',
                       style: TextStyle(
                         fontSize: r.isSmallPhone ? 12 : 14,
                         fontWeight: FontWeight.w500,
@@ -228,7 +231,10 @@ class _BeneficiaryTile extends StatelessWidget {
                 ),
               ),
               SizedBox(width: r.spaceMd),
-              // Name + relationship
+              // Ficha de la persona: nombre, vínculo y los datos que permiten
+              // distinguir a dos familiares con nombres parecidos (edad y
+              // cédula). Antes solo se veía nombre y vínculo, y elegir a la
+              // persona equivocada era demasiado fácil.
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -246,85 +252,66 @@ class _BeneficiaryTile extends StatelessWidget {
                       ),
                     ),
                     SizedBox(height: context.r.spaceXs),
-                    Row(
+                    Wrap(
+                      spacing: context.r.spaceSm,
+                      runSpacing: context.r.spaceXs,
+                      crossAxisAlignment: WrapCrossAlignment.center,
                       children: [
-                        Container(
-                          padding: EdgeInsets.symmetric(
-                            horizontal: context.r.chipPaddingH,
-                            vertical: context.r.chipPaddingV,
-                          ),
-                          decoration: BoxDecoration(
-                            color: isTitular
-                                ? AppColors.primary.withValues(alpha: 0.1)
-                                : AppColors.accent.withValues(alpha: 0.1),
-                            borderRadius: BorderRadius.circular(
-                              context.r.badgeRadius,
-                            ),
-                          ),
-                          child: Text(
-                            label,
-                            style: TextStyle(
-                              fontSize: r.isSmallPhone ? 12 : 14,
-                              fontWeight: FontWeight.w700,
-                              color: isTitular
-                                  ? AppColors.primary
-                                  : AppColors.accentDark,
-                            ),
-                          ),
+                        _Chip(
+                          text: label,
+                          color: isTitular
+                              ? AppColors.primary
+                              : AppColors.accentDark,
+                          small: r.isSmallPhone,
                         ),
-                        if (isDisabled) ...[
-                          SizedBox(width: context.r.spaceSm),
-                          Container(
-                            padding: EdgeInsets.symmetric(
-                              horizontal: context.r.chipPaddingH,
-                              vertical: context.r.chipPaddingV,
-                            ),
-                            decoration: BoxDecoration(
-                              color: Colors.red.withValues(alpha: 0.1),
-                              borderRadius: BorderRadius.circular(
-                                context.r.badgeRadius,
-                              ),
-                            ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Icon(
-                                  Icons.block_rounded,
-                                  size: r.isSmallPhone ? 10 : 12,
-                                  color: Colors.red.shade600,
-                                ),
-                                const SizedBox(width: 3),
-                                Text(
-                                  'Sin atención',
-                                  style: TextStyle(
-                                    fontSize: r.isSmallPhone ? 10 : 12,
-                                    fontWeight: FontWeight.w700,
-                                    color: Colors.red.shade600,
-                                  ),
-                                ),
-                              ],
-                            ),
+                        if (beneficiary.age != null)
+                          _Chip(
+                            text: '${beneficiary.age} años',
+                            color: AppColors.textSecondaryC(isDark),
+                            small: r.isSmallPhone,
                           ),
-                        ],
+                        if (isDisabled)
+                          _Chip(
+                            text: 'Sin atención',
+                            color: Colors.red.shade600,
+                            small: r.isSmallPhone,
+                            icon: Icons.block_rounded,
+                          ),
                       ],
                     ),
+                    if (beneficiary.ci.isNotEmpty) ...[
+                      SizedBox(height: context.r.spaceXs),
+                      Text(
+                        'CI ${beneficiary.ci}',
+                        style: TextStyle(
+                          fontSize: r.isSmallPhone ? 11 : 12.5,
+                          fontWeight: FontWeight.w600,
+                          letterSpacing: 0.2,
+                          color: AppColors.textTertiaryC(isDark),
+                        ),
+                      ),
+                    ],
                   ],
                 ),
               ),
-              // Check icon (solo para habilitados)
-              if (isSelected && !isDisabled)
+              // Marca de selección tipo formulario: el círculo vacío indica
+              // que la fila es elegible, no solo la llena. Sin él, una lista
+              // sin nadie marcado parece de solo lectura.
+              if (!isDisabled)
                 Container(
-                  width: 28,
-                  height: 28,
+                  width: 26,
+                  height: 26,
                   decoration: BoxDecoration(
-                    color: AppColors.primary.withValues(alpha: 0.1),
+                    color: isSelected ? AppColors.primary : Colors.transparent,
                     shape: BoxShape.circle,
+                    border: Border.all(
+                      color: isSelected ? AppColors.primary : AppColors.border,
+                      width: 2,
+                    ),
                   ),
-                  child: const Icon(
-                    Icons.check,
-                    size: 16,
-                    color: AppColors.primary,
-                  ),
+                  child: isSelected
+                      ? const Icon(Icons.check, size: 15, color: Colors.white)
+                      : null,
                 ),
             ],
           ),
@@ -342,6 +329,54 @@ class _BeneficiaryTile extends StatelessWidget {
           fontWeight: FontWeight.w800,
           fontSize: size * 0.36,
         ),
+      ),
+    );
+  }
+}
+
+/// Etiqueta compacta de un dato de la persona (vínculo, edad, estado). Un solo
+/// componente para todas: así los chips de una misma fila quedan idénticos en
+/// altura y forma, que es lo que hace que la ficha se lea ordenada.
+class _Chip extends StatelessWidget {
+  final String text;
+  final Color color;
+  final bool small;
+  final IconData? icon;
+
+  const _Chip({
+    required this.text,
+    required this.color,
+    required this.small,
+    this.icon,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: EdgeInsets.symmetric(
+        horizontal: context.r.chipPaddingH,
+        vertical: context.r.chipPaddingV,
+      ),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.10),
+        borderRadius: BorderRadius.circular(context.r.badgeRadius),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (icon != null) ...[
+            Icon(icon, size: small ? 10 : 12, color: color),
+            const SizedBox(width: 3),
+          ],
+          Text(
+            text,
+            style: TextStyle(
+              fontSize: small ? 11 : 13,
+              fontWeight: FontWeight.w700,
+              color: color,
+            ),
+          ),
+        ],
       ),
     );
   }

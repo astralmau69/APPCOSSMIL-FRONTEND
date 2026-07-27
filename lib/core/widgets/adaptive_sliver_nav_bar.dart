@@ -47,18 +47,21 @@ class AdaptiveSliverNavBar extends StatelessWidget {
     }
 
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final bgColor = backgroundColor ??
+    final bgColor =
+        backgroundColor ??
         (isDark
             ? AppColors.darkSurface.withValues(alpha: 0.92)
             : AppColors.white.withValues(alpha: 0.92));
 
-    final dividerColor = border?.bottom.color ??
+    final dividerColor =
+        border?.bottom.color ??
         AppColors.cardBorder(isDark).withValues(alpha: 0.5);
 
     final topPad = MediaQuery.paddingOf(context).top;
     final canPop = Navigator.canPop(context);
 
-    final effectiveLeading = leading ??
+    final effectiveLeading =
+        leading ??
         (canPop
             ? CupertinoButton(
                 padding: EdgeInsets.zero,
@@ -110,7 +113,11 @@ class _CompactNavDelegate extends SliverPersistentHeaderDelegate {
   double get maxExtent => _barHeight + topPad;
 
   @override
-  Widget build(BuildContext context, double shrinkOffset, bool overlapsContent) {
+  Widget build(
+    BuildContext context,
+    double shrinkOffset,
+    bool overlapsContent,
+  ) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     return Container(
       color: bgColor,
@@ -122,10 +129,7 @@ class _CompactNavDelegate extends SliverPersistentHeaderDelegate {
               padding: const EdgeInsets.symmetric(horizontal: 16),
               child: Row(
                 children: [
-                  if (leading != null) ...[
-                    leading!,
-                    const SizedBox(width: 4),
-                  ],
+                  if (leading != null) ...[leading!, const SizedBox(width: 4)],
                   Expanded(
                     child: DefaultTextStyle.merge(
                       style: TextStyle(

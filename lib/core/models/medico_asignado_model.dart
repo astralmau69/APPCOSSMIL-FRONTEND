@@ -49,7 +49,8 @@ class MedicoAsignadoModel {
       estado: json['estado'] as bool? ?? false,
       idcon: json['idcon'] as int? ?? 0,
       idcontrol: json['idcontrol'] as String? ?? '',
-      descripcionConsultorio: (json['descripcion'] as String? ?? '').toDisplayCase,
+      descripcionConsultorio:
+          (json['descripcion'] as String? ?? '').toDisplayCase,
       dia: json['dia'] as String? ?? '',
       fecha: json['fecha'] as String? ?? '',
       foto: json['foto'] as String? ?? '',
@@ -59,24 +60,26 @@ class MedicoAsignadoModel {
 
   /// Convierte a DoctorModel para compatibilidad con BookingState.
   DoctorModel toDoctorModel() => DoctorModel(
-        id: idmed,
-        fullName: medico,
-        office: descripcionConsultorio,
-        fecha: fecha,
-        dia: dia,
-        foto: foto,
-      );
+    id: idmed,
+    fullName: medico,
+    office: descripcionConsultorio,
+    fecha: fecha,
+    dia: dia,
+    foto: foto,
+  );
 
   /// Convierte horas a TimeSlotModel para compatibilidad con la UI.
   /// Backend: `estado: false` = disponible, `estado: true` = ocupada.
   List<TimeSlotModel> toTimeSlots() => horas
-      .map((h) => TimeSlotModel(
-            time: h.hora,
-            isAvailable: !h.estado,
-            statusLevel: !h.estado ? 'high' : 'none',
-            idhora: h.idhora,
-            numero: h.numero,
-          ))
+      .map(
+        (h) => TimeSlotModel(
+          time: h.hora,
+          isAvailable: !h.estado,
+          statusLevel: !h.estado ? 'high' : 'none',
+          idhora: h.idhora,
+          numero: h.numero,
+        ),
+      )
       .toList();
 
   /// Fichas disponibles (horas con estado false).

@@ -1,14 +1,13 @@
-import 'dart:io';
 import 'dart:typed_data';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:open_file/open_file.dart';
-import 'package:path_provider/path_provider.dart';
 import 'package:printing/printing.dart';
 
 import '../../../core/constants/app_colors.dart';
 import '../../../core/extensions/responsive_extensions.dart';
+import '../../../core/services/secure_docs_store.dart';
 
 /// Vista previa genérica de un PDF con acciones de Imprimir, Descargar y
 /// Compartir.
@@ -68,25 +67,31 @@ class _DocumentPreviewScreenState extends State<DocumentPreviewScreen> {
       await task();
     } catch (_) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-          content: Text('No se pudo completar la acción.'),
-          behavior: SnackBarBehavior.floating,
-        ));
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('No se pudo completar la acción.'),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
       }
     } finally {
       if (mounted) setState(() => _working = false);
     }
   }
 
-  Future<void> _imprimir() => _run(() => Printing.layoutPdf(
-        onLayout: (_) async => widget.pdfBytes,
-        name: widget.fileName,
-      ));
+  Future<void> _imprimir() => _run(
+    () => Printing.layoutPdf(
+      onLayout: (_) async => widget.pdfBytes,
+      name: widget.fileName,
+    ),
+  );
 
-  Future<void> _compartir() => _run(() => Printing.sharePdf(
-        bytes: widget.pdfBytes,
-        filename: '${widget.fileName}.pdf',
-      ));
+  Future<void> _compartir() => _run(
+    () => Printing.sharePdf(
+      bytes: widget.pdfBytes,
+      filename: '${widget.fileName}.pdf',
+    ),
+  );
 
   /// Pregunta el formato (PDF o Word) y guarda/abre el archivo.
   Future<void> _descargar() async {
@@ -124,20 +129,27 @@ class _DocumentPreviewScreenState extends State<DocumentPreviewScreen> {
     await _run(() async {
       if (kIsWeb) {
         // En web, compartir dispara la descarga del navegador.
-        await Printing.sharePdf(bytes: bytes, filename: '${widget.fileName}.$ext');
+        await Printing.sharePdf(
+          bytes: bytes,
+          filename: '${widget.fileName}.$ext',
+        );
         return;
       }
-      final dir = await getApplicationDocumentsDirectory();
-      final file = File('${dir.path}/${widget.fileName}.$ext');
-      await file.writeAsBytes(bytes, flush: true);
+      // Sandbox privado: se guarda en el subdirectorio exclusivo de documentos
+      // generados, que el logout borra por completo (ningún PHI queda en disco).
+      final file = await SecureDocsStore.save(widget.fileName, ext, bytes);
       final res = await OpenFile.open(file.path);
       if (res.type != ResultType.done && mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Text(res.type == ResultType.noAppToOpen
-              ? 'Documento guardado, pero no hay una app para abrir .$ext.'
-              : 'Documento guardado en: ${file.path}'),
-          behavior: SnackBarBehavior.floating,
-        ));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              res.type == ResultType.noAppToOpen
+                  ? 'Documento guardado, pero no hay una app para abrir .$ext.'
+                  : 'Documento guardado en: ${file.path}',
+            ),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
       }
     });
   }
@@ -148,8 +160,9 @@ class _DocumentPreviewScreenState extends State<DocumentPreviewScreen> {
     final r = context.r;
 
     return Scaffold(
-      backgroundColor:
-          isDark ? AppColors.darkBackground : const Color(0xFFEDF4F0),
+      backgroundColor: isDark
+          ? AppColors.darkBackground
+          : const Color(0xFFEDF4F0),
       body: SafeArea(
         child: Column(
           children: [
@@ -174,16 +187,22 @@ class _DocumentPreviewScreenState extends State<DocumentPreviewScreen> {
               width: 42,
               height: 42,
               decoration: BoxDecoration(
-                color:
-                    isDark ? Colors.white.withValues(alpha: 0.08) : Colors.white,
+                color: isDark
+                    ? Colors.white.withValues(alpha: 0.08)
+                    : Colors.white,
                 shape: BoxShape.circle,
                 border: Border.all(
-                    color: AppColors.textTertiaryC(isDark)
-                        .withValues(alpha: isDark ? 0.25 : 0.18)),
+                  color: AppColors.textTertiaryC(
+                    isDark,
+                  ).withValues(alpha: isDark ? 0.25 : 0.18),
+                ),
                 boxShadow: isDark ? null : AppColors.softShadow,
               ),
-              child: Icon(CupertinoIcons.back,
-                  size: 20, color: AppColors.textPrimaryC(isDark)),
+              child: Icon(
+                CupertinoIcons.back,
+                size: 20,
+                color: AppColors.textPrimaryC(isDark),
+              ),
             ),
           ),
           SizedBox(width: r.spaceSm),
@@ -191,17 +210,23 @@ class _DocumentPreviewScreenState extends State<DocumentPreviewScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(widget.title,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: context.texts.titleLarge.copyWith(
-                        fontWeight: FontWeight.w800,
-                        color: AppColors.textPrimaryC(isDark))),
-                Text(widget.subtitle,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: context.texts.bodySmall.copyWith(
-                        color: AppColors.textSecondaryC(isDark))),
+                Text(
+                  widget.title,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: context.texts.titleLarge.copyWith(
+                    fontWeight: FontWeight.w800,
+                    color: AppColors.textPrimaryC(isDark),
+                  ),
+                ),
+                Text(
+                  widget.subtitle,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: context.texts.bodySmall.copyWith(
+                    color: AppColors.textSecondaryC(isDark),
+                  ),
+                ),
               ],
             ),
           ),
@@ -221,14 +246,21 @@ class _DocumentPreviewScreenState extends State<DocumentPreviewScreen> {
         final pages = snap.data ?? const <Uint8List>[];
         if (pages.isEmpty) {
           return Center(
-            child: Text('No se pudo generar la vista previa.',
-                style: context.texts.bodyMedium
-                    .copyWith(color: AppColors.textSecondaryC(isDark))),
+            child: Text(
+              'No se pudo generar la vista previa.',
+              style: context.texts.bodyMedium.copyWith(
+                color: AppColors.textSecondaryC(isDark),
+              ),
+            ),
           );
         }
         return SingleChildScrollView(
-          padding:
-              EdgeInsets.fromLTRB(r.paddingH, r.spaceSm, r.paddingH, r.spaceLg),
+          padding: EdgeInsets.fromLTRB(
+            r.paddingH,
+            r.spaceSm,
+            r.paddingH,
+            r.navBarBottomSpace,
+          ),
           child: Center(
             child: ConstrainedBox(
               constraints: const BoxConstraints(maxWidth: 560),
@@ -264,7 +296,11 @@ class _DocumentPreviewScreenState extends State<DocumentPreviewScreen> {
   Widget _actions(bool isDark, AppResponsive r) {
     return Container(
       padding: EdgeInsets.fromLTRB(
-          r.paddingH, r.spaceSm, r.paddingH, r.spaceMd + r.viewPaddingBottom),
+        r.paddingH,
+        r.spaceSm,
+        r.paddingH,
+        r.spaceMd + r.viewPaddingBottom,
+      ),
       decoration: BoxDecoration(
         color: isDark ? AppColors.darkSurface : Colors.white,
         boxShadow: [
@@ -300,14 +336,20 @@ class _DocumentPreviewScreenState extends State<DocumentPreviewScreen> {
                       : const Row(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            Icon(CupertinoIcons.printer_fill,
-                                size: 19, color: Colors.white),
+                            Icon(
+                              CupertinoIcons.printer_fill,
+                              size: 19,
+                              color: Colors.white,
+                            ),
                             SizedBox(width: 9),
-                            Text('Imprimir',
-                                style: TextStyle(
-                                    color: Colors.white,
-                                    fontWeight: FontWeight.w800,
-                                    fontSize: 15)),
+                            Text(
+                              'Imprimir',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.w800,
+                                fontSize: 15,
+                              ),
+                            ),
                           ],
                         ),
                 ),
@@ -332,14 +374,20 @@ class _DocumentPreviewScreenState extends State<DocumentPreviewScreen> {
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Icon(CupertinoIcons.arrow_down_circle_fill,
-                          size: 19, color: _verde),
+                      Icon(
+                        CupertinoIcons.arrow_down_circle_fill,
+                        size: 19,
+                        color: _verde,
+                      ),
                       SizedBox(width: 8),
-                      Text('Descargar',
-                          style: TextStyle(
-                              color: _verde,
-                              fontWeight: FontWeight.w700,
-                              fontSize: 14.5)),
+                      Text(
+                        'Descargar',
+                        style: TextStyle(
+                          color: _verde,
+                          fontWeight: FontWeight.w700,
+                          fontSize: 14.5,
+                        ),
+                      ),
                     ],
                   ),
                 ),

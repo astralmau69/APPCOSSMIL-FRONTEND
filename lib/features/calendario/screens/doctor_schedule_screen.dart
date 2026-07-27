@@ -7,9 +7,11 @@ import '../../../core/models/calendario_models.dart';
 import '../../../core/models/specialty_model.dart';
 import '../../../core/services/calendario_service.dart';
 import '../../../core/animations/optimized_animations.dart';
+import '../../../core/services/tutorial_flow.dart';
 import '../../../core/widgets/app_state_widget.dart';
 import '../../../core/widgets/image_enlarged_modal.dart';
 import '../../../core/widgets/liquid_glass.dart';
+import '../../../core/widgets/tutorial_flow_host.dart';
 
 // ─── Modelo de turno ─────────────────────────────────────────────────────────
 
@@ -17,34 +19,34 @@ enum _Turno { manana, tarde, noche }
 
 extension _TurnoExt on _Turno {
   String get label => switch (this) {
-        _Turno.manana => 'Mañana',
-        _Turno.tarde => 'Tarde',
-        _Turno.noche => 'Noche',
-      };
+    _Turno.manana => 'Mañana',
+    _Turno.tarde => 'Tarde',
+    _Turno.noche => 'Noche',
+  };
 
   IconData get icon => switch (this) {
-        _Turno.manana => CupertinoIcons.sunrise_fill,
-        _Turno.tarde => CupertinoIcons.sun_max_fill,
-        _Turno.noche => CupertinoIcons.moon_stars_fill,
-      };
+    _Turno.manana => CupertinoIcons.sunrise_fill,
+    _Turno.tarde => CupertinoIcons.sun_max_fill,
+    _Turno.noche => CupertinoIcons.moon_stars_fill,
+  };
 
   Color get color => switch (this) {
-        _Turno.manana => const Color(0xFFF59E0B), // ámbar
-        _Turno.tarde => const Color(0xFFEF7C34),  // naranja
-        _Turno.noche => const Color(0xFF6366F1),  // índigo
-      };
+    _Turno.manana => const Color(0xFFF59E0B), // ámbar
+    _Turno.tarde => const Color(0xFFEF7C34), // naranja
+    _Turno.noche => const Color(0xFF6366F1), // índigo
+  };
 
   Color get bgLight => switch (this) {
-        _Turno.manana => const Color(0xFFFFFBEB),
-        _Turno.tarde => const Color(0xFFFFF3E0),
-        _Turno.noche => const Color(0xFFEEF2FF),
-      };
+    _Turno.manana => const Color(0xFFFFFBEB),
+    _Turno.tarde => const Color(0xFFFFF3E0),
+    _Turno.noche => const Color(0xFFEEF2FF),
+  };
 
   Color get bgDark => switch (this) {
-        _Turno.manana => const Color(0xFF2D2207),
-        _Turno.tarde => const Color(0xFF2D1800),
-        _Turno.noche => const Color(0xFF1E1B40),
-      };
+    _Turno.manana => const Color(0xFF2D2207),
+    _Turno.tarde => const Color(0xFF2D1800),
+    _Turno.noche => const Color(0xFF1E1B40),
+  };
 
   Color bg(bool isDark) => isDark ? bgDark : bgLight;
 
@@ -139,7 +141,24 @@ class _DoctorScheduleScreenState extends State<DoctorScheduleScreen> {
         ),
       ),
       child: SafeArea(
-        child: _buildBody(isDark, r),
+        // Paso final del tutorial del Calendario: la instructora celebra y
+        // explica cómo leer la agenda. Salir aquí ya no pide confirmación.
+        child: TutorialFlowHost(
+          tutorial: GuidedTutorial.calendario,
+          step: 5,
+          totalSteps: 5,
+          voiceId: 'calendario_04',
+          celebrate: true,
+          confirmOnExit: false,
+          messages: const [
+            '¡Eso es todo! 🎖️',
+            'Aquí ves los días, turnos y horas en que atiende este médico. '
+                'Recuerda: esto es solo consulta — para sacar una ficha usa '
+                '"Nueva Reserva" en Inicio. Puedes repetir este tutorial '
+                'desde tu Perfil.',
+          ],
+          builder: (context, _) => _buildBody(isDark, r),
+        ),
       ),
     );
   }
@@ -175,20 +194,28 @@ class _DoctorScheduleScreenState extends State<DoctorScheduleScreen> {
     if (_schedule.isEmpty) {
       return AppStateWidget.empty(
         title: 'Sin horarios registrados',
-        message: '${widget.doctor.displayName} no tiene horarios de atención registrados.',
+        message:
+            '${widget.doctor.displayName} no tiene horarios de atención registrados.',
         icon: CupertinoIcons.calendar_badge_minus,
       );
     }
 
     return CustomScrollView(
-      physics: const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
+      physics: const BouncingScrollPhysics(
+        parent: AlwaysScrollableScrollPhysics(),
+      ),
       slivers: [
         SliverToBoxAdapter(
           child: Center(
             child: ConstrainedBox(
               constraints: BoxConstraints(maxWidth: r.maxContentWidth),
               child: Padding(
-                padding: EdgeInsets.fromLTRB(r.paddingH, r.spaceLg, r.paddingH, r.spaceXl),
+                padding: EdgeInsets.fromLTRB(
+                  r.paddingH,
+                  r.spaceLg,
+                  r.paddingH,
+                  r.navBarBottomSpace,
+                ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -197,7 +224,6 @@ class _DoctorScheduleScreenState extends State<DoctorScheduleScreen> {
                     _buildLegend(isDark, r),
                     SizedBox(height: r.spaceLg),
                     ..._buildScheduleDays(isDark, r),
-                    SizedBox(height: r.spaceXl),
                   ],
                 ),
               ),
@@ -244,11 +270,18 @@ class _DoctorScheduleScreenState extends State<DoctorScheduleScreen> {
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
                 color: AppColors.primary.withValues(alpha: 0.1),
-                border: Border.all(color: AppColors.primary.withValues(alpha: 0.2)),
+                border: Border.all(
+                  color: AppColors.primary.withValues(alpha: 0.2),
+                ),
               ),
               child: ClipOval(
                 child: photo != null
-                    ? Image.memory(photo, fit: BoxFit.cover, width: 64, height: 64)
+                    ? Image.memory(
+                        photo,
+                        fit: BoxFit.cover,
+                        width: 64,
+                        height: 64,
+                      )
                     : Center(
                         child: Text(
                           widget.doctor.initials,
@@ -392,9 +425,11 @@ class _DoctorScheduleScreenState extends State<DoctorScheduleScreen> {
     }
 
     // Orden canónico de turnos
-    final turnosPresentes = [_Turno.manana, _Turno.tarde, _Turno.noche]
-        .where((t) => byTurno.containsKey(t))
-        .toList();
+    final turnosPresentes = [
+      _Turno.manana,
+      _Turno.tarde,
+      _Turno.noche,
+    ].where((t) => byTurno.containsKey(t)).toList();
 
     return LiquidGlass(
       isDark: isDark,
@@ -418,18 +453,30 @@ class _DoctorScheduleScreenState extends State<DoctorScheduleScreen> {
   }
 
   Widget _buildConsultorioBanner(
-      String consultorio, String piso, bool isDark, AppResponsive r) {
+    String consultorio,
+    String piso,
+    bool isDark,
+    AppResponsive r,
+  ) {
     return Container(
-      padding: EdgeInsets.symmetric(horizontal: r.cardPadding, vertical: r.spaceSm),
+      padding: EdgeInsets.symmetric(
+        horizontal: r.cardPadding,
+        vertical: r.spaceSm,
+      ),
       decoration: BoxDecoration(
         color: isDark ? const Color(0xFF2A2D35) : const Color(0xFFF8FAFC),
-        borderRadius: BorderRadius.vertical(top: Radius.circular(r.cardRadius - 1)),
+        borderRadius: BorderRadius.vertical(
+          top: Radius.circular(r.cardRadius - 1),
+        ),
         border: Border(bottom: BorderSide(color: AppColors.dividerC(isDark))),
       ),
       child: Row(
         children: [
-          Icon(CupertinoIcons.building_2_fill,
-              size: 16, color: AppColors.textTertiaryC(isDark)),
+          Icon(
+            CupertinoIcons.building_2_fill,
+            size: 16,
+            color: AppColors.textTertiaryC(isDark),
+          ),
           SizedBox(width: r.spaceSm),
           Text(
             'Consultorio $consultorio',
@@ -526,7 +573,9 @@ class _DoctorScheduleScreenState extends State<DoctorScheduleScreen> {
                     Icon(
                       CupertinoIcons.clock,
                       size: 16,
-                      color: turno.color.withValues(alpha: isDark ? 0.85 : 0.75),
+                      color: turno.color.withValues(
+                        alpha: isDark ? 0.85 : 0.75,
+                      ),
                     ),
                     SizedBox(width: r.spaceSm),
                     Text(
@@ -553,10 +602,7 @@ class _DoctorScheduleScreenState extends State<DoctorScheduleScreen> {
 
         // Separador entre secciones de turno (si no es la última)
         if (!isLastSection)
-          Container(
-            height: 1,
-            color: AppColors.cardBorder(isDark),
-          ),
+          Container(height: 1, color: AppColors.cardBorder(isDark)),
       ],
     );
   }

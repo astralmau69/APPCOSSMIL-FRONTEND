@@ -5,12 +5,16 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/services.dart';
 import '../../../core/animations/app_dialog.dart';
 import '../../../core/constants/app_colors.dart';
+import '../../../core/constants/app_sounds.dart';
+import '../../../core/theme/sound_manager.dart';
 import '../../../core/theme/app_constants.dart';
 import '../../../core/extensions/responsive_extensions.dart';
 import '../../../core/services/auth_service.dart';
 import '../../../core/services/security_service.dart';
 import '../../../core/services/session_restore_service.dart';
 import '../../../core/storage/token_storage.dart';
+import '../../../core/services/secure_docs_store.dart';
+import '../../../core/security/screen_security.dart';
 import '../../../core/session/user_session.dart';
 import '../../../core/animations/optimized_animations.dart';
 import '../../../core/animations/animated_gradient_background.dart';
@@ -221,6 +225,7 @@ class _LocalAuthScreenState extends State<LocalAuthScreen>
       final cooldown = await SecurityService.cooldownRemaining();
       if (!mounted) return;
 
+      SoundManager.playUi(AppSounds.error, volume: 0.5);
       await _shakeCtrl.forward(from: 0);
       HapticFeedback.vibrate();
 
@@ -337,6 +342,9 @@ class _LocalAuthScreenState extends State<LocalAuthScreen>
       _cooldownTimer?.cancel();
       // Cancelar TODAS las notificaciones antes de limpiar datos
       await NotificationService.cancelAllReminders();
+      // Borra los PDFs/documentos generados (PHI) y desactiva FLAG_SECURE.
+      await SecureDocsStore.wipeAll();
+      await ScreenSecurity.disable();
       // wipeAll borra tokens + PIN + sesión + todo el secure storage en un paso
       await TokenStorage.wipeAll();
       UserSession.clear();
@@ -866,7 +874,11 @@ class _LocalAuthScreenState extends State<LocalAuthScreen>
           shape: BoxShape.circle,
           color: AppColors.primary.withValues(alpha: 0.1),
         ),
-        child: Icon(Icons.fingerprint, size: keySize * 0.5, color: AppColors.primary),
+        child: Icon(
+          Icons.fingerprint,
+          size: keySize * 0.5,
+          color: AppColors.primary,
+        ),
       ),
     );
   }

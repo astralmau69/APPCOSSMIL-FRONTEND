@@ -88,7 +88,9 @@ class _CossmilLoaderState extends State<CossmilLoader>
             begin: Alignment.topCenter,
             end: Alignment.center,
             colors: [
-              (isDark ? Colors.white : Colors.black).withValues(alpha: isDark ? 0.10 : 0.10),
+              (isDark ? Colors.white : Colors.black).withValues(
+                alpha: isDark ? 0.10 : 0.10,
+              ),
               Colors.transparent,
             ],
             stops: const [0.0, 1.0],

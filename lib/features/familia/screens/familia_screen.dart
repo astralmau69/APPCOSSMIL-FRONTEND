@@ -59,7 +59,9 @@ class _FamiliaScreenState extends State<FamiliaScreen> {
       if (newPhotos[i] != null) continue; // ya tiene foto
       final b = _beneficiaries[i];
       var freshB64 = '';
-      final match = sessionBens.where((s) => s.id == b.id && s.photoBase64.isNotEmpty);
+      final match = sessionBens.where(
+        (s) => s.id == b.id && s.photoBase64.isNotEmpty,
+      );
       if (match.isNotEmpty) freshB64 = match.first.photoBase64;
       if (freshB64.isEmpty && b.id == selfId && selfPhoto.isNotEmpty) {
         freshB64 = selfPhoto;
@@ -186,185 +188,198 @@ class _FamiliaScreenState extends State<FamiliaScreen> {
         child: ConstrainedBox(
           constraints: BoxConstraints(maxWidth: context.r.maxContentWidth),
           child: CustomScrollView(
-        physics: const BouncingScrollPhysics(
-          parent: AlwaysScrollableScrollPhysics(),
-        ),
-        slivers: [
-          AdaptiveSliverNavBar(
-            largeTitle: Text(
-              _isTitular ? 'Mi Grupo Familiar' : 'Mi Perfil',
-              style: TextStyle(
-                color: AppColors.textPrimaryC(isDark),
-              ),
+            physics: const BouncingScrollPhysics(
+              parent: AlwaysScrollableScrollPhysics(),
             ),
-            backgroundColor: isDark
-                ? AppColors.darkSurface.withValues(alpha: 0.92)
-                : AppColors.white.withValues(alpha: 0.92),
-            border: Border(
-              bottom: BorderSide(
-                color: AppColors.dividerC(isDark),
-                width: 0.5,
-              ),
-            ),
-            trailing: Semantics(
-              label: 'Más información sobre el grupo familiar',
-              button: true,
-              child: CupertinoButton(
-                padding: EdgeInsets.zero,
-                onPressed: () => showFamiliaHelpDialog(context),
-                child: Icon(
-                  CupertinoIcons.question_circle,
-                  color: AppColors.primary,
-                  size: 24,
+            slivers: [
+              AdaptiveSliverNavBar(
+                largeTitle: Text(
+                  _isTitular ? 'Mi Grupo Familiar' : 'Mi Perfil',
+                  style: TextStyle(color: AppColors.textPrimaryC(isDark)),
                 ),
-              ),
-            ),
-          ),
-          CupertinoSliverRefreshControl(
-            onRefresh: _fetchGrupoFamiliar,
-          ),
-
-          if (_isLoading)
-            const SliverFillRemaining(
-              hasScrollBody: false,
-              child: CossmilLoadingScreen(),
-            )
-          else if (_error != null)
-            SliverFillRemaining(
-              hasScrollBody: false,
-              child: Center(
-                child: Padding(
-                  padding: EdgeInsets.all(context.r.spaceXl),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(CupertinoIcons.wifi_slash,
-                          size: 40, color: AppColors.textTertiaryC(isDark)),
-                      SizedBox(height: context.r.spaceMd),
-                      Text(
-                        'No se pudo cargar la información',
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          fontWeight: FontWeight.w700,
-                          color: AppColors.textPrimaryC(isDark),
-                        ),
-                      ),
-                      SizedBox(height: context.r.spaceSm),
-                      Text(
-                        'Verifica tu conexión y desliza hacia abajo para reintentar.',
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          color: AppColors.textSecondaryC(isDark),
-                        ),
-                      ),
-                    ],
+                backgroundColor: isDark
+                    ? AppColors.darkSurface.withValues(alpha: 0.92)
+                    : AppColors.white.withValues(alpha: 0.92),
+                border: Border(
+                  bottom: BorderSide(
+                    color: AppColors.dividerC(isDark),
+                    width: 0.5,
+                  ),
+                ),
+                trailing: Semantics(
+                  label: 'Más información sobre el grupo familiar',
+                  button: true,
+                  child: CupertinoButton(
+                    padding: EdgeInsets.zero,
+                    onPressed: () => showFamiliaHelpDialog(context),
+                    child: Icon(
+                      CupertinoIcons.question_circle,
+                      color: AppColors.primary,
+                      size: 24,
+                    ),
                   ),
                 ),
               ),
-            )
-          else ...[
-            // Info header
-            SliverToBoxAdapter(
-              child: Padding(
-                padding: EdgeInsets.fromLTRB(context.r.paddingH, context.r.spaceMd, context.r.paddingH, 0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 10, vertical: 4),
-                          decoration: BoxDecoration(
-                            color: AppColors.accentBg(isDark),
-                            borderRadius:
-                                BorderRadius.circular(context.r.radiusMd),
-                            border: Border.all(
-                              color: AppColors.accentForTheme(isDark)
-                                  .withValues(alpha: 0.25),
-                              width: 0.5,
-                            ),
+              CupertinoSliverRefreshControl(onRefresh: _fetchGrupoFamiliar),
+
+              if (_isLoading)
+                const SliverFillRemaining(
+                  hasScrollBody: false,
+                  child: CossmilLoadingScreen(),
+                )
+              else if (_error != null)
+                SliverFillRemaining(
+                  hasScrollBody: false,
+                  child: Center(
+                    child: Padding(
+                      padding: EdgeInsets.all(context.r.spaceXl),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            CupertinoIcons.wifi_slash,
+                            size: 40,
+                            color: AppColors.textTertiaryC(isDark),
                           ),
-                          child: Text(
-                            _isTitular
-                                ? '$titleCount miembro${titleCount != 1 ? 's' : ''}'
-                                : 'Beneficiario',
+                          SizedBox(height: context.r.spaceMd),
+                          Text(
+                            'No se pudo cargar la información',
+                            textAlign: TextAlign.center,
                             style: TextStyle(
                               fontWeight: FontWeight.w700,
-                              color: AppColors.accentForTheme(isDark),
+                              color: AppColors.textPrimaryC(isDark),
                             ),
                           ),
-                        ),
-                      ],
-                    ),
-                    if (!_isTitular) ...[
-                      SizedBox(height: context.r.spaceMd),
-                      Container(
-                        padding: EdgeInsets.all(context.r.spaceMd),
-                        decoration: BoxDecoration(
-                          color: isDark
-                              ? AppColors.info.withValues(alpha: 0.1)
-                              : const Color(0xFFEFF6FF),
-                          borderRadius:
-                              BorderRadius.circular(context.r.radiusMd),
-                          border: Border.all(
-                            color: AppColors.info.withValues(alpha: 0.2),
+                          SizedBox(height: context.r.spaceSm),
+                          Text(
+                            'Verifica tu conexión y desliza hacia abajo para reintentar.',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              color: AppColors.textSecondaryC(isDark),
+                            ),
                           ),
-                        ),
-                        child: Row(
+                        ],
+                      ),
+                    ),
+                  ),
+                )
+              else ...[
+                // Info header
+                SliverToBoxAdapter(
+                  child: Padding(
+                    padding: EdgeInsets.fromLTRB(
+                      context.r.paddingH,
+                      context.r.spaceMd,
+                      context.r.paddingH,
+                      0,
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
                           children: [
-                            Icon(CupertinoIcons.info_circle,
-                                size: 18, color: AppColors.info),
-                            SizedBox(width: context.r.spaceSm),
-                            Expanded(
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 10,
+                                vertical: 4,
+                              ),
+                              decoration: BoxDecoration(
+                                color: AppColors.accentBg(isDark),
+                                borderRadius: BorderRadius.circular(
+                                  context.r.radiusMd,
+                                ),
+                                border: Border.all(
+                                  color: AppColors.accentForTheme(
+                                    isDark,
+                                  ).withValues(alpha: 0.25),
+                                  width: 0.5,
+                                ),
+                              ),
                               child: Text(
-                                'Como beneficiario solo puedes ver tu propia información. '
-                                'El titular del grupo puede gestionar reservas para todos los miembros.',
+                                _isTitular
+                                    ? '$titleCount miembro${titleCount != 1 ? 's' : ''}'
+                                    : 'Beneficiario',
                                 style: TextStyle(
-                                  color: AppColors.textSecondaryC(isDark),
-                                  height: 1.4,
+                                  fontWeight: FontWeight.w700,
+                                  color: AppColors.accentForTheme(isDark),
                                 ),
                               ),
                             ),
                           ],
                         ),
-                      ),
-                    ],
-                  ],
+                        if (!_isTitular) ...[
+                          SizedBox(height: context.r.spaceMd),
+                          Container(
+                            padding: EdgeInsets.all(context.r.spaceMd),
+                            decoration: BoxDecoration(
+                              color: isDark
+                                  ? AppColors.info.withValues(alpha: 0.1)
+                                  : const Color(0xFFEFF6FF),
+                              borderRadius: BorderRadius.circular(
+                                context.r.radiusMd,
+                              ),
+                              border: Border.all(
+                                color: AppColors.info.withValues(alpha: 0.2),
+                              ),
+                            ),
+                            child: Row(
+                              children: [
+                                Icon(
+                                  CupertinoIcons.info_circle,
+                                  size: 18,
+                                  color: AppColors.info,
+                                ),
+                                SizedBox(width: context.r.spaceSm),
+                                Expanded(
+                                  child: Text(
+                                    'Como beneficiario solo puedes ver tu propia información. '
+                                    'El titular del grupo puede gestionar reservas para todos los miembros.',
+                                    style: TextStyle(
+                                      color: AppColors.textSecondaryC(isDark),
+                                      height: 1.4,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
                 ),
-              ),
-            ),
-            SliverPadding(
-              padding: EdgeInsets.only(
-                  top: 12, left: context.r.paddingH, right: context.r.paddingH, bottom: context.r.navBarBottomSpace),
-              sliver: SliverList(
-                delegate: SliverChildBuilderDelegate(
-                  (context, index) {
-                    final b = _beneficiaries[index];
-                    final decodedPhoto = index < _decodedPhotos.length
-                        ? _decodedPhotos[index]
-                        : null;
+                SliverPadding(
+                  padding: EdgeInsets.only(
+                    top: 12,
+                    left: context.r.paddingH,
+                    right: context.r.paddingH,
+                    bottom: context.r.navBarBottomSpace,
+                  ),
+                  sliver: SliverList(
+                    delegate: SliverChildBuilderDelegate((context, index) {
+                      final b = _beneficiaries[index];
+                      final decodedPhoto = index < _decodedPhotos.length
+                          ? _decodedPhotos[index]
+                          : null;
 
-                    return FadeSlideIn(
-                      delay: Duration(milliseconds: 60 + (index * 70)),
-                      offsetY: 14,
-                      child: Padding(
-                        padding: EdgeInsets.only(bottom: context.r.spaceMd),
-                        child: _BeneficiaryCard(
-                          beneficiary: b,
-                          decodedPhoto: decodedPhoto,
-                          isDark: isDark,
+                      return FadeSlideIn(
+                        delay: Duration(milliseconds: 60 + (index * 70)),
+                        offsetY: 14,
+                        child: Padding(
+                          padding: EdgeInsets.only(bottom: context.r.spaceMd),
+                          child: _BeneficiaryCard(
+                            beneficiary: b,
+                            decodedPhoto: decodedPhoto,
+                            isDark: isDark,
+                          ),
                         ),
-                      ),
-                    );
-                  },
-                  childCount: _beneficiaries.length,
+                      );
+                    }, childCount: _beneficiaries.length),
+                  ),
                 ),
-              ),
-            ),
-          ],
-        ],
-      ),
+              ],
+            ],
+          ),
         ),
       ),
     );
@@ -392,121 +407,127 @@ class _BeneficiaryCard extends StatelessWidget {
         : AppColors.accent;
 
     return GestureDetector(
-      onTap: () => BeneficiaryDetailsModal.show(context: context, beneficiary: b),
+      onTap: () =>
+          BeneficiaryDetailsModal.show(context: context, beneficiary: b),
       child: Container(
-      padding: EdgeInsets.all(context.r.spaceMd),
-      decoration: BoxDecoration(
-        color: AppColors.cardBg(isDark),
-        borderRadius: BorderRadius.circular(context.r.radiusLg),
-        border: Border.all(
-          color: isTitular
-              ? accentColor.withValues(alpha: isDark ? 0.35 : 0.2)
-              : AppColors.cardBorder(isDark),
-          width: isTitular ? 1.5 : 0.8,
+        padding: EdgeInsets.all(context.r.spaceMd),
+        decoration: BoxDecoration(
+          color: AppColors.cardBg(isDark),
+          borderRadius: BorderRadius.circular(context.r.radiusLg),
+          border: Border.all(
+            color: isTitular
+                ? accentColor.withValues(alpha: isDark ? 0.35 : 0.2)
+                : AppColors.cardBorder(isDark),
+            width: isTitular ? 1.5 : 0.8,
+          ),
+          boxShadow: isDark ? [] : AppColors.softShadow,
         ),
-        boxShadow: isDark ? [] : AppColors.softShadow,
-      ),
-      child: Row(
-        children: [
-          // ── Avatar ──
-          _buildAvatar(context, accentColor),
-          SizedBox(width: context.r.spaceMd),
-          // ── Info ──
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        b.displayTitle,
-                        style: context.texts.titleMedium.copyWith(
-                          fontWeight: FontWeight.w800,
-                          color: AppColors.textPrimaryC(isDark),
-                          height: 1.2,
-                        ),
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                    if (isTitular)
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 7, vertical: 2),
-                        decoration: BoxDecoration(
-                          color: AppColors.accentForTheme(isDark)
-                              .withValues(alpha: 0.12),
-                          borderRadius: BorderRadius.circular(context.r.badgeRadius),
-                        ),
+        child: Row(
+          children: [
+            // ── Avatar ──
+            _buildAvatar(context, accentColor),
+            SizedBox(width: context.r.spaceMd),
+            // ── Info ──
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Expanded(
                         child: Text(
-                          'TITULAR',
-                          style: TextStyle(
+                          b.displayTitle,
+                          style: context.texts.titleMedium.copyWith(
                             fontWeight: FontWeight.w800,
-                            letterSpacing: 0.6,
-                            color: AppColors.accentForTheme(isDark),
+                            color: AppColors.textPrimaryC(isDark),
+                            height: 1.2,
+                          ),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      if (isTitular)
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 7,
+                            vertical: 2,
+                          ),
+                          decoration: BoxDecoration(
+                            color: AppColors.accentForTheme(
+                              isDark,
+                            ).withValues(alpha: 0.12),
+                            borderRadius: BorderRadius.circular(
+                              context.r.badgeRadius,
+                            ),
+                          ),
+                          child: Text(
+                            'TITULAR',
+                            style: TextStyle(
+                              fontWeight: FontWeight.w800,
+                              letterSpacing: 0.6,
+                              color: AppColors.accentForTheme(isDark),
+                            ),
                           ),
                         ),
-                      ),
-                  ],
-                ),
-                SizedBox(height: context.r.spaceXs),
-                Text(
-                  isTitular
-                      ? 'Titular de la cuenta'
-                      : b.relationship.toUpperCase(),
-                  style: context.texts.bodySmall.copyWith(
-                    fontWeight: FontWeight.w700,
-                    letterSpacing: 0.5,
-                    color: AppColors.textSecondaryC(isDark),
+                    ],
                   ),
-                ),
-                SizedBox(height: context.r.spaceSm),
-                // ── Chips de info ──
-                Wrap(
-                  spacing: 6,
-                  runSpacing: 4,
-                  children: [
-                    if (b.matricula.isNotEmpty)
-                      _chip(
-                        context: context,
-                        icon: CupertinoIcons.number,
-                        label: 'Mat. ${b.matricula}',
-                        isDark: isDark,
-                        r: context.r,
-                      ),
-                    if (b.age != null)
-                      _chip(
-                        context: context,
-                        icon: CupertinoIcons.calendar,
-                        label: '${b.age} años',
-                        isDark: isDark,
-                        r: context.r,
-                      ),
-                    if (b.effectiveGender.isNotEmpty)
-                      _chip(
-                        context: context,
-                        icon: b.effectiveGender == 'FEMENINO'
-                            ? Icons.female
-                            : Icons.male,
-                        label: b.effectiveGender == 'FEMENINO' ? 'F' : 'M',
-                        isDark: isDark,
-                        r: context.r,
-                      ),
-                  ],
-                ),
-              ],
+                  SizedBox(height: context.r.spaceXs),
+                  Text(
+                    isTitular
+                        ? 'Titular de la cuenta'
+                        : b.relationship.toUpperCase(),
+                    style: context.texts.bodySmall.copyWith(
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: 0.5,
+                      color: AppColors.textSecondaryC(isDark),
+                    ),
+                  ),
+                  SizedBox(height: context.r.spaceSm),
+                  // ── Chips de info ──
+                  Wrap(
+                    spacing: 6,
+                    runSpacing: 4,
+                    children: [
+                      if (b.matricula.isNotEmpty)
+                        _chip(
+                          context: context,
+                          icon: CupertinoIcons.number,
+                          label: 'Mat. ${b.matricula}',
+                          isDark: isDark,
+                          r: context.r,
+                        ),
+                      if (b.age != null)
+                        _chip(
+                          context: context,
+                          icon: CupertinoIcons.calendar,
+                          label: '${b.age} años',
+                          isDark: isDark,
+                          r: context.r,
+                        ),
+                      if (b.effectiveGender.isNotEmpty)
+                        _chip(
+                          context: context,
+                          icon: b.effectiveGender == 'FEMENINO'
+                              ? Icons.female
+                              : Icons.male,
+                          label: b.effectiveGender == 'FEMENINO' ? 'F' : 'M',
+                          isDark: isDark,
+                          r: context.r,
+                        ),
+                    ],
+                  ),
+                ],
+              ),
             ),
-          ),
-          SizedBox(width: context.r.spaceSm),
-          Icon(
-            CupertinoIcons.chevron_right,
-            color: AppColors.textTertiaryC(isDark),
-            size: 18,
-          ),
-        ],
+            SizedBox(width: context.r.spaceSm),
+            Icon(
+              CupertinoIcons.chevron_right,
+              color: AppColors.textTertiaryC(isDark),
+              size: 18,
+            ),
+          ],
+        ),
       ),
-    ),
     );
   }
 
@@ -515,10 +536,7 @@ class _BeneficiaryCard extends StatelessWidget {
     final avatar = Container(
       width: avatarSize,
       height: avatarSize,
-      decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        color: accentColor,
-      ),
+      decoration: BoxDecoration(shape: BoxShape.circle, color: accentColor),
       child: ClipOval(
         child: decodedPhoto != null
             ? Image.memory(
@@ -567,7 +585,10 @@ class _BeneficiaryCard extends StatelessWidget {
     required AppResponsive r,
   }) {
     return Container(
-      padding: EdgeInsets.symmetric(horizontal: r.chipPaddingH, vertical: r.chipPaddingV),
+      padding: EdgeInsets.symmetric(
+        horizontal: r.chipPaddingH,
+        vertical: r.chipPaddingV,
+      ),
       decoration: BoxDecoration(
         color: isDark ? AppColors.darkElevated : AppColors.background,
         borderRadius: BorderRadius.circular(r.badgeRadius),
@@ -579,9 +600,7 @@ class _BeneficiaryCard extends StatelessWidget {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon,
-              size: 11,
-              color: AppColors.textSecondaryC(isDark)),
+          Icon(icon, size: 11, color: AppColors.textSecondaryC(isDark)),
           SizedBox(width: r.spaceXs),
           Text(
             label,

@@ -203,7 +203,7 @@ class _EmergencyDataScreenState extends State<EmergencyDataScreen> {
                   r.paddingH,
                   r.spaceLg,
                   r.paddingH,
-                  r.spaceXl,
+                  r.navBarBottomSpace,
                 ),
                 child: Center(
                   child: ConstrainedBox(

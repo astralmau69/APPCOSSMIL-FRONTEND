@@ -56,11 +56,15 @@ class _SpecialtyScreenState extends State<SpecialtyScreen> {
       // Si se está reservando para un familiar, las interconsultas deben
       // ser las de ese familiar, no las del titular.
       final beneficiary = bs.beneficiary;
-      final idper = int.tryParse(
-            (!UserSession.currentUser.isTitular || beneficiary == null || beneficiary.isTitular)
+      final idper =
+          int.tryParse(
+            (!UserSession.currentUser.isTitular ||
+                    beneficiary == null ||
+                    beneficiary.isTitular)
                 ? UserSession.currentUser.id
                 : beneficiary.id,
-          ) ?? 0;
+          ) ??
+          0;
 
       final directasFuture = _service.getEspecialidadesDirectas(1, idsuc);
       final interFuture = _service.getEspecialidadesInterconsulta(idper);
@@ -83,9 +87,11 @@ class _SpecialtyScreenState extends State<SpecialtyScreen> {
       final int personAge = UserSession.ageFor(beneficiary);
       final String personGender = UserSession.genderFor(beneficiary);
 
-      debugPrint('🔎 SpecialtyFilter: beneficiary=${beneficiary?.fullName ?? "titular"}, '
-          'age=$personAge, gender="$personGender", '
-          'directas=${_directas.length}, inter=${_interconsultas.length}');
+      debugPrint(
+        '🔎 SpecialtyFilter: beneficiary=${beneficiary?.fullName ?? "titular"}, '
+        'age=$personAge, gender="$personGender", '
+        'directas=${_directas.length}, inter=${_interconsultas.length}',
+      );
 
       _directas = SpecialtyFilter.apply(
         specialties: _directas,
@@ -109,7 +115,10 @@ class _SpecialtyScreenState extends State<SpecialtyScreen> {
     } catch (e) {
       if (mounted) {
         setState(() {
-          _errorMessage = ErrorMapper.message(e, context: ErrorContext.cargarEspecialidades);
+          _errorMessage = ErrorMapper.message(
+            e,
+            context: ErrorContext.cargarEspecialidades,
+          );
           _isLoading = false;
         });
       }
@@ -135,73 +144,89 @@ class _SpecialtyScreenState extends State<SpecialtyScreen> {
       child: _isLoading
           ? ListView(
               key: const ValueKey('skeleton'),
-              padding: EdgeInsets.only(top: context.r.spaceLg, bottom: context.r.navBarBottomSpace),
+              padding: EdgeInsets.only(
+                top: context.r.spaceLg,
+                bottom: context.r.navBarBottomSpace,
+              ),
               children: [
                 SizedBox(height: context.r.spaceMd),
                 const SkeletonSpecialtyList(count: 6),
               ],
             )
           : _errorMessage != null
-              ? AppStateWidget.error(
-                  key: const ValueKey('error'),
-                  title: _errorMessage!.contains('sesión') || _errorMessage!.contains('Sesión')
-                      ? 'Sesión expirada'
-                      : 'No se pudieron cargar las especialidades',
-                  message: _errorMessage!,
-                  onRetry: _errorMessage!.contains('sesión') || _errorMessage!.contains('Sesión')
-                      ? () => Navigator.of(context, rootNavigator: true)
-                            .pushReplacementNamed('/login')
-                      : _fetchData,
-                  retryLabel: _errorMessage!.contains('sesión') || _errorMessage!.contains('Sesión')
-                      ? 'Ir al login'
-                      : 'Reintentar',
-                  icon: _errorMessage!.contains('sesión') || _errorMessage!.contains('Sesión')
-                      ? CupertinoIcons.lock_shield
-                      : CupertinoIcons.wifi_slash,
-                )
-              : (_directas.isEmpty && _interconsultas.isEmpty)
-                  ? AppStateWidget.empty(
-                      key: const ValueKey('empty'),
-                      title: 'Sin especialidades disponibles',
-                      message: _emptySpecialtiesMessage(),
-                      icon: CupertinoIcons.heart_slash,
-                    )
-                  : RefreshIndicator(
-                      key: const ValueKey('data'),
-                      onRefresh: _fetchData,
-                      child: ListView(
-                        padding: EdgeInsets.only(top: context.r.spaceLg, bottom: context.r.navBarBottomSpace),
-                        children: [
-                          BreadcrumbChips(labels: breadcrumbs),
-                          SizedBox(height: context.r.spaceLg),
-                          if (_directas.isNotEmpty) ...[
-                            const SectionHeader(text: 'CONSULTA DIRECTA'),
-                            SizedBox(height: context.r.spaceMd),
-                            _buildSpecialtyList(
-                              context,
-                              _directas,
-                              startDelay: 50,
-                              highlightFirst: bs.isTutorialMode,
-                            ),
-                            SizedBox(height: context.r.spaceXl),
-                          ],
-                          if (_interconsultas.isNotEmpty) ...[
-                            const SectionHeader(text: 'INTERCONSULTA (HABILITADAS)'),
-                            SizedBox(height: context.r.spaceSm),
-                            _buildInterconsultaInfo(context),
-                            SizedBox(height: context.r.spaceMd),
-                            _buildSpecialtyList(
-                              context,
-                              _interconsultas,
-                              showBadge: true,
-                              startDelay: 100,
-                            ),
-                          ],
-                          if (_directas.isNotEmpty && _interconsultas.isEmpty)
-                            SizedBox(height: context.r.spaceSm),
-                        ],
-                      ),
+          ? AppStateWidget.error(
+              key: const ValueKey('error'),
+              title:
+                  _errorMessage!.contains('sesión') ||
+                      _errorMessage!.contains('Sesión')
+                  ? 'Sesión expirada'
+                  : 'No se pudieron cargar las especialidades',
+              message: _errorMessage!,
+              onRetry:
+                  _errorMessage!.contains('sesión') ||
+                      _errorMessage!.contains('Sesión')
+                  ? () => Navigator.of(
+                      context,
+                      rootNavigator: true,
+                    ).pushReplacementNamed('/login')
+                  : _fetchData,
+              retryLabel:
+                  _errorMessage!.contains('sesión') ||
+                      _errorMessage!.contains('Sesión')
+                  ? 'Ir al login'
+                  : 'Reintentar',
+              icon:
+                  _errorMessage!.contains('sesión') ||
+                      _errorMessage!.contains('Sesión')
+                  ? CupertinoIcons.lock_shield
+                  : CupertinoIcons.wifi_slash,
+            )
+          : (_directas.isEmpty && _interconsultas.isEmpty)
+          ? AppStateWidget.empty(
+              key: const ValueKey('empty'),
+              title: 'Sin especialidades disponibles',
+              message: _emptySpecialtiesMessage(),
+              icon: CupertinoIcons.heart_slash,
+            )
+          : RefreshIndicator(
+              key: const ValueKey('data'),
+              onRefresh: _fetchData,
+              child: ListView(
+                padding: EdgeInsets.only(
+                  top: context.r.spaceLg,
+                  bottom: context.r.navBarBottomSpace,
+                ),
+                children: [
+                  BreadcrumbChips(labels: breadcrumbs),
+                  SizedBox(height: context.r.spaceLg),
+                  if (_directas.isNotEmpty) ...[
+                    const SectionHeader(text: 'CONSULTA DIRECTA'),
+                    SizedBox(height: context.r.spaceMd),
+                    _buildSpecialtyList(
+                      context,
+                      _directas,
+                      startDelay: 50,
+                      highlightFirst: bs.isTutorialMode,
                     ),
+                    SizedBox(height: context.r.spaceXl),
+                  ],
+                  if (_interconsultas.isNotEmpty) ...[
+                    const SectionHeader(text: 'INTERCONSULTA (HABILITADAS)'),
+                    SizedBox(height: context.r.spaceSm),
+                    _buildInterconsultaInfo(context),
+                    SizedBox(height: context.r.spaceMd),
+                    _buildSpecialtyList(
+                      context,
+                      _interconsultas,
+                      showBadge: true,
+                      startDelay: 100,
+                    ),
+                  ],
+                  if (_directas.isNotEmpty && _interconsultas.isEmpty)
+                    SizedBox(height: context.r.spaceSm),
+                ],
+              ),
+            ),
     );
   }
 
@@ -224,8 +249,8 @@ class _SpecialtyScreenState extends State<SpecialtyScreen> {
             color: AppColors.textPrimaryC(isDark),
           ),
         ),
-        backgroundColor:
-            (isDark ? AppColors.darkSurface : AppColors.white).withValues(alpha: 0.92),
+        backgroundColor: (isDark ? AppColors.darkSurface : AppColors.white)
+            .withValues(alpha: 0.92),
         border: Border(
           bottom: BorderSide(
             color: AppColors.cardBorder(isDark).withValues(alpha: 0.3),
@@ -234,11 +259,7 @@ class _SpecialtyScreenState extends State<SpecialtyScreen> {
         ),
       ),
       child: SafeArea(
-        child: Column(
-          children: [
-            Expanded(child: _buildBody(context)),
-          ],
-        ),
+        child: Column(children: [Expanded(child: _buildBody(context))]),
       ),
     );
   }
@@ -249,7 +270,9 @@ class _SpecialtyScreenState extends State<SpecialtyScreen> {
       padding: EdgeInsets.symmetric(horizontal: context.r.paddingH),
       child: Container(
         padding: EdgeInsets.symmetric(
-            horizontal: context.r.spaceMd, vertical: context.r.spaceSm),
+          horizontal: context.r.spaceMd,
+          vertical: context.r.spaceSm,
+        ),
         decoration: BoxDecoration(
           color: isDark
               ? AppColors.accent.withValues(alpha: 0.10)
@@ -265,8 +288,11 @@ class _SpecialtyScreenState extends State<SpecialtyScreen> {
           children: [
             Padding(
               padding: const EdgeInsets.only(top: 1),
-              child: Icon(CupertinoIcons.doc_checkmark_fill,
-                  size: context.r.iconSm, color: AppColors.accent),
+              child: Icon(
+                CupertinoIcons.doc_checkmark_fill,
+                size: context.r.iconSm,
+                color: AppColors.accent,
+              ),
             ),
             SizedBox(width: context.r.spaceSm),
             Expanded(
@@ -314,29 +340,37 @@ class _SpecialtyScreenState extends State<SpecialtyScreen> {
         borderRadius: BorderRadius.circular(context.r.radiusXl),
         shadow: isDark ? null : AppColors.softShadow,
         child: Column(
-        children: [
-          for (int i = 0; i < specialties.length; i++) ...[
-            if (i < 5)
-              FadeSlideIn(
-                delay: Duration(milliseconds: startDelay + (i * 40)),
-                offsetY: 10,
-                child: (highlightFirst && i == 0)
-                    ? GuidedTapHint(child: _specialtyTile(context, specialties[i], showBadge))
-                    : _specialtyTile(context, specialties[i], showBadge),
-              )
-            else
-              _specialtyTile(context, specialties[i], showBadge),
-            if (i < specialties.length - 1)
-              Padding(
-                padding: EdgeInsets.symmetric(horizontal: context.r.cardPadding),
-                child: Container(
-                  height: 0.5,
-                  color: AppColors.dividerC(isDark),
+          children: [
+            for (int i = 0; i < specialties.length; i++) ...[
+              if (i < 5)
+                FadeSlideIn(
+                  delay: Duration(milliseconds: startDelay + (i * 40)),
+                  offsetY: 10,
+                  child: (highlightFirst && i == 0)
+                      ? GuidedTapHint(
+                          child: _specialtyTile(
+                            context,
+                            specialties[i],
+                            showBadge,
+                          ),
+                        )
+                      : _specialtyTile(context, specialties[i], showBadge),
+                )
+              else
+                _specialtyTile(context, specialties[i], showBadge),
+              if (i < specialties.length - 1)
+                Padding(
+                  padding: EdgeInsets.symmetric(
+                    horizontal: context.r.cardPadding,
+                  ),
+                  child: Container(
+                    height: 0.5,
+                    color: AppColors.dividerC(isDark),
+                  ),
                 ),
-              ),
+            ],
           ],
-        ],
-      ),
+        ),
       ),
     );
   }

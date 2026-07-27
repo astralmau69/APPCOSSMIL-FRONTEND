@@ -45,10 +45,11 @@ class NewsItemModel {
     final rawImg = json['imgurl'] as String? ?? '';
     final gestion = json['gestion'] as int? ?? 0;
     final idpub = json['idpub'] as int? ?? 0;
-    
+
     String fullImgUrl = '';
     if (rawImg.isNotEmpty && gestion > 0 && idpub > 0) {
-      fullImgUrl = 'https://www.cossmil.mil.bo/api//publicsImg/$gestion/$idpub/$rawImg';
+      fullImgUrl =
+          'https://www.cossmil.mil.bo/api//publicsImg/$gestion/$idpub/$rawImg';
     }
 
     return NewsItemModel(

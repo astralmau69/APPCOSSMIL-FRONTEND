@@ -53,7 +53,10 @@ class _NoticiasScreenState extends State<NoticiasScreen> {
 
   Future<void> _load() async {
     if (!mounted) return;
-    setState(() { _isLoading = true; _error = null; });
+    setState(() {
+      _isLoading = true;
+      _error = null;
+    });
     try {
       final result = await CossmilNewsService.fetchPage(page: 1, perPage: 15);
       if (!mounted) return;
@@ -66,7 +69,10 @@ class _NoticiasScreenState extends State<NoticiasScreen> {
       });
     } catch (e) {
       if (!mounted) return;
-      setState(() { _error = ErrorMapper.message(e); _isLoading = false; });
+      setState(() {
+        _error = ErrorMapper.message(e);
+        _isLoading = false;
+      });
     }
   }
 
@@ -75,7 +81,10 @@ class _NoticiasScreenState extends State<NoticiasScreen> {
     setState(() => _isLoadingMore = true);
     try {
       final nextPage = _currentPage + 1;
-      final result = await CossmilNewsService.fetchPage(page: nextPage, perPage: 15);
+      final result = await CossmilNewsService.fetchPage(
+        page: nextPage,
+        perPage: 15,
+      );
       if (!mounted) return;
       setState(() {
         _news.addAll(result.items);
@@ -133,7 +142,12 @@ class _NoticiasScreenState extends State<NoticiasScreen> {
             )
           else ...[
             SliverPadding(
-              padding: EdgeInsets.fromLTRB(context.r.paddingH, 12, context.r.paddingH, 0),
+              padding: EdgeInsets.fromLTRB(
+                context.r.paddingH,
+                12,
+                context.r.paddingH,
+                0,
+              ),
               sliver: SliverList.builder(
                 itemCount: _news.length + (_isLoadingMore ? 1 : 0),
                 itemBuilder: (context, i) {
@@ -158,7 +172,12 @@ class _NoticiasScreenState extends State<NoticiasScreen> {
             ),
             // Indicador de página
             SliverPadding(
-              padding: EdgeInsets.fromLTRB(context.r.paddingH, 8, context.r.paddingH, context.r.navBarBottomSpace),
+              padding: EdgeInsets.fromLTRB(
+                context.r.paddingH,
+                8,
+                context.r.paddingH,
+                context.r.navBarBottomSpace,
+              ),
               sliver: SliverToBoxAdapter(
                 child: Center(
                   child: Text(
@@ -184,8 +203,11 @@ class _NoticiasScreenState extends State<NoticiasScreen> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(CupertinoIcons.wifi_slash,
-                size: context.r.iconLg, color: AppColors.textTertiaryC(isDark)),
+            Icon(
+              CupertinoIcons.wifi_slash,
+              size: context.r.iconLg,
+              color: AppColors.textTertiaryC(isDark),
+            ),
             SizedBox(height: context.r.spaceMd),
             Text(
               'No se pudo cargar los comunicados',
@@ -199,9 +221,7 @@ class _NoticiasScreenState extends State<NoticiasScreen> {
             Text(
               'Verifica tu conexión y desliza hacia abajo para reintentar.',
               textAlign: TextAlign.center,
-              style: TextStyle(
-                color: AppColors.textSecondaryC(isDark),
-              ),
+              style: TextStyle(color: AppColors.textSecondaryC(isDark)),
             ),
           ],
         ),
@@ -232,9 +252,7 @@ class _NoticiasScreenState extends State<NoticiasScreen> {
           Text(
             'Te notificaremos cuando haya nuevos avisos importantes de COSSMIL.',
             textAlign: TextAlign.center,
-            style: TextStyle(
-              color: AppColors.textSecondaryC(isDark),
-            ),
+            style: TextStyle(color: AppColors.textSecondaryC(isDark)),
           ),
         ],
       ),
@@ -242,11 +260,9 @@ class _NoticiasScreenState extends State<NoticiasScreen> {
   }
 
   void _showDetail(NewsItemModel item) {
-    Navigator.of(context).push(
-      AppPageRoute(
-        builder: (_) => NewsDetailScreen(item: item),
-      ),
-    );
+    Navigator.of(
+      context,
+    ).push(AppPageRoute(builder: (_) => NewsDetailScreen(item: item)));
   }
 }
 
@@ -286,7 +302,9 @@ class _NewsListCard extends StatelessWidget {
                     width: context.r.avatarMd,
                     height: context.r.avatarMd,
                     decoration: BoxDecoration(
-                      color: isDark ? AppColors.darkElevated : AppColors.primaryLight,
+                      color: isDark
+                          ? AppColors.darkElevated
+                          : AppColors.primaryLight,
                       borderRadius: BorderRadius.circular(context.r.radiusSm),
                     ),
                     child: Icon(
@@ -331,7 +349,9 @@ class _NewsListCard extends StatelessWidget {
                           ),
                         ),
                         Padding(
-                          padding: EdgeInsets.symmetric(horizontal: context.r.spaceSm),
+                          padding: EdgeInsets.symmetric(
+                            horizontal: context.r.spaceSm,
+                          ),
                           child: Text(
                             '·',
                             style: TextStyle(

@@ -101,7 +101,12 @@ class _Avatar extends StatelessWidget {
   final bool isDark;
   final AppResponsive r;
 
-  const _Avatar({required this.bytes, required this.name, required this.isDark, required this.r});
+  const _Avatar({
+    required this.bytes,
+    required this.name,
+    required this.isDark,
+    required this.r,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -144,7 +149,9 @@ class _Initials extends StatelessWidget {
     final parts = name.trim().split(RegExp(r'\s+'));
     final initials = parts.length >= 2
         ? '${parts[0][0]}${parts[1][0]}'.toUpperCase()
-        : (parts.isNotEmpty && parts.first.isNotEmpty ? parts[0][0].toUpperCase() : '?');
+        : (parts.isNotEmpty && parts.first.isNotEmpty
+              ? parts[0][0].toUpperCase()
+              : '?');
     return Container(
       width: size,
       height: size,

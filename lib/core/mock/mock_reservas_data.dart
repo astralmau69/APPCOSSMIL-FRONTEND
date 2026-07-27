@@ -182,9 +182,18 @@ class MockReservasData {
 
   static String _parseDateToIso(String date) {
     const months = {
-      'Ene': '01', 'Feb': '02', 'Mar': '03', 'Abr': '04',
-      'May': '05', 'Jun': '06', 'Jul': '07', 'Ago': '08',
-      'Sep': '09', 'Oct': '10', 'Nov': '11', 'Dic': '12',
+      'Ene': '01',
+      'Feb': '02',
+      'Mar': '03',
+      'Abr': '04',
+      'May': '05',
+      'Jun': '06',
+      'Jul': '07',
+      'Ago': '08',
+      'Sep': '09',
+      'Oct': '10',
+      'Nov': '11',
+      'Dic': '12',
     };
     final parts = date.split(' ');
     if (parts.length == 3) {
@@ -198,7 +207,10 @@ class MockReservasData {
 
   static String _abrConsultorio(String full) {
     // "CONSULTORIO 16 - PISO 1" → "P1-16"
-    final match = RegExp(r'CONSULTORIO\s+(\d+).*?(?:PISO|PLANTA)\s+(\w+)', caseSensitive: false).firstMatch(full);
+    final match = RegExp(
+      r'CONSULTORIO\s+(\d+).*?(?:PISO|PLANTA)\s+(\w+)',
+      caseSensitive: false,
+    ).firstMatch(full);
     if (match != null) {
       final num = match.group(1)!;
       final piso = match.group(2)!;

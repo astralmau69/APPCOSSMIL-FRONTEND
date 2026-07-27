@@ -648,8 +648,11 @@ class _CarnetSaludScreenState extends State<CarnetSaludScreen>
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(CupertinoIcons.arrow_2_circlepath,
-                      color: _green, size: 12 * sc),
+                  Icon(
+                    CupertinoIcons.arrow_2_circlepath,
+                    color: _green,
+                    size: 12 * sc,
+                  ),
                   SizedBox(width: 4 * sc),
                   ValueListenableBuilder<int>(
                     valueListenable: _secondsNotifier,

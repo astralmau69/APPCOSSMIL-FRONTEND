@@ -82,33 +82,46 @@ class ReservaModel {
     final idsuc = json['idsuc'] as int?;
     final int? idtran = (json['idtran'] ?? json['idtram']) as int?;
     final dr = json['dr'] as int?;
-    
+
     // estadoCancelacion: "0" = no cancelada, "1" = cancelada
-    final estadoCancelacionVal = (json['estadoCancelacion'] ?? json['cancelado'] ?? '0').toString();
+    final estadoCancelacionVal =
+        (json['estadoCancelacion'] ?? json['cancelado'] ?? '0').toString();
     final bool isCancelado = estadoCancelacionVal == '1';
 
-    final rawHospital = (json['sucursal'] as String? ?? json['regional'] as String? ?? '').toDisplayCase;
+    final rawHospital =
+        (json['sucursal'] as String? ?? json['regional'] as String? ?? '')
+            .toDisplayCase;
     final normalizedHospital = _normalizeHospital(rawHospital);
 
     return ReservaModel(
       id: (json['codadm'] ?? json['idreserva'] ?? json['id'] ?? '').toString(),
-      patientName: (json['paciente'] as String? ??
-          json['nombre_paciente'] as String? ??
-          '').toDisplayCase,
+      patientName:
+          (json['paciente'] as String? ??
+                  json['nombre_paciente'] as String? ??
+                  '')
+              .toDisplayCase,
       relationship: (json['parentesco'] as String? ?? 'Titular').toDisplayCase,
       specialty: (json['especialidad'] as String? ?? '').toDisplayCase,
       doctorName: (json['medico'] as String? ?? '').toDisplayCase,
       hospital: normalizedHospital,
       city: (json['ciudad'] as String? ?? '').toDisplayCase,
-      date: json['fechaCita'] as String? ??
-          json['fecha'] as String? ??
+      date: json['fechaCita'] as String? ?? json['fecha'] as String? ?? '',
+      time:
+          json['hora'] as String? ??
+          json['horaCita'] as String? ??
+          json['time'] as String? ??
           '',
-      time: json['hora'] as String? ?? json['horaCita'] as String? ?? json['time'] as String? ?? '',
       status: isCancelado
           ? 'Cancelado'
-          : _parseStatus(json['estado'], json['fechaCita']?.toString() ?? json['fecha']?.toString() ?? ''),
-      consultorio: (json['consultorio'] ?? json['des_con'] ?? json['office'])?.toString(),
-      codigoReserva: (json['codadm'] ?? json['codigo_reserva'] ?? json['ticket']).toString(),
+          : _parseStatus(
+              json['estado'],
+              json['fechaCita']?.toString() ?? json['fecha']?.toString() ?? '',
+            ),
+      consultorio: (json['consultorio'] ?? json['des_con'] ?? json['office'])
+          ?.toString(),
+      codigoReserva:
+          (json['codadm'] ?? json['codigo_reserva'] ?? json['ticket'])
+              .toString(),
       gestion: gestion,
       idins: idins,
       idsuc: idsuc,
@@ -131,14 +144,83 @@ class ReservaModel {
     );
   }
 
+  /// Serializa el modelo YA NORMALIZADO para la caché offline. NO usa la forma
+  /// del backend (que [fromJson] normaliza con toDisplayCase/_normalizeHospital):
+  /// guarda los campos finales tal cual, para que [fromCacheMap] reconstruya el
+  /// objeto idéntico sin volver a normalizar. Round-trip fiel.
+  Map<String, dynamic> toCacheMap() => {
+    'id': id,
+    'patientName': patientName,
+    'relationship': relationship,
+    'specialty': specialty,
+    'doctorName': doctorName,
+    'hospital': hospital,
+    'city': city,
+    'date': date,
+    'time': time,
+    'status': status,
+    'consultorio': consultorio,
+    'codigoReserva': codigoReserva,
+    'gestion': gestion,
+    'idins': idins,
+    'idsuc': idsuc,
+    'idtran': idtran,
+    'dr': dr,
+    'idmed': idmed,
+    'idesp': idesp,
+    'estadoCancelacion': estadoCancelacion,
+    'calificado': calificado,
+  };
+
+  /// Reconstruye desde [toCacheMap] (caché offline), sin normalización.
+  factory ReservaModel.fromCacheMap(Map<String, dynamic> m) => ReservaModel(
+    id: m['id'] as String? ?? '',
+    patientName: m['patientName'] as String? ?? '',
+    relationship: m['relationship'] as String? ?? 'Titular',
+    specialty: m['specialty'] as String? ?? '',
+    doctorName: m['doctorName'] as String? ?? '',
+    hospital: m['hospital'] as String? ?? '',
+    city: m['city'] as String? ?? '',
+    date: m['date'] as String? ?? '',
+    time: m['time'] as String? ?? '',
+    status: m['status'] as String? ?? '',
+    consultorio: m['consultorio'] as String?,
+    codigoReserva: m['codigoReserva'] as String?,
+    gestion: m['gestion'] as int?,
+    idins: m['idins'] as int?,
+    idsuc: m['idsuc'] as int?,
+    idtran: m['idtran'] as int?,
+    dr: m['dr'] as int?,
+    idmed: m['idmed'] as String?,
+    idesp: m['idesp'] as int?,
+    estadoCancelacion: m['estadoCancelacion'] as String? ?? '0',
+    calificado: m['calificado'] as bool? ?? false,
+  );
+
   /// Expande abreviaciones de hospitales militares al nombre completo.
   static String _normalizeHospital(String name) {
     if (name.isEmpty) return '';
     final upper = name.toUpperCase();
-    if (upper.contains('HMC')) return name.replaceAll(RegExp(r'HMC', caseSensitive: false), 'Hospital Militar Central');
-    if (upper.contains('HMU')) return name.replaceAll(RegExp(r'HMU', caseSensitive: false), 'Hospital Militar Universitario');
-    if (upper.contains('HMA')) return name.replaceAll(RegExp(r'HMA', caseSensitive: false), 'Hospital Militar de Área');
-    if (upper.contains('HMB')) return name.replaceAll(RegExp(r'HMB', caseSensitive: false), 'Hospital Militar de Base');
+    if (upper.contains('HMC'))
+      return name.replaceAll(
+        RegExp(r'HMC', caseSensitive: false),
+        'Hospital Militar Central',
+      );
+    if (upper.contains('HMU'))
+      return name.replaceAll(
+        RegExp(r'HMU', caseSensitive: false),
+        'Hospital Militar Universitario',
+      );
+    if (upper.contains('HMA'))
+      return name.replaceAll(
+        RegExp(r'HMA', caseSensitive: false),
+        'Hospital Militar de Área',
+      );
+    if (upper.contains('HMB'))
+      return name.replaceAll(
+        RegExp(r'HMB', caseSensitive: false),
+        'Hospital Militar de Base',
+      );
     return name;
   }
 
@@ -162,16 +244,20 @@ class ReservaModel {
     if (lower == 'falta' || lower == 'ausente') return 'Falta';
     if (lower == 'pendiente' || lower == 'reservado') return 'Pendiente';
     if (lower == 'cancelado') return 'Cancelado';
-    return s.isNotEmpty ? s[0].toUpperCase() + s.substring(1).toLowerCase() : 'Pendiente';
+    return s.isNotEmpty
+        ? s[0].toUpperCase() + s.substring(1).toLowerCase()
+        : 'Pendiente';
   }
 
   /// Nombre para mostrar: si hay paciente lo usa, sino especialidad.
-  String get displayName =>
-      patientName.isNotEmpty ? patientName : specialty;
+  String get displayName => patientName.isNotEmpty ? patientName : specialty;
 
   /// Letra para avatar.
-  String get avatarLetter =>
-      specialty.isNotEmpty ? specialty[0] : patientName.isNotEmpty ? patientName[0] : '?';
+  String get avatarLetter => specialty.isNotEmpty
+      ? specialty[0]
+      : patientName.isNotEmpty
+      ? patientName[0]
+      : '?';
 
   /// Si la atención pertenece al titular.
   bool get isTitular => relationship == 'Titular';
@@ -190,7 +276,11 @@ class ReservaModel {
 
   /// Si puede descargar PDF (tiene los datos necesarios).
   bool get canDownloadPdf =>
-      gestion != null && idins != null && idsuc != null && idtran != null && dr != null;
+      gestion != null &&
+      idins != null &&
+      idsuc != null &&
+      idtran != null &&
+      dr != null;
 
   /// Si se puede cancelar: estadoCancelacion == "0", tiene los IDs necesarios,
   /// y faltan más de 2 horas para la cita.
@@ -230,7 +320,11 @@ class ReservaModel {
       if (date.isEmpty) return null;
       final parts = date.split('-');
       if (parts.length < 3) return null;
-      return DateTime(int.parse(parts[0]), int.parse(parts[1]), int.parse(parts[2]));
+      return DateTime(
+        int.parse(parts[0]),
+        int.parse(parts[1]),
+        int.parse(parts[2]),
+      );
     } catch (_) {
       return null;
     }

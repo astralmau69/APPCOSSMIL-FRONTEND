@@ -24,9 +24,7 @@ class ActiveAppointmentModal extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return _isImminente
-        ? _buildImminent(context)
-        : _buildCanCancel(context);
+    return _isImminente ? _buildImminent(context) : _buildCanCancel(context);
   }
 
   // ── Modal: cita inminente (<2h) — no se puede cancelar ni entrar ──────────
@@ -35,7 +33,9 @@ class ActiveAppointmentModal extends StatelessWidget {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final r = context.r;
     final warningColor = const Color(0xFFF59E0B);
-    final hora = reserva.formattedTime12h.isNotEmpty ? reserva.formattedTime12h : reserva.time;
+    final hora = reserva.formattedTime12h.isNotEmpty
+        ? reserva.formattedTime12h
+        : reserva.time;
 
     return Center(
       child: Material(
@@ -138,8 +138,11 @@ class ActiveAppointmentModal extends StatelessWidget {
                         children: [
                           Row(
                             children: [
-                              Icon(CupertinoIcons.heart_fill,
-                                  size: 14, color: warningColor),
+                              Icon(
+                                CupertinoIcons.heart_fill,
+                                size: 14,
+                                color: warningColor,
+                              ),
                               SizedBox(width: r.spaceXs),
                               Expanded(
                                 child: Text(
@@ -167,9 +170,11 @@ class ActiveAppointmentModal extends StatelessWidget {
                           SizedBox(height: r.spaceSm),
                           Row(
                             children: [
-                              Icon(CupertinoIcons.calendar,
-                                  size: 13,
-                                  color: AppColors.textTertiaryC(isDark)),
+                              Icon(
+                                CupertinoIcons.calendar,
+                                size: 13,
+                                color: AppColors.textTertiaryC(isDark),
+                              ),
                               SizedBox(width: 4),
                               Text(
                                 reserva.formattedDate,
@@ -181,9 +186,11 @@ class ActiveAppointmentModal extends StatelessWidget {
                               ),
                               if (hora.isNotEmpty) ...[
                                 SizedBox(width: r.spaceMd),
-                                Icon(CupertinoIcons.clock,
-                                    size: 13,
-                                    color: AppColors.textTertiaryC(isDark)),
+                                Icon(
+                                  CupertinoIcons.clock,
+                                  size: 13,
+                                  color: AppColors.textTertiaryC(isDark),
+                                ),
                                 SizedBox(width: 4),
                                 Text(
                                   hora,
@@ -245,8 +252,7 @@ class ActiveAppointmentModal extends StatelessWidget {
                     SizedBox(
                       width: double.infinity,
                       child: CupertinoButton(
-                        padding:
-                            const EdgeInsets.symmetric(vertical: 14),
+                        padding: const EdgeInsets.symmetric(vertical: 14),
                         color: warningColor,
                         borderRadius: BorderRadius.circular(r.buttonRadius),
                         onPressed: onClose,
@@ -348,8 +354,9 @@ class ActiveAppointmentModal extends StatelessWidget {
                         ? AppColors.info.withValues(alpha: 0.15)
                         : const Color(0xFFEFF6FF),
                     borderRadius: BorderRadius.circular(r.buttonRadius),
-                    border:
-                        Border.all(color: AppColors.info.withValues(alpha: 0.25)),
+                    border: Border.all(
+                      color: AppColors.info.withValues(alpha: 0.25),
+                    ),
                   ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -376,9 +383,11 @@ class ActiveAppointmentModal extends StatelessWidget {
                       const SizedBox(height: 8),
                       Row(
                         children: [
-                          Icon(CupertinoIcons.calendar,
-                              size: 14,
-                              color: AppColors.textTertiaryC(isDark)),
+                          Icon(
+                            CupertinoIcons.calendar,
+                            size: 14,
+                            color: AppColors.textTertiaryC(isDark),
+                          ),
                           const SizedBox(width: 4),
                           Text(
                             reserva.formattedDate,
@@ -390,9 +399,11 @@ class ActiveAppointmentModal extends StatelessWidget {
                           ),
                           if (reserva.time.isNotEmpty) ...[
                             const SizedBox(width: 12),
-                            Icon(CupertinoIcons.clock,
-                                size: 14,
-                                color: AppColors.textTertiaryC(isDark)),
+                            Icon(
+                              CupertinoIcons.clock,
+                              size: 14,
+                              color: AppColors.textTertiaryC(isDark),
+                            ),
                             const SizedBox(width: 4),
                             Text(
                               reserva.time,
@@ -421,12 +432,10 @@ class ActiveAppointmentModal extends StatelessWidget {
                       SizedBox(
                         width: double.infinity,
                         child: CupertinoButton(
-                          padding:
-                              const EdgeInsets.symmetric(vertical: 14),
+                          padding: const EdgeInsets.symmetric(vertical: 14),
                           color: const Color(0xFFEF9A9A),
                           borderRadius: BorderRadius.circular(r.buttonRadius),
-                          onPressed:
-                              isCancelling ? null : onCancelAppointment,
+                          onPressed: isCancelling ? null : onCancelAppointment,
                           child: isCancelling
                               ? const CupertinoActivityIndicator()
                               : const Text(
@@ -443,19 +452,18 @@ class ActiveAppointmentModal extends StatelessWidget {
                       width: double.infinity,
                       child: Container(
                         decoration: BoxDecoration(
-                          borderRadius:
-                              BorderRadius.circular(r.buttonRadius),
+                          borderRadius: BorderRadius.circular(r.buttonRadius),
                           border: Border.all(
                             color: isDark
                                 ? AppColors.darkBorder
-                                : const Color(0xFF191C1E)
-                                    .withValues(alpha: 0.15),
+                                : const Color(
+                                    0xFF191C1E,
+                                  ).withValues(alpha: 0.15),
                             width: 0.8,
                           ),
                         ),
                         child: CupertinoButton(
-                          padding:
-                              const EdgeInsets.symmetric(vertical: 14),
+                          padding: const EdgeInsets.symmetric(vertical: 14),
                           color: isDark
                               ? AppColors.darkElevated
                               : const Color(0xFFE5E7EB),

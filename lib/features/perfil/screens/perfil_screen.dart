@@ -9,6 +9,8 @@ import '../../../core/extensions/responsive_extensions.dart';
 import '../../../core/session/user_session.dart';
 import '../../../core/models/user_model.dart';
 import '../../../core/storage/token_storage.dart';
+import '../../../core/services/secure_docs_store.dart';
+import '../../../core/security/screen_security.dart';
 import '../../../core/services/security_service.dart';
 import '../../../core/services/notification_service.dart';
 import '../../../core/services/notification_preferences.dart';
@@ -19,6 +21,7 @@ import '../../../core/services/auth_service.dart';
 import '../../../core/services/session_restore_service.dart';
 import '../../../core/widgets/cossmil_ios_alert.dart';
 import '../../../core/widgets/liquid_glass.dart';
+import '../../../core/constants/app_sounds.dart';
 import '../../../core/theme/sound_manager.dart';
 import '../../../core/utils/rank_utils.dart';
 import '../../../core/widgets/image_enlarged_modal.dart';
@@ -79,7 +82,9 @@ class _PerfilScreenState extends State<PerfilScreen> {
     final photo = user.photoBase64;
     if (photo.isNotEmpty) {
       _cachedPhotoB64 = photo;
-      try { _cachedUserPhoto = base64Decode(photo); } catch (_) {}
+      try {
+        _cachedUserPhoto = base64Decode(photo);
+      } catch (_) {}
     }
     _loadSecurityStatus();
     _loadNotifPrefs();
@@ -163,16 +168,24 @@ class _PerfilScreenState extends State<PerfilScreen> {
     return CupertinoPageScaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       child: CustomScrollView(
-        physics: const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
+        physics: const BouncingScrollPhysics(
+          parent: AlwaysScrollableScrollPhysics(),
+        ),
         slivers: [
           // ── Navigation Bar ──────────────────────────────────────────────
           AdaptiveSliverNavBar(
-            largeTitle: Text('Mi Perfil', style: TextStyle(color: AppColors.textPrimaryC(isDark))),
+            largeTitle: Text(
+              'Mi Perfil',
+              style: TextStyle(color: AppColors.textPrimaryC(isDark)),
+            ),
             backgroundColor: isDark
                 ? AppColors.darkSurface.withValues(alpha: 0.92)
                 : AppColors.white.withValues(alpha: 0.92),
             border: Border(
-              bottom: BorderSide(color: AppColors.cardBorder(isDark).withValues(alpha: 0.5), width: 0.5),
+              bottom: BorderSide(
+                color: AppColors.cardBorder(isDark).withValues(alpha: 0.5),
+                width: 0.5,
+              ),
             ),
           ),
 
@@ -192,7 +205,12 @@ class _PerfilScreenState extends State<PerfilScreen> {
 
           // ── Sections ────────────────────────────────────────────────────
           SliverPadding(
-            padding: EdgeInsets.fromLTRB(r.paddingH, r.spaceLg, r.paddingH, r.navBarBottomSpace),
+            padding: EdgeInsets.fromLTRB(
+              r.paddingH,
+              r.spaceLg,
+              r.paddingH,
+              r.navBarBottomSpace,
+            ),
             sliver: SliverToBoxAdapter(
               child: Center(
                 child: ConstrainedBox(
@@ -201,7 +219,9 @@ class _PerfilScreenState extends State<PerfilScreen> {
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
                       // Información personal
-                      FadeSlideIn(delay: const Duration(milliseconds: 120), offsetY: 12,
+                      FadeSlideIn(
+                        delay: const Duration(milliseconds: 120),
+                        offsetY: 12,
                         child: _buildSection(
                           isDark: isDark,
                           header: 'INFORMACIÓN PERSONAL',
@@ -212,40 +232,64 @@ class _PerfilScreenState extends State<PerfilScreen> {
                       SizedBox(height: r.spaceLg),
 
                       // Datos de contacto
-                      FadeSlideIn(delay: const Duration(milliseconds: 160), offsetY: 12,
+                      FadeSlideIn(
+                        delay: const Duration(milliseconds: 160),
+                        offsetY: 12,
                         child: _buildSection(
                           isDark: isDark,
                           header: 'DATOS DE CONTACTO',
                           children: [
                             _buildContactTile(
-                              isDark: isDark, icon: CupertinoIcons.mail_solid,
+                              isDark: isDark,
+                              icon: CupertinoIcons.mail_solid,
                               iconColor: const Color(0xFF3B82F6),
-                              label: 'Correo electrónico', value: _email,
-                              isEditing: _isEditingEmail, isSaving: _isSavingEmail,
-                              controller: _emailCtrl, keyboardType: TextInputType.emailAddress,
-                              onEdit: () => setState(() { _emailCtrl.text = _email; _isEditingEmail = true; }),
+                              label: 'Correo electrónico',
+                              value: _email,
+                              isEditing: _isEditingEmail,
+                              isSaving: _isSavingEmail,
+                              controller: _emailCtrl,
+                              keyboardType: TextInputType.emailAddress,
+                              onEdit: () => setState(() {
+                                _emailCtrl.text = _email;
+                                _isEditingEmail = true;
+                              }),
                               onSave: _saveEmail,
-                              onCancel: () => setState(() { _emailCtrl.text = _email; _isEditingEmail = false; }),
+                              onCancel: () => setState(() {
+                                _emailCtrl.text = _email;
+                                _isEditingEmail = false;
+                              }),
                             ),
                             _buildContactTile(
-                              isDark: isDark, icon: CupertinoIcons.phone_fill,
+                              isDark: isDark,
+                              icon: CupertinoIcons.phone_fill,
                               iconColor: const Color(0xFF10B981),
-                              label: 'Celular (Bolivia)', value: _phone,
-                              isEditing: _isEditingPhone, isSaving: _isSavingPhone,
-                              controller: _phoneCtrl, keyboardType: TextInputType.phone,
-                              hint: 'XXXXXXXX', prefix: '+591 ',
-                              onEdit: () => setState(() { _phoneCtrl.text = _phone; _isEditingPhone = true; }),
+                              label: 'Celular (Bolivia)',
+                              value: _phone,
+                              isEditing: _isEditingPhone,
+                              isSaving: _isSavingPhone,
+                              controller: _phoneCtrl,
+                              keyboardType: TextInputType.phone,
+                              hint: 'XXXXXXXX',
+                              prefix: '+591 ',
+                              onEdit: () => setState(() {
+                                _phoneCtrl.text = _phone;
+                                _isEditingPhone = true;
+                              }),
                               onSave: _savePhone,
-                              onCancel: () => setState(() { _phoneCtrl.text = _phone; _isEditingPhone = false; }),
+                              onCancel: () => setState(() {
+                                _phoneCtrl.text = _phone;
+                                _isEditingPhone = false;
+                              }),
                             ),
-
                           ],
                         ),
                       ),
                       SizedBox(height: r.spaceLg),
 
                       // Datos de emergencia
-                      FadeSlideIn(delay: const Duration(milliseconds: 180), offsetY: 12,
+                      FadeSlideIn(
+                        delay: const Duration(milliseconds: 180),
+                        offsetY: 12,
                         child: _buildSection(
                           isDark: isDark,
                           header: 'DATOS DE EMERGENCIA',
@@ -256,7 +300,9 @@ class _PerfilScreenState extends State<PerfilScreen> {
                               icon: CupertinoIcons.phone_circle_fill,
                               color: const Color(0xFFEF4444),
                               label: 'Teléfono de Emergencia',
-                              value: _emergencyPhone.isNotEmpty ? _emergencyPhone : 'Sin registrar',
+                              value: _emergencyPhone.isNotEmpty
+                                  ? _emergencyPhone
+                                  : 'Sin registrar',
                               isDark: isDark,
                             ),
                             _divider(isDark),
@@ -265,7 +311,9 @@ class _PerfilScreenState extends State<PerfilScreen> {
                               icon: CupertinoIcons.person_2_fill,
                               color: const Color(0xFF10B981),
                               label: 'Contacto de Referencia',
-                              value: _referencia.isNotEmpty ? _referencia : 'Sin registrar',
+                              value: _referencia.isNotEmpty
+                                  ? _referencia
+                                  : 'Sin registrar',
                               isDark: isDark,
                             ),
                             _divider(isDark),
@@ -280,15 +328,22 @@ class _PerfilScreenState extends State<PerfilScreen> {
                                 // Capturar referencias antes del gap asíncrono
                                 final messenger = ScaffoldMessenger.of(context);
                                 final paddingH = context.r.paddingH;
-                                final result = await Navigator.of(context, rootNavigator: true).push<String>(
-                                  AppPageRoute(
-                                    builder: (_) => const EmergencyDataScreen(),
-                                  ),
-                                );
+                                final result =
+                                    await Navigator.of(
+                                      context,
+                                      rootNavigator: true,
+                                    ).push<String>(
+                                      AppPageRoute(
+                                        builder: (_) =>
+                                            const EmergencyDataScreen(),
+                                      ),
+                                    );
                                 if (!mounted) return;
                                 setState(() {
-                                  _emergencyPhone = UserSession.currentUser.emergencyPhone;
-                                  _referencia = UserSession.currentUser.referencia;
+                                  _emergencyPhone =
+                                      UserSession.currentUser.emergencyPhone;
+                                  _referencia =
+                                      UserSession.currentUser.referencia;
                                 });
                                 // Mostrar el mensaje de éxito en el perfil
                                 if (result != null && result.isNotEmpty) {
@@ -297,7 +352,8 @@ class _PerfilScreenState extends State<PerfilScreen> {
                                       content: Row(
                                         children: [
                                           const Icon(
-                                            CupertinoIcons.checkmark_circle_fill,
+                                            CupertinoIcons
+                                                .checkmark_circle_fill,
                                             color: Colors.white,
                                             size: 18,
                                           ),
@@ -334,7 +390,9 @@ class _PerfilScreenState extends State<PerfilScreen> {
                       SizedBox(height: r.spaceLg),
 
                       // Seguridad y acceso
-                      FadeSlideIn(delay: const Duration(milliseconds: 200), offsetY: 12,
+                      FadeSlideIn(
+                        delay: const Duration(milliseconds: 200),
+                        offsetY: 12,
                         child: _buildSection(
                           isDark: isDark,
                           header: 'SEGURIDAD Y ACCESO',
@@ -342,11 +400,18 @@ class _PerfilScreenState extends State<PerfilScreen> {
                             _buildNavTile(
                               isDark: isDark,
                               icon: CupertinoIcons.lock_shield_fill,
-                              iconColor: _hasPin ? AppColors.success : AppColors.textTertiary,
-                              title: _hasPin ? 'Seguridad configurada' : 'Configurar seguridad',
+                              iconColor: _hasPin
+                                  ? AppColors.success
+                                  : AppColors.textTertiary,
+                              title: _hasPin
+                                  ? 'Seguridad configurada'
+                                  : 'Configurar seguridad',
                               subtitle: _buildSecuritySummary(),
                               onTap: () async {
-                                await Navigator.of(context, rootNavigator: true).pushNamed('/security-setup');
+                                await Navigator.of(
+                                  context,
+                                  rootNavigator: true,
+                                ).pushNamed('/security-setup');
                                 await _loadSecurityStatus();
                               },
                             ),
@@ -355,14 +420,17 @@ class _PerfilScreenState extends State<PerfilScreen> {
                               icon: CupertinoIcons.lock_rotation,
                               iconColor: const Color(0xFFF59E0B),
                               title: 'Cambiar Contraseña',
-                              subtitle: 'Actualiza tu contraseña de acceso al sistema',
+                              subtitle:
+                                  'Actualiza tu contraseña de acceso al sistema',
                               onTap: _showChangePasswordDialog,
                             ),
                           ],
                         ),
                       ),
                       // Notificaciones
-                      FadeSlideIn(delay: const Duration(milliseconds: 220), offsetY: 12,
+                      FadeSlideIn(
+                        delay: const Duration(milliseconds: 220),
+                        offsetY: 12,
                         child: _buildSection(
                           isDark: isDark,
                           header: 'NOTIFICACIONES',
@@ -377,7 +445,9 @@ class _PerfilScreenState extends State<PerfilScreen> {
                               onChanged: (v) async {
                                 setState(() => _notifReminders = v);
                                 await NotificationPreferences.setReminders(
-                                    UserSession.currentUser.id, v);
+                                  UserSession.currentUser.id,
+                                  v,
+                                );
                               },
                             ),
                             _buildToggleTile(
@@ -390,7 +460,9 @@ class _PerfilScreenState extends State<PerfilScreen> {
                               onChanged: (v) async {
                                 setState(() => _notifConfirmations = v);
                                 await NotificationPreferences.setConfirmations(
-                                    UserSession.currentUser.id, v);
+                                  UserSession.currentUser.id,
+                                  v,
+                                );
                               },
                             ),
                             _buildToggleTile(
@@ -403,7 +475,9 @@ class _PerfilScreenState extends State<PerfilScreen> {
                               onChanged: (v) async {
                                 setState(() => _notifRatings = v);
                                 await NotificationPreferences.setRatings(
-                                    UserSession.currentUser.id, v);
+                                  UserSession.currentUser.id,
+                                  v,
+                                );
                               },
                             ),
                             _buildNavTile(
@@ -412,9 +486,16 @@ class _PerfilScreenState extends State<PerfilScreen> {
                               iconColor: AppColors.accent,
                               title: 'Ver todas mis notificaciones',
                               subtitle: 'Historial de los últimos 30 días',
-                              onTap: () => Navigator.of(context, rootNavigator: true).push(
-                                AppPageRoute(builder: (_) => const NotificacionesScreen()),
-                              ),
+                              onTap: () =>
+                                  Navigator.of(
+                                    context,
+                                    rootNavigator: true,
+                                  ).push(
+                                    AppPageRoute(
+                                      builder: (_) =>
+                                          const NotificacionesScreen(),
+                                    ),
+                                  ),
                             ),
                             // "Mis Médicos Favoritos" OCULTO (feature aún no
                             // funcional). Reactivar este _buildNavTile cuando esté listo.
@@ -445,7 +526,9 @@ class _PerfilScreenState extends State<PerfilScreen> {
                       */
 
                       // Apariencia
-                      FadeSlideIn(delay: const Duration(milliseconds: 280), offsetY: 12,
+                      FadeSlideIn(
+                        delay: const Duration(milliseconds: 280),
+                        offsetY: 12,
                         child: _buildSection(
                           isDark: isDark,
                           header: 'APARIENCIA',
@@ -458,7 +541,9 @@ class _PerfilScreenState extends State<PerfilScreen> {
                       SizedBox(height: r.spaceLg),
 
                       // Ayuda — tutoriales guiados (no reales, solo demostración)
-                      FadeSlideIn(delay: const Duration(milliseconds: 300), offsetY: 12,
+                      FadeSlideIn(
+                        delay: const Duration(milliseconds: 300),
+                        offsetY: 12,
                         child: _buildSection(
                           isDark: isDark,
                           header: 'AYUDA',
@@ -469,7 +554,26 @@ class _PerfilScreenState extends State<PerfilScreen> {
                               iconColor: const Color(0xFF059669),
                               title: 'Cómo sacar una ficha',
                               subtitle: 'Tutorial guiado paso a paso',
-                              onTap: () => widget.tabShell.startTutorialBooking(),
+                              onTap: () =>
+                                  widget.tabShell.startTutorialFromHome(),
+                            ),
+                            _buildNavTile(
+                              isDark: isDark,
+                              icon: CupertinoIcons.calendar,
+                              iconColor: const Color(0xFF3B82F6),
+                              title: 'Cómo ver horarios de atención',
+                              subtitle: 'Tutorial guiado del Calendario',
+                              onTap: () =>
+                                  widget.tabShell.startCalendarioTutorial(),
+                            ),
+                            _buildNavTile(
+                              isDark: isDark,
+                              icon: CupertinoIcons.doc_text_fill,
+                              iconColor: const Color(0xFF005EB8),
+                              title: 'Cómo generar un trámite',
+                              subtitle: 'Tutorial guiado de Procedimientos',
+                              onTap: () =>
+                                  widget.tabShell.startTramitesTutorial(),
                             ),
                           ],
                         ),
@@ -477,13 +581,17 @@ class _PerfilScreenState extends State<PerfilScreen> {
                       SizedBox(height: r.spaceLg),
 
                       // Cerrar sesión
-                      FadeSlideIn(delay: const Duration(milliseconds: 320), offsetY: 12,
+                      FadeSlideIn(
+                        delay: const Duration(milliseconds: 320),
+                        offsetY: 12,
                         child: _buildLogoutTile(isDark, r),
                       ),
                       SizedBox(height: r.spaceXl),
 
                       // Version de la app
-                      FadeSlideIn(delay: const Duration(milliseconds: 360), offsetY: 12,
+                      FadeSlideIn(
+                        delay: const Duration(milliseconds: 360),
+                        offsetY: 12,
                         child: Center(
                           child: Text(
                             'Versión ${AppVersionHelper.versionSync}',
@@ -539,7 +647,9 @@ class _PerfilScreenState extends State<PerfilScreen> {
                       ImageEnlargedModal.show(
                         context: context,
                         base64Photo: user.photoBase64,
-                        fallbackText: user.fullName.isNotEmpty ? user.fullName[0].toUpperCase() : 'U',
+                        fallbackText: user.fullName.isNotEmpty
+                            ? user.fullName[0].toUpperCase()
+                            : 'U',
                       );
                     }
                   },
@@ -552,12 +662,16 @@ class _PerfilScreenState extends State<PerfilScreen> {
                         shape: BoxShape.circle,
                         color: AppColors.cardBg(isDark),
                         border: Border.all(
-                          color: AppColors.accentForTheme(isDark).withValues(alpha: 0.35),
+                          color: AppColors.accentForTheme(
+                            isDark,
+                          ).withValues(alpha: 0.35),
                           width: 3.5,
                         ),
                         boxShadow: [
                           BoxShadow(
-                            color: AppColors.accentForTheme(isDark).withValues(alpha: 0.18),
+                            color: AppColors.accentForTheme(
+                              isDark,
+                            ).withValues(alpha: 0.18),
                             blurRadius: 24,
                             spreadRadius: 2,
                             offset: const Offset(0, 8),
@@ -577,7 +691,8 @@ class _PerfilScreenState extends State<PerfilScreen> {
                                       bytes,
                                       fit: BoxFit.cover,
                                       gaplessPlayback: true,
-                                      errorBuilder: (_, __, ___) => _avatarFallback(liveUser, avatarSize),
+                                      errorBuilder: (_, __, ___) =>
+                                          _avatarFallback(liveUser, avatarSize),
                                     )
                                   : _avatarFallback(liveUser, avatarSize);
                             },
@@ -607,8 +722,11 @@ class _PerfilScreenState extends State<PerfilScreen> {
                       ),
                     ),
                     SizedBox(width: r.spaceSm),
-                    Icon(CupertinoIcons.checkmark_seal_fill,
-                        color: AppColors.accentForTheme(isDark), size: 22),
+                    Icon(
+                      CupertinoIcons.checkmark_seal_fill,
+                      color: AppColors.accentForTheme(isDark),
+                      size: 22,
+                    ),
                   ],
                 ),
 
@@ -624,7 +742,9 @@ class _PerfilScreenState extends State<PerfilScreen> {
                         Icon(
                           CupertinoIcons.shield_fill,
                           size: 12,
-                          color: AppColors.accentForTheme(isDark).withValues(alpha: 0.65),
+                          color: AppColors.accentForTheme(
+                            isDark,
+                          ).withValues(alpha: 0.65),
                         ),
                         SizedBox(width: r.spaceXs),
                         Text(
@@ -633,7 +753,9 @@ class _PerfilScreenState extends State<PerfilScreen> {
                             fontWeight: FontWeight.w700,
                             letterSpacing: 1.2,
                             fontSize: 10.5,
-                            color: AppColors.accentForTheme(isDark).withValues(alpha: 0.75),
+                            color: AppColors.accentForTheme(
+                              isDark,
+                            ).withValues(alpha: 0.75),
                           ),
                         ),
                       ],
@@ -649,11 +771,15 @@ class _PerfilScreenState extends State<PerfilScreen> {
                       Icon(
                         CupertinoIcons.flag_fill,
                         size: 12,
-                        color: AppColors.accentForTheme(isDark).withValues(alpha: 0.65),
+                        color: AppColors.accentForTheme(
+                          isDark,
+                        ).withValues(alpha: 0.65),
                       ),
                       SizedBox(width: r.spaceXs),
                       Text(
-                        user.tipopersonal.toUpperCase().contains('BENEFICIARIO') &&
+                        user.tipopersonal.toUpperCase().contains(
+                                  'BENEFICIARIO',
+                                ) &&
                                 user.fuerza.trim().toUpperCase() == 'CIVIL'
                             ? 'REF. TITULAR · PERSONAL CON ÍTEM'
                             : 'FUERZA · ${user.fuerza.isNotEmpty ? user.fuerza.toUpperCase() : "—"}',
@@ -661,7 +787,9 @@ class _PerfilScreenState extends State<PerfilScreen> {
                           fontWeight: FontWeight.w700,
                           letterSpacing: 1.2,
                           fontSize: 10.5,
-                          color: AppColors.accentForTheme(isDark).withValues(alpha: 0.75),
+                          color: AppColors.accentForTheme(
+                            isDark,
+                          ).withValues(alpha: 0.75),
                         ),
                       ),
                     ],
@@ -683,7 +811,9 @@ class _PerfilScreenState extends State<PerfilScreen> {
                         Icon(
                           CupertinoIcons.shield_lefthalf_fill,
                           size: 12,
-                          color: AppColors.accentForTheme(isDark).withValues(alpha: 0.65),
+                          color: AppColors.accentForTheme(
+                            isDark,
+                          ).withValues(alpha: 0.65),
                         ),
                         SizedBox(width: r.spaceXs),
                         Text(
@@ -692,7 +822,9 @@ class _PerfilScreenState extends State<PerfilScreen> {
                             fontWeight: FontWeight.w700,
                             letterSpacing: 1.2,
                             fontSize: 10.5,
-                            color: AppColors.accentForTheme(isDark).withValues(alpha: 0.75),
+                            color: AppColors.accentForTheme(
+                              isDark,
+                            ).withValues(alpha: 0.75),
                           ),
                         ),
                       ],
@@ -713,7 +845,9 @@ class _PerfilScreenState extends State<PerfilScreen> {
                         Icon(
                           CupertinoIcons.person_badge_minus_fill,
                           size: 12,
-                          color: AppColors.accentForTheme(isDark).withValues(alpha: 0.65),
+                          color: AppColors.accentForTheme(
+                            isDark,
+                          ).withValues(alpha: 0.65),
                         ),
                         SizedBox(width: r.spaceXs),
                         Text(
@@ -724,7 +858,9 @@ class _PerfilScreenState extends State<PerfilScreen> {
                             fontWeight: FontWeight.w700,
                             letterSpacing: 1.2,
                             fontSize: 10.5,
-                            color: AppColors.accentForTheme(isDark).withValues(alpha: 0.75),
+                            color: AppColors.accentForTheme(
+                              isDark,
+                            ).withValues(alpha: 0.75),
                           ),
                         ),
                       ],
@@ -772,7 +908,11 @@ class _PerfilScreenState extends State<PerfilScreen> {
       alignment: Alignment.center,
       child: Text(
         user.fullName.isNotEmpty ? user.fullName[0].toUpperCase() : 'U',
-        style: TextStyle(fontSize: size * 0.38, fontWeight: FontWeight.w900, color: Colors.white),
+        style: TextStyle(
+          fontSize: size * 0.38,
+          fontWeight: FontWeight.w900,
+          color: Colors.white,
+        ),
       ),
     );
   }
@@ -785,7 +925,10 @@ class _PerfilScreenState extends State<PerfilScreen> {
   }) {
     final r = context.r;
     return Container(
-      padding: EdgeInsets.symmetric(horizontal: r.chipPaddingH + 2, vertical: r.chipPaddingV + 1),
+      padding: EdgeInsets.symmetric(
+        horizontal: r.chipPaddingH + 2,
+        vertical: r.chipPaddingV + 1,
+      ),
       decoration: BoxDecoration(
         color: color.withValues(alpha: isDark ? 0.15 : 0.09),
         borderRadius: BorderRadius.circular(r.chipRadius + 2),
@@ -818,7 +961,8 @@ class _PerfilScreenState extends State<PerfilScreen> {
     required bool isDark,
     required String header,
     required List<Widget> children,
-    bool manualDividers = false,  // si true: no se insertan separadores automáticos
+    bool manualDividers =
+        false, // si true: no se insertan separadores automáticos
   }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -839,7 +983,11 @@ class _PerfilScreenState extends State<PerfilScreen> {
           isDark: isDark,
           borderRadius: BorderRadius.circular(14),
           shadow: AppColors.cardShadowFor(isDark),
-          child: Column(children: manualDividers ? children : _separatedWith(children, isDark)),
+          child: Column(
+            children: manualDividers
+                ? children
+                : _separatedWith(children, isDark),
+          ),
         ),
       ],
     );
@@ -851,10 +999,12 @@ class _PerfilScreenState extends State<PerfilScreen> {
     for (int i = 0; i < tiles.length; i++) {
       result.add(tiles[i]);
       if (i < tiles.length - 1) {
-        result.add(Padding(
-          padding: const EdgeInsets.only(left: 56),
-          child: Container(height: 0.5, color: AppColors.cardBorder(isDark)),
-        ));
+        result.add(
+          Padding(
+            padding: const EdgeInsets.only(left: 56),
+            child: Container(height: 0.5, color: AppColors.cardBorder(isDark)),
+          ),
+        );
       }
     }
     return result;
@@ -869,7 +1019,8 @@ class _PerfilScreenState extends State<PerfilScreen> {
     final serviceLabel = user.isTitular && user.serviceStatus.isNotEmpty
         ? RankUtils.serviceStatusLabel(user.serviceStatus)
         : null;
-    final isActive = user.isTitular && RankUtils.isServiceActive(user.serviceStatus);
+    final isActive =
+        user.isTitular && RankUtils.isServiceActive(user.serviceStatus);
 
     return [
       // Estado habilitado + servicio — sin caja, solo un indicador visual
@@ -941,23 +1092,40 @@ class _PerfilScreenState extends State<PerfilScreen> {
 
   /// Fila de estado: habilitado + situación de servicio.
   /// Diseño: ícono a la izquierda, luego label+valor en vertical, badge de estado al costado.
-  Widget _buildStatusRow(UserModel user, bool isDark, String? serviceLabel, bool isActive) {
+  Widget _buildStatusRow(
+    UserModel user,
+    bool isDark,
+    String? serviceLabel,
+    bool isActive,
+  ) {
     final r = context.r;
-    final accountColor = user.isEnabled ? const Color(0xFF10B981) : AppColors.error;
-    final serviceColor = isActive ? const Color(0xFF10B981) : const Color(0xFFF59E0B);
+    final accountColor = user.isEnabled
+        ? const Color(0xFF10B981)
+        : AppColors.error;
+    final serviceColor = isActive
+        ? const Color(0xFF10B981)
+        : const Color(0xFFF59E0B);
 
     return Padding(
-      padding: EdgeInsets.symmetric(horizontal: r.tileHorizontalPad, vertical: 14),
+      padding: EdgeInsets.symmetric(
+        horizontal: r.tileHorizontalPad,
+        vertical: 14,
+      ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           Container(
-            width: 36, height: 36,
+            width: 36,
+            height: 36,
             decoration: BoxDecoration(
               color: accountColor.withValues(alpha: 0.12),
               borderRadius: BorderRadius.circular(10),
             ),
-            child: Icon(CupertinoIcons.checkmark_shield_fill, size: 18, color: accountColor),
+            child: Icon(
+              CupertinoIcons.checkmark_shield_fill,
+              size: 18,
+              color: accountColor,
+            ),
           ),
           SizedBox(width: r.spaceMd),
           Expanded(
@@ -977,7 +1145,10 @@ class _PerfilScreenState extends State<PerfilScreen> {
                 Row(
                   children: [
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 2,
+                      ),
                       decoration: BoxDecoration(
                         color: accountColor.withValues(alpha: 0.12),
                         borderRadius: BorderRadius.circular(20),
@@ -994,7 +1165,10 @@ class _PerfilScreenState extends State<PerfilScreen> {
                     if (serviceLabel != null) ...[
                       const SizedBox(width: 6),
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 2,
+                        ),
                         decoration: BoxDecoration(
                           color: serviceColor.withValues(alpha: 0.10),
                           borderRadius: BorderRadius.circular(20),
@@ -1029,12 +1203,16 @@ class _PerfilScreenState extends State<PerfilScreen> {
   }) {
     final r = context.r;
     return Padding(
-      padding: EdgeInsets.symmetric(horizontal: r.tileHorizontalPad, vertical: 14),
+      padding: EdgeInsets.symmetric(
+        horizontal: r.tileHorizontalPad,
+        vertical: 14,
+      ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Container(
-            width: 36, height: 36,
+            width: 36,
+            height: 36,
             decoration: BoxDecoration(
               color: color.withValues(alpha: 0.12),
               borderRadius: BorderRadius.circular(10),
@@ -1059,7 +1237,9 @@ class _PerfilScreenState extends State<PerfilScreen> {
                 Text(
                   value,
                   maxLines: multiLine ? null : 1,
-                  overflow: multiLine ? TextOverflow.clip : TextOverflow.ellipsis,
+                  overflow: multiLine
+                      ? TextOverflow.clip
+                      : TextOverflow.ellipsis,
                   softWrap: true,
                   style: TextStyle(
                     fontSize: 14,
@@ -1098,12 +1278,18 @@ class _PerfilScreenState extends State<PerfilScreen> {
   }) {
     final r = context.r;
     return Padding(
-      padding: EdgeInsets.symmetric(horizontal: r.tileHorizontalPad, vertical: r.tileVerticalPad),
+      padding: EdgeInsets.symmetric(
+        horizontal: r.tileHorizontalPad,
+        vertical: r.tileVerticalPad,
+      ),
       child: Row(
-        crossAxisAlignment: isEditing ? CrossAxisAlignment.start : CrossAxisAlignment.center,
+        crossAxisAlignment: isEditing
+            ? CrossAxisAlignment.start
+            : CrossAxisAlignment.center,
         children: [
           Container(
-            width: 32, height: 32,
+            width: 32,
+            height: 32,
             decoration: BoxDecoration(
               color: iconColor.withValues(alpha: 0.12),
               borderRadius: BorderRadius.circular(8),
@@ -1115,9 +1301,15 @@ class _PerfilScreenState extends State<PerfilScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(label,
-                  style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600,
-                    color: AppColors.textSecondaryC(isDark), letterSpacing: 0.2)),
+                Text(
+                  label,
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.textSecondaryC(isDark),
+                    letterSpacing: 0.2,
+                  ),
+                ),
                 SizedBox(height: 3),
                 if (isEditing)
                   CupertinoTextField(
@@ -1128,20 +1320,33 @@ class _PerfilScreenState extends State<PerfilScreen> {
                     prefix: prefix != null
                         ? Padding(
                             padding: const EdgeInsets.only(left: 6),
-                            child: Text(prefix,
-                              style: TextStyle(fontWeight: FontWeight.w700,
-                                color: AppColors.textSecondaryC(isDark))),
+                            child: Text(
+                              prefix,
+                              style: TextStyle(
+                                fontWeight: FontWeight.w700,
+                                color: AppColors.textSecondaryC(isDark),
+                              ),
+                            ),
                           )
                         : null,
-                    padding: EdgeInsets.symmetric(vertical: r.spaceSm, horizontal: prefix != null ? 2 : 6),
+                    padding: EdgeInsets.symmetric(
+                      vertical: r.spaceSm,
+                      horizontal: prefix != null ? 2 : 6,
+                    ),
                     decoration: BoxDecoration(
-                      border: Border(bottom: BorderSide(
-                        color: AppColors.accentForTheme(isDark).withValues(alpha: 0.6),
-                        width: 1.2,
-                      )),
+                      border: Border(
+                        bottom: BorderSide(
+                          color: AppColors.accentForTheme(
+                            isDark,
+                          ).withValues(alpha: 0.6),
+                          width: 1.2,
+                        ),
+                      ),
                     ),
                     style: context.texts.titleMedium.copyWith(
-                      fontWeight: FontWeight.w700, color: AppColors.textPrimaryC(isDark)),
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.textPrimaryC(isDark),
+                    ),
                     onSubmitted: (_) => onSave(),
                   )
                 else
@@ -1165,16 +1370,24 @@ class _PerfilScreenState extends State<PerfilScreen> {
               mainAxisSize: MainAxisSize.min,
               children: [
                 CupertinoButton(
-                  padding: EdgeInsets.zero, minimumSize: const Size(32, 32),
+                  padding: EdgeInsets.zero,
+                  minimumSize: const Size(32, 32),
                   onPressed: onCancel,
-                  child: Icon(CupertinoIcons.xmark_circle_fill,
-                    color: CupertinoColors.destructiveRed, size: 24),
+                  child: Icon(
+                    CupertinoIcons.xmark_circle_fill,
+                    color: CupertinoColors.destructiveRed,
+                    size: 24,
+                  ),
                 ),
                 CupertinoButton(
-                  padding: EdgeInsets.zero, minimumSize: const Size(32, 32),
+                  padding: EdgeInsets.zero,
+                  minimumSize: const Size(32, 32),
                   onPressed: onSave,
-                  child: Icon(CupertinoIcons.checkmark_alt_circle_fill,
-                    color: CupertinoColors.activeGreen, size: 24),
+                  child: Icon(
+                    CupertinoIcons.checkmark_alt_circle_fill,
+                    color: CupertinoColors.activeGreen,
+                    size: 24,
+                  ),
                 ),
               ],
             )
@@ -1183,12 +1396,14 @@ class _PerfilScreenState extends State<PerfilScreen> {
               padding: const EdgeInsets.symmetric(horizontal: 4),
               minimumSize: const Size(28, 28),
               onPressed: onEdit,
-              child: Text('Editar',
+              child: Text(
+                'Editar',
                 style: TextStyle(
                   color: AppColors.accentForTheme(isDark),
                   fontWeight: FontWeight.w700,
                   fontSize: 13,
-                )),
+                ),
+              ),
             ),
         ],
       ),
@@ -1212,11 +1427,15 @@ class _PerfilScreenState extends State<PerfilScreen> {
       padding: EdgeInsets.zero,
       onPressed: onTap,
       child: Padding(
-        padding: EdgeInsets.symmetric(horizontal: r.tileHorizontalPad, vertical: r.tileVerticalPad),
+        padding: EdgeInsets.symmetric(
+          horizontal: r.tileHorizontalPad,
+          vertical: r.tileVerticalPad,
+        ),
         child: Row(
           children: [
             Container(
-              width: 32, height: 32,
+              width: 32,
+              height: 32,
               decoration: BoxDecoration(
                 color: iconColor.withValues(alpha: 0.13),
                 borderRadius: BorderRadius.circular(8),
@@ -1228,19 +1447,32 @@ class _PerfilScreenState extends State<PerfilScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(title,
-                    style: TextStyle(fontWeight: FontWeight.w600,
-                      color: AppColors.textPrimaryC(isDark), fontSize: 14)),
+                  Text(
+                    title,
+                    style: TextStyle(
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.textPrimaryC(isDark),
+                      fontSize: 14,
+                    ),
+                  ),
                   SizedBox(height: 2),
-                  Text(subtitle,
+                  Text(
+                    subtitle,
                     maxLines: 2,
-                    style: TextStyle(fontWeight: FontWeight.w500, fontSize: 12,
-                      color: AppColors.textSecondaryC(isDark))),
+                    style: TextStyle(
+                      fontWeight: FontWeight.w500,
+                      fontSize: 12,
+                      color: AppColors.textSecondaryC(isDark),
+                    ),
+                  ),
                 ],
               ),
             ),
-            Icon(CupertinoIcons.chevron_right,
-              size: 14, color: AppColors.textTertiaryC(isDark)),
+            Icon(
+              CupertinoIcons.chevron_right,
+              size: 14,
+              color: AppColors.textTertiaryC(isDark),
+            ),
           ],
         ),
       ),
@@ -1262,11 +1494,15 @@ class _PerfilScreenState extends State<PerfilScreen> {
   }) {
     final r = context.r;
     return Padding(
-      padding: EdgeInsets.symmetric(horizontal: r.tileHorizontalPad, vertical: r.tileVerticalPad),
+      padding: EdgeInsets.symmetric(
+        horizontal: r.tileHorizontalPad,
+        vertical: r.tileVerticalPad,
+      ),
       child: Row(
         children: [
           Container(
-            width: 32, height: 32,
+            width: 32,
+            height: 32,
             decoration: BoxDecoration(
               color: iconColor.withValues(alpha: 0.13),
               borderRadius: BorderRadius.circular(8),
@@ -1278,14 +1514,24 @@ class _PerfilScreenState extends State<PerfilScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(title,
-                  style: TextStyle(fontWeight: FontWeight.w600,
-                    color: AppColors.textPrimaryC(isDark), fontSize: 14)),
+                Text(
+                  title,
+                  style: TextStyle(
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.textPrimaryC(isDark),
+                    fontSize: 14,
+                  ),
+                ),
                 SizedBox(height: 2),
-                Text(subtitle,
+                Text(
+                  subtitle,
                   maxLines: 2,
-                  style: TextStyle(fontWeight: FontWeight.w500, fontSize: 12,
-                    color: AppColors.textSecondaryC(isDark))),
+                  style: TextStyle(
+                    fontWeight: FontWeight.w500,
+                    fontSize: 12,
+                    color: AppColors.textSecondaryC(isDark),
+                  ),
+                ),
               ],
             ),
           ),
@@ -1310,29 +1556,52 @@ class _PerfilScreenState extends State<PerfilScreen> {
       builder: (context, _, __) {
         final active = Theme.of(context).brightness == Brightness.dark;
         return Padding(
-          padding: EdgeInsets.symmetric(horizontal: r.tileHorizontalPad, vertical: r.tileVerticalPad),
+          padding: EdgeInsets.symmetric(
+            horizontal: r.tileHorizontalPad,
+            vertical: r.tileVerticalPad,
+          ),
           child: Row(
             children: [
               Container(
-                width: 32, height: 32,
+                width: 32,
+                height: 32,
                 decoration: BoxDecoration(
-                  color: AppColors.accentForTheme(isDark).withValues(alpha: 0.12),
+                  color: AppColors.accentForTheme(
+                    isDark,
+                  ).withValues(alpha: 0.12),
                   borderRadius: BorderRadius.circular(8),
                 ),
-                child: Icon(active ? CupertinoIcons.moon_fill : CupertinoIcons.sun_max_fill,
-                  size: 16, color: AppColors.accentForTheme(isDark)),
+                child: Icon(
+                  active
+                      ? CupertinoIcons.moon_fill
+                      : CupertinoIcons.sun_max_fill,
+                  size: 16,
+                  color: AppColors.accentForTheme(isDark),
+                ),
               ),
               SizedBox(width: r.spaceMd),
               Expanded(
-                child: Text('Modo Oscuro',
-                  style: TextStyle(fontWeight: FontWeight.w600,
-                    color: AppColors.textPrimaryC(isDark), fontSize: 14)),
+                child: Text(
+                  'Modo Oscuro',
+                  style: TextStyle(
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.textPrimaryC(isDark),
+                    fontSize: 14,
+                  ),
+                ),
               ),
               CupertinoSwitch(
                 value: active,
                 activeTrackColor: AppColors.primary,
-                onChanged: (val) =>
-                    ThemeManager.setThemeMode(val ? ThemeMode.dark : ThemeMode.light),
+                onChanged: (val) {
+                  SoundManager.playUi(
+                    val ? AppSounds.toggleOn : AppSounds.toggleOff,
+                    volume: 0.5,
+                  );
+                  ThemeManager.setThemeMode(
+                    val ? ThemeMode.dark : ThemeMode.light,
+                  );
+                },
               ),
             ],
           ),
@@ -1346,33 +1615,55 @@ class _PerfilScreenState extends State<PerfilScreen> {
     return ValueListenableBuilder<bool>(
       valueListenable: SoundManager.soundEnabledNotifier,
       builder: (context, soundEnabled, __) {
-        final tileColor = soundEnabled ? AppColors.accent : AppColors.textTertiary;
+        final tileColor = soundEnabled
+            ? AppColors.accent
+            : AppColors.textTertiary;
         return Padding(
-          padding: EdgeInsets.symmetric(horizontal: r.tileHorizontalPad, vertical: r.tileVerticalPad),
+          padding: EdgeInsets.symmetric(
+            horizontal: r.tileHorizontalPad,
+            vertical: r.tileVerticalPad,
+          ),
           child: Row(
             children: [
               Container(
-                width: 32, height: 32,
+                width: 32,
+                height: 32,
                 decoration: BoxDecoration(
                   color: tileColor.withValues(alpha: 0.12),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Icon(
-                  soundEnabled ? CupertinoIcons.speaker_2_fill : CupertinoIcons.speaker_slash_fill,
-                  size: 16, color: tileColor),
+                  soundEnabled
+                      ? CupertinoIcons.speaker_2_fill
+                      : CupertinoIcons.speaker_slash_fill,
+                  size: 16,
+                  color: tileColor,
+                ),
               ),
               SizedBox(width: r.spaceMd),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('Sonidos de la App',
-                      style: TextStyle(fontWeight: FontWeight.w600,
-                        color: AppColors.textPrimaryC(isDark), fontSize: 14)),
+                    Text(
+                      'Sonidos de la App',
+                      style: TextStyle(
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.textPrimaryC(isDark),
+                        fontSize: 14,
+                      ),
+                    ),
                     SizedBox(height: 2),
-                    Text(soundEnabled ? 'Activados' : 'Desactivados',
-                      style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500,
-                        color: soundEnabled ? AppColors.accent : AppColors.textTertiaryC(isDark))),
+                    Text(
+                      soundEnabled ? 'Activados' : 'Desactivados',
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w500,
+                        color: soundEnabled
+                            ? AppColors.accent
+                            : AppColors.textTertiaryC(isDark),
+                      ),
+                    ),
                   ],
                 ),
               ),
@@ -1407,25 +1698,34 @@ class _PerfilScreenState extends State<PerfilScreen> {
         padding: EdgeInsets.zero,
         onPressed: () => _confirmLogout(),
         child: Padding(
-          padding: EdgeInsets.symmetric(horizontal: r.tileHorizontalPad, vertical: r.tileVerticalPad),
+          padding: EdgeInsets.symmetric(
+            horizontal: r.tileHorizontalPad,
+            vertical: r.tileVerticalPad,
+          ),
           child: Row(
             children: [
               Container(
-                width: 32, height: 32,
+                width: 32,
+                height: 32,
                 decoration: BoxDecoration(
                   color: CupertinoColors.destructiveRed.withValues(alpha: 0.10),
                   borderRadius: BorderRadius.circular(8),
                 ),
-                child: const Icon(CupertinoIcons.square_arrow_left,
-                  size: 16, color: CupertinoColors.destructiveRed),
+                child: const Icon(
+                  CupertinoIcons.square_arrow_left,
+                  size: 16,
+                  color: CupertinoColors.destructiveRed,
+                ),
               ),
               SizedBox(width: r.spaceMd),
-              Text('Cerrar Sesión',
+              Text(
+                'Cerrar Sesión',
                 style: const TextStyle(
                   color: CupertinoColors.destructiveRed,
                   fontWeight: FontWeight.w700,
                   fontSize: 14,
-                )),
+                ),
+              ),
             ],
           ),
         ),
@@ -1442,7 +1742,8 @@ class _PerfilScreenState extends State<PerfilScreen> {
     if (_bioStatus == DeviceBiometricStatus.available && _isBiometricEnabled) {
       return 'PIN activo · $_bioLabel activada';
     }
-    if (_bioStatus == DeviceBiometricStatus.unavailable) return 'PIN activo · Solo PIN disponible';
+    if (_bioStatus == DeviceBiometricStatus.unavailable)
+      return 'PIN activo · Solo PIN disponible';
     return 'PIN activo · Sin $_bioLabel';
   }
 
@@ -1455,8 +1756,10 @@ class _PerfilScreenState extends State<PerfilScreen> {
       context: context,
       builder: (ctx) => CupertinoAlertDialog(
         title: const Text('Cerrar Sesión'),
-        content: const Text('¿Está seguro que desea cerrar sesión? '
-            'Se borrará su configuración de PIN y huella.'),
+        content: const Text(
+          '¿Está seguro que desea cerrar sesión? '
+          'Se borrará su configuración de PIN y huella.',
+        ),
         actions: [
           CupertinoDialogAction(
             child: const Text('Cancelar'),
@@ -1473,6 +1776,9 @@ class _PerfilScreenState extends State<PerfilScreen> {
 
     if (confirmed == true && mounted) {
       await NotificationService.cancelAllReminders();
+      // Borra los PDFs/documentos generados (PHI) y desactiva FLAG_SECURE.
+      await SecureDocsStore.wipeAll();
+      await ScreenSecurity.disable();
       // wipeAll borra tokens + PIN + sesión + todo en un solo paso
       await TokenStorage.wipeAll();
       UserSession.clear();
@@ -1490,25 +1796,39 @@ class _PerfilScreenState extends State<PerfilScreen> {
     setState(() => _isSavingEmail = true);
     try {
       final idper = int.tryParse(UserSession.currentUser.id) ?? 0;
-      await AuthService().updateProfile(idper: idper, mail: newEmail, fon: _phone);
+      await AuthService().updateProfile(
+        idper: idper,
+        mail: newEmail,
+        fon: _phone,
+      );
       // Sincronizar la sesión global + storage cifrado para que el cambio
       // persista al reentrar al perfil o reiniciar la app.
-      UserSession.currentUser = UserSession.currentUser.copyWith(email: newEmail);
+      UserSession.currentUser = UserSession.currentUser.copyWith(
+        email: newEmail,
+      );
       await SessionRestoreService.saveUserSession(UserSession.currentUser);
       if (!mounted) return;
-      setState(() { _email = newEmail; _isEditingEmail = false; _isSavingEmail = false; });
+      setState(() {
+        _email = newEmail;
+        _isEditingEmail = false;
+        _isSavingEmail = false;
+      });
       await CossmilIosAlert.show(
-        context: context, title: 'Correo actualizado',
+        context: context,
+        title: 'Correo actualizado',
         message: 'Tu correo electrónico fue actualizado exitosamente.',
-        type: AlertType.success, confirmText: 'Aceptar',
+        type: AlertType.success,
+        confirmText: 'Aceptar',
       );
     } catch (e) {
       if (!mounted) return;
       setState(() => _isSavingEmail = false);
       await CossmilIosAlert.show(
-        context: context, title: 'Error',
+        context: context,
+        title: 'Error',
         message: 'No se pudo actualizar el correo: $e',
-        type: AlertType.error, confirmText: 'Aceptar',
+        type: AlertType.error,
+        confirmText: 'Aceptar',
       );
     }
   }
@@ -1522,30 +1842,44 @@ class _PerfilScreenState extends State<PerfilScreen> {
     setState(() => _isSavingPhone = true);
     try {
       final idper = int.tryParse(UserSession.currentUser.id) ?? 0;
-      await AuthService().updateProfile(idper: idper, mail: _email, fon: newPhone);
+      await AuthService().updateProfile(
+        idper: idper,
+        mail: _email,
+        fon: newPhone,
+      );
       // Sincronizar la sesión global + storage cifrado para que el cambio
       // persista al reentrar al perfil o reiniciar la app.
       // OJO: el cuadro de perfil (ProfessionalProfileCard) muestra `numCel`
       // (de aseg-tipo-gpo), no `phone`. Actualizamos ambos para que el cambio
       // se refleje de inmediato en el cuadro. La persistencia definitiva tras
       // un re-login depende de que el backend actualice safil.asegurado.numcel.
-      UserSession.currentUser =
-          UserSession.currentUser.copyWith(phone: newPhone, numCel: newPhone);
+      UserSession.currentUser = UserSession.currentUser.copyWith(
+        phone: newPhone,
+        numCel: newPhone,
+      );
       await SessionRestoreService.saveUserSession(UserSession.currentUser);
       if (!mounted) return;
-      setState(() { _phone = newPhone; _isEditingPhone = false; _isSavingPhone = false; });
+      setState(() {
+        _phone = newPhone;
+        _isEditingPhone = false;
+        _isSavingPhone = false;
+      });
       await CossmilIosAlert.show(
-        context: context, title: 'Celular actualizado',
+        context: context,
+        title: 'Celular actualizado',
         message: 'Tu número de celular fue actualizado exitosamente.',
-        type: AlertType.success, confirmText: 'Aceptar',
+        type: AlertType.success,
+        confirmText: 'Aceptar',
       );
     } catch (e) {
       if (!mounted) return;
       setState(() => _isSavingPhone = false);
       await CossmilIosAlert.show(
-        context: context, title: 'Error',
+        context: context,
+        title: 'Error',
         message: 'No se pudo actualizar el celular: $e',
-        type: AlertType.error, confirmText: 'Aceptar',
+        type: AlertType.error,
+        confirmText: 'Aceptar',
       );
     }
   }
@@ -1574,7 +1908,10 @@ class _PerfilScreenState extends State<PerfilScreen> {
                   suffix: CupertinoButton(
                     padding: const EdgeInsets.only(right: 4),
                     onPressed: () => setDialogState(() => obscure1 = !obscure1),
-                    child: Icon(obscure1 ? CupertinoIcons.eye : CupertinoIcons.eye_slash, size: 18),
+                    child: Icon(
+                      obscure1 ? CupertinoIcons.eye : CupertinoIcons.eye_slash,
+                      size: 18,
+                    ),
                   ),
                 ),
                 const SizedBox(height: 8),
@@ -1585,7 +1922,10 @@ class _PerfilScreenState extends State<PerfilScreen> {
                   suffix: CupertinoButton(
                     padding: const EdgeInsets.only(right: 4),
                     onPressed: () => setDialogState(() => obscure2 = !obscure2),
-                    child: Icon(obscure2 ? CupertinoIcons.eye : CupertinoIcons.eye_slash, size: 18),
+                    child: Icon(
+                      obscure2 ? CupertinoIcons.eye : CupertinoIcons.eye_slash,
+                      size: 18,
+                    ),
                   ),
                 ),
               ],
@@ -1598,55 +1938,72 @@ class _PerfilScreenState extends State<PerfilScreen> {
             ),
             CupertinoDialogAction(
               isDefaultAction: true,
-              onPressed: isSaving ? null : () async {
-                final pwd = newPwdCtrl.text.trim();
-                final confirm = confirmPwdCtrl.text.trim();
-                if (pwd.isEmpty) return;
+              onPressed: isSaving
+                  ? null
+                  : () async {
+                      final pwd = newPwdCtrl.text.trim();
+                      final confirm = confirmPwdCtrl.text.trim();
+                      if (pwd.isEmpty) return;
 
-                // Validación de seguridad de contraseña
-                final isValid = pwd.length >= 6 &&
-                                RegExp(r'[A-Z]').hasMatch(pwd) &&
-                                RegExp(r'[!@#\$%^&*(),.?":{}|<>]').hasMatch(pwd);
+                      // Validación de seguridad de contraseña
+                      final isValid =
+                          pwd.length >= 6 &&
+                          RegExp(r'[A-Z]').hasMatch(pwd) &&
+                          RegExp(r'[!@#\$%^&*(),.?":{}|<>]').hasMatch(pwd);
 
-                if (!isValid) {
-                  await CossmilIosAlert.show(
-                    context: ctx, title: 'Contraseña débil',
-                    message: 'La contraseña debe tener al menos 6 caracteres, una mayúscula y un carácter especial.',
-                    type: AlertType.warning, confirmText: 'Entendido',
-                  );
-                  return;
-                }
+                      if (!isValid) {
+                        await CossmilIosAlert.show(
+                          context: ctx,
+                          title: 'Contraseña débil',
+                          message:
+                              'La contraseña debe tener al menos 6 caracteres, una mayúscula y un carácter especial.',
+                          type: AlertType.warning,
+                          confirmText: 'Entendido',
+                        );
+                        return;
+                      }
 
-                if (pwd != confirm) {
-                  await CossmilIosAlert.show(
-                    context: ctx, title: 'Contraseñas no coinciden',
-                    message: 'Verifica que ambas contraseñas sean iguales.',
-                    type: AlertType.warning, confirmText: 'Entendido',
-                  );
-                  return;
-                }
-                setDialogState(() => isSaving = true);
-                try {
-                  final idper = int.tryParse(UserSession.currentUser.id) ?? 0;
-                  await AuthService().changePassword(idper: idper, newPassword: pwd);
-                  if (!ctx.mounted) return;
-                  Navigator.pop(ctx);
-                  if (!mounted) return;
-                  await CossmilIosAlert.show(
-                    context: context, title: 'Contraseña actualizada',
-                    message: 'Tu contraseña fue cambiada exitosamente.',
-                    type: AlertType.success, confirmText: 'Aceptar',
-                  );
-                } catch (e) {
-                  if (!ctx.mounted) return;
-                  setDialogState(() => isSaving = false);
-                  await CossmilIosAlert.show(
-                    context: ctx, title: 'Error',
-                    message: 'No se pudo cambiar la contraseña: $e',
-                    type: AlertType.error, confirmText: 'Aceptar',
-                  );
-                }
-              },
+                      if (pwd != confirm) {
+                        await CossmilIosAlert.show(
+                          context: ctx,
+                          title: 'Contraseñas no coinciden',
+                          message:
+                              'Verifica que ambas contraseñas sean iguales.',
+                          type: AlertType.warning,
+                          confirmText: 'Entendido',
+                        );
+                        return;
+                      }
+                      setDialogState(() => isSaving = true);
+                      try {
+                        final idper =
+                            int.tryParse(UserSession.currentUser.id) ?? 0;
+                        await AuthService().changePassword(
+                          idper: idper,
+                          newPassword: pwd,
+                        );
+                        if (!ctx.mounted) return;
+                        Navigator.pop(ctx);
+                        if (!mounted) return;
+                        await CossmilIosAlert.show(
+                          context: context,
+                          title: 'Contraseña actualizada',
+                          message: 'Tu contraseña fue cambiada exitosamente.',
+                          type: AlertType.success,
+                          confirmText: 'Aceptar',
+                        );
+                      } catch (e) {
+                        if (!ctx.mounted) return;
+                        setDialogState(() => isSaving = false);
+                        await CossmilIosAlert.show(
+                          context: ctx,
+                          title: 'Error',
+                          message: 'No se pudo cambiar la contraseña: $e',
+                          type: AlertType.error,
+                          confirmText: 'Aceptar',
+                        );
+                      }
+                    },
               child: isSaving
                   ? const CupertinoActivityIndicator()
                   : const Text('Guardar'),
@@ -1660,4 +2017,3 @@ class _PerfilScreenState extends State<PerfilScreen> {
     confirmPwdCtrl.dispose();
   }
 }
-

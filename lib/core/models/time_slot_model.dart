@@ -29,11 +29,9 @@ class TimeSlotModel {
   factory TimeSlotModel.fromJson(Map<String, dynamic> json) {
     return TimeSlotModel(
       time: json['hora'] as String? ?? json['time'] as String? ?? '',
-      isAvailable: json['disponible'] as bool? ??
-          json['isAvailable'] as bool? ??
-          false,
-      statusLevel: json['nivel'] as String? ??
-          json['statusLevel'] as String?,
+      isAvailable:
+          json['disponible'] as bool? ?? json['isAvailable'] as bool? ?? false,
+      statusLevel: json['nivel'] as String? ?? json['statusLevel'] as String?,
     );
   }
 
@@ -55,21 +53,23 @@ class TimeSlotModel {
 
     int? safeNumero;
     final nRaw = json['numero'];
-    if (nRaw is int) safeNumero = nRaw;
-    else if (nRaw != null) safeNumero = int.tryParse(nRaw.toString());
+    if (nRaw is int)
+      safeNumero = nRaw;
+    else if (nRaw != null)
+      safeNumero = int.tryParse(nRaw.toString());
 
     return TimeSlotModel(
-      time:        json['hora'] as String? ?? '',
+      time: json['hora'] as String? ?? '',
       isAvailable: !ocupado,
       statusLevel: ocupado ? 'none' : 'high',
-      idhora:      json['idhora']?.toString(),
-      numero:      safeNumero,
+      idhora: json['idhora']?.toString(),
+      numero: safeNumero,
     );
   }
 
   Map<String, dynamic> toJson() => {
-        'time': time,
-        'isAvailable': isAvailable,
-        'statusLevel': statusLevel,
-      };
+    'time': time,
+    'isAvailable': isAvailable,
+    'statusLevel': statusLevel,
+  };
 }

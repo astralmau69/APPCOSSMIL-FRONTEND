@@ -20,13 +20,18 @@ class RegionalModel {
       final sucursales = json['sucursales'] as List<dynamic>;
       return RegionalModel(
         id: (json['iddepto'] ?? json['idreg'] ?? json['id'] ?? '').toString(),
-        name: (json['departamento'] as String? ?? json['regional'] as String? ?? json['name'] as String? ?? '').toDisplayCase,
+        name:
+            (json['departamento'] as String? ??
+                    json['regional'] as String? ??
+                    json['name'] as String? ??
+                    '')
+                .toDisplayCase,
         hospitals: sucursales
             .map((s) => HospitalModel.fromJson(s as Map<String, dynamic>))
             .toList(),
       );
     }
-    
+
     // Si es un objeto de sucursal directo (formato plano)
     if (json.containsKey('idsuc') || json.containsKey('sucursal')) {
       final hospital = HospitalModel.fromJson(json);
@@ -39,14 +44,15 @@ class RegionalModel {
 
     return RegionalModel(
       id: (json['idreg'] ?? json['id'] ?? '').toString(),
-      name: (json['regional'] as String? ?? json['name'] as String? ?? '').toDisplayCase,
+      name: (json['regional'] as String? ?? json['name'] as String? ?? '')
+          .toDisplayCase,
       hospitals: [],
     );
   }
 
   Map<String, dynamic> toJson() => {
-        'id': id,
-        'name': name,
-        'hospitals': hospitals.map((h) => h.toJson()).toList(),
-      };
+    'id': id,
+    'name': name,
+    'hospitals': hospitals.map((h) => h.toJson()).toList(),
+  };
 }

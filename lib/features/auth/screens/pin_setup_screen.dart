@@ -2,8 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/services.dart';
 import '../../../core/constants/app_colors.dart';
+import '../../../core/constants/app_sounds.dart';
 import '../../../core/extensions/responsive_extensions.dart';
 import '../../../core/services/security_service.dart';
+import '../../../core/theme/sound_manager.dart';
 import '../../../core/widgets/custom_numpad.dart';
 
 /// Pantalla de creación/cambio de PIN de 4 dígitos.
@@ -55,9 +57,10 @@ class _PinSetupScreenState extends State<PinSetupScreen>
       vsync: this,
       duration: const Duration(milliseconds: 400),
     );
-    _shakeAnim = Tween<double>(begin: 0, end: 1).animate(
-      CurvedAnimation(parent: _shakeCtrl, curve: Curves.elasticIn),
-    );
+    _shakeAnim = Tween<double>(
+      begin: 0,
+      end: 1,
+    ).animate(CurvedAnimation(parent: _shakeCtrl, curve: Curves.elasticIn));
   }
 
   @override
@@ -70,9 +73,12 @@ class _PinSetupScreenState extends State<PinSetupScreen>
 
   String get _activeInput {
     switch (_phase) {
-      case _PinPhase.verifyCurrentPin: return _currentPinInput;
-      case _PinPhase.createNewPin:     return _newPin;
-      case _PinPhase.confirmNewPin:    return _confirmPin;
+      case _PinPhase.verifyCurrentPin:
+        return _currentPinInput;
+      case _PinPhase.createNewPin:
+        return _newPin;
+      case _PinPhase.confirmNewPin:
+        return _confirmPin;
     }
   }
 
@@ -163,6 +169,7 @@ class _PinSetupScreenState extends State<PinSetupScreen>
 
   Future<void> _verifyAndSave() async {
     if (_newPin != _confirmPin) {
+      SoundManager.playUi(AppSounds.error, volume: 0.5);
       HapticFeedback.vibrate();
       setState(() {
         _confirmPin = '';
@@ -174,6 +181,9 @@ class _PinSetupScreenState extends State<PinSetupScreen>
     setState(() => _saving = true);
     await SecurityService.savePin(_newPin);
     if (!mounted) return;
+    // Arpegio de confirmación: cierra la configuración con una señal clara de
+    // que el PIN quedó guardado.
+    SoundManager.playUi(AppSounds.success, volume: 0.5);
     Navigator.pop(context, true);
   }
 
@@ -192,91 +202,96 @@ class _PinSetupScreenState extends State<PinSetupScreen>
         }
       },
       child: Scaffold(
-      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-      appBar: CupertinoNavigationBar(
-        middle: Text(_appBarTitle),
-        backgroundColor: Colors.transparent,
-        border: null,
-      ),
-      body: SafeArea(
-        child: Column(
-          children: [
-            SizedBox(height: r.spaceXl),
-
-            // ── Header animado entre fases ──────────────────────
-            AnimatedSwitcher(
-              duration: const Duration(milliseconds: 280),
-              switchInCurve: Curves.easeOutCubic,
-              switchOutCurve: Curves.easeIn,
-              transitionBuilder: (child, animation) => FadeTransition(
-                opacity: animation,
-                child: SlideTransition(
-                  position: Tween<Offset>(
-                    begin: const Offset(0, 0.08),
-                    end: Offset.zero,
-                  ).animate(animation),
-                  child: child,
-                ),
-              ),
-              child: _buildPhaseHeader(isDark, r),
-            ),
-
-            SizedBox(height: r.spaceXxl),
-
-            // ── Indicadores ─────────────────────────────────────
-            AnimatedBuilder(
-              animation: _shakeAnim,
-              builder: (context, child) {
-                final offset = _shakeCtrl.isAnimating
-                    ? _shakeOffset(_shakeAnim.value)
-                    : 0.0;
-                return Transform.translate(
-                  offset: Offset(offset, 0),
-                  child: child,
-                );
-              },
-              child: _buildPinIndicators(isDark, r),
-            ),
-
-            SizedBox(height: r.spaceMd),
-
-            // ── Error ────────────────────────────────────────────
-            AnimatedSwitcher(
-              duration: const Duration(milliseconds: 200),
-              child: _errorMessage != null
-                  ? Padding(
-                      key: ValueKey(_errorMessage),
-                      padding: EdgeInsets.symmetric(horizontal: r.pinKeypadPadding),
-                      child: Text(
-                        _errorMessage!,
-                        textAlign: TextAlign.center,
-                        style: context.texts.bodySmall.copyWith(
-                          color: AppColors.error,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    )
-                  : const SizedBox(key: ValueKey('none'), height: 20),
-            ),
-
-            const Spacer(),
-
-            // ── Teclado ──────────────────────────────────────────
-            _buildKeypad(isDark, r),
-
-            SizedBox(height: r.spaceLg),
-          ],
+        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+        appBar: CupertinoNavigationBar(
+          middle: Text(_appBarTitle),
+          backgroundColor: Colors.transparent,
+          border: null,
         ),
-      ),
+        body: SafeArea(
+          child: Column(
+            children: [
+              SizedBox(height: r.spaceXl),
+
+              // ── Header animado entre fases ──────────────────────
+              AnimatedSwitcher(
+                duration: const Duration(milliseconds: 280),
+                switchInCurve: Curves.easeOutCubic,
+                switchOutCurve: Curves.easeIn,
+                transitionBuilder: (child, animation) => FadeTransition(
+                  opacity: animation,
+                  child: SlideTransition(
+                    position: Tween<Offset>(
+                      begin: const Offset(0, 0.08),
+                      end: Offset.zero,
+                    ).animate(animation),
+                    child: child,
+                  ),
+                ),
+                child: _buildPhaseHeader(isDark, r),
+              ),
+
+              SizedBox(height: r.spaceXxl),
+
+              // ── Indicadores ─────────────────────────────────────
+              AnimatedBuilder(
+                animation: _shakeAnim,
+                builder: (context, child) {
+                  final offset = _shakeCtrl.isAnimating
+                      ? _shakeOffset(_shakeAnim.value)
+                      : 0.0;
+                  return Transform.translate(
+                    offset: Offset(offset, 0),
+                    child: child,
+                  );
+                },
+                child: _buildPinIndicators(isDark, r),
+              ),
+
+              SizedBox(height: r.spaceMd),
+
+              // ── Error ────────────────────────────────────────────
+              AnimatedSwitcher(
+                duration: const Duration(milliseconds: 200),
+                child: _errorMessage != null
+                    ? Padding(
+                        key: ValueKey(_errorMessage),
+                        padding: EdgeInsets.symmetric(
+                          horizontal: r.pinKeypadPadding,
+                        ),
+                        child: Text(
+                          _errorMessage!,
+                          textAlign: TextAlign.center,
+                          style: context.texts.bodySmall.copyWith(
+                            color: AppColors.error,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      )
+                    : const SizedBox(key: ValueKey('none'), height: 20),
+              ),
+
+              const Spacer(),
+
+              // ── Teclado ──────────────────────────────────────────
+              _buildKeypad(isDark, r),
+
+              SizedBox(height: r.spaceLg),
+            ],
+          ),
+        ),
       ),
     );
   }
 
   String get _appBarTitle {
     switch (_phase) {
-      case _PinPhase.verifyCurrentPin: return 'Verificar PIN actual';
-      case _PinPhase.createNewPin:     return 'Crear nuevo PIN';
-      case _PinPhase.confirmNewPin:    return 'Confirmar PIN';
+      case _PinPhase.verifyCurrentPin:
+        return 'Verificar PIN actual';
+      case _PinPhase.createNewPin:
+        return 'Crear nuevo PIN';
+      case _PinPhase.confirmNewPin:
+        return 'Confirmar PIN';
     }
   }
 
@@ -319,7 +334,9 @@ class _PinSetupScreenState extends State<PinSetupScreen>
             ),
             SizedBox(height: r.spaceLg),
             Text(
-              widget.requireCurrentPin ? 'Crea tu nuevo PIN' : 'Crea tu PIN de acceso',
+              widget.requireCurrentPin
+                  ? 'Crea tu nuevo PIN'
+                  : 'Crea tu PIN de acceso',
               style: context.texts.titleLarge.copyWith(
                 fontWeight: FontWeight.bold,
               ),
@@ -368,9 +385,12 @@ class _PinSetupScreenState extends State<PinSetupScreen>
 
   Color get _activeIndicatorColor {
     switch (_phase) {
-      case _PinPhase.verifyCurrentPin: return AppColors.warning;
-      case _PinPhase.createNewPin:     return AppColors.primary;
-      case _PinPhase.confirmNewPin:    return AppColors.success;
+      case _PinPhase.verifyCurrentPin:
+        return AppColors.warning;
+      case _PinPhase.createNewPin:
+        return AppColors.primary;
+      case _PinPhase.confirmNewPin:
+        return AppColors.success;
     }
   }
 

@@ -26,7 +26,14 @@ class AuthSuccess extends AuthResult {
   const AuthSuccess(this.token);
 }
 
-enum AuthErrorType { wrongPassword, notFound, disabled, network, server, unknown }
+enum AuthErrorType {
+  wrongPassword,
+  notFound,
+  disabled,
+  network,
+  server,
+  unknown,
+}
 
 class AuthError extends AuthResult {
   final String message;
@@ -39,9 +46,9 @@ class AuthService {
   final http.Client _client;
   final ApiClient _api;
 
-  AuthService({http.Client? client, ApiClient? api}) 
-      : _client = client ?? http.Client(),
-        _api = api ?? ApiClient();
+  AuthService({http.Client? client, ApiClient? api})
+    : _client = client ?? http.Client(),
+      _api = api ?? ApiClient();
 
   /// Login con credenciales del usuario.
   Future<AuthResult> login({
@@ -50,33 +57,40 @@ class AuthService {
   }) async {
     if (AppConfig.useMockData) {
       await Future.delayed(const Duration(milliseconds: 800));
-      return AuthSuccess(AuthTokenModel(
-        accessToken: 'mock_token_${DateTime.now().millisecondsSinceEpoch}',
-        tokenType: 'bearer',
-        expiresIn: 3600,
-        scope: 'read write',
-        jti: 'mock-jti',
-      ));
+      return AuthSuccess(
+        AuthTokenModel(
+          accessToken: 'mock_token_${DateTime.now().millisecondsSinceEpoch}',
+          tokenType: 'bearer',
+          expiresIn: 3600,
+          scope: 'read write',
+          jti: 'mock-jti',
+        ),
+      );
     }
 
     try {
-      final response = await _client.post(
-        ApiConstants.tokenUri,
-        headers: {
-          'Authorization': ApiConstants.basicAuthHeader,
-          'Content-Type': 'application/x-www-form-urlencoded',
-          if (!kIsWeb) 'User-Agent': 'insomnia/2023.5.8',
-        },
-        body: {
-          'grant_type': 'password',
-          'username': username,
-          'password': password,
-        },
-      ).timeout(const Duration(seconds: 30)); // corta la espera en redes lentas
-                                              // (evita el cuelgue de 1-2 min del navegador)
+      final response = await _client
+          .post(
+            ApiConstants.tokenUri,
+            headers: {
+              'Authorization': ApiConstants.basicAuthHeader,
+              'Content-Type': 'application/x-www-form-urlencoded',
+              if (!kIsWeb) 'User-Agent': 'insomnia/2023.5.8',
+            },
+            body: {
+              'grant_type': 'password',
+              'username': username,
+              'password': password,
+            },
+          )
+          .timeout(
+            const Duration(seconds: 30),
+          ); // corta la espera en redes lentas
+      // (evita el cuelgue de 1-2 min del navegador)
 
       if (response.statusCode == 200) {
-        final json = jsonDecode(utf8.decode(response.bodyBytes)) as Map<String, dynamic>;
+        final json =
+            jsonDecode(utf8.decode(response.bodyBytes)) as Map<String, dynamic>;
         final tokenModel = AuthTokenModel.fromJson(json);
 
         // Guardar tokens para que ApiClient pueda usarlos
@@ -91,7 +105,9 @@ class AuthService {
             .toList();
 
         if (kDebugMode) {
-          debugPrint('👨‍👩‍👧‍👦 Beneficiarios encontrados: ${rawBeneficiarios?.length ?? 0}');
+          debugPrint(
+            '👨‍👩‍👧‍👦 Beneficiarios encontrados: ${rawBeneficiarios?.length ?? 0}',
+          );
         }
 
         // Mapear datos básicos a UserSession.currentUser
@@ -99,10 +115,12 @@ class AuthService {
         // es el titular de su propia cuenta COSSMIL — incluyendo empleados civiles
         // que tienen roles distintos de ROLE_ASETIT pero son igualmente titulares.
         final userRoleIsTitular = tokenModel.rol.toUpperCase() != 'ROLE_ASEBEN';
-        
+
         final selfAsFallback = BeneficiaryModel(
           id: tokenModel.idper.toString(),
-          fullName: '${tokenModel.nom} ${tokenModel.pat} ${tokenModel.mat}'.trim().toDisplayCase,
+          fullName: '${tokenModel.nom} ${tokenModel.pat} ${tokenModel.mat}'
+              .trim()
+              .toDisplayCase,
           relationship: userRoleIsTitular ? 'Titular' : 'Beneficiario',
           age: tokenModel.edad,
           gender: tokenModel.genero,
@@ -111,7 +129,8 @@ class AuthService {
           // No-titulares: grado vacío para que displayTitle aplique Sr./Sra.
           grado: userRoleIsTitular
               ? (tokenModel.grado.isNotEmpty ? tokenModel.grado : 'Asegurado')
-              : tokenModel.grado, // puede ser vacío — correcto para beneficiarios
+              : tokenModel
+                    .grado, // puede ser vacío — correcto para beneficiarios
         );
 
         final loggedUser = UserModel(
@@ -136,11 +155,13 @@ class AuthService {
         );
 
         // Si el login es del Titular, pero el grupo familiar obtenido no incluye al titular explícitamente, lo inyectamos:
-        if (rawBeneficiarios != null && userRoleIsTitular && !rawBeneficiarios.any((b) => b.isTitular)) {
+        if (rawBeneficiarios != null &&
+            userRoleIsTitular &&
+            !rawBeneficiarios.any((b) => b.isTitular)) {
           loggedUser.beneficiaries.insert(0, selfAsFallback);
         }
 
-        // Forzar que el Beneficiario Titular tome el grado militar (rank) del modelo principal 
+        // Forzar que el Beneficiario Titular tome el grado militar (rank) del modelo principal
         // si el endpoint de beneficiarios no lo trajo.
         final enforcedBeneficiaries = loggedUser.beneficiaries.map((b) {
           if (b.isTitular && b.grado.isEmpty) {
@@ -162,18 +183,24 @@ class AuthService {
         }).toList();
 
         // Actualizar sesión global
-        UserSession.currentUser = loggedUser.copyWith(beneficiaries: enforcedBeneficiaries);
+        UserSession.currentUser = loggedUser.copyWith(
+          beneficiaries: enforcedBeneficiaries,
+        );
 
         // Fallback global para que displayTitle siempre encuentre el rango del titular
         BeneficiaryModel.titularRankFallback = loggedUser.rank;
 
         if (kDebugMode) {
-          debugPrint('✅ UserSession poblada (${UserSession.currentUser.beneficiaries.length} beneficiarios)');
+          debugPrint(
+            '✅ UserSession poblada (${UserSession.currentUser.beneficiaries.length} beneficiarios)',
+          );
         }
 
         // Guardar nombre de usuario para la pantalla de desbloqueo local
         await SecurityService.saveDisplayName(
-          '${tokenModel.nom} ${tokenModel.pat} ${tokenModel.mat}'.trim().toDisplayCase,
+          '${tokenModel.nom} ${tokenModel.pat} ${tokenModel.mat}'
+              .trim()
+              .toDisplayCase,
         );
 
         // Persistir la sesión BÁSICA de inmediato (rápido) para no depender del
@@ -186,203 +213,290 @@ class AuthService {
         // conexión débil pueda entrar rápido. La sesión se re-guarda al
         // terminar; si falla, queda la sesión básica.
         unawaited(() async {
-        // Intentar cargar la foto jefe y luego la de sus familiares
-        try {
-          final extraData = await fetchProfileExtraData(tokenModel.matricula);
-          String? titularPhoto;
-          if (extraData != null) {
-            titularPhoto = cleanBase64(extraData['foto2'] as String? ?? '');
-            
-            final eBloodType = (extraData['gruposan'] as String? ?? extraData['grupoSanguineo'] as String? ?? extraData['grupo_sanguineo'] as String? ?? '').trim();
-            final eAllergies = (extraData['alergia'] as String? ?? extraData['alergias'] as String? ?? extraData['allergies'] as String? ?? '').trim();
-            final eGrado = (extraData['grado']?.toString() ??
-                            extraData['Grado']?.toString() ??
-                            extraData['rango']?.toString() ??
-                            extraData['Rango']?.toString() ?? '').trim();
-            final eRefe4 = (extraData['refe4']?.toString() ?? '').trim();
-            final eTelfemerg = (extraData['telfemerg'] as String? ?? '').trim();
-            final eReferencia = (extraData['referencia'] as String? ?? '').trim();
-            final eNumCel = (extraData['numcel']?.toString() ?? extraData['numCel']?.toString() ?? '').trim();
-            final eFuerza = (extraData['fuerza'] as String? ?? extraData['desfue'] as String? ?? '').trim();
-            final eAbrgra = (extraData['abrgra']?.toString() ?? '').trim();
-            final eTipopersonal = (extraData['tipopersonal'] as String? ?? '').trim();
-            // El endpoint /aseg-tipo-gpo/{matricula} es la fuente autoritativa
-            // del tipo de afiliado: tipo=='T' significa Titular. Algunos JWT no
-            // devuelven 'rol' = ROLE_ASETIT correctamente, así que confiamos en tipo.
-            final eTipo = (extraData['tipo']?.toString() ?? '').trim().toUpperCase();
-            final isFotoTitular = eTipo == 'T';
+          // Intentar cargar la foto jefe y luego la de sus familiares
+          try {
+            final extraData = await fetchProfileExtraData(tokenModel.matricula);
+            String? titularPhoto;
+            if (extraData != null) {
+              titularPhoto = cleanBase64(extraData['foto2'] as String? ?? '');
 
-            // El campo tipo='B' del endpoint foto-gpo clasifica el tipo de afiliado
-            // al sistema militar (civil/militar), NO si es titular de la cuenta COSSMIL.
-            // Por eso no usamos isFotoTitular para decidir el rol: la fuente de verdad
-            // es el JWT. Solo ROLE_ASEBEN indica un beneficiario familiar real.
-            final jwtExplicitlyBeneficiary = !userRoleIsTitular;
+              final eBloodType =
+                  (extraData['gruposan'] as String? ??
+                          extraData['grupoSanguineo'] as String? ??
+                          extraData['grupo_sanguineo'] as String? ??
+                          '')
+                      .trim();
+              final eAllergies =
+                  (extraData['alergia'] as String? ??
+                          extraData['alergias'] as String? ??
+                          extraData['allergies'] as String? ??
+                          '')
+                      .trim();
+              final eGrado =
+                  (extraData['grado']?.toString() ??
+                          extraData['Grado']?.toString() ??
+                          extraData['rango']?.toString() ??
+                          extraData['Rango']?.toString() ??
+                          '')
+                      .trim();
+              final eRefe4 = (extraData['refe4']?.toString() ?? '').trim();
+              final eTelfemerg = (extraData['telfemerg'] as String? ?? '')
+                  .trim();
+              final eReferencia = (extraData['referencia'] as String? ?? '')
+                  .trim();
+              final eNumCel =
+                  (extraData['numcel']?.toString() ??
+                          extraData['numCel']?.toString() ??
+                          '')
+                      .trim();
+              final eFuerza =
+                  (extraData['fuerza'] as String? ??
+                          extraData['desfue'] as String? ??
+                          '')
+                      .trim();
+              final eAbrgra = (extraData['abrgra']?.toString() ?? '').trim();
+              final eTipopersonal = (extraData['tipopersonal'] as String? ?? '')
+                  .trim();
+              // El endpoint /aseg-tipo-gpo/{matricula} es la fuente autoritativa
+              // del tipo de afiliado: tipo=='T' significa Titular. Algunos JWT no
+              // devuelven 'rol' = ROLE_ASETIT correctamente, así que confiamos en tipo.
+              final eTipo = (extraData['tipo']?.toString() ?? '')
+                  .trim()
+                  .toUpperCase();
+              final isFotoTitular = eTipo == 'T';
 
-            UserSession.currentUser = UserSession.currentUser.copyWith(
-              photoBase64: titularPhoto,
-              birthDate: extraData['fecnac'] as String? ?? '',
-              bloodType: eBloodType.isNotEmpty ? eBloodType : UserSession.currentUser.bloodType,
-              allergies: eAllergies.isNotEmpty ? eAllergies : UserSession.currentUser.allergies,
-              // tipo='B': guardar abrgra como rank para combinar con fuerza en UI ("SOF.1RO. - EJERCITO").
-              rank: (eTipo == 'B') ? eAbrgra : (eGrado.isNotEmpty ? eGrado : UserSession.currentUser.rank),
-              role: jwtExplicitlyBeneficiary
-                  ? null    // beneficiario: conservar rol del JWT
-                  : 'Titular', // titular (militar o civil): siempre 'Titular'
-              serviceStatus: eRefe4.isNotEmpty ? eRefe4 : UserSession.currentUser.serviceStatus,
-              emergencyPhone: eTelfemerg.isNotEmpty ? eTelfemerg : UserSession.currentUser.emergencyPhone,
-              referencia: eReferencia.isNotEmpty ? eReferencia : UserSession.currentUser.referencia,
-              numCel: eNumCel.isNotEmpty ? eNumCel : UserSession.currentUser.numCel,
-              fuerza: eFuerza.isNotEmpty ? eFuerza : UserSession.currentUser.fuerza,
-              tipopersonal: eTipopersonal.isNotEmpty ? eTipopersonal : UserSession.currentUser.tipopersonal,
-            );
+              // El campo tipo='B' del endpoint foto-gpo clasifica el tipo de afiliado
+              // al sistema militar (civil/militar), NO si es titular de la cuenta COSSMIL.
+              // Por eso no usamos isFotoTitular para decidir el rol: la fuente de verdad
+              // es el JWT. Solo ROLE_ASEBEN indica un beneficiario familiar real.
+              final jwtExplicitlyBeneficiary = !userRoleIsTitular;
 
-            // Actualizar fallback con el grado real del endpoint de foto
-            BeneficiaryModel.titularRankFallback = UserSession.currentUser.rank;
-
-            // Extraer género del endpoint de foto si el token no lo trayó.
-            // Necesario para beneficiarios no-titulares cuyo JWT omite el campo.
-            final eGenero = (extraData['genero']?.toString() ??
-                             extraData['sexo']?.toString() ??
-                             extraData['gender']?.toString() ?? '').trim();
-            if (eGenero.isNotEmpty && UserSession.currentUser.gender.isEmpty) {
               UserSession.currentUser = UserSession.currentUser.copyWith(
-                gender: eGenero,
+                photoBase64: titularPhoto,
+                birthDate: extraData['fecnac'] as String? ?? '',
+                bloodType: eBloodType.isNotEmpty
+                    ? eBloodType
+                    : UserSession.currentUser.bloodType,
+                allergies: eAllergies.isNotEmpty
+                    ? eAllergies
+                    : UserSession.currentUser.allergies,
+                // tipo='B': guardar abrgra como rank para combinar con fuerza en UI ("SOF.1RO. - EJERCITO").
+                rank: (eTipo == 'B')
+                    ? eAbrgra
+                    : (eGrado.isNotEmpty
+                          ? eGrado
+                          : UserSession.currentUser.rank),
+                role: jwtExplicitlyBeneficiary
+                    ? null // beneficiario: conservar rol del JWT
+                    : 'Titular', // titular (militar o civil): siempre 'Titular'
+                serviceStatus: eRefe4.isNotEmpty
+                    ? eRefe4
+                    : UserSession.currentUser.serviceStatus,
+                emergencyPhone: eTelfemerg.isNotEmpty
+                    ? eTelfemerg
+                    : UserSession.currentUser.emergencyPhone,
+                referencia: eReferencia.isNotEmpty
+                    ? eReferencia
+                    : UserSession.currentUser.referencia,
+                numCel: eNumCel.isNotEmpty
+                    ? eNumCel
+                    : UserSession.currentUser.numCel,
+                fuerza: eFuerza.isNotEmpty
+                    ? eFuerza
+                    : UserSession.currentUser.fuerza,
+                tipopersonal: eTipopersonal.isNotEmpty
+                    ? eTipopersonal
+                    : UserSession.currentUser.tipopersonal,
               );
-              // Actualizar también el selfAsFallback en la lista de beneficiarios
-              final updatedBensWithGender = UserSession.currentUser.beneficiaries.map((b) {
-                if (b.id == tokenModel.idper.toString() && b.gender.isEmpty) {
-                  return BeneficiaryModel(
-                    id: b.id,
-                    fullName: b.fullName,
-                    relationship: b.relationship,
-                    age: b.age,
-                    gender: eGenero,
-                    matricula: b.matricula,
-                    photoBase64: b.photoBase64,
-                    grado: b.grado,
-                    serviceStatus: b.serviceStatus,
-                  );
-                }
-                return b;
-              }).toList();
-              UserSession.currentUser = UserSession.currentUser.copyWith(
-                beneficiaries: updatedBensWithGender,
-              );
-            }
 
-            // Asegurar que exista una entrada Titular en la lista de beneficiarios.
-            // Si el JWT no marcó al usuario como ROLE_ASETIT, el self-entry quedó como
-            // 'Beneficiario' y el bloque que actualiza al titular (foto/grado) no encuentra
-            // a nadie. Detectamos al titular real comparando matrícula/idper.
-            final selfId = tokenModel.idper.toString();
-            final selfMatricula = tokenModel.matricula.trim();
-            final currentBens = UserSession.currentUser.beneficiaries;
-            final hasTitularEntry = currentBens.any((b) => b.isTitular);
+              // Actualizar fallback con el grado real del endpoint de foto
+              BeneficiaryModel.titularRankFallback =
+                  UserSession.currentUser.rank;
 
-            List<BeneficiaryModel> updatedBeneficiaries;
-            if (isFotoTitular && !hasTitularEntry) {
-              final selfIdx = currentBens.indexWhere(
-                (b) => b.id == selfId || b.matricula.trim() == selfMatricula,
-              );
-              if (selfIdx >= 0) {
-                final existing = currentBens[selfIdx];
-                updatedBeneficiaries = List<BeneficiaryModel>.from(currentBens);
-                updatedBeneficiaries[selfIdx] = BeneficiaryModel(
-                  id: existing.id,
-                  fullName: existing.fullName,
-                  relationship: 'Titular',
-                  age: existing.age,
-                  gender: existing.gender.isNotEmpty ? existing.gender : tokenModel.genero,
-                  matricula: existing.matricula,
-                  photoBase64: titularPhoto.isNotEmpty ? titularPhoto : existing.photoBase64,
-                  grado: eGrado.isNotEmpty ? eGrado : UserSession.currentUser.rank,
-                  serviceStatus: eRefe4.isNotEmpty ? eRefe4 : existing.serviceStatus,
+              // Extraer género del endpoint de foto si el token no lo trayó.
+              // Necesario para beneficiarios no-titulares cuyo JWT omite el campo.
+              final eGenero =
+                  (extraData['genero']?.toString() ??
+                          extraData['sexo']?.toString() ??
+                          extraData['gender']?.toString() ??
+                          '')
+                      .trim();
+              if (eGenero.isNotEmpty &&
+                  UserSession.currentUser.gender.isEmpty) {
+                UserSession.currentUser = UserSession.currentUser.copyWith(
+                  gender: eGenero,
                 );
+                // Actualizar también el selfAsFallback en la lista de beneficiarios
+                final updatedBensWithGender = UserSession
+                    .currentUser
+                    .beneficiaries
+                    .map((b) {
+                      if (b.id == tokenModel.idper.toString() &&
+                          b.gender.isEmpty) {
+                        return BeneficiaryModel(
+                          id: b.id,
+                          fullName: b.fullName,
+                          relationship: b.relationship,
+                          age: b.age,
+                          gender: eGenero,
+                          matricula: b.matricula,
+                          photoBase64: b.photoBase64,
+                          grado: b.grado,
+                          serviceStatus: b.serviceStatus,
+                        );
+                      }
+                      return b;
+                    })
+                    .toList();
+                UserSession.currentUser = UserSession.currentUser.copyWith(
+                  beneficiaries: updatedBensWithGender,
+                );
+              }
+
+              // Asegurar que exista una entrada Titular en la lista de beneficiarios.
+              // Si el JWT no marcó al usuario como ROLE_ASETIT, el self-entry quedó como
+              // 'Beneficiario' y el bloque que actualiza al titular (foto/grado) no encuentra
+              // a nadie. Detectamos al titular real comparando matrícula/idper.
+              final selfId = tokenModel.idper.toString();
+              final selfMatricula = tokenModel.matricula.trim();
+              final currentBens = UserSession.currentUser.beneficiaries;
+              final hasTitularEntry = currentBens.any((b) => b.isTitular);
+
+              List<BeneficiaryModel> updatedBeneficiaries;
+              if (isFotoTitular && !hasTitularEntry) {
+                final selfIdx = currentBens.indexWhere(
+                  (b) => b.id == selfId || b.matricula.trim() == selfMatricula,
+                );
+                if (selfIdx >= 0) {
+                  final existing = currentBens[selfIdx];
+                  updatedBeneficiaries = List<BeneficiaryModel>.from(
+                    currentBens,
+                  );
+                  updatedBeneficiaries[selfIdx] = BeneficiaryModel(
+                    id: existing.id,
+                    fullName: existing.fullName,
+                    relationship: 'Titular',
+                    age: existing.age,
+                    gender: existing.gender.isNotEmpty
+                        ? existing.gender
+                        : tokenModel.genero,
+                    matricula: existing.matricula,
+                    photoBase64: titularPhoto.isNotEmpty
+                        ? titularPhoto
+                        : existing.photoBase64,
+                    grado: eGrado.isNotEmpty
+                        ? eGrado
+                        : UserSession.currentUser.rank,
+                    serviceStatus: eRefe4.isNotEmpty
+                        ? eRefe4
+                        : existing.serviceStatus,
+                  );
+                } else {
+                  final selfTitular = BeneficiaryModel(
+                    id: selfId,
+                    fullName: UserSession.currentUser.fullName,
+                    relationship: 'Titular',
+                    age: tokenModel.edad,
+                    gender: tokenModel.genero,
+                    matricula: selfMatricula,
+                    photoBase64: titularPhoto,
+                    grado: eGrado.isNotEmpty
+                        ? eGrado
+                        : UserSession.currentUser.rank,
+                    serviceStatus: eRefe4,
+                  );
+                  updatedBeneficiaries = [selfTitular, ...currentBens];
+                }
               } else {
-                final selfTitular = BeneficiaryModel(
-                  id: selfId,
-                  fullName: UserSession.currentUser.fullName,
-                  relationship: 'Titular',
-                  age: tokenModel.edad,
-                  gender: tokenModel.genero,
-                  matricula: selfMatricula,
-                  photoBase64: titularPhoto,
-                  grado: eGrado.isNotEmpty ? eGrado : UserSession.currentUser.rank,
-                  serviceStatus: eRefe4,
-                );
-                updatedBeneficiaries = [selfTitular, ...currentBens];
+                // Caso normal: ya hay un titular en la lista, solo refrescamos su foto/grado.
+                updatedBeneficiaries = currentBens.map((b) {
+                  if (b.isTitular) {
+                    return BeneficiaryModel(
+                      id: b.id,
+                      fullName: b.fullName,
+                      relationship: b.relationship,
+                      age: b.age,
+                      gender: b.gender.isNotEmpty
+                          ? b.gender
+                          : tokenModel.genero,
+                      matricula: b.matricula,
+                      photoBase64: titularPhoto ?? '',
+                      grado: eGrado.isNotEmpty
+                          ? eGrado
+                          : UserSession.currentUser.rank,
+                      serviceStatus: eRefe4.isNotEmpty
+                          ? eRefe4
+                          : UserSession.currentUser.serviceStatus,
+                    );
+                  }
+                  return b;
+                }).toList();
               }
-            } else {
-              // Caso normal: ya hay un titular en la lista, solo refrescamos su foto/grado.
-              updatedBeneficiaries = currentBens.map((b) {
-                if (b.isTitular) {
-                  return BeneficiaryModel(
-                    id: b.id,
-                    fullName: b.fullName,
-                    relationship: b.relationship,
-                    age: b.age,
-                    gender: b.gender.isNotEmpty ? b.gender : tokenModel.genero,
-                    matricula: b.matricula,
-                    photoBase64: titularPhoto ?? '',
-                    grado: eGrado.isNotEmpty ? eGrado : UserSession.currentUser.rank,
-                    serviceStatus: eRefe4.isNotEmpty ? eRefe4 : UserSession.currentUser.serviceStatus,
-                  );
-                }
-                return b;
-              }).toList();
+              UserSession.currentUser = UserSession.currentUser.copyWith(
+                beneficiaries: updatedBeneficiaries,
+              );
             }
-            UserSession.currentUser = UserSession.currentUser.copyWith(beneficiaries: updatedBeneficiaries);
-          }
 
-          // Fetch paralelo de fotos de beneficiarios (máximo 4 para no saturar)
-          final otherBeneficiaries = UserSession.currentUser.beneficiaries
-              .where((b) => !b.isTitular && b.matricula.isNotEmpty)
-              .take(4)
-              .toList();
+            // Fetch paralelo de fotos de beneficiarios (máximo 4 para no saturar)
+            final otherBeneficiaries = UserSession.currentUser.beneficiaries
+                .where((b) => !b.isTitular && b.matricula.isNotEmpty)
+                .take(4)
+                .toList();
 
-          if (otherBeneficiaries.isNotEmpty) {
-            if (kDebugMode) {
-              debugPrint('📸 Fetching fotos para ${otherBeneficiaries.length} familiares...');
-            }
-            final photoFutures = otherBeneficiaries.map(
-              (b) => fetchProfileExtraData(b.matricula)
-                  .timeout(const Duration(seconds: 10), onTimeout: () => null),
-            );
-            final results = await Future.wait(photoFutures);
-
-            final finalBeneficiaries = UserSession.currentUser.beneficiaries.map((b) {
-              final idx = otherBeneficiaries.indexWhere((ob) => ob.id == b.id);
-              if (idx != -1 && results[idx] != null) {
-                final data = results[idx]!;
-                final photo = cleanBase64(data['foto2'] as String? ?? '');
-                final bGrado = (data['grado'] as String? ?? '').trim();
-                final bRefe4 = (data['refe4'] as String? ?? '').trim();
-                return BeneficiaryModel(
-                  id: b.id,
-                  fullName: b.fullName,
-                  relationship: b.relationship,
-                  age: b.age,
-                  gender: b.gender,
-                  matricula: b.matricula,
-                  photoBase64: photo,
-                  grado: bGrado,
-                  serviceStatus: bRefe4,
+            if (otherBeneficiaries.isNotEmpty) {
+              if (kDebugMode) {
+                debugPrint(
+                  '📸 Fetching fotos para ${otherBeneficiaries.length} familiares...',
                 );
               }
-              return b;
-            }).toList();
+              final photoFutures = otherBeneficiaries.map(
+                (b) => fetchProfileExtraData(
+                  b.matricula,
+                ).timeout(const Duration(seconds: 10), onTimeout: () => null),
+              );
+              final results = await Future.wait(photoFutures);
 
-            UserSession.currentUser = UserSession.currentUser.copyWith(beneficiaries: finalBeneficiaries);
+              final finalBeneficiaries = UserSession.currentUser.beneficiaries
+                  .map((b) {
+                    final idx = otherBeneficiaries.indexWhere(
+                      (ob) => ob.id == b.id,
+                    );
+                    if (idx != -1 && results[idx] != null) {
+                      final data = results[idx]!;
+                      final photo = cleanBase64(data['foto2'] as String? ?? '');
+                      final bGrado = (data['grado'] as String? ?? '').trim();
+                      final bRefe4 = (data['refe4'] as String? ?? '').trim();
+                      return BeneficiaryModel(
+                        id: b.id,
+                        fullName: b.fullName,
+                        relationship: b.relationship,
+                        age: b.age,
+                        gender: b.gender,
+                        matricula: b.matricula,
+                        photoBase64: photo,
+                        grado: bGrado,
+                        serviceStatus: bRefe4,
+                      );
+                    }
+                    return b;
+                  })
+                  .toList();
+
+              UserSession.currentUser = UserSession.currentUser.copyWith(
+                beneficiaries: finalBeneficiaries,
+              );
+            }
+          } catch (e) {
+            if (kDebugMode) debugPrint('❌ Error cargando fotos de familia: $e');
           }
-        } catch (e) {
-          if (kDebugMode) debugPrint('❌ Error cargando fotos de familia: $e');
-        }
 
-        // Re-guardar el displayName CON rango militar (el primer save fue antes de fetchProfileExtraData)
-        await SecurityService.saveDisplayName(UserSession.currentUser.displayName);
+          // Re-guardar el displayName CON rango militar (el primer save fue antes de fetchProfileExtraData)
+          await SecurityService.saveDisplayName(
+            UserSession.currentUser.displayName,
+          );
 
-        // Persistir sesión completa (nombre, fotos, matrícula, etc.)
-        await SessionRestoreService.saveUserSession(UserSession.currentUser);
+          // Persistir sesión completa (nombre, fotos, matrícula, etc.)
+          await SessionRestoreService.saveUserSession(UserSession.currentUser);
         }());
 
         return AuthSuccess(tokenModel);
@@ -390,29 +504,56 @@ class AuthService {
 
       if (response.statusCode >= 400 && response.statusCode < 500) {
         try {
-          final errJson = jsonDecode(utf8.decode(response.bodyBytes)) as Map<String, dynamic>;
-          final desc = (errJson['error_description'] as String? ?? '').toLowerCase();
-          if (desc.contains('disabled') || desc.contains('bloqueado') || desc.contains('locked') || desc.contains('inact')) {
-            return const AuthError('Tu cuenta está inactiva o bloqueada. Comunícate con COSSMIL.', AuthErrorType.disabled);
+          final errJson =
+              jsonDecode(utf8.decode(response.bodyBytes))
+                  as Map<String, dynamic>;
+          final desc = (errJson['error_description'] as String? ?? '')
+              .toLowerCase();
+          if (desc.contains('disabled') ||
+              desc.contains('bloqueado') ||
+              desc.contains('locked') ||
+              desc.contains('inact')) {
+            return const AuthError(
+              'Tu cuenta está inactiva o bloqueada. Comunícate con COSSMIL.',
+              AuthErrorType.disabled,
+            );
           }
         } catch (_) {}
-        return const AuthError('Ingrese sus credenciales correctos.\nVerifique su matrícula y contraseña.', AuthErrorType.wrongPassword);
+        return const AuthError(
+          'Ingrese sus credenciales correctos.\nVerifique su matrícula y contraseña.',
+          AuthErrorType.wrongPassword,
+        );
       }
 
       if (response.statusCode >= 500) {
         // El servidor COSSMIL frecuentemente retorna 500 frente a errores de autenticación
-        return const AuthError('Ingrese sus credenciales correctos.\nVerifique su matrícula y contraseña.', AuthErrorType.wrongPassword);
+        return const AuthError(
+          'Ingrese sus credenciales correctos.\nVerifique su matrícula y contraseña.',
+          AuthErrorType.wrongPassword,
+        );
       }
 
-      return const AuthError('Ingrese sus credenciales correctos.\nVerifique su matrícula y contraseña.', AuthErrorType.wrongPassword);
+      return const AuthError(
+        'Ingrese sus credenciales correctos.\nVerifique su matrícula y contraseña.',
+        AuthErrorType.wrongPassword,
+      );
     } on SocketException {
-      return const AuthError('Sin conexión a internet. Verifica tu red e inténtalo de nuevo.', AuthErrorType.network);
+      return const AuthError(
+        'Sin conexión a internet. Verifica tu red e inténtalo de nuevo.',
+        AuthErrorType.network,
+      );
     } on TimeoutException {
-      return const AuthError('La conexión tardó demasiado. Tu internet parece lento o inestable; verifica tu red e inténtalo de nuevo.', AuthErrorType.network);
+      return const AuthError(
+        'La conexión tardó demasiado. Tu internet parece lento o inestable; verifica tu red e inténtalo de nuevo.',
+        AuthErrorType.network,
+      );
     } on http.ClientException {
       // En web una falla de conexión (servidor inalcanzable / red lenta) lanza
       // ClientException ("XMLHttpRequest error"), no SocketException.
-      return const AuthError('No pudimos conectar con el servidor. Tu conexión parece lenta o inestable; verifica tu red e inténtalo de nuevo.', AuthErrorType.network);
+      return const AuthError(
+        'No pudimos conectar con el servidor. Tu conexión parece lenta o inestable; verifica tu red e inténtalo de nuevo.',
+        AuthErrorType.network,
+      );
     } on Exception catch (e) {
       return AuthError(ErrorMapper.message(e, context: ErrorContext.login));
     }
@@ -458,7 +599,9 @@ class AuthService {
       }
     } else if (response is ApiError) {
       if (kDebugMode) {
-        debugPrint('❌ Error fetching foto: ${response.message} (${response.statusCode})');
+        debugPrint(
+          '❌ Error fetching foto: ${response.message} (${response.statusCode})',
+        );
       }
     }
 
@@ -481,7 +624,8 @@ class AuthService {
         'pwd': password,
         'mail': email,
         'fon': phone,
-        if (bloodType != null && bloodType.isNotEmpty) 'grupoSanguineo': bloodType,
+        if (bloodType != null && bloodType.isNotEmpty)
+          'grupoSanguineo': bloodType,
         if (allergies != null && allergies.isNotEmpty) 'alergias': allergies,
         'sw': 1,
         'req_reset': true,
@@ -535,8 +679,8 @@ class AuthService {
       case ApiSuccess(:final data):
         // El backend puede retornar texto plano (String) o JSON con campo 'message'.
         if (data is String && data.isNotEmpty) return data;
-        return (data is Map ? data['message'] as String? : null)
-            ?? 'Datos actualizados correctamente';
+        return (data is Map ? data['message'] as String? : null) ??
+            'Datos actualizados correctamente';
       case ApiError(:final message):
         throw Exception(message);
     }

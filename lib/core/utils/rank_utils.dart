@@ -87,7 +87,8 @@ class RankUtils {
     // Si es un rango conocido en extenso → válido
     if (isKnownMilitaryRank(rank)) return true;
     // Si tiene punto (ej. "CNL.", "TTE. CNL.") y no es código civil → asumir abreviatura válida
-    if (rank.contains('.') && !_isCivilianCode(rank.replaceAll('.', ''))) return true;
+    if (rank.contains('.') && !_isCivilianCode(rank.replaceAll('.', '')))
+      return true;
     // Cualquier otro valor desconocido → no mostrar
     return false;
   }
@@ -101,7 +102,10 @@ class RankUtils {
   ///   - `ASEGURADO` → asegurado sin grado específico
   ///   - `EMPLEADO CIVIL` → variante en extenso
   static bool _isCivilianCode(String grado) {
-    final upper = grado.trim().toUpperCase().replaceAll(RegExp(r'\.+$'), ''); // quitar puntos finales
+    final upper = grado.trim().toUpperCase().replaceAll(
+      RegExp(r'\.+$'),
+      '',
+    ); // quitar puntos finales
     const civilianCodes = {
       'EC',
       'ASEGURADO',

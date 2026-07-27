@@ -16,7 +16,7 @@ class LocationService {
           return false; // Permissions are denied
         }
       }
-      
+
       if (permission == LocationPermission.deniedForever) {
         return false; // Permissions are denied forever
       }
@@ -47,13 +47,16 @@ class LocationService {
 
   /// Gets the current location if permissions are granted.
   /// If [requestIfNotGranted] is true, it will attempt to request permission.
-  Future<Position?> getCurrentLocation({bool requestIfNotGranted = true}) async {
+  Future<Position?> getCurrentLocation({
+    bool requestIfNotGranted = true,
+  }) async {
     if (requestIfNotGranted) {
       final hasPermission = await requestPermission();
       if (!hasPermission) return null;
     } else {
       final permission = await Geolocator.checkPermission();
-      if (permission == LocationPermission.denied || permission == LocationPermission.deniedForever) {
+      if (permission == LocationPermission.denied ||
+          permission == LocationPermission.deniedForever) {
         return null;
       }
     }
@@ -61,15 +64,17 @@ class LocationService {
     try {
       // Fast path: try to get the last known position first (great for emulators and bad signal)
       Position? pos = await Geolocator.getLastKnownPosition();
-      
+
       // If we don't have it, or want fresh data
       pos ??= await Geolocator.getCurrentPosition(
         locationSettings: const LocationSettings(
           accuracy: LocationAccuracy.medium,
-          timeLimit: Duration(seconds: 4), // Wait at most 4 seconds so UI is snappy
-        )
+          timeLimit: Duration(
+            seconds: 4,
+          ), // Wait at most 4 seconds so UI is snappy
+        ),
       );
-      
+
       return pos;
     } catch (e) {
       // In case of timeout or any error getting the current location, fallback again

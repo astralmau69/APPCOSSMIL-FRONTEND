@@ -12,7 +12,9 @@ import '../../../core/animations/animated_status_badge.dart';
 import '../../../core/models/reserva_model.dart';
 import '../../../core/services/programacion_service.dart';
 import '../../../core/session/user_session.dart';
+import '../../../core/data/citas_cache.dart';
 import '../../../core/widgets/app_state_widget.dart';
+import '../../../core/widgets/offline_banner.dart';
 import '../../../core/widgets/beneficiary_selector_modal.dart';
 import '../../../core/widgets/adaptive_sliver_nav_bar.dart';
 import '../../../core/widgets/liquid_glass.dart';
@@ -88,6 +90,67 @@ class _ReservasScreenState extends State<ReservasScreen> {
   /// IDs de reservas que fueron ofrecidas para calificación pero el usuario
   /// las omitió. Formato: "${idtran}_${dr}". Usadas para mostrar el botón.
   Set<String> _pendingRatings = {};
+
+  // ── Caché offline (read-through) ─────────────────────────────────────────
+  final _citasCache = CitasCache();
+
+  /// true cuando se muestran citas cacheadas por falta de conexión: se enseña
+  /// el [OfflineBanner] y se apaga toda petición de red (paginación, filtro
+  /// "Cancelado"); el usuario navega solo la lista guardada.
+  bool _isOffline = false;
+
+  /// Fecha de la copia cacheada que se está mostrando (para "actualizado hace X").
+  DateTime? _cachedSince;
+
+  int get _currentIdper =>
+      int.tryParse(_selectedBeneficiary?.id ?? UserSession.currentUser.id) ?? 0;
+
+  /// Bucket de caché según el filtro activo: "Cancelado" usa otro endpoint.
+  String get _citasBucket => _activeStatusFilter == 'Cancelado'
+      ? CitasCache.bucketCancelados
+      : CitasCache.bucketHistorial;
+
+  /// Ordena el historial: pendientes primero (por fecha/hora asc), luego el
+  /// resto por fecha desc. Compartido por la carga en red y la de caché.
+  void _sortHistoryInPlace(List<ReservaModel> list) {
+    list.sort((a, b) {
+      final aP = a.status == 'Pendiente' ? 0 : 1;
+      final bP = b.status == 'Pendiente' ? 0 : 1;
+      if (aP != bP) return aP.compareTo(bP);
+      if (a.status == 'Pendiente') {
+        final dC = a.date.compareTo(b.date);
+        if (dC != 0) return dC;
+        return a.time.compareTo(b.time);
+      }
+      final dC = b.date.compareTo(a.date);
+      if (dC != 0) return dC;
+      return b.time.compareTo(a.time);
+    });
+  }
+
+  /// Read-through: ante un error de RED intenta poblar desde la caché cifrada.
+  /// Devuelve true si mostró datos cacheados (estado offline). Si no hay error
+  /// de red o no hay caché, devuelve false y la pantalla cae al estado de error.
+  Future<bool> _showCachedOnOffline(Object error, {int? idperOverride}) async {
+    if (!ErrorMapper.isOffline(error)) return false;
+    final cached = await _citasCache.read(
+      idperOverride ?? _currentIdper,
+      _citasBucket,
+    );
+    if (cached == null || !mounted) return false;
+    final list = List<ReservaModel>.from(cached.reservas);
+    _sortHistoryInPlace(list);
+    setState(() {
+      _history = list;
+      _isOffline = true;
+      _cachedSince = cached.savedAt;
+      _errorMessage = null;
+      _isLoading = false;
+      _isLoadingMore = false;
+      _displayLimit = 10;
+    });
+    return true;
+  }
 
   @override
   void initState() {
@@ -237,25 +300,22 @@ class _ReservasScreenState extends State<ReservasScreen> {
         } else {
           _history = fetched;
           _isLoading = false;
+          // Vino de la red: salimos del modo offline si estábamos en él.
+          _isOffline = false;
+          _cachedSince = null;
         }
 
-        _history.sort((a, b) {
-          final aP = a.status == 'Pendiente' ? 0 : 1;
-          final bP = b.status == 'Pendiente' ? 0 : 1;
-          if (aP != bP) return aP.compareTo(bP);
-          if (a.status == 'Pendiente') {
-            final dC = a.date.compareTo(b.date);
-            if (dC != 0) return dC;
-            return a.time.compareTo(b.time);
-          }
-          final dC = b.date.compareTo(a.date);
-          if (dC != 0) return dC;
-          return b.time.compareTo(a.time);
-        });
+        _sortHistoryInPlace(_history);
 
         _currentPage = page;
         _totalPages = fetchedTotalPages;
       });
+
+      // Refresca la caché offline con la lista completa (solo en carga inicial;
+      // fire-and-forget, no bloquea la UI). Cifrada por CitasCache.
+      if (!loadMore) {
+        _citasCache.save(_currentIdper, _citasBucket, _history);
+      }
 
       // Fetch foto del médico para la primera ficha vigente (silencioso)
       if (!loadMore) {
@@ -269,16 +329,18 @@ class _ReservasScreenState extends State<ReservasScreen> {
       // Auto-prompt de nueva reserva deshabilitado.
     } catch (e) {
       if (!mounted) return;
+      if (loadMore) {
+        setState(() => _isLoadingMore = false);
+        return;
+      }
+      // Sin conexión: mostrar la lista cacheada + banner en vez de pantalla roja.
+      if (await _showCachedOnOffline(e)) return;
       setState(() {
-        if (loadMore) {
-          _isLoadingMore = false;
-        } else {
-          _errorMessage = ErrorMapper.message(
-            e,
-            context: ErrorContext.cargarHistorial,
-          );
-          _isLoading = false;
-        }
+        _errorMessage = ErrorMapper.message(
+          e,
+          context: ErrorContext.cargarHistorial,
+        );
+        _isLoading = false;
       });
     }
   }
@@ -342,27 +404,19 @@ class _ReservasScreenState extends State<ReservasScreen> {
       setState(() {
         _history = fetched;
         _isLoading = false;
-        _history.sort((a, b) {
-          final aP = a.status == 'Pendiente' ? 0 : 1;
-          final bP = b.status == 'Pendiente' ? 0 : 1;
-          if (aP != bP) return aP.compareTo(bP);
-          if (a.status == 'Pendiente') {
-            final dC = a.date.compareTo(b.date);
-            if (dC != 0) return dC;
-            return a.time.compareTo(b.time);
-          }
-          final dC = b.date.compareTo(a.date);
-          if (dC != 0) return dC;
-          return b.time.compareTo(a.time);
-        });
+        _isOffline = false;
+        _cachedSince = null;
+        _sortHistoryInPlace(_history);
         _currentPage = 1;
         _totalPages = fetchedTotalPages;
       });
+      _citasCache.save(idper, _citasBucket, _history);
       final vigentes = _allPendingVigentes;
       if (vigentes.isNotEmpty) _fetchLatestDoctorPhoto(vigentes.first);
       if (mounted) _loadPendingRatings();
     } catch (e) {
       if (!mounted) return;
+      if (await _showCachedOnOffline(e, idperOverride: idper)) return;
       setState(() {
         _errorMessage = ErrorMapper.message(
           e,
@@ -690,6 +744,11 @@ class _ReservasScreenState extends State<ReservasScreen> {
                 ),
                 sliver: SliverList(
                   delegate: SliverChildListDelegate([
+                    if (_isOffline)
+                      Padding(
+                        padding: EdgeInsets.only(bottom: r.spaceSm),
+                        child: OfflineBanner(updatedAt: _cachedSince),
+                      ),
                     Padding(
                       padding: EdgeInsets.only(bottom: r.spaceSm),
                       child: CupertinoSearchTextField(
@@ -744,7 +803,11 @@ class _ReservasScreenState extends State<ReservasScreen> {
                   sliver: SliverList.builder(
                     itemCount:
                         visible.length +
-                        (hasMore ? 1 : (_currentPage < _totalPages ? 1 : 0)),
+                        (hasMore
+                            ? 1
+                            : (!_isOffline && _currentPage < _totalPages
+                                  ? 1
+                                  : 0)),
                     itemBuilder: (context, index) {
                       if (index == visible.length && hasMore) {
                         final remaining = historyList.length - _displayLimit;
@@ -767,6 +830,7 @@ class _ReservasScreenState extends State<ReservasScreen> {
                           ),
                         );
                       } else if (index == visible.length &&
+                          !_isOffline &&
                           _currentPage < _totalPages) {
                         return Padding(
                           padding: EdgeInsets.symmetric(
@@ -1682,43 +1746,51 @@ class _ReservasScreenState extends State<ReservasScreen> {
 
   Widget _buildStatusChip(String label, bool isDark) {
     final isActive = _activeStatusFilter == label;
-    return GestureDetector(
-      onTap: () {
-        if (isActive) return;
-        final wasCancelado = _activeStatusFilter == 'Cancelado';
-        final isCancelado = label == 'Cancelado';
-        setState(() {
-          _activeStatusFilter = label;
-          _displayLimit = 10;
-        });
-        // Si el usuario cambia entre la vista normal y la de cancelados, recargar desde API
-        if (wasCancelado != isCancelado) {
-          _fetchReservas();
-        }
-      },
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        decoration: BoxDecoration(
+    // "Cancelado" usa OTRO endpoint (petición de red). Sin conexión se
+    // deshabilita: los demás filtros (Todos/Completado/Falta) operan sobre la
+    // lista cacheada en memoria, así que siguen funcionando offline.
+    final disabled = _isOffline && label == 'Cancelado';
+    final chip = AnimatedContainer(
+      duration: const Duration(milliseconds: 200),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      decoration: BoxDecoration(
+        color: isActive
+            ? AppColors.primary
+            : (isDark ? AppColors.darkElevated : AppColors.background),
+        borderRadius: BorderRadius.circular(context.r.chipRadius),
+        border: Border.all(
           color: isActive
               ? AppColors.primary
-              : (isDark ? AppColors.darkElevated : AppColors.background),
-          borderRadius: BorderRadius.circular(context.r.chipRadius),
-          border: Border.all(
-            color: isActive
-                ? AppColors.primary
-                : (isDark ? AppColors.darkBorder : AppColors.border),
-          ),
-        ),
-        alignment: Alignment.center,
-        child: Text(
-          label,
-          style: TextStyle(
-            color: isActive ? Colors.white : AppColors.textSecondaryC(isDark),
-            fontWeight: isActive ? FontWeight.w600 : FontWeight.w500,
-          ),
+              : (isDark ? AppColors.darkBorder : AppColors.border),
         ),
       ),
+      alignment: Alignment.center,
+      child: Text(
+        label,
+        style: TextStyle(
+          color: isActive ? Colors.white : AppColors.textSecondaryC(isDark),
+          fontWeight: isActive ? FontWeight.w600 : FontWeight.w500,
+        ),
+      ),
+    );
+
+    return GestureDetector(
+      onTap: disabled
+          ? null
+          : () {
+              if (isActive) return;
+              final wasCancelado = _activeStatusFilter == 'Cancelado';
+              final isCancelado = label == 'Cancelado';
+              setState(() {
+                _activeStatusFilter = label;
+                _displayLimit = 10;
+              });
+              // Cambiar entre la vista normal y la de cancelados recarga desde API.
+              if (wasCancelado != isCancelado) {
+                _fetchReservas();
+              }
+            },
+      child: Opacity(opacity: disabled ? 0.4 : 1.0, child: chip),
     );
   }
 
@@ -1849,10 +1921,32 @@ class _ReservasScreenState extends State<ReservasScreen> {
               ),
             ),
             SizedBox(width: context.r.spaceXs),
-            Icon(
-              CupertinoIcons.chevron_down,
-              size: 18,
-              color: AppColors.textTertiaryC(isDark),
+            // La flecha sola no dice que esto se pueda tocar: mucha gente la
+            // lee como adorno. La palabra "Cambiar" lo vuelve explícito.
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              decoration: BoxDecoration(
+                color: AppColors.primary.withValues(alpha: 0.10),
+                borderRadius: BorderRadius.circular(context.r.chipRadius),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    'Cambiar',
+                    style: context.texts.labelSmall.copyWith(
+                      color: AppColors.primary,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                  const SizedBox(width: 2),
+                  Icon(
+                    CupertinoIcons.chevron_down,
+                    size: 14,
+                    color: AppColors.primary,
+                  ),
+                ],
+              ),
             ),
           ],
         ),

@@ -130,7 +130,12 @@ class _FavoritosScreenState extends State<FavoritosScreen> {
               : _favorites.isEmpty
               ? _buildEmptyState(isDark, r)
               : ListView.builder(
-                  padding: EdgeInsets.all(r.paddingH),
+                  padding: EdgeInsets.fromLTRB(
+                    r.paddingH,
+                    r.paddingH,
+                    r.paddingH,
+                    r.navBarBottomSpace,
+                  ),
                   itemCount: _favorites.length,
                   itemBuilder: (context, index) {
                     final doc = _favorites[index];
@@ -235,87 +240,87 @@ class _FavoritosScreenState extends State<FavoritosScreen> {
               ),
             ],
       child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Foto
-            Container(
-              width: avatarSize,
-              height: avatarSize,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: isDark ? AppColors.darkElevated : AppColors.primaryLight,
-              ),
-              child: photoBytes != null
-                  ? ClipOval(
-                      child: Image.memory(
-                        photoBytes,
-                        width: avatarSize,
-                        height: avatarSize,
-                        fit: BoxFit.cover,
-                        gaplessPlayback: true,
-                        errorBuilder: (_, __, ___) =>
-                            _buildInitials(medico, avatarSize, r),
-                      ),
-                    )
-                  : _buildInitials(medico, avatarSize, r),
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Foto
+          Container(
+            width: avatarSize,
+            height: avatarSize,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: isDark ? AppColors.darkElevated : AppColors.primaryLight,
             ),
-            SizedBox(width: r.spaceMd),
-
-            // Info
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    medico,
-                    style: context.texts.titleMedium.copyWith(
-                      fontWeight: FontWeight.w800,
-                      color: AppColors.textPrimaryC(isDark),
-                      height: 1.2,
+            child: photoBytes != null
+                ? ClipOval(
+                    child: Image.memory(
+                      photoBytes,
+                      width: avatarSize,
+                      height: avatarSize,
+                      fit: BoxFit.cover,
+                      gaplessPlayback: true,
+                      errorBuilder: (_, __, ___) =>
+                          _buildInitials(medico, avatarSize, r),
                     ),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
+                  )
+                : _buildInitials(medico, avatarSize, r),
+          ),
+          SizedBox(width: r.spaceMd),
+
+          // Info
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  medico,
+                  style: context.texts.titleMedium.copyWith(
+                    fontWeight: FontWeight.w800,
+                    color: AppColors.textPrimaryC(isDark),
+                    height: 1.2,
                   ),
-                  if (especialidad.isNotEmpty) ...[
-                    SizedBox(height: r.spaceXs - 2),
-                    Text(
-                      especialidad,
-                      style: context.texts.bodySmall.copyWith(
-                        color: AppColors.primary,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                  ],
-                  if (mtrmin.isNotEmpty) ...[
-                    SizedBox(height: r.spaceXs),
-                    Text(
-                      'Matrícula prof.: $mtrmin',
-                      style: context.texts.bodySmall.copyWith(
-                        color: AppColors.textSecondaryC(isDark),
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ],
-                ],
-              ),
-            ),
-
-            // Botón de eliminar
-            SizedBox(width: r.spaceSm),
-            GestureDetector(
-              behavior: HitTestBehavior.opaque,
-              onTap: () => _removeFavorite(idmed, medico),
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-                child: Icon(
-                  CupertinoIcons.star_fill,
-                  color: const Color(0xFFF59E0B),
-                  size: r.iconSm * 1.25,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
                 ),
+                if (especialidad.isNotEmpty) ...[
+                  SizedBox(height: r.spaceXs - 2),
+                  Text(
+                    especialidad,
+                    style: context.texts.bodySmall.copyWith(
+                      color: AppColors.primary,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ],
+                if (mtrmin.isNotEmpty) ...[
+                  SizedBox(height: r.spaceXs),
+                  Text(
+                    'Matrícula prof.: $mtrmin',
+                    style: context.texts.bodySmall.copyWith(
+                      color: AppColors.textSecondaryC(isDark),
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+
+          // Botón de eliminar
+          SizedBox(width: r.spaceSm),
+          GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onTap: () => _removeFavorite(idmed, medico),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+              child: Icon(
+                CupertinoIcons.star_fill,
+                color: const Color(0xFFF59E0B),
+                size: r.iconSm * 1.25,
               ),
             ),
-          ],
-        ),
+          ),
+        ],
+      ),
     );
   }
 

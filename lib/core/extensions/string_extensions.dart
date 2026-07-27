@@ -28,11 +28,13 @@ extension StringDisplay on String {
     if (cleaned.isEmpty) return '';
 
     final words = cleaned.split(' ');
-    final result = words.map((word) {
-      if (word.isEmpty) return word;
-      final raw = word[0].toUpperCase() + word.substring(1).toLowerCase();
-      return _applyAccents(raw);
-    }).join(' ');
+    final result = words
+        .map((word) {
+          if (word.isEmpty) return word;
+          final raw = word[0].toUpperCase() + word.substring(1).toLowerCase();
+          return _applyAccents(raw);
+        })
+        .join(' ');
 
     // Post-process multi-word corrections (e.g. "Ii" → "II" for ordenals)
     return _postProcessMultiWord(result);

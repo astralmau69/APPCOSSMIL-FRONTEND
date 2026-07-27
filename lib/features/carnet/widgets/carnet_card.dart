@@ -49,103 +49,147 @@ class CarnetCardFront extends StatelessWidget {
           children: [
             // Banda azul con degradado + panal, base diagonal.
             Positioned(
-              left: 0, right: 0, top: 0, height: kCarnetRefH * 0.50,
+              left: 0,
+              right: 0,
+              top: 0,
+              height: kCarnetRefH * 0.50,
               child: ClipPath(
                 clipper: _DiagonalClipper(),
-                child: Stack(fit: StackFit.expand, children: [
-                  const DecoratedBox(
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                        colors: [kCarnetAzulOsc, kCarnetAzul, kCarnetAzulClaro],
+                child: Stack(
+                  fit: StackFit.expand,
+                  children: [
+                    const DecoratedBox(
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                          colors: [
+                            kCarnetAzulOsc,
+                            kCarnetAzul,
+                            kCarnetAzulClaro,
+                          ],
+                        ),
                       ),
                     ),
-                  ),
-                  CustomPaint(
+                    CustomPaint(
                       painter: HoneycombPainter(
-                          color: Colors.white.withValues(alpha: 0.10),
-                          radius: 27)),
-                  // Aclarado al fondo de la banda (Matrícula/CI sobre él).
-                  const DecoratedBox(
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        begin: Alignment(0, 0.15),
-                        end: Alignment.bottomCenter,
-                        colors: [Color(0x00FFFFFF), Color(0xD0FFFFFF)],
+                        color: Colors.white.withValues(alpha: 0.10),
+                        radius: 27,
                       ),
                     ),
-                  ),
-                ]),
+                    // Aclarado al fondo de la banda (Matrícula/CI sobre él).
+                    const DecoratedBox(
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment(0, 0.15),
+                          end: Alignment.bottomCenter,
+                          colors: [Color(0x00FFFFFF), Color(0xD0FFFFFF)],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
             // Esquina amarilla.
             Positioned(
-              left: 0, top: 0,
+              left: 0,
+              top: 0,
               child: CustomPaint(
-                  size: const Size(150, 130), painter: _CornerPainter(_amarillo)),
+                size: const Size(150, 130),
+                painter: _CornerPainter(_amarillo),
+              ),
             ),
             // Panal tenue sobre área blanca.
             Positioned(
-              left: 0, right: 0, top: kCarnetRefH * 0.50, bottom: 0,
+              left: 0,
+              right: 0,
+              top: kCarnetRefH * 0.50,
+              bottom: 0,
               child: CustomPaint(
-                  painter: HoneycombPainter(
-                      color: kCarnetAzulClaro.withValues(alpha: 0.09),
-                      radius: 28)),
+                painter: HoneycombPainter(
+                  color: kCarnetAzulClaro.withValues(alpha: 0.09),
+                  radius: 28,
+                ),
+              ),
             ),
 
             // Logo.
             Positioned(
-              left: 120, top: 26,
-              child: Image.asset('assets/images/cossmil_logo.png',
-                  width: 150, height: 150,
-                  filterQuality: FilterQuality.medium,
-                  errorBuilder: (_, __, ___) => const Icon(
-                      CupertinoIcons.shield_fill, size: 130, color: Colors.white)),
+              left: 120,
+              top: 26,
+              child: Image.asset(
+                'assets/images/cossmil_logo.png',
+                width: 150,
+                height: 150,
+                filterQuality: FilterQuality.medium,
+                errorBuilder: (_, __, ___) => const Icon(
+                  CupertinoIcons.shield_fill,
+                  size: 130,
+                  color: Colors.white,
+                ),
+              ),
             ),
             // Título institucional.
             Positioned(
-              left: 58, top: 182, width: 540,
-              child: Text('CORPORACIÓN DEL\nSEGURO SOCIAL MILITAR',
-                  style: TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.w800,
-                      fontSize: 39,
-                      height: 1.16,
-                      letterSpacing: 0.4,
-                      shadows: [
-                        Shadow(
-                            color: Colors.black.withValues(alpha: 0.28),
-                            blurRadius: 4,
-                            offset: const Offset(0, 1)),
-                      ])),
+              left: 58,
+              top: 182,
+              width: 540,
+              child: Text(
+                'CORPORACIÓN DEL\nSEGURO SOCIAL MILITAR',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w800,
+                  fontSize: 39,
+                  height: 1.16,
+                  letterSpacing: 0.4,
+                  shadows: [
+                    Shadow(
+                      color: Colors.black.withValues(alpha: 0.28),
+                      blurRadius: 4,
+                      offset: const Offset(0, 1),
+                    ),
+                  ],
+                ),
+              ),
             ),
             // Foto.
             Positioned(
-              right: 40, top: 24,
+              right: 40,
+              top: 24,
               child: Container(
-                width: 290, height: 260,
+                width: 290,
+                height: 260,
                 decoration: BoxDecoration(
                   color: Colors.white,
                   border: Border.all(color: Colors.white, width: 6),
                   boxShadow: [
                     BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.30), blurRadius: 8)
+                      color: Colors.black.withValues(alpha: 0.30),
+                      blurRadius: 8,
+                    ),
                   ],
                 ),
                 clipBehavior: Clip.antiAlias,
                 child: photo != null
-                    ? Image.memory(photo,
-                        fit: BoxFit.cover, filterQuality: FilterQuality.high)
-                    : const Icon(CupertinoIcons.person_fill,
-                        size: 120, color: Colors.grey),
+                    ? Image.memory(
+                        photo,
+                        fit: BoxFit.cover,
+                        filterQuality: FilterQuality.high,
+                      )
+                    : const Icon(
+                        CupertinoIcons.person_fill,
+                        size: 120,
+                        color: Colors.grey,
+                      ),
               ),
             ),
             // Matrícula y CI: abajo-derecha de la banda, DEBAJO de la foto,
             // con los dos puntos alineados (como el carnet físico).
             // Matrícula arriba y CI debajo, alineado a la altura del nombre.
             Positioned(
-              left: 430, top: 302,
+              left: 430,
+              top: 302,
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -159,43 +203,69 @@ class CarnetCardFront extends StatelessWidget {
             // Nombre completo: SOLO en el lado izquierdo, "Nombre Completo:" a
             // la misma altura que el CI.
             const Positioned(
-              left: 55, top: 350,
-              child: Text('Nombre Completo:',
-                  style: TextStyle(
-                      color: _labelAzul,
-                      fontWeight: FontWeight.w700,
-                      fontSize: 29,
-                      letterSpacing: 0.2)),
+              left: 55,
+              top: 350,
+              child: Text(
+                'Nombre Completo:',
+                style: TextStyle(
+                  color: _labelAzul,
+                  fontWeight: FontWeight.w700,
+                  fontSize: 29,
+                  letterSpacing: 0.2,
+                ),
+              ),
             ),
             Positioned(
-              left: 55, top: 388, width: 545,
-              child: Text(d.nombreCompleto.toUpperCase(),
-                  style: const TextStyle(
-                      color: Color(0xFF111111),
-                      fontWeight: FontWeight.w900,
-                      fontSize: 46,
-                      height: 1.04,
-                      letterSpacing: -0.4),
-                  maxLines: 2, overflow: TextOverflow.ellipsis),
+              left: 55,
+              top: 388,
+              width: 545,
+              child: Text(
+                d.nombreCompleto.toUpperCase(),
+                style: const TextStyle(
+                  color: Color(0xFF111111),
+                  fontWeight: FontWeight.w900,
+                  fontSize: 46,
+                  height: 1.04,
+                  letterSpacing: -0.4,
+                ),
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+              ),
             ),
 
             // Fila inferior 1.
             Positioned(
-              left: 55, top: 500, width: 430,
+              left: 55,
+              top: 500,
+              width: 430,
               child: _frontField('Fuerza', d.fuerza, 178),
             ),
             Positioned(
-              left: 498, top: 500, width: 478,
-              child: _frontField('Matrícula Tit.', CarnetData.orDash(d.matriculaTitular), 245),
+              left: 498,
+              top: 500,
+              width: 478,
+              child: _frontField(
+                'Matrícula Tit.',
+                CarnetData.orDash(d.matriculaTitular),
+                245,
+              ),
             ),
             // Fila inferior 2 — Fecha Nac. con etiqueta de ancho suficiente.
             Positioned(
-              left: 55, top: 560, width: 430,
+              left: 55,
+              top: 560,
+              width: 430,
               child: _frontField('Fecha Nac.', d.fechaNacimiento, 178),
             ),
             Positioned(
-              left: 498, top: 560, width: 478,
-              child: _frontField('Estado Civil', CarnetData.orDash(d.estadoCivil), 245),
+              left: 498,
+              top: 560,
+              width: 478,
+              child: _frontField(
+                'Estado Civil',
+                CarnetData.orDash(d.estadoCivil),
+                245,
+              ),
             ),
           ],
         ),
@@ -221,9 +291,11 @@ class CarnetCardBack extends StatelessWidget {
           children: [
             Positioned.fill(
               child: CustomPaint(
-                  painter: HoneycombPainter(
-                      color: kCarnetAzulClaro.withValues(alpha: 0.08),
-                      radius: 28)),
+                painter: HoneycombPainter(
+                  color: kCarnetAzulClaro.withValues(alpha: 0.08),
+                  radius: 28,
+                ),
+              ),
             ),
             Padding(
               padding: const EdgeInsets.fromLTRB(48, 30, 48, 26),
@@ -236,29 +308,36 @@ class CarnetCardBack extends StatelessWidget {
                         textAlign: TextAlign.justify,
                         text: const TextSpan(
                           style: TextStyle(
-                              color: Color(0xFF1A1A1A),
-                              fontSize: 18.5,
-                              height: 1.26,
-                              fontWeight: FontWeight.w600),
+                            color: Color(0xFF1A1A1A),
+                            fontSize: 18.5,
+                            height: 1.26,
+                            fontWeight: FontWeight.w600,
+                          ),
                           children: [
                             TextSpan(
-                                text: 'LEY DE SEGURIDAD SOCIAL MILITAR: ',
-                                style: TextStyle(
-                                    fontWeight: FontWeight.w900,
-                                    fontSize: 19.5,
-                                    color: kCarnetAzulOsc)),
+                              text: 'LEY DE SEGURIDAD SOCIAL MILITAR: ',
+                              style: TextStyle(
+                                fontWeight: FontWeight.w900,
+                                fontSize: 19.5,
+                                color: kCarnetAzulOsc,
+                              ),
+                            ),
                             TextSpan(
-                                text:
-                                    'Art. 186 Inc. c) Las Prestaciones de Salud dejarán de otorgarse después de 6 meses del último aporte. '),
+                              text:
+                                  'Art. 186 Inc. c) Las Prestaciones de Salud dejarán de otorgarse después de 6 meses del último aporte. ',
+                            ),
                             TextSpan(
-                                text: 'REGLAMENTO DE PRESTACIONES DE SALUD: ',
-                                style: TextStyle(
-                                    fontWeight: FontWeight.w900,
-                                    fontSize: 19.5,
-                                    color: kCarnetAzulOsc)),
+                              text: 'REGLAMENTO DE PRESTACIONES DE SALUD: ',
+                              style: TextStyle(
+                                fontWeight: FontWeight.w900,
+                                fontSize: 19.5,
+                                color: kCarnetAzulOsc,
+                              ),
+                            ),
                             TextSpan(
-                                text:
-                                    'Art. 100° (Riesgo Extraordinario) Se considera riesgo extraordinario a la lesión orgánica o trastorno funcional producido por la acción súbita y violenta de una causa externa a las cuales se exponga el asegurado o beneficiario.'),
+                              text:
+                                  'Art. 100° (Riesgo Extraordinario) Se considera riesgo extraordinario a la lesión orgánica o trastorno funcional producido por la acción súbita y violenta de una causa externa a las cuales se exponga el asegurado o beneficiario.',
+                            ),
                           ],
                         ),
                       ),
@@ -268,47 +347,56 @@ class CarnetCardBack extends StatelessWidget {
                   Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                        Expanded(
-                          flex: 7,
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              _kvFixed('Grupo sanguíneo', d.grupoSanguineo),
-                              _kvFixed('Alergias', d.alergias),
-                              _kvFixed('Telf. de referencia', d.telefonoReferencia),
-                              _kvFixed('Fecha de emisión', d.fechaEmision),
-                              _kvFixed('Fecha de vencimiento', d.fechaVencimiento),
-                              _kvFixed('Atención', d.atencion),
-                            ],
-                          ),
+                      Expanded(
+                        flex: 7,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            _kvFixed('Grupo sanguíneo', d.grupoSanguineo),
+                            _kvFixed('Alergias', d.alergias),
+                            _kvFixed(
+                              'Telf. de referencia',
+                              d.telefonoReferencia,
+                            ),
+                            _kvFixed('Fecha de emisión', d.fechaEmision),
+                            _kvFixed(
+                              'Fecha de vencimiento',
+                              d.fechaVencimiento,
+                            ),
+                            _kvFixed('Atención', d.atencion),
+                          ],
                         ),
-                        const SizedBox(width: 24),
-                        Expanded(
-                          flex: 3,
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.center,
-                            children: [
-                              kvInline('Código', d.codigo,
-                                  labelColor: Colors.black,
-                                  valueColor: Colors.black,
-                                  size: 28),
-                              const SizedBox(height: 14),
-                              Container(
-                                padding: const EdgeInsets.all(8),
-                                color: Colors.white,
-                                child: QrImageView(
-                                  data: d.qrPayload,
-                                  version: QrVersions.auto,
-                                  size: 168,
-                                  padding: EdgeInsets.zero,
-                                ),
+                      ),
+                      const SizedBox(width: 24),
+                      Expanded(
+                        flex: 3,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.center,
+                          children: [
+                            kvInline(
+                              'Código',
+                              d.codigo,
+                              labelColor: Colors.black,
+                              valueColor: Colors.black,
+                              size: 28,
+                            ),
+                            const SizedBox(height: 14),
+                            Container(
+                              padding: const EdgeInsets.all(8),
+                              color: Colors.white,
+                              child: QrImageView(
+                                data: d.qrPayload,
+                                version: QrVersions.auto,
+                                size: 168,
+                                padding: EdgeInsets.zero,
                               ),
-                            ],
-                          ),
+                            ),
+                          ],
                         ),
-                      ],
-                    ),
+                      ),
+                    ],
+                  ),
                 ],
               ),
             ),
@@ -327,24 +415,37 @@ Widget _frontField(String label, String value, double labelWidth) {
     children: [
       SizedBox(
         width: labelWidth,
-        child: Text(label,
-            maxLines: 1,
-            softWrap: false,
-            overflow: TextOverflow.visible,
-            style: const TextStyle(
-                color: _labelAzul, fontWeight: FontWeight.w700, fontSize: 31)),
+        child: Text(
+          label,
+          maxLines: 1,
+          softWrap: false,
+          overflow: TextOverflow.visible,
+          style: const TextStyle(
+            color: _labelAzul,
+            fontWeight: FontWeight.w700,
+            fontSize: 31,
+          ),
+        ),
       ),
-      const Text(': ',
-          style: TextStyle(
-              color: _labelAzul, fontWeight: FontWeight.w700, fontSize: 31)),
+      const Text(
+        ': ',
+        style: TextStyle(
+          color: _labelAzul,
+          fontWeight: FontWeight.w700,
+          fontSize: 31,
+        ),
+      ),
       Flexible(
-        child: Text(CarnetData.orDash(value),
-            style: const TextStyle(
-                color: Color(0xFF111111),
-                fontWeight: FontWeight.w900,
-                fontSize: 33),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis),
+        child: Text(
+          CarnetData.orDash(value),
+          style: const TextStyle(
+            color: Color(0xFF111111),
+            fontWeight: FontWeight.w900,
+            fontSize: 33,
+          ),
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+        ),
       ),
     ],
   );
@@ -358,36 +459,66 @@ Widget _bandRow(String label, String value) {
     children: [
       SizedBox(
         width: 215,
-        child: Text(label,
-            textAlign: TextAlign.right,
-            style: const TextStyle(
-                color: kCarnetAzulOsc, fontWeight: FontWeight.w700, fontSize: 32)),
-      ),
-      const Text(' :  ',
-          style: TextStyle(
-              color: kCarnetAzulOsc, fontWeight: FontWeight.w700, fontSize: 32)),
-      Text(CarnetData.orDash(value),
+        child: Text(
+          label,
+          textAlign: TextAlign.right,
           style: const TextStyle(
-              color: Colors.black, fontWeight: FontWeight.w900, fontSize: 34)),
+            color: kCarnetAzulOsc,
+            fontWeight: FontWeight.w700,
+            fontSize: 32,
+          ),
+        ),
+      ),
+      const Text(
+        ' :  ',
+        style: TextStyle(
+          color: kCarnetAzulOsc,
+          fontWeight: FontWeight.w700,
+          fontSize: 32,
+        ),
+      ),
+      Text(
+        CarnetData.orDash(value),
+        style: const TextStyle(
+          color: Colors.black,
+          fontWeight: FontWeight.w900,
+          fontSize: 34,
+        ),
+      ),
     ],
   );
 }
 
-Widget kvInline(String label, String value,
-    {required Color labelColor, required Color valueColor, required double size}) {
+Widget kvInline(
+  String label,
+  String value, {
+  required Color labelColor,
+  required Color valueColor,
+  required double size,
+}) {
   return RichText(
     maxLines: 1,
     overflow: TextOverflow.ellipsis,
-    text: TextSpan(children: [
-      TextSpan(
+    text: TextSpan(
+      children: [
+        TextSpan(
           text: '$label : ',
           style: TextStyle(
-              color: labelColor, fontWeight: FontWeight.w600, fontSize: size)),
-      TextSpan(
+            color: labelColor,
+            fontWeight: FontWeight.w600,
+            fontSize: size,
+          ),
+        ),
+        TextSpan(
           text: CarnetData.orDash(value),
           style: TextStyle(
-              color: valueColor, fontWeight: FontWeight.w900, fontSize: size + 2)),
-    ]),
+            color: valueColor,
+            fontWeight: FontWeight.w900,
+            fontSize: size + 2,
+          ),
+        ),
+      ],
+    ),
   );
 }
 
@@ -399,20 +530,34 @@ Widget _kvFixed(String label, String value) {
       children: [
         SizedBox(
           width: 290,
-          child: Text(label,
-              style: const TextStyle(
-                  color: Colors.black87,
-                  fontWeight: FontWeight.w600,
-                  fontSize: 26)),
+          child: Text(
+            label,
+            style: const TextStyle(
+              color: Colors.black87,
+              fontWeight: FontWeight.w600,
+              fontSize: 26,
+            ),
+          ),
         ),
-        const Text(': ',
-            style: TextStyle(
-                color: Colors.black, fontSize: 26, fontWeight: FontWeight.w600)),
+        const Text(
+          ': ',
+          style: TextStyle(
+            color: Colors.black,
+            fontSize: 26,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
         Expanded(
-          child: Text(CarnetData.orDash(value),
-              style: const TextStyle(
-                  color: Colors.black, fontWeight: FontWeight.w900, fontSize: 28),
-              maxLines: 1, overflow: TextOverflow.ellipsis),
+          child: Text(
+            CarnetData.orDash(value),
+            style: const TextStyle(
+              color: Colors.black,
+              fontWeight: FontWeight.w900,
+              fontSize: 28,
+            ),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
         ),
       ],
     ),

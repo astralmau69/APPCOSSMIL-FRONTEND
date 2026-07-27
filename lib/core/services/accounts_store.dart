@@ -20,9 +20,7 @@ class AccountsStore {
       encryptedSharedPreferences: true,
       sharedPreferencesName: 'cossmil_secure_prefs',
     ),
-    iOptions: IOSOptions(
-      accessibility: KeychainAccessibility.first_unlock,
-    ),
+    iOptions: IOSOptions(accessibility: KeychainAccessibility.first_unlock),
   );
 
   static const _keyIndex = 'saved_accounts_index';
@@ -101,11 +99,13 @@ class AccountsStore {
   }) async {
     final accounts = await list();
     accounts.removeWhere((a) => a.key == account.key);
-    accounts.add(account.copyWith(
-      lastUsedMs: account.lastUsedMs == 0
-          ? DateTime.now().millisecondsSinceEpoch
-          : account.lastUsedMs,
-    ));
+    accounts.add(
+      account.copyWith(
+        lastUsedMs: account.lastUsedMs == 0
+            ? DateTime.now().millisecondsSinceEpoch
+            : account.lastUsedMs,
+      ),
+    );
     await _saveIndex(accounts);
     await _storage.write(key: _pwdKey(account.matricula), value: password);
   }
@@ -116,8 +116,9 @@ class AccountsStore {
     final k = matricula.trim().toUpperCase();
     final idx = accounts.indexWhere((a) => a.key == k);
     if (idx < 0) return;
-    accounts[idx] = accounts[idx]
-        .copyWith(lastUsedMs: DateTime.now().millisecondsSinceEpoch);
+    accounts[idx] = accounts[idx].copyWith(
+      lastUsedMs: DateTime.now().millisecondsSinceEpoch,
+    );
     await _saveIndex(accounts);
   }
 

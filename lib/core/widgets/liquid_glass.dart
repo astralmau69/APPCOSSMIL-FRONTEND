@@ -4,6 +4,7 @@ import 'package:flutter/cupertino.dart';
 
 import '../animations/optimized_animations.dart';
 import '../constants/app_colors.dart';
+import '../constants/app_sounds.dart';
 
 /// Filtro de fondo estilo iOS ("vibrancy"): blur + leve saturación extra.
 /// La saturación es lo que hace que el vidrio de iPhone se sienta "vivo":
@@ -12,10 +13,26 @@ ImageFilter liquidGlassBackdrop({double sigma = 22}) => ImageFilter.compose(
   outer: ImageFilter.blur(sigmaX: sigma, sigmaY: sigma),
   // Matriz de saturación 1.6 (luminancias Rec. 709).
   inner: const ColorFilter.matrix(<double>[
-    1.4722, -0.4290, -0.0432, 0, 0,
-    -0.1278, 1.1710, -0.0432, 0, 0,
-    -0.1278, -0.4290, 1.5568, 0, 0,
-    0, 0, 0, 1, 0,
+    1.4722,
+    -0.4290,
+    -0.0432,
+    0,
+    0,
+    -0.1278,
+    1.1710,
+    -0.0432,
+    0,
+    0,
+    -0.1278,
+    -0.4290,
+    1.5568,
+    0,
+    0,
+    0,
+    0,
+    0,
+    1,
+    0,
   ]),
 );
 
@@ -183,6 +200,9 @@ class LiquidGlassButton extends StatelessWidget {
         onTap: onTap,
         scaleDown: 0.97,
         haptic: true,
+        // Botón de acción principal: el toque suena. Las tarjetas de lista
+        // (que también usan OptimizedPressButton) siguen mudas a propósito.
+        sound: AppSounds.tap,
         child: Container(
           height: height,
           decoration: BoxDecoration(

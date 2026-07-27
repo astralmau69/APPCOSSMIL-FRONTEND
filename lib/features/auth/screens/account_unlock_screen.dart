@@ -5,6 +5,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../../../core/constants/app_colors.dart';
+import '../../../core/constants/app_sounds.dart';
+import '../../../core/theme/sound_manager.dart';
 import '../../../core/extensions/responsive_extensions.dart';
 import '../../../core/animations/optimized_animations.dart';
 import '../../../core/animations/animated_gradient_background.dart';
@@ -56,9 +58,13 @@ class _AccountUnlockScreenState extends State<AccountUnlockScreen>
   void initState() {
     super.initState();
     _shakeCtrl = AnimationController(
-        vsync: this, duration: const Duration(milliseconds: 400));
-    _shakeAnim = Tween<double>(begin: 0, end: 1)
-        .animate(CurvedAnimation(parent: _shakeCtrl, curve: Curves.elasticIn));
+      vsync: this,
+      duration: const Duration(milliseconds: 400),
+    );
+    _shakeAnim = Tween<double>(
+      begin: 0,
+      end: 1,
+    ).animate(CurvedAnimation(parent: _shakeCtrl, curve: Curves.elasticIn));
 
     if (widget.account.biometricEnabled) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -99,6 +105,7 @@ class _AccountUnlockScreenState extends State<AccountUnlockScreen>
       await _loginAndEnter();
     } else {
       _failed++;
+      SoundManager.playUi(AppSounds.error, volume: 0.5);
       await _shakeCtrl.forward(from: 0);
       HapticFeedback.vibrate();
       if (_failed >= _maxAttempts) {
@@ -128,7 +135,8 @@ class _AccountUnlockScreenState extends State<AccountUnlockScreen>
         t.cancel();
         return;
       }
-      final remaining = (_cooldown ?? Duration.zero) - const Duration(seconds: 1);
+      final remaining =
+          (_cooldown ?? Duration.zero) - const Duration(seconds: 1);
       setState(() {
         if (remaining.inSeconds <= 0) {
           _cooldown = null;
@@ -170,11 +178,16 @@ class _AccountUnlockScreenState extends State<AccountUnlockScreen>
     final matricula = widget.account.matricula;
     final pwd = await AccountsStore.getPassword(matricula);
     if (pwd == null) {
-      _showReloginNeeded('No encontramos la contraseña guardada de esta cuenta.');
+      _showReloginNeeded(
+        'No encontramos la contraseña guardada de esta cuenta.',
+      );
       return;
     }
 
-    final result = await AuthService().login(username: matricula, password: pwd);
+    final result = await AuthService().login(
+      username: matricula,
+      password: pwd,
+    );
     if (!mounted) return;
 
     switch (result) {
@@ -249,8 +262,10 @@ class _AccountUnlockScreenState extends State<AccountUnlockScreen>
                 child: CupertinoButton(
                   padding: EdgeInsets.all(r.spaceMd),
                   onPressed: () => Navigator.of(context).maybePop(),
-                  child: Icon(CupertinoIcons.back,
-                      color: AppColors.textPrimaryC(isDark)),
+                  child: Icon(
+                    CupertinoIcons.back,
+                    color: AppColors.textPrimaryC(isDark),
+                  ),
                 ),
               ),
               const Spacer(flex: 2),
@@ -259,9 +274,12 @@ class _AccountUnlockScreenState extends State<AccountUnlockScreen>
                   children: [
                     _buildAvatar(isDark, r),
                     SizedBox(height: r.spaceLg),
-                    Text('Hola de nuevo',
-                        style: context.texts.bodyMedium.copyWith(
-                            color: AppColors.textSecondaryC(isDark))),
+                    Text(
+                      'Hola de nuevo',
+                      style: context.texts.bodyMedium.copyWith(
+                        color: AppColors.textSecondaryC(isDark),
+                      ),
+                    ),
                     SizedBox(height: r.spaceXs),
                     Padding(
                       padding: EdgeInsets.symmetric(horizontal: r.paddingH),
@@ -271,7 +289,9 @@ class _AccountUnlockScreenState extends State<AccountUnlockScreen>
                             : widget.account.matricula,
                         style: context.texts.titleLarge.copyWith(
                           fontWeight: FontWeight.w700,
-                          color: isDark ? AppColors.accentForTheme(isDark) : null,
+                          color: isDark
+                              ? AppColors.accentForTheme(isDark)
+                              : null,
                         ),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
@@ -297,9 +317,13 @@ class _AccountUnlockScreenState extends State<AccountUnlockScreen>
               AnimatedBuilder(
                 animation: _shakeAnim,
                 builder: (context, child) {
-                  final off =
-                      _shakeCtrl.isAnimating ? _shakeOffset(_shakeAnim.value) : 0.0;
-                  return Transform.translate(offset: Offset(off, 0), child: child);
+                  final off = _shakeCtrl.isAnimating
+                      ? _shakeOffset(_shakeAnim.value)
+                      : 0.0;
+                  return Transform.translate(
+                    offset: Offset(off, 0),
+                    child: child,
+                  );
                 },
                 child: _buildDots(isDark, r),
               ),
@@ -307,19 +331,28 @@ class _AccountUnlockScreenState extends State<AccountUnlockScreen>
               SizedBox(
                 height: 22,
                 child: _blocked
-                    ? Text('Intenta en ${_cooldown!.inSeconds}s',
+                    ? Text(
+                        'Intenta en ${_cooldown!.inSeconds}s',
                         style: context.texts.bodySmall.copyWith(
-                            color: AppColors.warning, fontWeight: FontWeight.w600))
+                          color: AppColors.warning,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      )
                     : (_error != null
-                        ? Padding(
-                            padding: EdgeInsets.symmetric(horizontal: r.paddingH),
-                            child: Text(_error!,
+                          ? Padding(
+                              padding: EdgeInsets.symmetric(
+                                horizontal: r.paddingH,
+                              ),
+                              child: Text(
+                                _error!,
                                 textAlign: TextAlign.center,
                                 style: context.texts.bodySmall.copyWith(
-                                    color: AppColors.error,
-                                    fontWeight: FontWeight.w600)),
-                          )
-                        : null),
+                                  color: AppColors.error,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            )
+                          : null),
               ),
               const Spacer(),
               CustomNumpad(
@@ -327,10 +360,9 @@ class _AccountUnlockScreenState extends State<AccountUnlockScreen>
                 disabled: _blocked || _verifying,
                 onNumberPressed: _onNumber,
                 onDelete: _onDelete,
-                leftBottomWidget:
-                    widget.account.biometricEnabled && !_blocked
-                        ? _buildBiometricKey(r)
-                        : null,
+                leftBottomWidget: widget.account.biometricEnabled && !_blocked
+                    ? _buildBiometricKey(r)
+                    : null,
               ),
               SizedBox(height: r.spaceLg),
               SizedBox(height: r.spaceMd),
@@ -354,7 +386,11 @@ class _AccountUnlockScreenState extends State<AccountUnlockScreen>
           shape: BoxShape.circle,
           color: AppColors.primary.withValues(alpha: 0.1),
         ),
-        child: Icon(Icons.fingerprint, size: keySize * 0.5, color: AppColors.primary),
+        child: Icon(
+          Icons.fingerprint,
+          size: keySize * 0.5,
+          color: AppColors.primary,
+        ),
       ),
     );
   }
@@ -376,8 +412,8 @@ class _AccountUnlockScreenState extends State<AccountUnlockScreen>
             color: isError && active
                 ? AppColors.error
                 : active
-                    ? activeColor
-                    : (isDark ? Colors.white12 : const Color(0xFFBAE6FD)),
+                ? activeColor
+                : (isDark ? Colors.white12 : const Color(0xFFBAE6FD)),
           ),
         );
       }),
@@ -389,11 +425,13 @@ class _AccountUnlockScreenState extends State<AccountUnlockScreen>
     Widget child;
     if (widget.account.photoBase64.isNotEmpty) {
       try {
-        child = Image.memory(base64Decode(widget.account.photoBase64),
-            fit: BoxFit.cover,
-            width: size,
-            height: size,
-            errorBuilder: (_, __, ___) => _initials(size, isDark));
+        child = Image.memory(
+          base64Decode(widget.account.photoBase64),
+          fit: BoxFit.cover,
+          width: size,
+          height: size,
+          errorBuilder: (_, __, ___) => _initials(size, isDark),
+        );
       } catch (_) {
         child = _initials(size, isDark);
       }
@@ -407,7 +445,9 @@ class _AccountUnlockScreenState extends State<AccountUnlockScreen>
         shape: BoxShape.circle,
         color: isDark ? AppColors.darkElevated : AppColors.white,
         border: Border.all(
-            color: AppColors.primary.withValues(alpha: 0.15), width: 2.5),
+          color: AppColors.primary.withValues(alpha: 0.15),
+          width: 2.5,
+        ),
       ),
       child: ClipOval(child: child),
     );
@@ -423,13 +463,18 @@ class _AccountUnlockScreenState extends State<AccountUnlockScreen>
     return Container(
       width: size,
       height: size,
-      color: isDark ? AppColors.primary.withValues(alpha: 0.2) : AppColors.primaryLight,
+      color: isDark
+          ? AppColors.primary.withValues(alpha: 0.2)
+          : AppColors.primaryLight,
       child: Center(
-        child: Text(initials,
-            style: TextStyle(
-                fontSize: size * 0.35,
-                fontWeight: FontWeight.w700,
-                color: AppColors.primary)),
+        child: Text(
+          initials,
+          style: TextStyle(
+            fontSize: size * 0.35,
+            fontWeight: FontWeight.w700,
+            color: AppColors.primary,
+          ),
+        ),
       ),
     );
   }

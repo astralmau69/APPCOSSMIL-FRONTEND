@@ -30,7 +30,7 @@ class ApiConstants {
   static Uri get tokenUri => Uri.parse('$baseUrl$tokenEndpoint');
 
   // ─── Programación (endpoints protegidos con Bearer) ────────────────────────
-  
+
   /// Verificación de versión de la aplicación.
   static String verificaVersion(String version) =>
       '/api/programacion/verifica-version/$version';
@@ -43,8 +43,7 @@ class ApiConstants {
       '/api/programacion/regionales/departamento/$idins';
 
   /// Todas las regionales.
-  static String regionales(int idins) =>
-      '/api/programacion/regionales/$idins';
+  static String regionales(int idins) => '/api/programacion/regionales/$idins';
 
   /// Especialidades directas de una sucursal.
   static String especialidadesDirectas(int idins, int idsuc) =>
@@ -64,11 +63,22 @@ class ApiConstants {
       '/api/programacion/horarios-atencion/$idins/$idsuc';
 
   /// Médico asignado con agenda y horas disponibles (flujo legacy).
-  static String medicoAsignado(int idins, int idsuc, int idesp, String fecha, String modalidad) =>
+  static String medicoAsignado(
+    int idins,
+    int idsuc,
+    int idesp,
+    String fecha,
+    String modalidad,
+  ) =>
       '/api/programacion/medico-asignado/$idins/$idsuc/$idesp/$fecha/$modalidad';
 
   /// Lista de médicos con agendas para una especialidad y fecha (nuevo flujo CEX).
-  static String medicoAgendaEspecialidadCex(int idins, int idsuc, String fecha, int idesp) =>
+  static String medicoAgendaEspecialidadCex(
+    int idins,
+    int idsuc,
+    String fecha,
+    int idesp,
+  ) =>
       '/api/programacion/medico-agenda-especialidad-cex/$idins/$idsuc/$fecha/$idesp';
 
   /// Horas disponibles de una agenda específica por idagenda (nuevo flujo CEX).
@@ -79,20 +89,38 @@ class ApiConstants {
   static String crearCita() => '/api/programacion/crea-cita';
 
   /// Historial de citas de un asegurado (paginado).
-  static String historialCitas(int idper, int nroPagina, int cantidadRegistros) =>
-      '/api/programacion/historial-citas/$idper/$nroPagina/$cantidadRegistros';
+  static String historialCitas(
+    int idper,
+    int nroPagina,
+    int cantidadRegistros,
+  ) => '/api/programacion/historial-citas/$idper/$nroPagina/$cantidadRegistros';
 
   /// Historial de citas canceladas de un asegurado (paginado).
-  static String historialCitasCanceladas(int idper, int nroPagina, int cantidadRegistros) =>
+  static String historialCitasCanceladas(
+    int idper,
+    int nroPagina,
+    int cantidadRegistros,
+  ) =>
       '/api/programacion/historial-citas-canceladas/$idper/$nroPagina/$cantidadRegistros';
 
   /// Detalle completo de una cita médica.
-  static String detalleCitaMedica(int gestion, int idins, int idsuc, int idtran, int dr) =>
+  static String detalleCitaMedica(
+    int gestion,
+    int idins,
+    int idsuc,
+    int idtran,
+    int dr,
+  ) =>
       '/api/programacion/detalle-cita-medica/$gestion/$idins/$idsuc/$idtran/$dr';
 
   /// PDF de cita médica generado por el backend.
-  static String citaMedicaPdf(int gestion, int idins, int idsuc, int idtran, int dr) =>
-      '/api/programacion/cita-medica-pdf/$gestion/$idins/$idsuc/$idtran/$dr';
+  static String citaMedicaPdf(
+    int gestion,
+    int idins,
+    int idsuc,
+    int idtran,
+    int dr,
+  ) => '/api/programacion/cita-medica-pdf/$gestion/$idins/$idsuc/$idtran/$dr';
 
   /// Foto y datos básicos del asegurado por matrícula.
   static String aseguradoFoto(String matricula) =>
@@ -106,7 +134,14 @@ class ApiConstants {
   /// [matricula]: matrícula del usuario que realiza la cancelación.
   ///   - Cuenta titular  → matrícula del titular (incluso si cancela cita de un familiar).
   ///   - Cuenta beneficiario → matrícula del beneficiario logueado.
-  static String cancelarCitaMedica(int gestion, int idins, int idsuc, int idtran, int dr, String matricula) =>
+  static String cancelarCitaMedica(
+    int gestion,
+    int idins,
+    int idsuc,
+    int idtran,
+    int dr,
+    String matricula,
+  ) =>
       '/api/programacion/cancelar-cita-medica/$gestion/$idins/$idsuc/$idtran/$dr/$matricula';
 
   /// Grupo familiar de un asegurado.
@@ -125,8 +160,7 @@ class ApiConstants {
       '/api/programacion/validar-inasistencias/$idper';
 
   /// Actualizar datos de usuario (contraseña, correo, teléfono).
-  static String updateUsuarioWeb(int idper) =>
-      '/api/usuarioweb/update/$idper';
+  static String updateUsuarioWeb(int idper) => '/api/usuarioweb/update/$idper';
 
   /// Cambiar solo la contraseña del usuario (PUT).
   static String changePassword(int idper) =>
@@ -169,7 +203,7 @@ class ApiConstants {
   static String medSucBuscar() => '/api/programacion/medsuc-buscar';
 
   // ─── Noticias ──────────────────────────────────────────────────────────────
-  
+
   /// Detalles de una publicación (imágenes adicionales).
   static String publicationDetail(int gestion, int idpub) =>
       '/api/publicaciondet/$gestion/$idpub';
@@ -178,4 +212,3 @@ class ApiConstants {
   static String newsImagesBase(int gestion, int idpub, String filename) =>
       'https://www.cossmil.mil.bo/api/publicsImg/$gestion/$idpub/$filename';
 }
-

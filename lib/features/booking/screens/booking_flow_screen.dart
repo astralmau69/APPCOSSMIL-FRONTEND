@@ -1,7 +1,9 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import '../../../core/constants/app_colors.dart';
+import '../../../core/constants/app_sounds.dart';
 import '../../../core/extensions/responsive_extensions.dart';
+import '../../../core/theme/sound_manager.dart';
 import '../../../core/widgets/booking_stepper.dart';
 import '../../../core/widgets/tutorial_coach_overlay.dart';
 import '../../../shell/tab_shell.dart';
@@ -57,12 +59,20 @@ class BookingFlowScreenState extends State<BookingFlowScreen> {
 
   void _nextStep() {
     if (_currentStep < 5) {
+      // Dos notas ascendentes: refuerzan que el flujo progresa. Solo al
+      // avanzar — retroceder no suena, para que el sonido signifique siempre
+      // lo mismo.
+      SoundManager.playUi(AppSounds.select, volume: 0.5);
       setState(() => _currentStep++);
     }
   }
 
   void _prevStep() {
     if (_currentStep > 0 && !_isConfirmed) {
+      // Los pasos del flujo son estado interno, no rutas: el observador de
+      // navegación no los ve y hay que sonorizarlos aquí para que retroceder
+      // suene igual dentro que fuera del flujo.
+      SoundManager.playUi(AppSounds.back, volume: 0.5);
       setState(() => _currentStep--);
     }
   }
@@ -83,7 +93,9 @@ class BookingFlowScreenState extends State<BookingFlowScreen> {
         if (!didPop && _currentStep > 0 && !_isConfirmed) {
           final now = DateTime.now();
           // Debounce de 400ms para evitar que el botón físico dispare el evento 2 veces
-          if (_lastPopTime == null || now.difference(_lastPopTime!) > const Duration(milliseconds: 400)) {
+          if (_lastPopTime == null ||
+              now.difference(_lastPopTime!) >
+                  const Duration(milliseconds: 400)) {
             _lastPopTime = now;
             _prevStep();
           }
@@ -147,7 +159,9 @@ class BookingFlowScreenState extends State<BookingFlowScreen> {
                           : null,
                       child: Center(
                         child: ConstrainedBox(
-                          constraints: BoxConstraints(maxWidth: r.maxContentWidth),
+                          constraints: BoxConstraints(
+                            maxWidth: r.maxContentWidth,
+                          ),
                           child: AnimatedSwitcher(
                             duration: const Duration(milliseconds: 350),
                             switchInCurve: Curves.easeOut,
@@ -169,8 +183,11 @@ class BookingFlowScreenState extends State<BookingFlowScreen> {
                         messages: _coachMessages(),
                         isDark: isDark,
                         celebrate: _isConfirmed,
-                        step: _currentStep + 1,
-                        totalSteps: 6,
+                        // El paso 1 del recorrido es tocar "Nueva Reserva" en
+                        // Inicio; por eso aquí los pasos van del 2 al 7.
+                        step: _currentStep + 2,
+                        totalSteps: 7,
+                        voiceId: _coachVoiceId(),
                         onExit: _exitTutorial,
                       ),
                   ],
@@ -182,6 +199,12 @@ class BookingFlowScreenState extends State<BookingFlowScreen> {
       ),
     );
   }
+
+  /// Clip de voz del paso actual (`assets/vof_tutorial/<id>.mp3`). El paso de
+  /// Inicio es `ficha_00`; aquí los pasos 0..5 son `ficha_01..06` y la
+  /// confirmación `ficha_07` (ver `tools/rvc/tutorial_lines.md`).
+  String _coachVoiceId() =>
+      _isConfirmed ? 'ficha_07' : 'ficha_0${_currentStep + 1}';
 
   /// Burbujas de la instructora para cada paso del tutorial — frases cortas
   /// y cercanas, una idea por burbuja (estilo chat). La última siempre lleva
@@ -196,8 +219,8 @@ class BookingFlowScreenState extends State<BookingFlowScreen> {
     }
     return switch (_currentStep) {
       0 => const [
-        '¡Hola! Vamos a sacar tu primera ficha juntos.',
-        'Primero elige tu hospital o policlínico — estos son los que tienes '
+        '¡Muy bien! Así se inicia una reserva.',
+        'Ahora elige tu hospital o policlínico — estos son los que tienes '
             'habilitados, agrupados por regional.',
       ],
       1 => const [

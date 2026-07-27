@@ -44,7 +44,8 @@ class NotificationInitializer {
     if (Platform.isAndroid) {
       final androidPlugin = plugin
           .resolvePlatformSpecificImplementation<
-              AndroidFlutterLocalNotificationsPlugin>();
+            AndroidFlutterLocalNotificationsPlugin
+          >();
       await androidPlugin?.deleteNotificationChannel('cossmil_booking');
       await androidPlugin?.deleteNotificationChannel('cossmil_reminder');
     }
@@ -63,14 +64,17 @@ class NotificationInitializer {
       if (!Platform.isAndroid) return true;
       final androidPlugin = plugin
           .resolvePlatformSpecificImplementation<
-              AndroidFlutterLocalNotificationsPlugin>();
+            AndroidFlutterLocalNotificationsPlugin
+          >();
       final granted =
           await androidPlugin?.requestNotificationsPermission() ?? true;
       if (granted) {
         AppLogger.info(_tag, 'POST_NOTIFICATIONS: concedido');
       } else {
-        AppLogger.warn(_tag,
-            'POST_NOTIFICATIONS: DENEGADO — las notificaciones no llegarán');
+        AppLogger.warn(
+          _tag,
+          'POST_NOTIFICATIONS: DENEGADO — las notificaciones no llegarán',
+        );
       }
       return granted;
     } catch (e, st) {
@@ -86,7 +90,8 @@ class NotificationInitializer {
       if (!Platform.isAndroid) return true;
       final androidPlugin = plugin
           .resolvePlatformSpecificImplementation<
-              AndroidFlutterLocalNotificationsPlugin>();
+            AndroidFlutterLocalNotificationsPlugin
+          >();
       return await androidPlugin?.areNotificationsEnabled() ?? true;
     } catch (_) {
       return true;
@@ -107,7 +112,11 @@ class NotificationInitializer {
       }
     } catch (e) {
       AppLogger.error(
-          _tag, 'requestBatteryOptimizationExemption failed', e, null);
+        _tag,
+        'requestBatteryOptimizationExemption failed',
+        e,
+        null,
+      );
     }
   }
 
@@ -132,7 +141,9 @@ class NotificationInitializer {
       final response = details?.notificationResponse;
       if (details?.didNotificationLaunchApp == true && response != null) {
         AppLogger.info(
-            _tag, 'App abierta desde el tap de una notificación — despachando');
+          _tag,
+          'App abierta desde el tap de una notificación — despachando',
+        );
         NotificationUiHandler.onNotificationTap(response);
       }
     } catch (e) {

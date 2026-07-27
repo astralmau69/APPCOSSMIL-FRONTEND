@@ -25,9 +25,15 @@ class TimeSlotChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final r = context.r;
-    final Color bgColor = isDark ? const Color(0xFF064E3B) : const Color(0xFF86EFAC);
-    final Color textColor = isDark ? const Color(0xFF6EE7B7) : const Color(0xFF14532D);
-    final Color borderColor = isDark ? const Color(0xFF059669) : const Color(0xFF16A34A);
+    final Color bgColor = isDark
+        ? const Color(0xFF064E3B)
+        : const Color(0xFF86EFAC);
+    final Color textColor = isDark
+        ? const Color(0xFF6EE7B7)
+        : const Color(0xFF14532D);
+    final Color borderColor = isDark
+        ? const Color(0xFF059669)
+        : const Color(0xFF16A34A);
 
     return GestureDetector(
       onTap: onTap,
@@ -72,7 +78,9 @@ class TimeSlotChip extends StatelessWidget {
                 'Disponible',
                 style: context.texts.labelSmall.copyWith(
                   fontWeight: FontWeight.w800,
-                  color: isDark ? const Color(0xFF6EE7B7) : const Color(0xFF059669),
+                  color: isDark
+                      ? const Color(0xFF6EE7B7)
+                      : const Color(0xFF059669),
                   letterSpacing: 0.3,
                   fontSize: 10,
                 ),

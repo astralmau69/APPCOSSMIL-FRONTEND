@@ -438,6 +438,7 @@ class NotificationUiHandler {
     showAppDialog(
       context: ctx,
       barrierDismissible: false,
+      silent: true, // esperar no es un evento: un loader no suena
       builder: (_) =>
           const Center(child: CupertinoActivityIndicator(radius: 15)),
     );

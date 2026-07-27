@@ -60,7 +60,10 @@ class NotificationScheduler {
       final userId = UserSession.currentUser.id;
       final canSend = await NotificationPreferences.getConfirmations(userId);
       if (!canSend) {
-        AppLogger.debug(_tag, 'Confirmación omitida por preferencia del usuario');
+        AppLogger.debug(
+          _tag,
+          'Confirmación omitida por preferencia del usuario',
+        );
         return;
       }
 
@@ -100,16 +103,19 @@ class NotificationScheduler {
         presentSound: true,
         sound: 'notificacion_cita.mp3',
       );
-      final details =
-          NotificationDetails(android: androidDetails, iOS: iosDetails);
+      final details = NotificationDetails(
+        android: androidDetails,
+        iOS: iosDetails,
+      );
 
       // tz.TZDateTime.now(...).add(...) — NUNCA DateTime.now().add(...) envuelto
       // en TZDateTime.from(): .from() reinterpreta los campos (Y/M/D/H/M) del
       // DateTime recibido COMO SI ya fueran hora de America/La_Paz, ignorando
       // su offset real. Si el dispositivo tiene otro huso horario, "ahora + 5
       // min" quedaba desplazado por la diferencia entre ambos husos.
-      final scheduledTime =
-          tz.TZDateTime.now(tz.local).add(const Duration(minutes: 5));
+      final scheduledTime = tz.TZDateTime.now(
+        tz.local,
+      ).add(const Duration(minutes: 5));
       await _scheduleWithFallback(
         id: _idFromTicket(ticketNumber, 9),
         title: 'Cita Médica Confirmada — $especialidad',
@@ -135,7 +141,9 @@ class NotificationScheduler {
       );
 
       AppLogger.info(
-          _tag, 'Booking confirmed notification scheduled in 5 min — $ticketNumber');
+        _tag,
+        'Booking confirmed notification scheduled in 5 min — $ticketNumber',
+      );
     } catch (e, st) {
       AppLogger.error(_tag, 'showBookingConfirmed failed', e, st);
     }
@@ -168,13 +176,17 @@ class NotificationScheduler {
       final userId = UserSession.currentUser.id;
       final canSend = await NotificationPreferences.getReminders(userId);
       if (!canSend) {
-        AppLogger.debug(_tag, 'Recordatorios omitidos por preferencia del usuario');
+        AppLogger.debug(
+          _tag,
+          'Recordatorios omitidos por preferencia del usuario',
+        );
         return;
       }
 
       final appt = appointmentDateTime;
       final now = tz.TZDateTime.now(tz.local);
-      final fechaStr = fecha ??
+      final fechaStr =
+          fecha ??
           '${appt.day.toString().padLeft(2, '0')}/${appt.month.toString().padLeft(2, '0')}/${appt.year}';
       final horaStr = hora ?? _hhmm(appt);
 
@@ -222,11 +234,18 @@ class NotificationScheduler {
         _Reminder(
           id: _idFromTicket(ticketNumber, 0),
           time: tz.TZDateTime.from(
-            DateTime(twoDaysPrev.year, twoDaysPrev.month, twoDaysPrev.day, 8, 0),
+            DateTime(
+              twoDaysPrev.year,
+              twoDaysPrev.month,
+              twoDaysPrev.day,
+              8,
+              0,
+            ),
             tz.local,
           ),
           title: 'Cita médica en 2 días — $paciente',
-          body: 'El $fechaStr a las $horaStr tiene una cita de $especialidad con Dr. $medico. '
+          body:
+              'El $fechaStr a las $horaStr tiene una cita de $especialidad con Dr. $medico. '
               'Ficha $ticketNumber.',
           scheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
         ),
@@ -238,25 +257,34 @@ class NotificationScheduler {
             tz.local,
           ),
           title: 'Cita médica mañana — $paciente',
-          body: 'Mañana a las $horaStr tiene una cita de $especialidad con Dr. $medico. '
+          body:
+              'Mañana a las $horaStr tiene una cita de $especialidad con Dr. $medico. '
               'Prepare su documentación. Ficha $ticketNumber.',
           scheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
         ),
         // 3 horas antes
         _Reminder(
           id: _idFromTicket(ticketNumber, 2),
-          time: tz.TZDateTime.from(appt.subtract(const Duration(hours: 3)), tz.local),
+          time: tz.TZDateTime.from(
+            appt.subtract(const Duration(hours: 3)),
+            tz.local,
+          ),
           title: 'Cita médica en 3 horas — $paciente',
-          body: 'A las $horaStr tiene una cita de $especialidad con Dr. $medico. '
+          body:
+              'A las $horaStr tiene una cita de $especialidad con Dr. $medico. '
               'Puede cancelar desde la app si no podrá asistir.',
           scheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
         ),
         // 30 minutos antes — alarmClock
         _Reminder(
           id: _idFromTicket(ticketNumber, 3),
-          time: tz.TZDateTime.from(appt.subtract(const Duration(minutes: 30)), tz.local),
+          time: tz.TZDateTime.from(
+            appt.subtract(const Duration(minutes: 30)),
+            tz.local,
+          ),
           title: 'Cita médica en 30 minutos — $paciente',
-          body: 'Su cita de $especialidad con el Dr. $medico es a las $horaStr. '
+          body:
+              'Su cita de $especialidad con el Dr. $medico es a las $horaStr. '
               'Recuerde que debe presentarse en el consultorio 15 minutos antes de su hora de atención. Ficha $ticketNumber.',
           payload: payloadNoCancel,
           scheduleMode: AndroidScheduleMode.alarmClock,
@@ -264,9 +292,13 @@ class NotificationScheduler {
         // 15 minutos antes — alarmClock
         _Reminder(
           id: _idFromTicket(ticketNumber, 4),
-          time: tz.TZDateTime.from(appt.subtract(const Duration(minutes: 15)), tz.local),
+          time: tz.TZDateTime.from(
+            appt.subtract(const Duration(minutes: 15)),
+            tz.local,
+          ),
           title: '¡Su cita comienza en 15 minutos! — $paciente',
-          body: 'Especialidad: $especialidad · Dr. $medico · $horaStr. '
+          body:
+              'Especialidad: $especialidad · Dr. $medico · $horaStr. '
               'Preséntese en el consultorio. Ficha $ticketNumber.',
           payload: payloadNoCancel,
           scheduleMode: AndroidScheduleMode.alarmClock,
@@ -288,8 +320,10 @@ class NotificationScheduler {
         presentSound: true,
         sound: 'notificacion_cita.mp3',
       );
-      const details =
-          NotificationDetails(android: androidDetails, iOS: iosDetails);
+      const details = NotificationDetails(
+        android: androidDetails,
+        iOS: iosDetails,
+      );
 
       int scheduled = 0;
       for (final r in reminders) {
@@ -306,14 +340,18 @@ class NotificationScheduler {
           if (ok) {
             scheduled++;
             AppLogger.info(
-                _tag, 'Scheduled id=${r.id} mode=${r.scheduleMode.name} at ${r.time}');
+              _tag,
+              'Scheduled id=${r.id} mode=${r.scheduleMode.name} at ${r.time}',
+            );
           }
         } else {
           AppLogger.debug(_tag, 'Skipped past reminder at ${r.time}');
         }
       }
       AppLogger.info(
-          _tag, '$scheduled/${reminders.length} reminders scheduled for ticket $ticketNumber');
+        _tag,
+        '$scheduled/${reminders.length} reminders scheduled for ticket $ticketNumber',
+      );
 
       // Registrar en historial (solo primer schedule, no re-schedule)
       if (!rescheduleOnly) {
@@ -324,7 +362,8 @@ class NotificationScheduler {
             id: 'reminder_${ticketNumber}_${DateTime.now().millisecondsSinceEpoch}',
             type: AppNotificationType.reminder,
             title: 'Recordatorio agendado — $especialidad',
-            body: 'Cita con Dr. $medico · $paciente · $scheduled recordatorio(s) programado(s)',
+            body:
+                'Cita con Dr. $medico · $paciente · $scheduled recordatorio(s) programado(s)',
             createdAt: DateTime.now(),
             payload: {'ticket': ticketNumber, 'especialidad': especialidad},
           ),
@@ -409,7 +448,11 @@ class NotificationScheduler {
           );
         } catch (e) {
           AppLogger.error(
-              _tag, 'reschedule failed for ticket=$ticket', e, null);
+            _tag,
+            'reschedule failed for ticket=$ticket',
+            e,
+            null,
+          );
         }
       }
 
@@ -422,15 +465,22 @@ class NotificationScheduler {
           value: jsonEncode(map),
         );
         AppLogger.debug(
-            _tag, 'Removed ${expired.length} expired appointment(s) from storage');
+          _tag,
+          'Removed ${expired.length} expired appointment(s) from storage',
+        );
       }
 
       AppLogger.info(
-          _tag,
-          'Re-scheduled notifications for ${map.length - expired.length} upcoming appointment(s)');
+        _tag,
+        'Re-scheduled notifications for ${map.length - expired.length} upcoming appointment(s)',
+      );
     } catch (e, st) {
       AppLogger.error(
-          _tag, 'rescheduleNotificationsForCurrentUser failed', e, st);
+        _tag,
+        'rescheduleNotificationsForCurrentUser failed',
+        e,
+        st,
+      );
     }
   }
 
@@ -457,7 +507,10 @@ class NotificationScheduler {
       // Guard: preferencia de calificaciones
       final canSend = await NotificationPreferences.getRatings(userId);
       if (!canSend) {
-        AppLogger.debug(_tag, 'Rating reminder omitido por preferencia del usuario');
+        AppLogger.debug(
+          _tag,
+          'Rating reminder omitido por preferencia del usuario',
+        );
         return;
       }
 
@@ -487,7 +540,10 @@ class NotificationScheduler {
         presentSound: true,
         sound: 'notificacion_cita.mp3',
       );
-      const details = NotificationDetails(android: androidDetails, iOS: iosDetails);
+      const details = NotificationDetails(
+        android: androidDetails,
+        iOS: iosDetails,
+      );
 
       final notifId = _idFromTicket(ticketNumber, 5);
       await NotificationInitializer.plugin.show(
@@ -513,7 +569,9 @@ class NotificationScheduler {
       );
 
       AppLogger.info(
-          _tag, 'Rating reminder shown for ticket=$ticketNumber (estado=Completado)');
+        _tag,
+        'Rating reminder shown for ticket=$ticketNumber (estado=Completado)',
+      );
     } catch (e, st) {
       AppLogger.error(_tag, 'showRatingReminder failed', e, st);
     }
@@ -527,8 +585,9 @@ class NotificationScheduler {
       await NotificationInitializer.initialize();
       final ticketNumber = await _resolveTicketNum(idtran);
       for (final suffix in [0, 1, 2, 3, 4, 5, 9]) {
-        await NotificationInitializer.plugin
-            .cancel(_idFromTicket(ticketNumber, suffix));
+        await NotificationInitializer.plugin.cancel(
+          _idFromTicket(ticketNumber, suffix),
+        );
       }
       await _removeTicketMapping(idtran);
       final userId = UserSession.currentUser.id;
@@ -536,7 +595,9 @@ class NotificationScheduler {
         await _removeAppointmentData(userId, ticketNumber);
       }
       AppLogger.info(
-          _tag, 'Cancelled reminders for idtran=$idtran (ticket=$ticketNumber)');
+        _tag,
+        'Cancelled reminders for idtran=$idtran (ticket=$ticketNumber)',
+      );
     } catch (e, st) {
       AppLogger.error(_tag, 'cancelAppointmentReminders failed', e, st);
     }
@@ -557,7 +618,9 @@ class NotificationScheduler {
       // seguir consultando el backend por un usuario que ya cerró sesión.
       await BackgroundSyncService.cancel();
       AppLogger.info(
-          _tag, 'All pending notifications and persisted data cleared (logout)');
+        _tag,
+        'All pending notifications and persisted data cleared (logout)',
+      );
     } catch (e, st) {
       AppLogger.error(_tag, 'cancelAllReminders failed', e, st);
     }
@@ -577,7 +640,11 @@ class NotificationScheduler {
   }) async {
     try {
       await NotificationInitializer.plugin.zonedSchedule(
-        id, title, body, scheduledTime, details,
+        id,
+        title,
+        body,
+        scheduledTime,
+        details,
         payload: payload,
         androidScheduleMode: preferredMode,
         uiLocalNotificationDateInterpretation:
@@ -591,7 +658,11 @@ class NotificationScheduler {
       );
       try {
         await NotificationInitializer.plugin.zonedSchedule(
-          id, title, body, scheduledTime, details,
+          id,
+          title,
+          body,
+          scheduledTime,
+          details,
           payload: payload,
           androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
           uiLocalNotificationDateInterpretation:
@@ -600,7 +671,11 @@ class NotificationScheduler {
         return true;
       } catch (e2) {
         AppLogger.error(
-            _tag, 'Scheduling completamente fallido para id=$id', e2, null);
+          _tag,
+          'Scheduling completamente fallido para id=$id',
+          e2,
+          null,
+        );
         return false;
       }
     }
@@ -652,7 +727,10 @@ class NotificationScheduler {
     } catch (_) {}
   }
 
-  static Future<void> _saveTicketMapping(int idtran, String ticketNumber) async {
+  static Future<void> _saveTicketMapping(
+    int idtran,
+    String ticketNumber,
+  ) async {
     final key = idtran.toString();
     if (key == ticketNumber) return;
     try {

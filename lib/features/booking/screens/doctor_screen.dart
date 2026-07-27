@@ -343,10 +343,11 @@ class _DoctorScreenState extends State<DoctorScreen> {
     return DoctorCard(
       name: doctor.medico,
       photoBytes: doctor.photoBytes,
-      subtitle: doctor.mtrmin.isNotEmpty ? 'Matrícula prof.: ${doctor.mtrmin}' : null,
+      subtitle: doctor.mtrmin.isNotEmpty
+          ? 'Matrícula prof.: ${doctor.mtrmin}'
+          : null,
       isDark: isDark,
       onTap: () => _onDoctorSelected(doctor),
     );
   }
-
 }

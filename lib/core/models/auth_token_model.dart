@@ -16,6 +16,7 @@ class AuthTokenModel {
   final String nom;
   final String ci;
   final String matricula;
+
   /// Matrícula del titular del seguro (campo `mtrtit` del token). Para
   /// beneficiarios apunta al titular; para titulares suele ser su propia matrícula.
   final String mtrtit;
@@ -30,6 +31,7 @@ class AuthTokenModel {
   final String? uc;
   final String bloodType;
   final String allergies;
+
   /// `false` = debe cambiar contraseña (primer ingreso), `true` = ya cambió.
   final bool reqReset;
 
@@ -63,13 +65,15 @@ class AuthTokenModel {
   factory AuthTokenModel.fromJson(Map<String, dynamic> json) {
     final accessToken = (json['access_token'] as String? ?? '').trim();
     final refreshToken = (json['refresh_token'] as String? ?? '').trim();
-    
+
     // Decodificar payload secundario del token JWT por si el response raíz no incluye estos datos
     Map<String, dynamic> payload = {};
     if (accessToken.split('.').length == 3) {
       try {
         final payloadBase64 = accessToken.split('.')[1];
-        String normalized = payloadBase64.replaceAll('-', '+').replaceAll('_', '/');
+        String normalized = payloadBase64
+            .replaceAll('-', '+')
+            .replaceAll('_', '/');
         while (normalized.length % 4 != 0) {
           normalized += '=';
         }
@@ -97,16 +101,28 @@ class AuthTokenModel {
       matricula: val('matricula') as String? ?? '',
       mtrtit: val('mtrtit') as String? ?? val('matriculaTit') as String? ?? '',
       edad: val('edad') as int? ?? 0,
-      genero: val('genero') as String? ?? val('sexo') as String? ?? val('gender') as String? ?? '',
+      genero:
+          val('genero') as String? ??
+          val('sexo') as String? ??
+          val('gender') as String? ??
+          '',
       rol: val('rol') as String? ?? '',
       grado: val('grado') as String? ?? '',
-      idper: (val('idper') ?? int.tryParse(val('idusr')?.toString() ?? '')) as int? ?? 0,
+      idper:
+          (val('idper') ?? int.tryParse(val('idusr')?.toString() ?? ''))
+              as int? ??
+          0,
       numeroCelular: val('numeroCelular') as String? ?? '',
       correo: val('correo') as String? ?? '',
       idseg: val('idseg') as int?,
       uc: val('uc')?.toString(),
-      bloodType: val('grupoSanguineo') as String? ?? val('grupo_sanguineo') as String? ?? val('bloodType') as String? ?? '',
-      allergies: val('alergias') as String? ?? val('allergies') as String? ?? '',
+      bloodType:
+          val('grupoSanguineo') as String? ??
+          val('grupo_sanguineo') as String? ??
+          val('bloodType') as String? ??
+          '',
+      allergies:
+          val('alergias') as String? ?? val('allergies') as String? ?? '',
       reqReset: _parseBool(val('req_reset')),
     );
   }
@@ -120,23 +136,23 @@ class AuthTokenModel {
   }
 
   Map<String, dynamic> toJson() => {
-        'access_token': accessToken,
-        'refresh_token': refreshToken,
-        'token_type': tokenType,
-        'expires_in': expiresIn,
-        'scope': scope,
-        'jti': jti,
-        'mat': mat,
-        'pat': pat,
-        'nom': nom,
-        'ci': ci,
-        'matricula': matricula,
-        'edad': edad,
-        'genero': genero,
-        'rol': rol,
-        'grado': grado,
-        'idper': idper,
-        'numeroCelular': numeroCelular,
-        'correo': correo,
-      };
+    'access_token': accessToken,
+    'refresh_token': refreshToken,
+    'token_type': tokenType,
+    'expires_in': expiresIn,
+    'scope': scope,
+    'jti': jti,
+    'mat': mat,
+    'pat': pat,
+    'nom': nom,
+    'ci': ci,
+    'matricula': matricula,
+    'edad': edad,
+    'genero': genero,
+    'rol': rol,
+    'grado': grado,
+    'idper': idper,
+    'numeroCelular': numeroCelular,
+    'correo': correo,
+  };
 }

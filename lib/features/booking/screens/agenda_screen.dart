@@ -18,7 +18,12 @@ class AgendaScreen extends StatefulWidget {
   final VoidCallback? onNext;
   final VoidCallback? onBack;
 
-  const AgendaScreen({super.key, required this.tabShell, this.onNext, this.onBack});
+  const AgendaScreen({
+    super.key,
+    required this.tabShell,
+    this.onNext,
+    this.onBack,
+  });
 
   @override
   State<AgendaScreen> createState() => _AgendaScreenState();
@@ -106,7 +111,9 @@ class _AgendaScreenState extends State<AgendaScreen> {
       // 1. Obtener fecha del servidor (caché si está disponible) y agenda del backend.
       //    fechaServidor es estable durante la sesión: el orchestrator la pobla en
       //    AppSessionCache y aquí evitamos la llamada redundante.
-      final cachedFecha = AppSessionCache.isLoaded ? AppSessionCache.fechaServidor : null;
+      final cachedFecha = AppSessionCache.isLoaded
+          ? AppSessionCache.fechaServidor
+          : null;
       final fechaFuture = (cachedFecha != null && cachedFecha.isNotEmpty)
           ? Future.value(cachedFecha)
           : _service.getFechaServidor();
@@ -151,13 +158,15 @@ class _AgendaScreenState extends State<AgendaScreen> {
         final fechaStr = DateFormat('yyyy-MM-dd').format(fecha);
         final modelos = byFecha[fechaStr] ?? const <DoctorAgendaModel>[];
 
-        semana.add(_DiaAgenda(
-          fecha: fechaStr,
-          fechaDate: fecha,
-          modelos: modelos, // vacío → sin agenda en el backend
-          idmed: idmed,
-          medicoNombre: bs.doctor?.fullName ?? '',
-        ));
+        semana.add(
+          _DiaAgenda(
+            fecha: fechaStr,
+            fechaDate: fecha,
+            modelos: modelos, // vacío → sin agenda en el backend
+            idmed: idmed,
+            medicoNombre: bs.doctor?.fullName ?? '',
+          ),
+        );
       }
 
       // 5. Verificación cruzada: agenda-medico-movil puede reportar
@@ -189,7 +198,8 @@ class _AgendaScreenState extends State<AgendaScreen> {
   /// porque la pantalla de horas oculta los turnos cuya hora ya pasó.
   bool _shiftEndedToday(_DiaAgenda dia, DoctorAgendaModel m) {
     final now = DateTime.now();
-    final isToday = dia.fechaDate.year == now.year &&
+    final isToday =
+        dia.fechaDate.year == now.year &&
         dia.fechaDate.month == now.month &&
         dia.fechaDate.day == now.day;
     if (!isToday) return false;
@@ -219,7 +229,9 @@ class _AgendaScreenState extends State<AgendaScreen> {
   /// como disponible y retorna, por idagenda, si queda alguna hora libre.
   /// Si la consulta de un turno falla (red), se respeta el veredicto de la
   /// agenda para no bloquear la reserva por un error transitorio.
-  Future<Map<String, bool>> _verificarFichasReales(List<_DiaAgenda> semana) async {
+  Future<Map<String, bool>> _verificarFichasReales(
+    List<_DiaAgenda> semana,
+  ) async {
     final candidatos = <({_DiaAgenda dia, DoctorAgendaModel m})>[];
     for (final dia in semana) {
       for (final m in dia.modelos) {
@@ -230,14 +242,16 @@ class _AgendaScreenState extends State<AgendaScreen> {
     }
     if (candidatos.isEmpty) return {};
 
-    final entries = await Future.wait(candidatos.map((c) async {
-      try {
-        final slots = await _service.getHorasAgenda(c.m.idagenda);
-        return MapEntry(c.m.idagenda, _tieneHoraLibre(c.dia, slots));
-      } catch (_) {
-        return MapEntry(c.m.idagenda, true);
-      }
-    }));
+    final entries = await Future.wait(
+      candidatos.map((c) async {
+        try {
+          final slots = await _service.getHorasAgenda(c.m.idagenda);
+          return MapEntry(c.m.idagenda, _tieneHoraLibre(c.dia, slots));
+        } catch (_) {
+          return MapEntry(c.m.idagenda, true);
+        }
+      }),
+    );
     return Map.fromEntries(entries);
   }
 
@@ -247,7 +261,8 @@ class _AgendaScreenState extends State<AgendaScreen> {
   bool _tieneHoraLibre(_DiaAgenda dia, List<TimeSlotModel> slots) {
     final libres = slots.where((s) => s.isAvailable);
     final now = DateTime.now();
-    final isToday = dia.fechaDate.year == now.year &&
+    final isToday =
+        dia.fechaDate.year == now.year &&
         dia.fechaDate.month == now.month &&
         dia.fechaDate.day == now.day;
     if (!isToday) return libres.isNotEmpty;
@@ -323,15 +338,24 @@ class _AgendaScreenState extends State<AgendaScreen> {
           Expanded(
             child: AppStateWidget.empty(
               title: 'Sin agenda',
-              message: 'El médico seleccionado no tiene agenda programada en este momento.',
+              message:
+                  'El médico seleccionado no tiene agenda programada en este momento.',
             ),
           ),
           Padding(
-            padding: EdgeInsets.fromLTRB(r.paddingH, 0, r.paddingH, r.navBarBottomSpace + r.spaceMd),
+            padding: EdgeInsets.fromLTRB(
+              r.paddingH,
+              0,
+              r.paddingH,
+              r.navBarBottomSpace + r.spaceMd,
+            ),
             child: SizedBox(
               width: double.infinity,
               child: CupertinoButton(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 14,
+                ),
                 color: AppColors.primary,
                 borderRadius: BorderRadius.circular(r.radiusMd),
                 onPressed: widget.onBack,
@@ -350,7 +374,9 @@ class _AgendaScreenState extends State<AgendaScreen> {
     }
 
     return CustomScrollView(
-      physics: const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
+      physics: const BouncingScrollPhysics(
+        parent: AlwaysScrollableScrollPhysics(),
+      ),
       slivers: [
         SliverToBoxAdapter(
           child: Padding(
@@ -360,7 +386,12 @@ class _AgendaScreenState extends State<AgendaScreen> {
         ),
         SliverToBoxAdapter(
           child: Padding(
-            padding: EdgeInsets.fromLTRB(r.paddingH, r.spaceMd, r.paddingH, r.spaceSm),
+            padding: EdgeInsets.fromLTRB(
+              r.paddingH,
+              r.spaceMd,
+              r.paddingH,
+              r.spaceSm,
+            ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -386,15 +417,23 @@ class _AgendaScreenState extends State<AgendaScreen> {
           ),
         ),
         SliverPadding(
-          padding: EdgeInsets.fromLTRB(r.paddingH, r.spaceSm, r.paddingH, r.navBarBottomSpace + 16),
+          padding: EdgeInsets.fromLTRB(
+            r.paddingH,
+            r.spaceSm,
+            r.paddingH,
+            r.navBarBottomSpace + 16,
+          ),
           sliver: SliverList.builder(
             itemCount: _semana.length,
             itemBuilder: (context, i) {
               final dia = _semana[i];
               final card = _buildDayCard(dia, isDark, r);
-              final isFirstAvailable = bs.isTutorialMode &&
+              final isFirstAvailable =
+                  bs.isTutorialMode &&
                   dia.modelos.any((m) => _slotAvailable(dia, m)) &&
-                  !_semana.take(i).any((d) => d.modelos.any((m) => _slotAvailable(d, m)));
+                  !_semana
+                      .take(i)
+                      .any((d) => d.modelos.any((m) => _slotAvailable(d, m)));
               return Padding(
                 padding: EdgeInsets.only(bottom: r.spaceMd),
                 child: isFirstAvailable ? GuidedTapHint(child: card) : card,
@@ -430,7 +469,10 @@ class _AgendaScreenState extends State<AgendaScreen> {
           decoration: BoxDecoration(shape: BoxShape.circle, color: color),
         ),
         const SizedBox(width: 4),
-        Text(label, style: const TextStyle(fontSize: 11, color: AppColors.textSecondary)),
+        Text(
+          label,
+          style: const TextStyle(fontSize: 11, color: AppColors.textSecondary),
+        ),
       ],
     );
   }
@@ -471,7 +513,7 @@ class _AgendaScreenState extends State<AgendaScreen> {
                     color: Colors.black.withValues(alpha: 0.04),
                     blurRadius: 8,
                     offset: const Offset(0, 2),
-                  )
+                  ),
                 ]
               : [],
         ),
@@ -532,11 +574,14 @@ class _AgendaScreenState extends State<AgendaScreen> {
                       _buildSinConsulta(isDark)
                     else
                       for (int i = 0; i < modelos.length; i++) ...[
-                        if (i > 0) Divider(
-                          height: r.spaceMd,
-                          thickness: 0.5,
-                          color: AppColors.textTertiaryC(isDark).withValues(alpha: 0.25),
-                        ),
+                        if (i > 0)
+                          Divider(
+                            height: r.spaceMd,
+                            thickness: 0.5,
+                            color: AppColors.textTertiaryC(
+                              isDark,
+                            ).withValues(alpha: 0.25),
+                          ),
                         _buildSlotRow(dia, modelos[i], isDark, r),
                       ],
                   ],
@@ -553,7 +598,11 @@ class _AgendaScreenState extends State<AgendaScreen> {
   Widget _buildSinConsulta(bool isDark) {
     return Row(
       children: [
-        Icon(CupertinoIcons.clock, size: 14, color: AppColors.textTertiaryC(isDark)),
+        Icon(
+          CupertinoIcons.clock,
+          size: 14,
+          color: AppColors.textTertiaryC(isDark),
+        ),
         const SizedBox(width: 4),
         Expanded(
           child: Text(
@@ -568,7 +617,12 @@ class _AgendaScreenState extends State<AgendaScreen> {
   }
 
   // ── Fila de un turno (horario + estado + acción) ──────────────────────────
-  Widget _buildSlotRow(_DiaAgenda dia, DoctorAgendaModel m, bool isDark, AppResponsive r) {
+  Widget _buildSlotRow(
+    _DiaAgenda dia,
+    DoctorAgendaModel m,
+    bool isDark,
+    AppResponsive r,
+  ) {
     final ended = _shiftEndedToday(dia, m);
     final isAvailable = _slotAvailable(dia, m);
     final accent = isAvailable ? AppColors.success : const Color(0xFFD32F2F);
@@ -588,7 +642,11 @@ class _AgendaScreenState extends State<AgendaScreen> {
               children: [
                 Row(
                   children: [
-                    Icon(CupertinoIcons.clock, size: 14, color: AppColors.textTertiaryC(isDark)),
+                    Icon(
+                      CupertinoIcons.clock,
+                      size: 14,
+                      color: AppColors.textTertiaryC(isDark),
+                    ),
                     const SizedBox(width: 4),
                     Text(
                       m.rangoHorario,
@@ -598,8 +656,11 @@ class _AgendaScreenState extends State<AgendaScreen> {
                     ),
                     if (m.consultorio.isNotEmpty) ...[
                       const SizedBox(width: 10),
-                      Icon(Icons.meeting_room_outlined,
-                          size: 14, color: AppColors.textTertiaryC(isDark)),
+                      Icon(
+                        Icons.meeting_room_outlined,
+                        size: 14,
+                        color: AppColors.textTertiaryC(isDark),
+                      ),
                       const SizedBox(width: 4),
                       Expanded(
                         child: Text(
@@ -623,7 +684,10 @@ class _AgendaScreenState extends State<AgendaScreen> {
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 4,
+                ),
                 decoration: BoxDecoration(
                   color: accent,
                   borderRadius: BorderRadius.circular(12),
@@ -664,7 +728,15 @@ class _AgendaScreenState extends State<AgendaScreen> {
     try {
       return DateFormat('EEEE', 'es').format(fecha);
     } catch (_) {
-      const dias = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
+      const dias = [
+        'Lunes',
+        'Martes',
+        'Miércoles',
+        'Jueves',
+        'Viernes',
+        'Sábado',
+        'Domingo',
+      ];
       return dias[(fecha.weekday - 1) % 7];
     }
   }

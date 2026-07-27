@@ -24,10 +24,7 @@ class _Inasistencia {
 /// Lista de forma profesional las faltas acumuladas y ofrece solo un botón
 /// "Aceptar". No deja continuar al flujo de reserva: el usuario debe regularizar
 /// su situación en ventanilla hasta que la API retorne `data:false`.
-Future<void> showInasistenciasModal(
-  BuildContext context,
-  String message,
-) {
+Future<void> showInasistenciasModal(BuildContext context, String message) {
   final parsed = _parseInasistenciasMessage(message);
 
   return showWarningModal<void>(
@@ -94,7 +91,7 @@ Future<void> showInasistenciasModal(
 /// faltas y párrafos de cierre. Las líneas que comienzan con "-" son
 /// inasistencias individuales.
 ({List<String> intro, List<_Inasistencia> faltas, List<String> cierre})
-    _parseInasistenciasMessage(String message) {
+_parseInasistenciasMessage(String message) {
   final intro = <String>[];
   final faltas = <_Inasistencia>[];
   final cierre = <String>[];
@@ -117,11 +114,13 @@ Future<void> showInasistenciasModal(
           .map((p) => p.trim())
           .where((p) => p.isNotEmpty)
           .toList();
-      faltas.add(_Inasistencia(
-        fecha: parts.isNotEmpty ? parts[0] : '',
-        especialidad: parts.length > 1 ? parts[1] : '',
-        medico: parts.length > 2 ? parts.sublist(2).join(' - ') : '',
-      ));
+      faltas.add(
+        _Inasistencia(
+          fecha: parts.isNotEmpty ? parts[0] : '',
+          especialidad: parts.length > 1 ? parts[1] : '',
+          medico: parts.length > 2 ? parts.sublist(2).join(' - ') : '',
+        ),
+      );
     } else if (seenFalta) {
       cierre.add(line);
     } else {

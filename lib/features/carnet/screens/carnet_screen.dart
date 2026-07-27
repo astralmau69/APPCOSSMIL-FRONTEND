@@ -53,7 +53,9 @@ class _CarnetScreenState extends State<CarnetScreen>
     // subpantalla "Carnet Digital de Seguro", al ser FLAG_SECURE por ventana).
     ScreenSecurityService.enable();
     _flipCtrl = AnimationController(
-        vsync: this, duration: const Duration(milliseconds: 720));
+      vsync: this,
+      duration: const Duration(milliseconds: 720),
+    );
     // El giro de la tarjeta se anima con un AnimatedBuilder acotado; aquí solo
     // refrescamos el hint al cambiar de estado (no en cada frame).
     _flipCtrl.addStatusListener((_) {
@@ -81,10 +83,12 @@ class _CarnetScreenState extends State<CarnetScreen>
       await task();
     } catch (_) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-          content: Text('No se pudo generar el PDF del carnet.'),
-          behavior: SnackBarBehavior.floating,
-        ));
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('No se pudo generar el PDF del carnet.'),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
       }
     } finally {
       if (mounted) setState(() => _working = false);
@@ -119,25 +123,27 @@ class _CarnetScreenState extends State<CarnetScreen>
   }
 
   Future<void> _imprimir() => _run(() async {
-        final bytes = await _pdfBytes();
-        if (!mounted) return;
-        // Primero la vista previa dentro de la app (sin capturas); desde ahí el
-        // usuario imprime o comparte.
-        await Navigator.of(context).push(
-          CupertinoPageRoute(
-            builder: (_) => CarnetPdfPreviewScreen(
-              pdfBytes: bytes,
-              fileName: 'Carnet_${_data.matricula}',
-            ),
-          ),
-        );
-      });
+    final bytes = await _pdfBytes();
+    if (!mounted) return;
+    // Primero la vista previa dentro de la app (sin capturas); desde ahí el
+    // usuario imprime o comparte.
+    await Navigator.of(context).push(
+      CupertinoPageRoute(
+        builder: (_) => CarnetPdfPreviewScreen(
+          pdfBytes: bytes,
+          fileName: 'Carnet_${_data.matricula}',
+        ),
+      ),
+    );
+  });
 
   Future<void> _compartir() => _run(() async {
-        final bytes = await _pdfBytes();
-        await Printing.sharePdf(
-            bytes: bytes, filename: 'Carnet_${_data.matricula}.pdf');
-      });
+    final bytes = await _pdfBytes();
+    await Printing.sharePdf(
+      bytes: bytes,
+      filename: 'Carnet_${_data.matricula}.pdf',
+    );
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -146,8 +152,9 @@ class _CarnetScreenState extends State<CarnetScreen>
     final d = _data;
 
     return Scaffold(
-      backgroundColor:
-          isDark ? AppColors.darkBackground : const Color(0xFFEDF4FB),
+      backgroundColor: isDark
+          ? AppColors.darkBackground
+          : const Color(0xFFEDF4FB),
       body: Stack(
         children: [
           // Tarjetas reales renderizadas FUERA de pantalla, a tamaño fijo, para
@@ -184,7 +191,11 @@ class _CarnetScreenState extends State<CarnetScreen>
                 Expanded(
                   child: SingleChildScrollView(
                     padding: EdgeInsets.fromLTRB(
-                        r.paddingH, r.spaceMd, r.paddingH, r.spaceXl),
+                      r.paddingH,
+                      r.spaceMd,
+                      r.paddingH,
+                      r.spaceXl,
+                    ),
                     child: Center(
                       child: ConstrainedBox(
                         constraints: const BoxConstraints(maxWidth: 480),
@@ -262,11 +273,13 @@ class _CarnetScreenState extends State<CarnetScreen>
     );
   }
 
-  Widget _scaled(Widget canvas) => FittedBox(fit: BoxFit.contain, child: canvas);
+  Widget _scaled(Widget canvas) =>
+      FittedBox(fit: BoxFit.contain, child: canvas);
 
   // ── Backdrop ─────────────────────────────────────────────────────────────
   Widget _backdrop(bool isDark) {
-    if (isDark) return const AppBackground(isDark: true, child: SizedBox.expand());
+    if (isDark)
+      return const AppBackground(isDark: true, child: SizedBox.expand());
     return DecoratedBox(
       decoration: const BoxDecoration(
         gradient: LinearGradient(
@@ -282,10 +295,12 @@ class _CarnetScreenState extends State<CarnetScreen>
           height: 320,
           decoration: BoxDecoration(
             shape: BoxShape.circle,
-            gradient: RadialGradient(colors: [
-              _azul.withValues(alpha: 0.18),
-              _azul.withValues(alpha: 0.0),
-            ]),
+            gradient: RadialGradient(
+              colors: [
+                _azul.withValues(alpha: 0.18),
+                _azul.withValues(alpha: 0.0),
+              ],
+            ),
           ),
         ),
       ),
@@ -308,13 +323,19 @@ class _CarnetScreenState extends State<CarnetScreen>
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('Mi Carnet COSSMIL',
-                    style: context.texts.titleLarge.copyWith(
-                        fontWeight: FontWeight.w800,
-                        color: AppColors.textPrimaryC(isDark))),
-                Text('Carnet digital de asegurado',
-                    style: context.texts.bodySmall.copyWith(
-                        color: AppColors.textSecondaryC(isDark))),
+                Text(
+                  'Mi Carnet COSSMIL',
+                  style: context.texts.titleLarge.copyWith(
+                    fontWeight: FontWeight.w800,
+                    color: AppColors.textPrimaryC(isDark),
+                  ),
+                ),
+                Text(
+                  'Carnet digital de asegurado',
+                  style: context.texts.bodySmall.copyWith(
+                    color: AppColors.textSecondaryC(isDark),
+                  ),
+                ),
               ],
             ),
           ),
@@ -344,17 +365,20 @@ class _CarnetScreenState extends State<CarnetScreen>
         width: 42,
         height: 42,
         decoration: BoxDecoration(
-          color: isDark
-              ? Colors.white.withValues(alpha: 0.08)
-              : Colors.white,
+          color: isDark ? Colors.white.withValues(alpha: 0.08) : Colors.white,
           shape: BoxShape.circle,
           border: Border.all(
-              color: (tint ?? AppColors.textTertiaryC(isDark))
-                  .withValues(alpha: isDark ? 0.25 : 0.18)),
+            color: (tint ?? AppColors.textTertiaryC(isDark)).withValues(
+              alpha: isDark ? 0.25 : 0.18,
+            ),
+          ),
           boxShadow: isDark ? null : AppColors.softShadow,
         ),
-        child: Icon(icon,
-            size: 20, color: tint ?? AppColors.textPrimaryC(isDark)),
+        child: Icon(
+          icon,
+          size: 20,
+          color: tint ?? AppColors.textPrimaryC(isDark),
+        ),
       ),
     );
   }
@@ -370,17 +394,19 @@ class _CarnetScreenState extends State<CarnetScreen>
               : Colors.white.withValues(alpha: 0.7),
           borderRadius: BorderRadius.circular(30),
           border: Border.all(
-              color: _azul.withValues(alpha: isDark ? 0.25 : 0.15)),
+            color: _azul.withValues(alpha: isDark ? 0.25 : 0.15),
+          ),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
             Icon(
-                _showingBack
-                    ? CupertinoIcons.arrow_uturn_left
-                    : CupertinoIcons.hand_draw,
-                size: 14,
-                color: _azul),
+              _showingBack
+                  ? CupertinoIcons.arrow_uturn_left
+                  : CupertinoIcons.hand_draw,
+              size: 14,
+              color: _azul,
+            ),
             const SizedBox(width: 7),
             Flexible(
               child: Text(
@@ -388,8 +414,9 @@ class _CarnetScreenState extends State<CarnetScreen>
                     ? 'Reverso · toca para ver el frente'
                     : 'Toca para girar · mueve el equipo para el holograma',
                 style: context.texts.labelSmall.copyWith(
-                    color: AppColors.textSecondaryC(isDark),
-                    fontWeight: FontWeight.w600),
+                  color: AppColors.textSecondaryC(isDark),
+                  fontWeight: FontWeight.w600,
+                ),
               ),
             ),
           ],
@@ -425,14 +452,20 @@ class _CarnetScreenState extends State<CarnetScreen>
                   : const Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Icon(CupertinoIcons.printer_fill,
-                            size: 20, color: Colors.white),
+                        Icon(
+                          CupertinoIcons.printer_fill,
+                          size: 20,
+                          color: Colors.white,
+                        ),
                         SizedBox(width: 10),
-                        Text('Descargar / Imprimir PDF',
-                            style: TextStyle(
-                                color: Colors.white,
-                                fontWeight: FontWeight.w800,
-                                fontSize: 15)),
+                        Text(
+                          'Descargar / Imprimir PDF',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w800,
+                            fontSize: 15,
+                          ),
+                        ),
                       ],
                     ),
             ),
@@ -458,11 +491,14 @@ class _CarnetScreenState extends State<CarnetScreen>
                 children: [
                   Icon(CupertinoIcons.share, size: 18, color: _azul),
                   const SizedBox(width: 9),
-                  Text('Compartir',
-                      style: TextStyle(
-                          color: _azul,
-                          fontWeight: FontWeight.w700,
-                          fontSize: 14.5)),
+                  Text(
+                    'Compartir',
+                    style: TextStyle(
+                      color: _azul,
+                      fontWeight: FontWeight.w700,
+                      fontSize: 14.5,
+                    ),
+                  ),
                 ],
               ),
             ),
@@ -487,14 +523,20 @@ class _CarnetScreenState extends State<CarnetScreen>
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(CupertinoIcons.checkmark_shield_fill,
-                      size: 18, color: _azul),
+                  Icon(
+                    CupertinoIcons.checkmark_shield_fill,
+                    size: 18,
+                    color: _azul,
+                  ),
                   const SizedBox(width: 9),
-                  Text('Carnet Digital de Seguro',
-                      style: TextStyle(
-                          color: AppColors.textPrimaryC(isDark),
-                          fontWeight: FontWeight.w700,
-                          fontSize: 14.5)),
+                  Text(
+                    'Carnet Digital de Seguro',
+                    style: TextStyle(
+                      color: AppColors.textPrimaryC(isDark),
+                      fontWeight: FontWeight.w700,
+                      fontSize: 14.5,
+                    ),
+                  ),
                 ],
               ),
             ),
@@ -519,14 +561,20 @@ class _CarnetScreenState extends State<CarnetScreen>
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(CupertinoIcons.qrcode_viewfinder,
-                      size: 19, color: _azul),
+                  Icon(
+                    CupertinoIcons.qrcode_viewfinder,
+                    size: 19,
+                    color: _azul,
+                  ),
                   const SizedBox(width: 9),
-                  Text('Validar un carnet',
-                      style: TextStyle(
-                          color: AppColors.textPrimaryC(isDark),
-                          fontWeight: FontWeight.w700,
-                          fontSize: 14.5)),
+                  Text(
+                    'Validar un carnet',
+                    style: TextStyle(
+                      color: AppColors.textPrimaryC(isDark),
+                      fontWeight: FontWeight.w700,
+                      fontSize: 14.5,
+                    ),
+                  ),
                 ],
               ),
             ),
@@ -537,30 +585,34 @@ class _CarnetScreenState extends State<CarnetScreen>
   }
 
   void _abrirCarnetSalud() {
-    Navigator.of(context).push(
-      CupertinoPageRoute(builder: (_) => const CarnetSaludScreen()),
-    );
+    Navigator.of(
+      context,
+    ).push(CupertinoPageRoute(builder: (_) => const CarnetSaludScreen()));
   }
 
   void _abrirValidador() {
-    Navigator.of(context).push(
-      CupertinoPageRoute(builder: (_) => const CarnetValidadorScreen()),
-    );
+    Navigator.of(
+      context,
+    ).push(CupertinoPageRoute(builder: (_) => const CarnetValidadorScreen()));
   }
 
   Widget _footer(bool isDark) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        Icon(CupertinoIcons.lock_fill,
-            size: 12, color: AppColors.textTertiaryC(isDark)),
+        Icon(
+          CupertinoIcons.lock_fill,
+          size: 12,
+          color: AppColors.textTertiaryC(isDark),
+        ),
         const SizedBox(width: 6),
         Flexible(
           child: Text(
             'Datos de tu cuenta COSSMIL · representación digital',
             textAlign: TextAlign.center,
-            style: context.texts.labelSmall
-                .copyWith(color: AppColors.textTertiaryC(isDark)),
+            style: context.texts.labelSmall.copyWith(
+              color: AppColors.textTertiaryC(isDark),
+            ),
           ),
         ),
       ],

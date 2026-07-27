@@ -50,7 +50,11 @@ class TutorialTicketPdf {
             pw.Center(
               child: pw.Text(
                 'COMPROBANTE DE CITA MÉDICA · DEMOSTRACIÓN',
-                style: pw.TextStyle(fontSize: 11, color: _label, letterSpacing: 1),
+                style: pw.TextStyle(
+                  fontSize: 11,
+                  color: _label,
+                  letterSpacing: 1,
+                ),
               ),
             ),
             pw.SizedBox(height: 24),
@@ -90,7 +94,11 @@ class TutorialTicketPdf {
             pw.Center(
               child: pw.Text(
                 'N° DE FICHA (EJEMPLO)',
-                style: pw.TextStyle(fontSize: 10, color: _label, letterSpacing: 1),
+                style: pw.TextStyle(
+                  fontSize: 10,
+                  color: _label,
+                  letterSpacing: 1,
+                ),
               ),
             ),
             pw.SizedBox(height: 4),
@@ -120,11 +128,19 @@ class TutorialTicketPdf {
         children: [
           pw.Text(
             label.toUpperCase(),
-            style: pw.TextStyle(fontSize: 10, color: _label, letterSpacing: 0.5),
+            style: pw.TextStyle(
+              fontSize: 10,
+              color: _label,
+              letterSpacing: 0.5,
+            ),
           ),
           pw.Text(
             value.isEmpty ? '—' : value,
-            style: pw.TextStyle(fontSize: 12, fontWeight: pw.FontWeight.bold, color: _text),
+            style: pw.TextStyle(
+              fontSize: 12,
+              fontWeight: pw.FontWeight.bold,
+              color: _text,
+            ),
           ),
         ],
       ),
