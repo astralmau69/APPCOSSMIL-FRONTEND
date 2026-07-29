@@ -27,6 +27,7 @@ import '../../../core/utils/rank_utils.dart';
 import '../../../core/widgets/image_enlarged_modal.dart';
 import '../../../core/widgets/adaptive_sliver_nav_bar.dart';
 import '../../notificaciones/screens/notificaciones_screen.dart';
+import '../../home/widgets/coming_soon_dialog.dart';
 import '../../../shell/tab_shell.dart';
 import 'emergency_data_screen.dart';
 // Favoritos OCULTO (feature aún no funcional):
@@ -566,14 +567,25 @@ class _PerfilScreenState extends State<PerfilScreen> {
                               onTap: () =>
                                   widget.tabShell.startCalendarioTutorial(),
                             ),
+                            // Gateado igual que la tarjeta "Procedimientos
+                            // COSSMIL" de Inicio (comingSoon): mientras esa
+                            // función no esté autorizada, tampoco tiene
+                            // sentido dejar entrar a su tutorial. Para
+                            // reactivarlo: quitar `comingSoon: true` y volver
+                            // el onTap a `widget.tabShell.startTramitesTutorial()`.
                             _buildNavTile(
                               isDark: isDark,
                               icon: CupertinoIcons.doc_text_fill,
                               iconColor: const Color(0xFF005EB8),
                               title: 'Cómo generar un trámite',
                               subtitle: 'Tutorial guiado de Procedimientos',
-                              onTap: () =>
-                                  widget.tabShell.startTramitesTutorial(),
+                              comingSoon: true,
+                              onTap: () => showComingSoonDialog(
+                                context,
+                                featureLabel: 'Procedimientos COSSMIL',
+                                icon: CupertinoIcons.doc_text_fill,
+                                color: const Color(0xFFD97706),
+                              ),
                             ),
                           ],
                         ),
@@ -1421,8 +1433,15 @@ class _PerfilScreenState extends State<PerfilScreen> {
     required String title,
     required String subtitle,
     required VoidCallback onTap,
+    bool comingSoon = false,
   }) {
     final r = context.r;
+    // Mismo lenguaje visual que la pastilla "Próximamente" de las tarjetas
+    // de Inicio (_QuickAction.comingSoon): ícono y textos atenuados, chevron
+    // sustituido por una pastilla, para que el gateo se note antes de tocar.
+    final effectiveIconColor = comingSoon
+        ? AppColors.textTertiaryC(isDark)
+        : iconColor;
     return CupertinoButton(
       padding: EdgeInsets.zero,
       onPressed: onTap,
@@ -1437,10 +1456,10 @@ class _PerfilScreenState extends State<PerfilScreen> {
               width: 32,
               height: 32,
               decoration: BoxDecoration(
-                color: iconColor.withValues(alpha: 0.13),
+                color: effectiveIconColor.withValues(alpha: 0.13),
                 borderRadius: BorderRadius.circular(8),
               ),
-              child: Icon(icon, size: 16, color: iconColor),
+              child: Icon(icon, size: 16, color: effectiveIconColor),
             ),
             SizedBox(width: r.spaceMd),
             Expanded(
@@ -1451,7 +1470,9 @@ class _PerfilScreenState extends State<PerfilScreen> {
                     title,
                     style: TextStyle(
                       fontWeight: FontWeight.w600,
-                      color: AppColors.textPrimaryC(isDark),
+                      color: comingSoon
+                          ? AppColors.textSecondaryC(isDark)
+                          : AppColors.textPrimaryC(isDark),
                       fontSize: 14,
                     ),
                   ),
@@ -1468,11 +1489,33 @@ class _PerfilScreenState extends State<PerfilScreen> {
                 ],
               ),
             ),
-            Icon(
-              CupertinoIcons.chevron_right,
-              size: 14,
-              color: AppColors.textTertiaryC(isDark),
-            ),
+            if (comingSoon)
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 8,
+                  vertical: 4,
+                ),
+                decoration: BoxDecoration(
+                  color: AppColors.textTertiaryC(isDark).withValues(
+                    alpha: 0.13,
+                  ),
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Text(
+                  'Próximamente',
+                  style: TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.textTertiaryC(isDark),
+                  ),
+                ),
+              )
+            else
+              Icon(
+                CupertinoIcons.chevron_right,
+                size: 14,
+                color: AppColors.textTertiaryC(isDark),
+              ),
           ],
         ),
       ),

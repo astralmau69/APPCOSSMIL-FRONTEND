@@ -32,7 +32,6 @@ import '../../../core/models/app_notification.dart';
 import '../../../core/services/notification_preferences.dart';
 import 'contactos_screen.dart';
 import 'noticias_screen.dart';
-import '../../procedimientos/screens/procedimientos_screen.dart';
 import '../widgets/coming_soon_dialog.dart';
 
 /// Verde esmeralda sobrio de la acción héroe "Nueva Reserva" (coherente con el
@@ -570,14 +569,23 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
             color: const Color(0xFF0E63A6),
           ),
         ),
+      // Procedimientos COSSMIL: marcado "Próximamente" hasta autorización
+      // oficial de COSSMIL, igual que Mi Carnet COSSMIL más arriba. El
+      // tutorial guiado (Perfil → Ayuda → "Cómo generar un trámite") queda
+      // intacto: es inofensivo porque termina antes de generar cualquier
+      // documento real. Para reactivarlo: quitar `comingSoon: true` y
+      // restaurar la navegación con openSubRoute a ProcedimientosScreen.
       _QuickAction(
         icon: CupertinoIcons.doc_text_fill,
         label: 'Procedimientos COSSMIL',
         subtitle: 'Formularios y trámites',
         color: const Color(0xFFD97706),
-        onTap: () => widget.tabShell.openSubRoute(
+        comingSoon: true,
+        onTap: () => showComingSoonDialog(
           context,
-          (_) => const ProcedimientosScreen(),
+          featureLabel: 'Procedimientos COSSMIL',
+          icon: CupertinoIcons.doc_text_fill,
+          color: const Color(0xFFD97706),
         ),
       ),
     ];
@@ -632,6 +640,11 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                               label: accion.label,
                               subtitle: accion.subtitle,
                               color: accion.color,
+                              // Se conserva el look "Próximamente" (p. ej.
+                              // Procedimientos COSSMIL) aunque el tutorial SÍ
+                              // entre al recorrido real: solo cambia el tap,
+                              // no la apariencia de la tarjeta.
+                              comingSoon: accion.comingSoon,
                               onTap: () => widget.tabShell
                                   .enterHomeTutorialTarget(context),
                             ),
