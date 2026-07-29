@@ -920,17 +920,12 @@ class _SummaryScreenState extends State<SummaryScreen>
       _dr = 1;
     });
 
+    // NO reproduce "AUDIO 5. FINAL CITA MEDICA REGISTRADA": este `onConfirmed`
+    // enciende `celebrate` en TutorialCoachOverlay (ver booking_flow_screen),
+    // que cambia su `voiceId` a `ficha_07` y dispara esa locución. Reproducir
+    // ambas a la vez pisaba la voz de la instructora con la de AUDIO 5 — solo
+    // tiene sentido en `_confirmBooking` (reserva real), donde no hay coach.
     widget.onConfirmed?.call();
-
-    try {
-      if (SoundManager.isEnabled &&
-          !await SoundManager.isDeviceSilentOrVibrate()) {
-        _successPlayer = AudioPlayer();
-        await _successPlayer!.play(
-          AssetSource('vof/AUDIO 5. FINAL CITA MEDICA REGISTRADA.mp3'),
-        );
-      }
-    } catch (_) {}
 
     Future.delayed(const Duration(milliseconds: 2500), () {
       if (!mounted) return;
