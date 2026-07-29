@@ -1312,9 +1312,9 @@ class _LoginScreenState extends State<LoginScreen>
 
   Widget _buildSupportFab(bool isDark) {
     return Tooltip(
-      message: 'Soporte: 71527970',
+      message: 'Soporte: 71292794',
       child: GestureDetector(
-        onTap: () => _showSupportSheet('71527970'),
+        onTap: () => _showSupportSheet('71292794'),
         child: Container(
           width: 52,
           height: 52,

@@ -290,6 +290,17 @@ class _ContactosScreenState extends State<ContactosScreen> {
       debugPrint('Could not launch $launchUri');
     }
   }
+
+  /// Abre WhatsApp con el número boliviano (prefijo 591). Solo tiene sentido
+  /// para números móviles (7xxxxxxx/6xxxxxxx); los fijos de gerencias no lo
+  /// usan.
+  static Future<void> _openWhatsApp(String phoneNumber) async {
+    final clean = phoneNumber.replaceAll(RegExp(r'[^0-9]'), '');
+    final Uri launchUri = Uri.parse('https://wa.me/591$clean');
+    if (!await launchUrl(launchUri, mode: LaunchMode.externalApplication)) {
+      debugPrint('Could not launch $launchUri');
+    }
+  }
 }
 
 // ── Collapsible Group ───────────────────────────────────────────────────────
@@ -634,7 +645,7 @@ class _ActionButton extends StatelessWidget {
 /// Colapsable — misma mecánica que _CollapsibleGroup.
 /// Empieza expandida (ver _ContactosScreenState._expanded).
 class _DnticSupportCard extends StatelessWidget {
-  static const String _phone = '22248745';
+  static const String _phone = '71292794';
   static const Color _accent = Color(0xFF1D4ED8); // blue-700
   static const Color _accentLight = Color(0xFF3B82F6); // blue-500
 
@@ -900,6 +911,12 @@ class _DnticContent extends StatelessWidget {
                   ),
                   SizedBox(width: r.spaceXs),
                   _ActionButton(
+                    icon: Icons.chat_rounded,
+                    color: const Color(0xFF25D366),
+                    onTap: () => _ContactosScreenState._openWhatsApp(phone),
+                  ),
+                  SizedBox(width: r.spaceXs),
+                  _ActionButton(
                     icon: CupertinoIcons.phone_fill,
                     color: accent,
                     onTap: () => _ContactosScreenState._makePhoneCall(phone),
@@ -908,33 +925,65 @@ class _DnticContent extends StatelessWidget {
               ),
               SizedBox(height: r.spaceMd),
 
-              // CTA principal
-              SizedBox(
-                width: double.infinity,
-                child: CupertinoButton(
-                  padding: EdgeInsets.symmetric(vertical: r.spaceMd),
-                  color: accent,
-                  borderRadius: BorderRadius.circular(r.radiusMd),
-                  onPressed: () => _ContactosScreenState._makePhoneCall(phone),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      const Icon(
-                        Icons.phone_rounded,
-                        size: 20,
-                        color: AppColors.white,
+              // CTA principal — llamar directo, y WhatsApp como alternativa
+              Row(
+                children: [
+                  Expanded(
+                    child: CupertinoButton(
+                      padding: EdgeInsets.symmetric(vertical: r.spaceMd),
+                      color: accent,
+                      borderRadius: BorderRadius.circular(r.radiusMd),
+                      onPressed: () =>
+                          _ContactosScreenState._makePhoneCall(phone),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          const Icon(
+                            Icons.phone_rounded,
+                            size: 20,
+                            color: AppColors.white,
+                          ),
+                          SizedBox(width: r.spaceSm),
+                          Text(
+                            'Llamar',
+                            style: context.texts.bodyLarge.copyWith(
+                              fontWeight: FontWeight.w700,
+                              color: AppColors.white,
+                            ),
+                          ),
+                        ],
                       ),
-                      SizedBox(width: r.spaceSm),
-                      Text(
-                        'Llamar al soporte',
-                        style: context.texts.bodyLarge.copyWith(
-                          fontWeight: FontWeight.w700,
-                          color: AppColors.white,
-                        ),
-                      ),
-                    ],
+                    ),
                   ),
-                ),
+                  SizedBox(width: r.spaceSm),
+                  Expanded(
+                    child: CupertinoButton(
+                      padding: EdgeInsets.symmetric(vertical: r.spaceMd),
+                      color: const Color(0xFF25D366),
+                      borderRadius: BorderRadius.circular(r.radiusMd),
+                      onPressed: () =>
+                          _ContactosScreenState._openWhatsApp(phone),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          const Icon(
+                            Icons.chat_rounded,
+                            size: 20,
+                            color: AppColors.white,
+                          ),
+                          SizedBox(width: r.spaceSm),
+                          Text(
+                            'WhatsApp',
+                            style: context.texts.bodyLarge.copyWith(
+                              fontWeight: FontWeight.w700,
+                              color: AppColors.white,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ],
           ),
