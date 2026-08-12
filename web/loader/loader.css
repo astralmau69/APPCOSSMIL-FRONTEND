@@ -1,0 +1,97 @@
+/*
+  Pantalla de carga previa a Flutter.
+  Vive en el DOM real: se pinta de inmediato, mientras el motor de Flutter
+  todavía se está descargando y arrancando. La anima GSAP (loader.js) y se
+  retira sola en el evento `flutter-first-frame`.
+
+  Sin @import ni URLs remotas: la CSP de release es `default-src 'self'` y los
+  dispositivos que llegan por LAN no tienen internet.
+*/
+
+#cossmil-loader {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 28px;
+  background: #ffffff;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  /* El contenido lo revela GSAP; sin él no habría destello de elementos
+     a medio colocar si el JS tarda un instante en ejecutarse. */
+  visibility: hidden;
+}
+
+#cossmil-loader .cl-logo {
+  width: 96px;
+  height: 96px;
+  border-radius: 22px;
+  box-shadow: 0 10px 30px rgba(0, 71, 141, 0.22);
+}
+
+#cossmil-loader .cl-title {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: #00478d;
+}
+
+/* Riel de progreso: la barra interior es indeterminada — recorre el riel en
+   bucle. No simula un porcentaje real porque no lo conocemos; comunica
+   "sigo trabajando", no "voy por el 60%". */
+#cossmil-loader .cl-track {
+  position: relative;
+  width: 190px;
+  height: 3px;
+  border-radius: 999px;
+  background: rgba(0, 71, 141, 0.14);
+  overflow: hidden;
+}
+
+#cossmil-loader .cl-bar {
+  position: absolute;
+  inset: 0;
+  width: 42%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #00478d, #005eb8);
+}
+
+#cossmil-loader .cl-hint {
+  margin: 0;
+  min-height: 16px;
+  font-size: 12.5px;
+  color: #5b6b7f;
+}
+
+@media (prefers-color-scheme: dark) {
+  #cossmil-loader {
+    background: #0f1216;
+  }
+  #cossmil-loader .cl-title {
+    color: #6ea8e0;
+  }
+  #cossmil-loader .cl-track {
+    background: rgba(255, 255, 255, 0.12);
+  }
+  #cossmil-loader .cl-bar {
+    background: linear-gradient(90deg, #005eb8, #6ea8e0);
+  }
+  #cossmil-loader .cl-hint {
+    color: #93a3b5;
+  }
+  #cossmil-loader .cl-logo {
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+  }
+}
+
+/*
+  Respaldo para quien tenga JavaScript deshabilitado: sin loader.js el
+  contenido quedaría invisible para siempre por el `visibility: hidden`.
+*/
+.no-js #cossmil-loader {
+  visibility: visible;
+}

@@ -253,6 +253,13 @@ class AppDurations {
   static const Duration ultra = Duration(milliseconds: 100);
   static const Duration fast = Duration(milliseconds: 150);
 
+  /// Transiciones cortas de interfaz (aparecer/desaparecer, cambios de estado
+  /// de una tarjeta). Cubre el salto entre [fast] y [normal]: el código venía
+  /// usando 180/200/220/250/260 ms en una decena de sitios porque no existía
+  /// un peldaño intermedio, y esa dispersión es justo lo que hacía que nada se
+  /// sintiera parte del mismo sistema.
+  static const Duration quick = Duration(milliseconds: 200);
+
   // Animaciones normales (transiciones suaves)
   static const Duration normal = Duration(milliseconds: 300);
   static const Duration slow = Duration(milliseconds: 500);

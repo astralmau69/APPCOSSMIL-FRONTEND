@@ -11,6 +11,7 @@ import '../services/tutorial_voice.dart';
 import '../theme/sound_manager.dart';
 import 'liquid_glass.dart';
 import 'tutorial_instructor.dart';
+import '../theme/app_constants.dart';
 
 /// Verde esmeralda del héroe "Nueva Reserva" — mismo lenguaje que Inicio/Login
 /// y el resto del sistema liquid glass.
@@ -253,9 +254,7 @@ class TutorialCoachOverlayState extends State<TutorialCoachOverlay> {
     // un margen mínimo respecto al borde.
     final bottom = math.max(r.spaceSm, r.navBarBottomSpace - r.spaceLg + 4);
     final reduceMotion = MediaQuery.disableAnimationsOf(context);
-    final dur = reduceMotion
-        ? Duration.zero
-        : const Duration(milliseconds: 280);
+    final dur = reduceMotion ? Duration.zero : AppDurations.normal;
 
     return Positioned(
       left: r.spaceSm,
@@ -280,7 +279,7 @@ class TutorialCoachOverlayState extends State<TutorialCoachOverlay> {
                     scale: _expanded ? 1.0 : _collapsedScale,
                     alignment: Alignment.bottomLeft,
                     duration: dur,
-                    curve: Curves.easeOutBack,
+                    curve: AppCurves.bounce,
                     child: TutorialInstructor(
                       height: charH,
                       // Explica mientras habla (y parpadea); piensa mientras
@@ -328,7 +327,7 @@ class TutorialCoachOverlayState extends State<TutorialCoachOverlay> {
                           scale: _expanded ? 0.3 : 1.0,
                           alignment: Alignment.bottomLeft,
                           duration: dur,
-                          curve: Curves.easeOutBack,
+                          curve: AppCurves.bounce,
                           child: Container(
                             padding:
                                 (widget.step != null &&
@@ -391,7 +390,7 @@ class TutorialCoachOverlayState extends State<TutorialCoachOverlay> {
                   scale: _expanded ? 1.0 : 0.85,
                   alignment: Alignment.bottomLeft,
                   duration: dur,
-                  curve: Curves.easeOutBack,
+                  curve: AppCurves.bounce,
                   child: Padding(
                     // Las burbujas flotan a la altura de la cabeza de la
                     // instructora, como en un cómic.
@@ -491,6 +490,9 @@ class _CoachBubblesState extends State<_CoachBubbles> {
   /// Tras un respiro enciende los puntitos y "teclea" un rato (proporcional a
   /// lo larga que sea la frase que viene) antes de revelar la próxima burbuja.
   void _scheduleTyping() {
+    // NO migrar a AppDurations: este respiro y el typingMs de abajo marcan
+    // el ritmo con el que el texto acompana a la voz de la instructora.
+    // Cambiarlos desincroniza burbuja y audio (ver commit 45e449f).
     _timer = Timer(const Duration(milliseconds: 280), () {
       if (!mounted) return;
       setState(() => _typing = true);
@@ -534,8 +536,8 @@ class _CoachBubblesState extends State<_CoachBubbles> {
   Widget _sized(Widget child) {
     if (_instant) return child;
     return AnimatedSize(
-      duration: const Duration(milliseconds: 260),
-      curve: Curves.easeOutCubic,
+      duration: AppDurations.normal,
+      curve: AppCurves.snappy,
       alignment: Alignment.bottomLeft,
       // Sin recorte: las colitas y las sombras sobresalen de la caja.
       clipBehavior: Clip.none,
@@ -741,10 +743,8 @@ class _TypingBubbleState extends State<_TypingBubble>
   @override
   void initState() {
     super.initState();
-    _ctrl = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 1000),
-    )..repeat();
+    _ctrl = AnimationController(vsync: this, duration: AppDurations.extra)
+      ..repeat();
   }
 
   @override
@@ -875,10 +875,7 @@ class _BubblePopState extends State<_BubblePop>
   @override
   void initState() {
     super.initState();
-    _ctrl = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 340),
-    );
+    _ctrl = AnimationController(vsync: this, duration: AppDurations.normal);
   }
 
   @override
@@ -910,16 +907,16 @@ class _BubblePopState extends State<_BubblePop>
   @override
   Widget build(BuildContext context) {
     return FadeTransition(
-      opacity: CurvedAnimation(parent: _ctrl, curve: Curves.easeOut),
+      opacity: CurvedAnimation(parent: _ctrl, curve: AppCurves.smooth),
       child: SlideTransition(
         // Deslizamiento mínimo desde el lado de la instructora: el pop gana
         // dirección (ella "lanza" la burbuja) sin volverse aparatoso.
         position: Tween<Offset>(
           begin: const Offset(-0.035, 0.10),
           end: Offset.zero,
-        ).animate(CurvedAnimation(parent: _ctrl, curve: Curves.easeOutCubic)),
+        ).animate(CurvedAnimation(parent: _ctrl, curve: AppCurves.snappy)),
         child: ScaleTransition(
-          scale: CurvedAnimation(parent: _ctrl, curve: Curves.easeOutBack),
+          scale: CurvedAnimation(parent: _ctrl, curve: AppCurves.bounce),
           alignment: Alignment.bottomLeft,
           child: widget.child,
         ),

@@ -183,53 +183,83 @@ class _CarnetPdfPreviewScreenState extends State<CarnetPdfPreviewScreen> {
             ),
           );
         }
-        return SingleChildScrollView(
-          padding: EdgeInsets.fromLTRB(
-            r.paddingH,
-            r.spaceSm,
-            r.paddingH,
-            r.spaceLg,
-          ),
-          child: Center(
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 520),
-              child: Column(
-                children: [
-                  for (final png in pages) ...[
-                    Container(
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(14),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.15),
-                            blurRadius: 18,
-                            offset: const Offset(0, 8),
-                          ),
-                        ],
-                      ),
-                      clipBehavior: Clip.antiAlias,
-                      child: Image.memory(png, fit: BoxFit.contain),
-                    ),
-                    SizedBox(height: r.spaceMd),
-                  ],
-                ],
+        return LayoutBuilder(
+          builder: (context, c) {
+            // Con sitio de sobra, frente y reverso se ven de una vez en vez de
+            // obligar a desplazar. Por debajo del umbral (cualquier teléfono,
+            // también en el navegador) se apilan como siempre.
+            final wide = c.maxWidth >= 900;
+            return SingleChildScrollView(
+              padding: EdgeInsets.fromLTRB(
+                r.paddingH,
+                r.spaceSm,
+                r.paddingH,
+                r.spaceLg,
               ),
-            ),
-          ),
+              child: Center(
+                child: ConstrainedBox(
+                  constraints: BoxConstraints(maxWidth: wide ? 900 : 520),
+                  child: wide
+                      ? Wrap(
+                          alignment: WrapAlignment.center,
+                          spacing: r.spaceMd,
+                          runSpacing: r.spaceMd,
+                          children: [
+                            for (final png in pages)
+                              SizedBox(width: 420, child: _page(png)),
+                          ],
+                        )
+                      : Column(
+                          children: [
+                            for (final png in pages) ...[
+                              _page(png),
+                              SizedBox(height: r.spaceMd),
+                            ],
+                          ],
+                        ),
+                ),
+              ),
+            );
+          },
         );
       },
+    );
+  }
+
+  /// Una página del PDF como hoja blanca con sombra.
+  Widget _page(Uint8List png) {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(14),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.15),
+            blurRadius: 18,
+            offset: const Offset(0, 8),
+          ),
+        ],
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: Image.memory(png, fit: BoxFit.contain),
     );
   }
 
   // ── Acciones (Imprimir / Compartir) ───────────────────────────────────────
   Widget _actions(bool isDark, AppResponsive r) {
     return Container(
+      // La barra de navegación flotante del shell se superpone a esta pantalla:
+      // sin este respiro taparía "Imprimir" y "Compartir". `navBarBottomSpace`
+      // ya incluye el inset del sistema; cuando vale 0 (SideNavBar en
+      // escritorio/tablet-landscape) hay que reponerlo a mano.
       padding: EdgeInsets.fromLTRB(
         r.paddingH,
         r.spaceSm,
         r.paddingH,
-        r.spaceMd + r.viewPaddingBottom,
+        r.spaceMd +
+            (r.navBarBottomSpace > 0
+                ? r.navBarBottomSpace
+                : r.viewPaddingBottom),
       ),
       decoration: BoxDecoration(
         color: isDark ? AppColors.darkSurface : Colors.white,
@@ -241,86 +271,96 @@ class _CarnetPdfPreviewScreenState extends State<CarnetPdfPreviewScreen> {
           ),
         ],
       ),
-      child: Row(
-        children: [
-          Expanded(
-            flex: 3,
-            child: GestureDetector(
-              onTap: _working ? null : _imprimir,
-              child: Container(
-                height: 54,
-                decoration: BoxDecoration(
-                  gradient: const LinearGradient(colors: [_azulOsc, _azul]),
-                  borderRadius: BorderRadius.circular(16),
-                  boxShadow: [
-                    BoxShadow(
-                      color: _azul.withValues(alpha: 0.35),
-                      blurRadius: 14,
-                      offset: const Offset(0, 6),
+      // La barra ocupa todo el ancho (es la base de la pantalla), pero los
+      // botones se quedan en una medida legible: estirados a lo largo de un
+      // monitor parecerían dos franjas, no botones.
+      child: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 520),
+          child: Row(
+            children: [
+              Expanded(
+                flex: 3,
+                child: GestureDetector(
+                  onTap: _working ? null : _imprimir,
+                  child: Container(
+                    height: 54,
+                    decoration: BoxDecoration(
+                      gradient: const LinearGradient(colors: [_azulOsc, _azul]),
+                      borderRadius: BorderRadius.circular(16),
+                      boxShadow: [
+                        BoxShadow(
+                          color: _azul.withValues(alpha: 0.35),
+                          blurRadius: 14,
+                          offset: const Offset(0, 6),
+                        ),
+                      ],
                     ),
-                  ],
-                ),
-                child: Center(
-                  child: _working
-                      ? const CupertinoActivityIndicator(color: Colors.white)
-                      : const Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(
-                              CupertinoIcons.printer_fill,
-                              size: 19,
+                    child: Center(
+                      child: _working
+                          ? const CupertinoActivityIndicator(
                               color: Colors.white,
+                            )
+                          : const Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(
+                                  CupertinoIcons.printer_fill,
+                                  size: 19,
+                                  color: Colors.white,
+                                ),
+                                SizedBox(width: 9),
+                                Text(
+                                  'Imprimir',
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.w800,
+                                    fontSize: 15,
+                                  ),
+                                ),
+                              ],
                             ),
-                            SizedBox(width: 9),
-                            Text(
-                              'Imprimir',
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontWeight: FontWeight.w800,
-                                fontSize: 15,
-                              ),
-                            ),
-                          ],
-                        ),
-                ),
-              ),
-            ),
-          ),
-          SizedBox(width: r.spaceSm),
-          Expanded(
-            flex: 2,
-            child: GestureDetector(
-              onTap: _working ? null : _compartir,
-              child: Container(
-                height: 54,
-                decoration: BoxDecoration(
-                  color: isDark
-                      ? Colors.white.withValues(alpha: 0.07)
-                      : _azul.withValues(alpha: 0.08),
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: _azul.withValues(alpha: 0.25)),
-                ),
-                child: Center(
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(CupertinoIcons.share, size: 18, color: _azul),
-                      const SizedBox(width: 8),
-                      Text(
-                        'Compartir',
-                        style: TextStyle(
-                          color: _azul,
-                          fontWeight: FontWeight.w700,
-                          fontSize: 14.5,
-                        ),
-                      ),
-                    ],
+                    ),
                   ),
                 ),
               ),
-            ),
+              SizedBox(width: r.spaceSm),
+              Expanded(
+                flex: 2,
+                child: GestureDetector(
+                  onTap: _working ? null : _compartir,
+                  child: Container(
+                    height: 54,
+                    decoration: BoxDecoration(
+                      color: isDark
+                          ? Colors.white.withValues(alpha: 0.07)
+                          : _azul.withValues(alpha: 0.08),
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: _azul.withValues(alpha: 0.25)),
+                    ),
+                    child: Center(
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(CupertinoIcons.share, size: 18, color: _azul),
+                          const SizedBox(width: 8),
+                          Text(
+                            'Compartir',
+                            style: TextStyle(
+                              color: _azul,
+                              fontWeight: FontWeight.w700,
+                              fontSize: 14.5,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ],
           ),
-        ],
+        ),
       ),
     );
   }

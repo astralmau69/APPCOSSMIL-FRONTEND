@@ -26,6 +26,7 @@ import '../../../core/widgets/professional_profile_card.dart';
 import '../../../core/widgets/adaptive_sliver_nav_bar.dart';
 import 'news_detail_screen.dart';
 import '../../../shell/tab_shell.dart';
+import '../../carnet/screens/carnet_screen.dart';
 import '../../familia/screens/familia_screen.dart';
 import '../../notificaciones/screens/notificaciones_screen.dart';
 import '../../../core/models/app_notification.dart';
@@ -551,22 +552,18 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         color: const Color(0xFF7C3AED),
         onTap: () => widget.tabShell.goToTab(3),
       ),
-      // Carnet digital: visible pero marcado "Próximamente" hasta
-      // autorización oficial de COSSMIL. Para reactivarlo: quitar
-      // `comingSoon: true` y restaurar la navegación con openSubRoute a
-      // CarnetScreen (features/carnet sigue intacto).
+      // Carnet digital: habilitado. Para volver a ocultarlo basta con poner
+      // `AppConfig.carnetDigitalEnabled` en false (la tarjeta desaparece y el
+      // código del carnet se excluye del build).
       if (AppConfig.carnetDigitalEnabled)
         _QuickAction(
           icon: CupertinoIcons.creditcard_fill,
           label: 'Mi Carnet COSSMIL',
           subtitle: 'Carnet digital de asegurado',
           color: const Color(0xFF0E63A6),
-          comingSoon: true,
-          onTap: () => showComingSoonDialog(
+          onTap: () => widget.tabShell.openSubRoute(
             context,
-            featureLabel: 'Mi Carnet COSSMIL',
-            icon: CupertinoIcons.creditcard_fill,
-            color: const Color(0xFF0E63A6),
+            (_) => const CarnetScreen(),
           ),
         ),
       // Procedimientos COSSMIL: marcado "Próximamente" hasta autorización

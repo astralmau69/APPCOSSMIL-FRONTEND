@@ -54,10 +54,13 @@ class _CarnetSaludScreenState extends State<CarnetSaludScreen>
     // lo activa a nivel de ventana). No se desactiva al salir: lo gestiona el
     // CarnetScreen al abandonar todo el apartado.
     ScreenSecurityService.enable();
+    // El barrido arranca en didChangeDependencies: ahí ya se puede consultar
+    // reduce-motion, y un bucle infinito a 60 fps es justo lo que no debe
+    // correr en una pantalla que el usuario deja abierta en el mostrador.
     _holoCtrl = AnimationController(
       vsync: this,
       duration: const Duration(seconds: 9),
-    )..repeat();
+    );
 
     _data = CarnetData.fromUser(UserSession.currentUser);
     _qrNotifier = ValueNotifier<String>(_data.rotatingQrPayload());
@@ -69,6 +72,19 @@ class _CarnetSaludScreenState extends State<CarnetSaludScreen>
       _qrNotifier.value = _data.rotatingQrPayload();
       _secondsNotifier.value = CarnetData.secondsToNextWindow();
     });
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Con reduce-motion el holograma se queda quieto a mitad del barrido: la
+    // tarjeta conserva su textura de seguridad, pero nada se mueve.
+    if (MediaQuery.disableAnimationsOf(context)) {
+      if (_holoCtrl.isAnimating) _holoCtrl.stop();
+      _holoCtrl.value = 0.5;
+    } else if (!_holoCtrl.isAnimating) {
+      _holoCtrl.repeat();
+    }
   }
 
   @override
@@ -104,19 +120,31 @@ class _CarnetSaludScreenState extends State<CarnetSaludScreen>
                       // escala con FittedBox para que SIEMPRE quepa completa en
                       // pantalla (ancho y alto) sin necesidad de desplazar.
                       final pad = r.spaceMd;
-                      final w = (c.maxWidth - pad * 2).clamp(0.0, 440.0);
-                      final h = (c.maxHeight - pad * 2).clamp(
+                      // La barra de navegación flotante del shell se superpone
+                      // a esta pantalla: se le descuenta su alto para que la
+                      // tarjeta quede centrada en el espacio realmente visible.
+                      final navSpace = r.navBarBottomSpace;
+                      // En una ventana ancha sobra alto, así que la tarjeta
+                      // puede crecer un poco más antes de que el FittedBox la
+                      // limite: en un monitor, 440 px la dejaban pequeña en
+                      // medio de la pantalla. En teléfono el tope no cambia.
+                      final maxCard = c.maxWidth >= 900 ? 520.0 : 440.0;
+                      final w = (c.maxWidth - pad * 2).clamp(0.0, maxCard);
+                      final h = (c.maxHeight - pad * 2 - navSpace).clamp(
                         0.0,
                         double.infinity,
                       );
-                      return Center(
-                        child: SizedBox(
-                          width: w,
-                          height: h,
-                          child: FittedBox(
-                            fit: BoxFit.contain,
-                            alignment: Alignment.center,
-                            child: SizedBox(width: 360, child: _card(d)),
+                      return Padding(
+                        padding: EdgeInsets.only(bottom: navSpace),
+                        child: Center(
+                          child: SizedBox(
+                            width: w,
+                            height: h,
+                            child: FittedBox(
+                              fit: BoxFit.contain,
+                              alignment: Alignment.center,
+                              child: SizedBox(width: 360, child: _card(d)),
+                            ),
                           ),
                         ),
                       );
@@ -237,14 +265,7 @@ class _CarnetSaludScreenState extends State<CarnetSaludScreen>
           // dato del carnet; solo se ve en los espacios libres. Barre en diagonal
           // y no intercepta toques (RepaintBoundary aísla el repintado).
           Positioned.fill(
-            child: IgnorePointer(
-              child: RepaintBoundary(
-                child: AnimatedBuilder(
-                  animation: _holoCtrl,
-                  builder: (_, __) => _hologram(_holoCtrl.value),
-                ),
-              ),
-            ),
+            child: IgnorePointer(child: RepaintBoundary(child: _hologram())),
           ),
           Column(
             children: [
@@ -278,7 +299,54 @@ class _CarnetSaludScreenState extends State<CarnetSaludScreen>
   // derecha) que cruzan toda la tarjeta, con el logo tenue de fondo y un brillo
   // tornasol que barre lentamente sobre las letras. [t] ∈ [0,1] es el avance del
   // ciclo (la duración del controlador define la velocidad).
-  Widget _hologram(double t) {
+  /// Patrón repetido de "COSSMIL" que cubre toda la tarjeta. Se arma una sola
+  /// vez para toda la app: antes se reconstruían las dos listas y sus `join`
+  /// en cada frame del barrido.
+  static final String _watermarkBlock = List.filled(
+    12,
+    List.filled(6, 'COSSMIL').join('   '),
+  ).join('\n');
+
+  /// Base tenue (plata azulada) para que las letras se noten sobre el blanco
+  /// aun cuando el brillo no esté encima.
+  static const Color _holoBase = Color(0x1C8FA0BC);
+
+  static const List<Color> _holoColors = [
+    _holoBase,
+    _holoBase,
+    Color(0x8CFF2D9B),
+    Color(0xA600E0FF),
+    Color(0x8C49FF8B),
+    _holoBase,
+    _holoBase,
+  ];
+
+  /// Paradas del degradado para el avance [t] del barrido. Es lo ÚNICO que
+  /// cambia por frame; todo lo demás (logo, texto rotado, layout) se construye
+  /// una vez y se reutiliza como hijo cacheado del AnimatedBuilder.
+  static List<double> _holoStops(double t) {
+    // Centro del brillo tornasol, de la esquina inferior-izquierda a la
+    // superior-derecha. Al llegar arriba el controlador reinicia (repeat) y la
+    // banda vuelve a entrar por abajo, sin pausa marcada en los extremos.
+    final cen = t * 1.2 - 0.1; // -0.1 → 1.1
+    const hw = 0.17;
+    double cl(double v) => v.clamp(0.0, 1.0);
+    final stops = <double>[
+      0.0,
+      cl(cen - hw),
+      cl(cen - hw * 0.5),
+      cl(cen),
+      cl(cen + hw * 0.5),
+      cl(cen + hw),
+      1.0,
+    ];
+    for (var i = 1; i < stops.length; i++) {
+      if (stops[i] < stops[i - 1]) stops[i] = stops[i - 1];
+    }
+    return stops;
+  }
+
+  Widget _hologram() {
     return LayoutBuilder(
       builder: (context, c) {
         final w = c.maxWidth;
@@ -286,48 +354,35 @@ class _CarnetSaludScreenState extends State<CarnetSaludScreen>
         // Orientación diagonal: inferior-izquierda → superior-derecha.
         final angle = math.atan2(-h, w);
 
-        // Base tenue (plata azulada) para que las letras se noten sobre el
-        // blanco aun cuando el brillo no esté encima.
-        final base = const Color(0xFF8FA0BC).withValues(alpha: 0.11);
-        // Centro del brillo tornasol que recorre las letras desde la esquina
-        // inferior-izquierda hacia la superior-derecha. Al llegar a la derecha el
-        // controlador reinicia (..repeat()) y la banda vuelve a entrar por abajo,
-        // formando un bucle continuo sin pausa marcada en los extremos.
-        final cen = t * 1.2 - 0.1; // -0.1 → 1.1
-        const hw = 0.17;
-        double cl(double v) => v.clamp(0.0, 1.0);
-        final stops = <double>[
-          0.0,
-          cl(cen - hw),
-          cl(cen - hw * 0.5),
-          cl(cen),
-          cl(cen + hw * 0.5),
-          cl(cen + hw),
-          1.0,
-        ];
-        for (var i = 1; i < stops.length; i++) {
-          if (stops[i] < stops[i - 1]) stops[i] = stops[i - 1];
-        }
-        final colors = <Color>[
-          base,
-          base,
-          const Color(0xFFFF2D9B).withValues(alpha: 0.55),
-          const Color(0xFF00E0FF).withValues(alpha: 0.65),
-          const Color(0xFF49FF8B).withValues(alpha: 0.55),
-          base,
-          base,
-        ];
-
-        // Patrón repetido de "COSSMIL" que cubre TODA la tarjeta (marca de agua
-        // de seguridad). Se genera de sobra para cubrir las esquinas al rotar.
-        final line = List.filled(6, 'COSSMIL').join('   ');
-        final block = List.filled(12, line).join('\n');
+        // El texto se mide y rota UNA vez por tamaño de tarjeta. Es un bloque
+        // de 12 líneas a fontSize ≈ w*0.16: rehacer su layout en cada frame
+        // era el verdadero coste del barrido.
+        final Widget letras = OverflowBox(
+          maxWidth: double.infinity,
+          maxHeight: double.infinity,
+          child: Transform.rotate(
+            angle: angle,
+            child: Text(
+              _watermarkBlock,
+              textAlign: TextAlign.center,
+              softWrap: false,
+              style: TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.w900,
+                fontSize: w * 0.16,
+                height: 1.7,
+                letterSpacing: w * 0.012,
+              ),
+            ),
+          ),
+        );
 
         return ClipRect(
           child: Stack(
             fit: StackFit.expand,
             children: [
-              // 1) Logo de fondo grande y muy tenue, centrado.
+              // 1) Logo de fondo grande y muy tenue, centrado (fuera del
+              //    barrido: no lo tiñe el tornasol).
               Center(
                 child: Opacity(
                   opacity: 0.05,
@@ -339,36 +394,21 @@ class _CarnetSaludScreenState extends State<CarnetSaludScreen>
                   ),
                 ),
               ),
-              // 2) Patrón "COSSMIL" en diagonal cubriendo toda la tarjeta, con el
-              //    brillo tornasol que barre de izquierda a derecha sobre él.
-              //    El ShaderMask se ancla al tamaño de la tarjeta para que el
-              //    barrido recorra toda la superficie visible.
-              ShaderMask(
-                blendMode: BlendMode.srcIn,
-                shaderCallback: (rect) => LinearGradient(
-                  begin: Alignment.bottomLeft,
-                  end: Alignment.topRight,
-                  colors: colors,
-                  stops: stops,
-                ).createShader(rect),
-                child: OverflowBox(
-                  maxWidth: double.infinity,
-                  maxHeight: double.infinity,
-                  child: Transform.rotate(
-                    angle: angle,
-                    child: Text(
-                      block,
-                      textAlign: TextAlign.center,
-                      softWrap: false,
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.w900,
-                        fontSize: w * 0.16,
-                        height: 1.7,
-                        letterSpacing: w * 0.012,
-                      ),
-                    ),
-                  ),
+              // 2) Patrón "COSSMIL" en diagonal con el brillo tornasol que lo
+              //    barre. Solo se rehace el shader; las letras van de hijo
+              //    cacheado y no se vuelven a medir.
+              AnimatedBuilder(
+                animation: _holoCtrl,
+                child: letras,
+                builder: (context, child) => ShaderMask(
+                  blendMode: BlendMode.srcIn,
+                  shaderCallback: (rect) => LinearGradient(
+                    begin: Alignment.bottomLeft,
+                    end: Alignment.topRight,
+                    colors: _holoColors,
+                    stops: _holoStops(_holoCtrl.value),
+                  ).createShader(rect),
+                  child: child,
                 ),
               ),
             ],
@@ -689,8 +729,10 @@ class _CarnetSaludScreenState extends State<CarnetSaludScreen>
                 ],
               ),
               SizedBox(height: 3 * sc),
+              // Una sola idea: qué hacer con el QR. Que se renueva cada 15 s ya
+              // lo dice el contador de arriba, y decirlo dos veces resta.
               Text(
-                'Para verificar la vigencia y veracidad escanea el código QR. El código QR se renueva cada 15 s. Escanéelo con el validador COSSMIL para verificar la vigencia.',
+                'Escanéalo con el validador COSSMIL para comprobar que el carnet está vigente.',
                 style: TextStyle(
                   color: _label,
                   fontSize: 10.5 * sc,

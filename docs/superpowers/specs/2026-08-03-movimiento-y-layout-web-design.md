@@ -22,7 +22,26 @@ La causa raíz de "no se siente fluido" es la primera fila: con 41 duraciones
 inventadas, cada elemento se mueve a su propio ritmo y nada se percibe como
 parte del mismo sistema.
 
-## No-objetivo: GSAP
+## Parte D — Pantalla de carga con GSAP (implementada)
+
+Único punto del proyecto donde GSAP aplica: `web/index.html` es DOM real y se
+pinta antes de que Flutter arranque. Hasta ahora el `<body>` estaba vacío
+(58 líneas, sin loader), de modo que el usuario veía un blanco sin señal —
+indistinguible de un cuelgue, y en debug la espera llega a minutos.
+
+- `web/gsap/gsap.min.js` — GSAP 3.13.0 autoalojado, igual que `pdfjs/`. La CSP
+  de release es `default-src 'self'`, y los equipos que entran por LAN no tienen
+  internet: un `<script src="cdn…">` los dejaría colgados.
+- `web/loader/loader.css` — estilos, con variante oscura.
+- `web/loader/loader.js` — entrada escalonada, barra indeterminada en bucle y
+  salida en el evento `flutter-first-frame`.
+
+Decisiones: la barra **no simula porcentaje** (no conocemos el progreso real del
+arranque); a los 20 s aparece un aviso de que sigue cargando, porque una espera
+larga sin explicación se lee como app colgada; hay respaldo sin GSAP y
+`prefers-reduced-motion` vía `gsap.matchMedia()`.
+
+## No-objetivo: GSAP en la interfaz de la app
 
 Se descarta GSAP (y cualquier librería JS de animación) por imposibilidad
 técnica, no por preferencia. Flutter web rasteriza toda la interfaz dentro de un

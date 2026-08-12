@@ -51,8 +51,30 @@
   -->
   <script src="pdfjs/pdf.min.js" defer></script>
   <script src="pdfjs/init.js" defer></script>
+
+  <!--
+    Pantalla de carga previa a Flutter. Hasta que el motor arranca, el <body>
+    está vacío y el usuario ve un blanco sin saber si carga o si se colgó
+    (en debug el arranque puede tardar minutos). La anima GSAP, que aquí SÍ
+    aplica porque es DOM real: en cuanto Flutter arranca pinta dentro de un
+    <canvas> y ninguna librería JS puede tocar su contenido.
+
+    GSAP autoalojado en web/gsap/, igual que pdf.js y por el mismo motivo: la
+    CSP de release es `default-src 'self'` y los equipos que llegan por LAN no
+    tienen internet.
+  -->
+  <link rel="stylesheet" href="loader/loader.css">
+  <script src="gsap/gsap.min.js" defer></script>
+  <script src="loader/loader.js" defer></script>
 </head>
 <body>
+  <div id="cossmil-loader">
+    <img class="cl-logo" src="icons/Icon-192.png" alt="">
+    <p class="cl-title">COSSMIL</p>
+    <div class="cl-track"><div class="cl-bar"></div></div>
+    <p class="cl-hint"></p>
+  </div>
+
   <script src="flutter_bootstrap.js" async></script>
 </body>
 </html>
