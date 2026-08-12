@@ -7,6 +7,8 @@ import '../../../core/services/auth_service.dart';
 import '../../../core/session/user_session.dart';
 import '../../../core/animations/optimized_animations.dart';
 import '../../../core/utils/error_mapper.dart';
+import '../../../core/utils/password_policy.dart';
+import '../../../core/widgets/password_feedback.dart';
 
 /// Pantalla obligatoria de actualización de datos para primer ingreso.
 /// Se muestra cuando `req_reset == false` en el token de login.
@@ -42,6 +44,14 @@ class _PasswordChangeScreenState extends State<PasswordChangeScreen> {
     if (allergies.isNotEmpty) _allergiesCtrl.text = allergies;
     final bloodType = UserSession.currentUser.bloodType;
     if (bloodType.isNotEmpty) _bloodTypeCtrl.text = bloodType;
+
+    // Redibuja la lista de requisitos y la barra en cada pulsación.
+    _passwordCtrl.addListener(_onPasswordChanged);
+    _confirmCtrl.addListener(_onPasswordChanged);
+  }
+
+  void _onPasswordChanged() {
+    if (mounted) setState(() {});
   }
 
   @override
@@ -56,8 +66,10 @@ class _PasswordChangeScreenState extends State<PasswordChangeScreen> {
   }
 
   Future<void> _onSubmit() async {
-    final password = _passwordCtrl.text.trim();
-    final confirm = _confirmCtrl.text.trim();
+    // Sin .trim(): recortar altera en silencio la contraseña que se guarda
+    // respecto de la que el usuario tecleó.
+    final password = _passwordCtrl.text;
+    final confirm = _confirmCtrl.text;
     final email = _emailCtrl.text.trim();
     final phone = _phoneCtrl.text.trim();
     final allergies = _allergiesCtrl.text.trim();
@@ -71,9 +83,15 @@ class _PasswordChangeScreenState extends State<PasswordChangeScreen> {
       return;
     }
 
-    if (password.length < 6) {
+    // Misma política que el sheet de Perfil: antes aquí solo se exigían 6
+    // caracteres, así que se podía fijar en el primer ingreso una contraseña
+    // que Perfil habría rechazado después.
+    final unmet = PasswordPolicy.unmet(password);
+    if (unmet.isNotEmpty) {
       setState(
-        () => _errorMessage = 'La contraseña debe tener al menos 6 caracteres.',
+        () => _errorMessage =
+            'La contraseña aún no cumple: '
+            '${unmet.map(PasswordPolicy.labelFor).join(', ')}.',
       );
       return;
     }
@@ -265,6 +283,15 @@ class _PasswordChangeScreenState extends State<PasswordChangeScreen> {
                             color: AppColors.textTertiary,
                           ),
                         ),
+                      ),
+                    ),
+
+                    SizedBox(height: context.r.spaceMd),
+                    FadeSlideIn(
+                      delay: const Duration(milliseconds: 275),
+                      child: PasswordFeedback(
+                        password: _passwordCtrl.text,
+                        confirm: _confirmCtrl.text,
                       ),
                     ),
 
