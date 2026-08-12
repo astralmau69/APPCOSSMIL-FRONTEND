@@ -29,6 +29,7 @@ import '../../../core/widgets/adaptive_sliver_nav_bar.dart';
 import '../../notificaciones/screens/notificaciones_screen.dart';
 import '../../home/widgets/coming_soon_dialog.dart';
 import '../../../shell/tab_shell.dart';
+import '../widgets/change_password_sheet.dart';
 import 'emergency_data_screen.dart';
 // Favoritos OCULTO (feature aún no funcional):
 // import 'favoritos_screen.dart';
@@ -1928,135 +1929,14 @@ class _PerfilScreenState extends State<PerfilScreen> {
   }
 
   Future<void> _showChangePasswordDialog() async {
-    final newPwdCtrl = TextEditingController();
-    final confirmPwdCtrl = TextEditingController();
-    bool obscure1 = true;
-    bool obscure2 = true;
-    bool isSaving = false;
-
-    await showAppDialog(
+    final changed = await showChangePasswordSheet(context);
+    if (changed != true || !mounted) return;
+    await CossmilIosAlert.show(
       context: context,
-      builder: (ctx) => StatefulBuilder(
-        builder: (ctx, setDialogState) => CupertinoAlertDialog(
-          title: const Text('Cambiar Contraseña'),
-          content: Padding(
-            padding: const EdgeInsets.only(top: 12),
-            child: Column(
-              children: [
-                CupertinoTextField(
-                  controller: newPwdCtrl,
-                  placeholder: 'Nueva contraseña',
-                  obscureText: obscure1,
-                  autofocus: true,
-                  suffix: CupertinoButton(
-                    padding: const EdgeInsets.only(right: 4),
-                    onPressed: () => setDialogState(() => obscure1 = !obscure1),
-                    child: Icon(
-                      obscure1 ? CupertinoIcons.eye : CupertinoIcons.eye_slash,
-                      size: 18,
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 8),
-                CupertinoTextField(
-                  controller: confirmPwdCtrl,
-                  placeholder: 'Confirmar contraseña',
-                  obscureText: obscure2,
-                  suffix: CupertinoButton(
-                    padding: const EdgeInsets.only(right: 4),
-                    onPressed: () => setDialogState(() => obscure2 = !obscure2),
-                    child: Icon(
-                      obscure2 ? CupertinoIcons.eye : CupertinoIcons.eye_slash,
-                      size: 18,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          actions: [
-            CupertinoDialogAction(
-              child: const Text('Cancelar'),
-              onPressed: () => Navigator.pop(ctx),
-            ),
-            CupertinoDialogAction(
-              isDefaultAction: true,
-              onPressed: isSaving
-                  ? null
-                  : () async {
-                      final pwd = newPwdCtrl.text.trim();
-                      final confirm = confirmPwdCtrl.text.trim();
-                      if (pwd.isEmpty) return;
-
-                      // Validación de seguridad de contraseña
-                      final isValid =
-                          pwd.length >= 6 &&
-                          RegExp(r'[A-Z]').hasMatch(pwd) &&
-                          RegExp(r'[!@#\$%^&*(),.?":{}|<>]').hasMatch(pwd);
-
-                      if (!isValid) {
-                        await CossmilIosAlert.show(
-                          context: ctx,
-                          title: 'Contraseña débil',
-                          message:
-                              'La contraseña debe tener al menos 6 caracteres, una mayúscula y un carácter especial.',
-                          type: AlertType.warning,
-                          confirmText: 'Entendido',
-                        );
-                        return;
-                      }
-
-                      if (pwd != confirm) {
-                        await CossmilIosAlert.show(
-                          context: ctx,
-                          title: 'Contraseñas no coinciden',
-                          message:
-                              'Verifica que ambas contraseñas sean iguales.',
-                          type: AlertType.warning,
-                          confirmText: 'Entendido',
-                        );
-                        return;
-                      }
-                      setDialogState(() => isSaving = true);
-                      try {
-                        final idper =
-                            int.tryParse(UserSession.currentUser.id) ?? 0;
-                        await AuthService().changePassword(
-                          idper: idper,
-                          newPassword: pwd,
-                        );
-                        if (!ctx.mounted) return;
-                        Navigator.pop(ctx);
-                        if (!mounted) return;
-                        await CossmilIosAlert.show(
-                          context: context,
-                          title: 'Contraseña actualizada',
-                          message: 'Tu contraseña fue cambiada exitosamente.',
-                          type: AlertType.success,
-                          confirmText: 'Aceptar',
-                        );
-                      } catch (e) {
-                        if (!ctx.mounted) return;
-                        setDialogState(() => isSaving = false);
-                        await CossmilIosAlert.show(
-                          context: ctx,
-                          title: 'Error',
-                          message: 'No se pudo cambiar la contraseña: $e',
-                          type: AlertType.error,
-                          confirmText: 'Aceptar',
-                        );
-                      }
-                    },
-              child: isSaving
-                  ? const CupertinoActivityIndicator()
-                  : const Text('Guardar'),
-            ),
-          ],
-        ),
-      ),
+      title: 'Contraseña actualizada',
+      message: 'Tu contraseña fue cambiada exitosamente.',
+      type: AlertType.success,
+      confirmText: 'Aceptar',
     );
-
-    newPwdCtrl.dispose();
-    confirmPwdCtrl.dispose();
   }
 }
