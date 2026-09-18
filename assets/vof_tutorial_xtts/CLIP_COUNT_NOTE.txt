@@ -1,0 +1,1 @@
+El encabezado del guion dice 18 clips, pero el bloque plano contiene 19 IDs únicos: 1 invite + 8 ficha + 5 calendario + 5 tramites = 19. Se conservaron todos los IDs del guion.

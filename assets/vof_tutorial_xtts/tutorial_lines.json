@@ -1,0 +1,78 @@
+[
+  {
+    "id": "invite",
+    "text": "¡Bienvenido a COSSMIL! Soy tu instructora y te puedo enseñar a sacar una ficha, una cita médica, paso a paso. Toma menos de un minuto y puedes repetir el tutorial cuando quieras desde tu Perfil."
+  },
+  {
+    "id": "ficha_00",
+    "text": "¡Hola! Vamos a sacar tu primera ficha juntos. Todo empieza aquí, en Inicio: toca la primera opción del menú, el botón verde Nueva Reserva."
+  },
+  {
+    "id": "ficha_01",
+    "text": "¡Muy bien! Así se inicia una reserva. Ahora elige tu hospital o policlínico; estos son los que tienes habilitados, agrupados por regional."
+  },
+  {
+    "id": "ficha_02",
+    "text": "¡Muy bien! Ahora elige la especialidad médica que necesitas."
+  },
+  {
+    "id": "ficha_03",
+    "text": "Estos son los médicos disponibles para esa especialidad. Elige el que prefieras."
+  },
+  {
+    "id": "ficha_04",
+    "text": "Ahora elige el día; cada tarjeta muestra si el médico atiende y si quedan fichas."
+  },
+  {
+    "id": "ficha_05",
+    "text": "¡Ya casi terminamos! Elige un horario disponible dentro del día que escogiste."
+  },
+  {
+    "id": "ficha_06",
+    "text": "Revisa que todos los datos estén correctos. Toca Confirmar Reserva; no te preocupes: aquí no se creará ninguna cita real."
+  },
+  {
+    "id": "ficha_07",
+    "text": "¡Misión cumplida! Esto fue solo una demostración; no se creó ninguna cita real. Puedes ver tu ficha de ejemplo o volver al inicio."
+  },
+  {
+    "id": "calendario_00",
+    "text": "¡Hola! Te voy a enseñar a consultar los horarios de los médicos. Empezamos desde Inicio: toca la tarjeta Calendario de Atención."
+  },
+  {
+    "id": "calendario_01",
+    "text": "Aquí puedes ver los días y horarios en que atiende cada médico, sin reservar nada. Empieza eligiendo tu hospital o policlínico."
+  },
+  {
+    "id": "calendario_02",
+    "text": "¡Muy bien! Ahora elige la especialidad que quieres consultar."
+  },
+  {
+    "id": "calendario_03",
+    "text": "Estos son los médicos de esa especialidad. Toca uno para ver su horario de atención."
+  },
+  {
+    "id": "calendario_04",
+    "text": "¡Eso es todo! Aquí ves los días, turnos y horas en que atiende este médico. Recuerda: esto es solo consulta; para sacar una ficha usa Nueva Reserva en Inicio. Puedes repetir este tutorial desde tu Perfil."
+  },
+  {
+    "id": "tramites_00",
+    "text": "¡Hola! Vamos a generar un trámite paso a paso. Empezamos desde Inicio: toca la tarjeta Procedimientos COSSMIL."
+  },
+  {
+    "id": "tramites_01",
+    "text": "Aquí puedes generar documentos oficiales con tus datos ya cargados. Los trámites se organizan por gerencia: entra a Gerencia de Salud."
+  },
+  {
+    "id": "tramites_02",
+    "text": "¡Muy bien! Esta gerencia agrupa sus dependencias. Entra a Hospital."
+  },
+  {
+    "id": "tramites_03",
+    "text": "Ya casi llegamos. Cada categoría agrupa documentos. Abre Formularios."
+  },
+  {
+    "id": "tramites_04",
+    "text": "¡Listo! Cada tarjeta abre un formulario con tu nombre y cédula ya completados, listo para imprimir, compartir o descargar. Puedes repetir este tutorial desde tu Perfil."
+  }
+]

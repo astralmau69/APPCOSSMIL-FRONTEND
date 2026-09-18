@@ -1,6 +1,13 @@
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 
+/// Ancho mínimo de ventana, solo en web, para pasar a navegación lateral.
+///
+/// 900 y no los 600 de `isTablet`: así una ventana de navegador a media
+/// pantalla (500-800 px) conserva el aspecto móvil completo en vez de caer en
+/// un híbrido que no es ni una cosa ni la otra.
+const double kSideNavMinWidth = 900;
+
 /// Helpers y extensiones para layouts responsive sin código duplicado.
 extension MediaQueryExtension on BuildContext {
   double get width => MediaQuery.of(this).size.width;
@@ -75,6 +82,15 @@ class AppResponsive {
   bool get isSmallPhone => deviceType == DeviceType.phoneSmall;
   bool get isMediumPhone => deviceType == DeviceType.phoneMedium;
   bool get isLargePhone => deviceType == DeviceType.phoneLarge;
+
+  /// Única fuente de verdad de la posición de la navegación.
+  ///
+  /// Solo la web con ventana ancha usa el SideNavBar. En nativo (Android/iOS),
+  /// sea teléfono o tablet, vertical u horizontal, la barra va SIEMPRE abajo.
+  /// La condición anterior (`isDesktop || (isTablet && isLandscape)`) no
+  /// consultaba `kIsWeb`, así que una tablet nativa en horizontal perdía la
+  /// barra inferior.
+  bool get useSideNav => kIsWeb && screenWidth >= kSideNavMinWidth;
 
   // ── Selector helper ────────────────────────────────────────────────────────
   T _select<T>({
@@ -158,9 +174,10 @@ class AppResponsive {
       _select(phoneSmall: 48, phoneMedium: 52, phoneLarge: 56, tablet: 56);
 
   // ── BOTTOM NAV PADDING (espacio para el floating nav bar) ─────────────────
-  // Cero en escritorio/landscape-tablet porque el SideNavBar reemplaza al FloatingNavBar.
   double get navBarBottomSpace {
-    if (isDesktop || (isTablet && isLandscape)) return 0;
+    // Deriva de useSideNav: con navegación lateral no hay barra inferior que
+    // esquivar. Antes esta condición estaba duplicada y podía divergir.
+    if (useSideNav) return 0;
     // Derivado de la geometría REAL del FloatingNavBar en tab_shell
     // (Scaffold extendBody: el contenido se dibuja detrás de la barra):
     //   altura de la barra + separación inferior + inset del sistema,

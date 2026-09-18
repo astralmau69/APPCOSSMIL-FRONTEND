@@ -1729,8 +1729,7 @@ class TabShellState extends State<TabShell>
         child: Builder(
           builder: (context) {
             final r = context.r;
-            final bool useSideNav =
-                r.isDesktop || (r.isTablet && r.isLandscape);
+            final bool useSideNav = r.useSideNav;
 
             // Callback compartido de navegación por tap
             void handleNavTap(int index) {
