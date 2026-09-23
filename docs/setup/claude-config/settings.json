@@ -1,0 +1,36 @@
+{
+  "model": "claude-opus-4-8",
+  "enabledPlugins": {
+    "fullstack-dev-skills@fullstack-dev-skills": true,
+    "stitch-build@google-labs-code-stitch-skills": true,
+    "stitch-design@google-labs-code-stitch-skills": true,
+    "stitch-utilities@google-labs-code-stitch-skills": true,
+    "superpowers@superpowers-dev": true,
+    "claude-mem@thedotmack": true,
+    "taskmaster@taskmaster": true
+  },
+  "extraKnownMarketplaces": {
+    "fullstack-dev-skills": {
+      "source": { "source": "github", "repo": "jeffallan/claude-skills" }
+    },
+    "google-labs-code-stitch-skills": {
+      "source": { "source": "github", "repo": "google-labs-code/stitch-skills" }
+    },
+    "superpowers-dev": {
+      "source": { "source": "github", "repo": "obra/superpowers" }
+    },
+    "thedotmack": {
+      "source": { "source": "github", "repo": "thedotmack/claude-mem" }
+    },
+    "taskmaster": {
+      "source": { "source": "github", "repo": "eyaltoledano/claude-task-master" }
+    }
+  },
+  "effortLevel": "high",
+  "modelSettings": {
+    "claude-opus-5": { "effortLevel": "xhigh" }
+  },
+  "tui": "fullscreen",
+  "theme": "dark",
+  "_comment_skipDangerousModePermissionPrompt": "OPCIONAL Y RIESGOSO: el entorno original tiene skipDangerousModePermissionPrompt=true. Actívalo SOLO si sabes lo que haces (omite confirmaciones de acciones peligrosas). Por defecto lo dejamos fuera."
+}

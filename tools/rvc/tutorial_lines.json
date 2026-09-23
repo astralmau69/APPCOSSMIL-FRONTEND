@@ -19,6 +19,15 @@
     "tramites_01": "Aquí puedes generar documentos oficiales con tus datos ya cargados. Los trámites se organizan por gerencia: entra a Gerencia de Salud.",
     "tramites_02": "¡Muy bien! Esta gerencia agrupa sus dependencias. Entra a Hospital.",
     "tramites_03": "Ya casi llegamos. Cada categoría agrupa documentos. Abre Formularios.",
-    "tramites_04": "¡Listo! Cada tarjeta abre un formulario con tu nombre y cédula ya completados, listo para imprimir, compartir o descargar. Puedes repetir este tutorial desde tu Perfil."
+    "tramites_04": "¡Listo! Cada tarjeta abre un formulario con tu nombre y cédula ya completados, listo para imprimir, compartir o descargar. Puedes repetir este tutorial desde tu Perfil.",
+
+    "guiado_intro": "Bienvenido al asistente de reserva guiada de COSSMIL. Le acompañaré en cada paso. Tenga presente que esta gestión registrará una cita médica real. Le indicaré qué hacer en cada pantalla y usted seleccionará las opciones que correspondan. Comencemos.",
+    "guiado_regional": "Seleccione el establecimiento donde desea ser atendido. Los hospitales y policlínicos se encuentran agrupados por regional.",
+    "guiado_especialidad": "Seleccione la especialidad médica que requiere.",
+    "guiado_medico": "Seleccione al profesional médico con quien desea reservar su cita.",
+    "guiado_dia": "Seleccione el día de atención. Cada tarjeta indica si el médico atiende y la disponibilidad de fichas.",
+    "guiado_hora": "Seleccione el horario de su preferencia dentro del día elegido.",
+    "guiado_confirmar": "Verifique que sus datos sean correctos. Al presionar Confirmar, su cita quedará registrada de manera definitiva.",
+    "guiado_final": "Su cita ha sido registrada correctamente. Puede consultar o descargar su ficha. Gracias por utilizar los servicios de COSSMIL."
   }
 }

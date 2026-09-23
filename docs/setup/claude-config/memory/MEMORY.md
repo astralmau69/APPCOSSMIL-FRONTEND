@@ -1,0 +1,25 @@
+# Memoria del proyecto COSSMIL (Post2)
+
+- [Web en Docker/LAN sin CDNs](web-docker-lan-deploy.md) — la web se sirve en nginx:8080 para dispositivos LAN sin internet; nunca depender de gstatic (CanvasKit/Roboto/Firebase) ni de contexto seguro.
+- [Celular: dos fuentes en el perfil](celular-dos-fuentes-perfil.md) — phone (usuarioweb, editable, persiste) vs numCel (safil.asegurado, revierte); la tarjeta de inicio ahora prefiere phone.
+- [Diálogos: usar showAppDialog](dialogos-showappdialog.md) — helper único en core/animations/app_dialog.dart para movimiento consistente (fade+escala, reduce-motion); no volver a showCupertinoDialog.
+- [pdf.js y vista previa en web](pdfjs-preview-web.md) — printing 5.14.3 crashea con dartPdfJsBaseUrl; index.html precarga pdfjs/ + init.js (workerSrc + shim eval para CSP); no tocar.
+- [applicationId real de Android](applicationid-real-android.md) — es `com.cossmil.citamedicapp`; CLAUDE.md miente y por eso un install pisa la app en vez de instalarse al lado.
+- [Entorno de build Android en Linux](entorno-build-android-linux.md) — SDK en ~/Android/Sdk, JDK 21 en ~/.jdks, RAM 7.5GB (Gradle Xmx3G máx), proyecto en NTFS/FUSE (builds lentos, workers.max=2), tablet SM-T735.
+- [Cédula ausente en gpo-familiar](cedula-gpo-familiar.md) — el backend no manda la CI de los familiares; los trámites la recuerdan localmente con TramiteCiStore.
+- [Sistema liquid glass](liquid-glass-system.md) — LiquidGlass/LiquidGlassButton en core/widgets/liquid_glass.dart; blur real solo en superficies arquitectónicas, tarjetas en scroll usan blur:false.
+- [Asset de la instructora del tutorial](instructora-tutorial-asset.md) — instructora_tutorial.png vino de una imagen Gemini con fondo falso; pipeline PIL (flood-fill thresh=suma de canales) por si hay que regenerarlo.
+- [Ruflo instalado](ruflo-instalado.md) — meta-harness multi-agente para Claude Code; CLI en ~/.npm-global, workspace en ~/ruflo (no en COSSMIL), MCP a scope user ✔; cómo arrancar/desinstalar.
+- [Sistema de tutoriales guiados](tutorial-flow-system.md) — TutorialFlow/TutorialFlowHost para recorridos push (Calendario/Trámites); trucos de test del coach.
+- [Parar bucles de animación sin saltos](animaciones-parar-bucles-sin-saltos.md) — `_settle` en vez de `value = 0`; y `AnimatedSize` con `Duration.zero` rompe el layout.
+- [Voz del tutorial (RVC v2)](tutorial-voz-rvc.md) — dar voz a la instructora con RVC; guion/dataset/receta en tools/rvc; falta el enganche de reproducción en la app.
+- [Sistema de sonidos de interfaz](sistema-sonidos-ui.md) — familia generada con tools/generate_ui_sounds.py, catálogo AppSounds y pool/caché de SoundManager.
+- [La navbar tapa el contenido](navbar-tapa-contenido.md) — toda pantalla dentro de una pestaña debe reservar navBarBottomSpace; comando de auditoría.
+- [Síntomas vs causa en UI](sintomas-vs-causa-ui.md) — pide cambios de tamaño para describir recortes de layout; investigar la causa antes de escalar nada.
+- [Tests rojos por binding/secure-storage](tests-binding-secure-storage.md) — varios test files fallan por no inicializar TestWidgetsFlutterBinding + mock de flutter_secure_storage; patrón de arreglo.
+- [Endurecimiento PHI/PII](phi-hardening-seguridad.md) — FLAG_SECURE (ScreenSecurity), enmascarado de logs (LogSanitizer) y sandbox de PDFs con limpieza en logout; logout fragmentado en 3 sitios.
+- [Resiliencia offline](offline-cache-resiliencia.md) — caché cifrada de citas y grupo familiar (flutter_secure_storage), OfflineBanner, read-through en reservas; escrituras solo-online (no encolar mutaciones médicas).
+- [Plugins: superpowers/claude-mem/taskmaster](plugins-superpowers-claudemem-taskmaster.md) — instalados a nivel usuario 2026-07-27; claude-mem puede solaparse con la auto-memoria nativa de este directorio.
+- [Carnet digital habilitado](carnet-digital-habilitado.md) — vivo desde el 2026-08-04; qué sigue siendo mock (fechas, secreto del QR) y la trampa del hit-test con matrices en perspectiva.
+- [Procedimientos COSSMIL en "coming soon"](procedimientos-coming-soon.md) — tarjeta de Inicio gateada como Mi Carnet COSSMIL; el tutorial guiado sigue intacto y funcional.
+- [Número de soporte COSSMIL](numero-soporte-cossmil.md) — vive en 2 sitios sin relación (Contactos/DNTIC y Login); ahora 71292794 (móvil, con botón WhatsApp).

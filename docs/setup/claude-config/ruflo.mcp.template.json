@@ -1,0 +1,11 @@
+{
+  "_nota": "Plantilla del servidor MCP 'ruflo' a nivel USER. Reemplaza <RUFLO_BIN> por la ruta real del binario ruflo en tu PC. En Linux/mac con instalacion npm-global suele ser $HOME/.npm-global/bin/ruflo; con npm por defecto, $(npm root -g)/../bin/ruflo o simplemente 'ruflo' si esta en el PATH. En Windows, la ruta del .cmd de npm. No lleva secretos (env vacio).",
+  "mcpServers": {
+    "ruflo": {
+      "type": "stdio",
+      "command": "<RUFLO_BIN>",
+      "args": ["mcp", "start"],
+      "env": {}
+    }
+  }
+}

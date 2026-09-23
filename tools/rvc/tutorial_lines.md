@@ -62,3 +62,29 @@ La versión legible por máquina (para los scripts) está en `tutorial_lines.jso
 - **tramites_04** — «¡Listo! Cada tarjeta abre un formulario con tu nombre y
   cédula ya completados, listo para imprimir, compartir o descargar. Puedes
   repetir este tutorial desde tu Perfil.»
+
+## Modo Guiado — reserva REAL narrada (recorrido "guiado")
+
+> Registro tonal DISTINTO al resto: profesional, institucional militar (COSSMIL,
+> Bolivia), trato de usted, sin jergas ni signos de exclamación de apertura.
+> La instructora recuerda que la cita es REAL. Un clip por pantalla del flujo de
+> reserva real (Regional → Especialidad → Médico → Día → Hora → Confirmar) más
+> intro y cierre. Si cambia el texto de una burbuja, regenerar ese clip.
+
+- **guiado_intro** — «Bienvenido al asistente de reserva guiada de COSSMIL. Le
+  acompañaré en cada paso. Tenga presente que esta gestión registrará una cita
+  médica real. Le indicaré qué hacer en cada pantalla y usted seleccionará las
+  opciones que correspondan. Comencemos.»
+- **guiado_regional** — «Seleccione el establecimiento donde desea ser atendido.
+  Los hospitales y policlínicos se encuentran agrupados por regional.»
+- **guiado_especialidad** — «Seleccione la especialidad médica que requiere.»
+- **guiado_medico** — «Seleccione al profesional médico con quien desea reservar
+  su cita.»
+- **guiado_dia** — «Seleccione el día de atención. Cada tarjeta indica si el
+  médico atiende y la disponibilidad de fichas.»
+- **guiado_hora** — «Seleccione el horario de su preferencia dentro del día
+  elegido.»
+- **guiado_confirmar** — «Verifique que sus datos sean correctos. Al presionar
+  Confirmar, su cita quedará registrada de manera definitiva.»
+- **guiado_final** — «Su cita ha sido registrada correctamente. Puede consultar
+  o descargar su ficha. Gracias por utilizar los servicios de COSSMIL.»
