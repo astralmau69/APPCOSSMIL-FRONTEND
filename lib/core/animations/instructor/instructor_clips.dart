@@ -1,6 +1,7 @@
 import 'package:flutter/painting.dart';
 
 import '../../theme/app_constants.dart';
+import '../../widgets/tutorial_instructor.dart' show InstructorPose;
 import 'instructor_clip.dart';
 
 /// El catálogo de animaciones de la instructora.
@@ -81,6 +82,159 @@ class InstructorClips {
     },
   );
 
+  /// Señalar al frente.
+  ///
+  /// Las tres primeras reglas de timing en un solo clip: anticipa bajando,
+  /// se pasa del objetivo y se asienta, y el codo arranca 60 ms después que el
+  /// hombro (sobre 620 ms eso es 0,10 de fase).
+  static const senala = InstructorClip(
+    name: 'senala',
+    duration: Duration(milliseconds: 620),
+    tracks: {
+      'brazo_sup_der': [
+        BoneKey(t: 0.00, rot: 0.0),
+        BoneKey(t: 0.15, rot: 0.08, curve: AppCurves.smooth),
+        BoneKey(t: 0.62, rot: -0.86, curve: AppCurves.snappy),
+        BoneKey(t: 1.00, rot: -0.75, curve: AppCurves.bounce),
+      ],
+      'antebrazo_der': [
+        BoneKey(t: 0.10, rot: 0.0),
+        BoneKey(t: 0.70, rot: -0.44, curve: AppCurves.snappy),
+        BoneKey(t: 1.00, rot: -0.36, curve: AppCurves.bounce),
+      ],
+      'antena': [
+        BoneKey(t: 0.00, rot: 0.0),
+        BoneKey(t: 0.75, rot: -0.09, curve: AppCurves.smooth),
+        BoneKey(t: 1.00, rot: 0.0, curve: AppCurves.bounce),
+      ],
+    },
+  );
+
+  /// Pulgar arriba. Más lento que señalar: es un gesto de aprobación, no de
+  /// indicación, y la prisa lo volvería nervioso.
+  static const pulgarArriba = InstructorClip(
+    name: 'pulgar_arriba',
+    duration: Duration(milliseconds: 700),
+    tracks: {
+      'brazo_sup_der': [
+        BoneKey(t: 0.00, rot: 0.0),
+        BoneKey(t: 0.18, rot: 0.07, curve: AppCurves.smooth),
+        BoneKey(t: 0.66, rot: -0.62, curve: AppCurves.snappy),
+        BoneKey(t: 1.00, rot: -0.54, curve: AppCurves.bounce),
+      ],
+      'antebrazo_der': [
+        BoneKey(t: 0.12, rot: 0.0),
+        BoneKey(t: 0.74, rot: -0.72, curve: AppCurves.snappy),
+        BoneKey(t: 1.00, rot: -0.62, curve: AppCurves.bounce),
+      ],
+      'cabeza': [
+        BoneKey(t: 0.00, rot: 0.0),
+        BoneKey(t: 0.58, rot: 0.035, curve: AppCurves.smooth),
+        BoneKey(t: 1.00, rot: 0.0, curve: AppCurves.bounce),
+      ],
+    },
+  );
+
+  /// Palma al frente: "espere". El más corto de todos — un alto que tarda no
+  /// detiene a nadie.
+  static const alto = InstructorClip(
+    name: 'alto',
+    duration: Duration(milliseconds: 540),
+    tracks: {
+      'brazo_sup_der': [
+        BoneKey(t: 0.00, rot: 0.0),
+        BoneKey(t: 0.13, rot: 0.06, curve: AppCurves.smooth),
+        BoneKey(t: 0.58, rot: -0.98, curve: AppCurves.snappy),
+        BoneKey(t: 1.00, rot: -0.88, curve: AppCurves.bounce),
+      ],
+      'antebrazo_der': [
+        BoneKey(t: 0.09, rot: 0.0),
+        BoneKey(t: 0.66, rot: -0.52, curve: AppCurves.snappy),
+        BoneKey(t: 1.00, rot: -0.46, curve: AppCurves.bounce),
+      ],
+      'antena': [
+        BoneKey(t: 0.00, rot: 0.0),
+        BoneKey(t: 0.70, rot: -0.11, curve: AppCurves.smooth),
+        BoneKey(t: 1.00, rot: 0.0, curve: AppCurves.bounce),
+      ],
+    },
+  );
+
+  /// Pensar: la mano sube al mentón y la cabeza se ladea.
+  static const piensa = InstructorClip(
+    name: 'piensa',
+    duration: Duration(milliseconds: 800),
+    tracks: {
+      'brazo_sup_der': [
+        BoneKey(t: 0.00, rot: 0.0),
+        BoneKey(t: 0.16, rot: 0.05, curve: AppCurves.smooth),
+        BoneKey(t: 0.70, rot: -0.48, curve: AppCurves.snappy),
+        BoneKey(t: 1.00, rot: -0.44, curve: AppCurves.smooth),
+      ],
+      'antebrazo_der': [
+        BoneKey(t: 0.14, rot: 0.0),
+        BoneKey(t: 0.78, rot: -1.22, curve: AppCurves.snappy),
+        BoneKey(t: 1.00, rot: -1.16, curve: AppCurves.smooth),
+      ],
+      'cabeza': [
+        BoneKey(t: 0.00, rot: 0.0),
+        BoneKey(t: 0.80, rot: -0.09, curve: AppCurves.smooth),
+        BoneKey(t: 1.00, rot: -0.08, curve: AppCurves.smooth),
+      ],
+    },
+  );
+
+  /// Celebrar. Los dos brazos suben, pero DESFASADOS: el izquierdo arranca
+  /// 55 ms después y llega un poco menos alto. La simetría perfecta es lo que
+  /// delata a un muñeco.
+  static const celebra = InstructorClip(
+    name: 'celebra',
+    duration: Duration(milliseconds: 900),
+    tracks: {
+      'brazo_sup_der': [
+        BoneKey(t: 0.00, rot: 0.0),
+        BoneKey(t: 0.12, rot: 0.09, curve: AppCurves.smooth),
+        BoneKey(t: 0.60, rot: -1.30, curve: AppCurves.snappy),
+        BoneKey(t: 1.00, rot: -1.18, curve: AppCurves.bounce),
+      ],
+      'brazo_sup_izq': [
+        BoneKey(t: 0.06, rot: 0.0),
+        BoneKey(t: 0.19, rot: -0.08, curve: AppCurves.smooth),
+        BoneKey(t: 0.67, rot: 1.22, curve: AppCurves.snappy),
+        BoneKey(t: 1.00, rot: 1.12, curve: AppCurves.bounce),
+      ],
+      'cabeza': [
+        BoneKey(t: 0.00, rot: 0.0),
+        BoneKey(t: 0.55, rot: -0.05, curve: AppCurves.smooth),
+        BoneKey(t: 1.00, rot: 0.0, curve: AppCurves.bounce),
+      ],
+      'antena': [
+        BoneKey(t: 0.00, rot: 0.0),
+        BoneKey(t: 0.72, rot: 0.16, curve: AppCurves.smooth),
+        BoneKey(t: 1.00, rot: 0.0, curve: AppCurves.bounce),
+      ],
+    },
+  );
+
+  /// Sorpresa: la cabeza se va atrás de golpe y vuelve. Sólo cabeza y antena;
+  /// el cuerpo no reacciona, que es lo que lo hace leerse como un respingo.
+  static const sorpresa = InstructorClip(
+    name: 'sorpresa',
+    duration: Duration(milliseconds: 400),
+    tracks: {
+      'cabeza': [
+        BoneKey(t: 0.00, rot: 0.0),
+        BoneKey(t: 0.30, rot: -0.12, curve: AppCurves.snappy),
+        BoneKey(t: 1.00, rot: 0.0, curve: AppCurves.bounce),
+      ],
+      'antena': [
+        BoneKey(t: 0.00, rot: 0.0),
+        BoneKey(t: 0.42, rot: -0.20, curve: AppCurves.smooth),
+        BoneKey(t: 1.00, rot: 0.0, curve: AppCurves.bounce),
+      ],
+    },
+  );
+
   /// Cabeceo mientras habla. No mueve la boca: eso lo hace [mouthSequence]
   /// conmutando sprites, porque una boca no interpola, conmuta.
   static const speak = InstructorClip(
@@ -96,6 +250,29 @@ class InstructorClips {
     },
   );
 }
+
+/// El clip que corresponde a una pose, o `null` si esa pose no gesticula
+/// (se queda en la respiración de base).
+InstructorClip? clipForPose(InstructorPose p) => switch (p) {
+  InstructorPose.senala => InstructorClips.senala,
+  InstructorPose.pulgarArriba => InstructorClips.pulgarArriba,
+  InstructorPose.alto => InstructorClips.alto,
+  InstructorPose.sorpresa => InstructorClips.sorpresa,
+  InstructorPose.piensa => InstructorClips.piensa,
+  InstructorPose.celebra || InstructorPose.festeja => InstructorClips.celebra,
+  InstructorPose.reposo ||
+  InstructorPose.explica ||
+  InstructorPose.saludo => null,
+};
+
+/// Qué sprite de mano lleva cada pose. Las que no gesticulan usan el puño de
+/// la A-pose, que es el que encaja exacto con su antebrazo.
+String instructorHandFor(InstructorPose p) => switch (p) {
+  InstructorPose.senala => 'mano_g_senala',
+  InstructorPose.pulgarArriba => 'mano_g_pulgar',
+  InstructorPose.alto || InstructorPose.saludo => 'mano_g_abierta',
+  _ => 'mano_der',
+};
 
 /// Secuencia de aberturas de boca para una locución.
 ///

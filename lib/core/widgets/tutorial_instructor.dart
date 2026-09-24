@@ -35,6 +35,18 @@ enum InstructorPose {
 
   /// Saludo militar. Presentación del tutorial.
   saludo,
+
+  /// Señala al frente con el índice. Gesto por paso del flujo de reserva.
+  senala,
+
+  /// Pulgar arriba: confirmación de que el usuario hizo lo correcto.
+  pulgarArriba,
+
+  /// Palma al frente: "espere un momento".
+  alto,
+
+  /// Ojos muy abiertos y cabeza atrás: reacción a algo inesperado.
+  sorpresa,
 }
 
 /// Precarga el rig una sola vez por proceso. Lo llama Inicio antes de que la
@@ -196,6 +208,12 @@ class _TutorialInstructorState extends State<TutorialInstructor>
   /// Cuántas vueltas lleva dadas el bucle de cabeceo. Sin esto la boca
   /// recorrería las mismas cuatro aberturas cada segundo, que es exactamente la
   /// cadencia de metrónomo que el guion pide evitar.
+  /// Gesto en curso (señalar, pulgar arriba, alto…). Es un disparo único que
+  /// se QUEDA en su pose final: soltarlo al terminar haría que el brazo cayera
+  /// solo, que es justo lo que no hace un brazo de verdad.
+  late final AnimationController _gesto;
+  InstructorClip? _clipGesto;
+
   int _cicloBoca = 0;
   double _ultimoSpeak = 0;
 
@@ -278,7 +296,10 @@ class _TutorialInstructorState extends State<TutorialInstructor>
     _talk = AnimationController(vsync: this, duration: _talkPeriod);
     _speak = AnimationController(vsync: this, duration: _speakBobPeriod);
     _swap = AnimationController(vsync: this, duration: _swapDur);
-    _loop = Listenable.merge([_idle, _pop, _walk, _talk, _speak, _swap]);
+    _gesto = AnimationController(vsync: this, duration: _swapDur);
+    _clipGesto = clipForPose(widget.pose);
+    if (_clipGesto != null) _gesto.value = 1.0;
+    _loop = Listenable.merge([_idle, _pop, _walk, _talk, _speak, _swap, _gesto]);
     // La alternancia check↔risa no pasa por didUpdateWidget (la mueve _talk),
     // así que el golpe se engancha a su cruce de casilla.
     _talk.addListener(_watchTalkSwap);
@@ -339,6 +360,7 @@ class _TutorialInstructorState extends State<TutorialInstructor>
         oldWidget.speaking != widget.speaking ||
         oldWidget.speakDuration != widget.speakDuration;
     if (poseChanged) {
+      _syncGesto();
       _syncBlinking();
       // Se sigue pintando la pose vieja hasta el pico de compresión.
       _kickSwap();
@@ -391,6 +413,32 @@ class _TutorialInstructorState extends State<TutorialInstructor>
     final primera = _lastTalkIdx < 0;
     _lastTalkIdx = idx;
     if (!primera) _kickSwap();
+  }
+
+  /// Arranca el gesto de la pose nueva, o deshace el anterior si la pose
+  /// entrante no gesticula.
+  void _syncGesto() {
+    final nuevo = clipForPose(widget.pose);
+    if (nuevo != null) {
+      _clipGesto = nuevo;
+      _gesto.duration = nuevo.duration;
+      if (_reduceMotion) {
+        _gesto.value = 1.0;
+      } else {
+        _gesto.forward(from: 0);
+      }
+      return;
+    }
+    // Sin gesto nuevo: el brazo vuelve por donde vino, no se desploma.
+    if (_clipGesto == null) return;
+    if (_reduceMotion) {
+      _gesto.value = 0.0;
+      _clipGesto = null;
+      return;
+    }
+    _gesto.reverse().whenComplete(() {
+      if (mounted && clipForPose(widget.pose) == null) _clipGesto = null;
+    });
   }
 
   /// Cuenta las vueltas del cabeceo detectando el salto de fase de 1 a 0.
@@ -491,6 +539,10 @@ class _TutorialInstructorState extends State<TutorialInstructor>
     _talk.dispose();
     _speak.dispose();
     _swap.dispose();
+    _gesto.dispose();
+    // Las texturas NO se liberan aqui: las posee `_InstructorAssets`, que las
+    // comparte entre todas las instancias y vive lo que el proceso. Liberarlas
+    // al desmontar una dejaria a las demas dibujando sobre imagenes muertas.
     super.dispose();
   }
 
@@ -532,6 +584,7 @@ class _TutorialInstructorState extends State<TutorialInstructor>
   InstructorEyes _ojosDePose(InstructorPose pose) => switch (pose) {
     InstructorPose.celebra || InstructorPose.festeja => InstructorEyes.feliz,
     InstructorPose.piensa => InstructorEyes.cerrados,
+    InstructorPose.sorpresa => InstructorEyes.sorpresa,
     _ => InstructorEyes.abiertos,
   };
 
@@ -557,13 +610,25 @@ class _TutorialInstructorState extends State<TutorialInstructor>
   /// corriendo por debajo de cualquier gesto. Con reduce-motion no hay ninguna:
   /// la figura queda en su pose de reposo.
   List<ClipLayer> _capas() {
-    if (_reduceMotion || !widget.idle) return const [];
+    if (_reduceMotion) {
+      // Estática, pero en la pose del gesto: quitar el movimiento no es quitar
+      // la postura. Sin esto, "señalar" con reduce-motion no señalaría nada.
+      final g = _clipGesto;
+      return g == null ? const [] : [ClipLayer(clip: g, t: 1.0)];
+    }
+    if (!widget.idle) {
+      final g = _clipGesto;
+      return g == null ? const [] : [ClipLayer(clip: g, t: _gesto.value)];
+    }
     final base = _celebrating ? InstructorClips.idleParty : InstructorClips.idle;
     return [
       ClipLayer(clip: base, t: _idle.value),
       // El cabeceo de hablar se SUMA a la respiración: la cabeza asiente
       // mientras el torso sigue subiendo y bajando por debajo.
       if (_speakBob) ClipLayer(clip: InstructorClips.speak, t: _speak.value),
+      // El gesto va ENCIMA: mueve el brazo sin tocar el torso, que sigue
+      // respirando por debajo. Eso es lo que hace barato el repertorio.
+      if (_clipGesto != null) ClipLayer(clip: _clipGesto!, t: _gesto.value),
     ];
   }
 
@@ -584,7 +649,7 @@ class _TutorialInstructorState extends State<TutorialInstructor>
           final hidden = instructorHidden(
             ojos: instructorEyeAsset(ojos),
             boca: _bocaActiva(),
-            mano: 'mano_der',
+            mano: instructorHandFor(widget.pose),
           );
 
           final double dx; // desplazamiento horizontal (solo al caminar)
