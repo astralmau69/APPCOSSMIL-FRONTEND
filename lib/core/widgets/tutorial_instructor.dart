@@ -116,6 +116,11 @@ class TutorialInstructor extends StatefulWidget {
   /// ~una pose por segundo con clamp 2..10). Sincroniza el gesto con la voz.
   final Duration? speakDuration;
 
+  /// Id del clip de voz en curso. Sólo se usa como SEMILLA del movimiento de
+  /// boca, para que dos pasos distintos no muevan los labios igual. Opcional:
+  /// sin él la semilla sale de la duración.
+  final String? voiceId;
+
   const TutorialInstructor({
     super.key,
     required this.height,
@@ -125,6 +130,7 @@ class TutorialInstructor extends StatefulWidget {
     this.idle = true,
     this.speaking = false,
     this.speakDuration,
+    this.voiceId,
   });
 
   @override
@@ -186,6 +192,12 @@ class _TutorialInstructorState extends State<TutorialInstructor>
 
   final _rng = math.Random();
   Timer? _blinkTimer;
+
+  /// Cuántas vueltas lleva dadas el bucle de cabeceo. Sin esto la boca
+  /// recorrería las mismas cuatro aberturas cada segundo, que es exactamente la
+  /// cadencia de metrónomo que el guion pide evitar.
+  int _cicloBoca = 0;
+  double _ultimoSpeak = 0;
 
   /// Micro-expresión activa (parpadeo o guiño); nula con su cara normal.
   InstructorEyes? _microOjos;
@@ -270,6 +282,7 @@ class _TutorialInstructorState extends State<TutorialInstructor>
     // La alternancia check↔risa no pasa por didUpdateWidget (la mueve _talk),
     // así que el golpe se engancha a su cruce de casilla.
     _talk.addListener(_watchTalkSwap);
+    _speak.addListener(_watchSpeakWrap);
     // Al caminar hasta su sitio, la aparición elástica sobra (llegaría dando un
     // respingo tras el último paso): la pose ya entra fundida desde el andar.
     if (!widget.entrance || widget.walkIn) _pop.value = 1.0;
@@ -380,6 +393,13 @@ class _TutorialInstructorState extends State<TutorialInstructor>
     if (!primera) _kickSwap();
   }
 
+  /// Cuenta las vueltas del cabeceo detectando el salto de fase de 1 a 0.
+  void _watchSpeakWrap() {
+    final v = _speak.value;
+    if (v < _ultimoSpeak) _cicloBoca++;
+    _ultimoSpeak = v;
+  }
+
   /// Apaga un bucle SIN teletransportar la figura: lo deja terminar el ciclo en
   /// curso y recién ahí llama a [onSettled].
   ///
@@ -464,6 +484,7 @@ class _TutorialInstructorState extends State<TutorialInstructor>
   void dispose() {
     _blinkTimer?.cancel();
     _talk.removeListener(_watchTalkSwap);
+    _speak.removeListener(_watchSpeakWrap);
     _idle.dispose();
     _pop.dispose();
     _walk.dispose();
@@ -514,9 +535,21 @@ class _TutorialInstructorState extends State<TutorialInstructor>
     _ => InstructorEyes.abiertos,
   };
 
-  /// Sprite de boca activo. Aquí siempre cerrada; el lip-sync entra cuando
-  /// suena la locución.
-  String _bocaActiva() => 'boca_0';
+  /// Sprite de boca activo.
+  ///
+  /// Callada, la boca cerrada. Hablando, se camina la secuencia determinista de
+  /// [mouthSequence]: unas cuatro aberturas por vuelta del cabeceo, y el
+  /// contador de vueltas evita que se repita el mismo tramo cada segundo.
+  String _bocaActiva() {
+    if (_reduceMotion || !widget.speaking) return 'boca_0';
+    final seq = mouthSequence(
+      voiceId: widget.voiceId ?? 'd${widget.speakDuration?.inMilliseconds ?? 0}',
+      duration: widget.speakDuration ?? _speakBobDefault,
+    );
+    const porVuelta = 4;
+    final dentro = (_speak.value * porVuelta).floor().clamp(0, porVuelta - 1);
+    return 'boca_${seq[(_cicloBoca * porVuelta + dentro) % seq.length]}';
+  }
 
   /// Las capas de animación activas en este instante, de base a encima.
   ///
@@ -526,7 +559,12 @@ class _TutorialInstructorState extends State<TutorialInstructor>
   List<ClipLayer> _capas() {
     if (_reduceMotion || !widget.idle) return const [];
     final base = _celebrating ? InstructorClips.idleParty : InstructorClips.idle;
-    return [ClipLayer(clip: base, t: _idle.value)];
+    return [
+      ClipLayer(clip: base, t: _idle.value),
+      // El cabeceo de hablar se SUMA a la respiración: la cabeza asiente
+      // mientras el torso sigue subiendo y bajando por debajo.
+      if (_speakBob) ClipLayer(clip: InstructorClips.speak, t: _speak.value),
+    ];
   }
 
   @override

@@ -80,6 +80,53 @@ class InstructorClips {
       ],
     },
   );
+
+  /// Cabeceo mientras habla. No mueve la boca: eso lo hace [mouthSequence]
+  /// conmutando sprites, porque una boca no interpola, conmuta.
+  static const speak = InstructorClip(
+    name: 'speak',
+    duration: Duration(milliseconds: 650),
+    loop: true,
+    tracks: {
+      'cabeza': [
+        BoneKey(t: 0.0, rot: 0.0),
+        BoneKey(t: 0.5, rot: 0.022, curve: AppCurves.smooth),
+        BoneKey(t: 1.0, rot: 0.0, curve: AppCurves.smooth),
+      ],
+    },
+  );
+}
+
+/// Secuencia de aberturas de boca para una locución.
+///
+/// **Límite declarado:** no hay datos de fonemas, así que esto es movimiento de
+/// boca *verosímil*, no lip-sync real. A 150 px de alto y con la voz encima la
+/// diferencia no se percibe, pero conviene decirlo porque el nombre promete más
+/// de lo que hace.
+///
+/// La semilla sale del [voiceId] para que sea determinista —y por tanto
+/// testeable— y para que dos pasos distintos no muevan la boca igual. Nunca
+/// repite la misma abertura seguida, que es lo que delataría un ciclo fijo, y
+/// siempre cierra al final.
+List<int> mouthSequence({required String voiceId, required Duration duration}) {
+  // ~4,5 aberturas por segundo, acotado para clips muy cortos o muy largos.
+  final n = (duration.inMilliseconds / 222).round().clamp(2, 40);
+  var seed = 0;
+  for (final u in voiceId.codeUnits) {
+    seed = (seed * 31 + u) & 0x7fffffff;
+  }
+  const abiertas = [1, 2, 3, 4];
+  final out = <int>[];
+  var previa = -1;
+  for (var i = 0; i < n - 1; i++) {
+    seed = (seed * 1103515245 + 12345) & 0x7fffffff;
+    var v = abiertas[(seed >> 8) % abiertas.length];
+    if (v == previa) v = abiertas[(abiertas.indexOf(v) + 1) % abiertas.length];
+    out.add(v);
+    previa = v;
+  }
+  out.add(0); // cierra
+  return out;
 }
 
 /// Qué sprite de ojos toca según la micro-expresión activa.
