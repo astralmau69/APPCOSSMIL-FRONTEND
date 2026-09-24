@@ -158,6 +158,40 @@ def test_numeros_a_palabras():
     assert L._cardinal(21000) == 'veintiún mil' and L._cardinal(31000000) == 'treinta y un millones'
 
 
+def test_verificacion_de_tomas():
+    txt = 'Seleccione el horario de su preferencia dentro del día elegido.'
+    assert L.coincidencia(txt, 'Seleccione el horario de su preferencia dentro del día elegido.') == (1.0, True)
+    p, fin = L.coincidencia(txt, 'Seleccione el horario de su preferencia dentro')   # cortado
+    assert not fin and p < 0.92
+    p, fin = L.coincidencia(txt, 'Seleccione el horario de su preferencia dentro del día elegido. Eh eh mm ah ja')
+    assert p < 0.92                                                                   # balbuceo al final
+    assert L.coincidencia('Bienvenido a Cossmil a las ocho y treinta.', 'Bienvenido a Cosmil a las 8:30.') == (1.0, True)
+    buena = L.puntuar_toma(1.0, True, 1.0, 50)
+    assert buena > L.puntuar_toma(0.8, False, 1.0, 50) and buena > L.puntuar_toma(1.0, True, 2.5, 50)
+    assert buena > L.puntuar_toma(1.0, True, 1.0, 20)
+    assert L.cerrar_frase('Hola, cómo está') == 'Hola, cómo está.' and L.cerrar_frase('¿Listo?') == '¿Listo?'
+    assert L.cerrar_frase('Elija:') == 'Elija.'
+
+
+def test_limpieza_y_snr():
+    try:
+        import numpy as np
+    except ImportError:
+        return
+    sr = 24000
+    t = np.arange(sr * 2) / sr
+    voz = (0.3 * np.sin(2 * np.pi * 220 * t) * (t % 0.5 < 0.3)).astype('float32')
+    ruido = (0.01 * np.random.default_rng(0).standard_normal(len(t))).astype('float32')
+    assert L.relacion_senal_ruido(voz + ruido, sr) < L.relacion_senal_ruido(voz + ruido / 10, sr)
+    try:
+        import noisereduce  # noqa: F401
+    except ImportError:
+        print('  (limpieza omitida: falta noisereduce)')
+        return
+    limpio = L.limpiar_ruido(voz + ruido, sr)
+    assert L.relacion_senal_ruido(limpio, sr) > L.relacion_senal_ruido(voz + ruido, sr) + 6
+
+
 if __name__ == '__main__':
     for nombre, f in list(globals().items()):
         if nombre.startswith('test_'):

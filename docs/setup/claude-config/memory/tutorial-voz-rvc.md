@@ -117,3 +117,14 @@ en Drive, clave = huella del dataset). `_clonar` regenera (hasta 3 semillas) si 
 duración no cuadra con sílabas/ritmo (0,6–1,7×). Números → palabras con apócope
 (`numeros_a_palabras`). RVC queda opcional (`REFORZAR_CON_RVC`). Trae watermark
 PerTh inaudible (propio de Chatterbox). Aún sin correr en Colab real.
+1ª corrida real con Chatterbox: falló `perth.PerthImplicitWatermarker` = None porque
+perth importa `pkg_resources` y el venv de uv no trae setuptools → se instala
+`setuptools<81` + pyyaml. Luego el usuario aprobó la VOZ ("está bien como está") pero
+algunos clips traían ruido o se cortaban → control de calidad por toma: limpieza
+(`noisereduce` estacionario 0,9 + pasa-altos 70 Hz), verificación con Whisper
+(`openai/whisper-large-v3-turbo`, `coincidencia()` normaliza números/acentos y tolera
+variantes como Cosmil; exige ≥0,92 de parecido y que se oigan las 2 últimas palabras),
+hasta 4 tomas y se queda la de mejor `puntuar_toma`; cada trozo termina en
+puntuación (`cerrar_frase`); masterizado recorta bordes a -58 dB con 150 ms de margen y
+fundido de salida (antes -50 dB/50 ms podía comerse finales); mp3 160k. Celda 7:
+`SOLO_ESTOS` + `SEMILLA_APP` para rehacer clips puntuales; al final lista los ⚠.

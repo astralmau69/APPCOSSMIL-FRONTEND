@@ -19,7 +19,9 @@ Multilingual (MIT) — la versión edge-tts + RVC sonaba robótica y quedó como
 2. Celda 6 elige sola la mejor referencia de la locutora (guardada en Drive).
 3. Celda 7 descarga `vof_tutorial_*.zip` con las voces del **Modo Guiado** (+ tutorial)
    → extraer los mp3 **directo** en `assets/vof_tutorial/`.
-4. Celda 8: cualquier texto; si una frase no convence, cambiar `SEMILLA`.
+4. Cada frase se limpia de ruido y se verifica con Whisper (se rehace si sale cortada);
+   al final se listan las dudosas → rehacerlas con celda 7 `SOLO_ESTOS` + otra `SEMILLA_APP`.
+5. Celda 8: cualquier texto (mismos controles de calidad).
 
 Historial de corridas reales: RVC entrenó OK tras `PYTORCH_JIT=0`; el choque de numpy
 del kernel se resolvió corriendo todo lo pesado en subprocesos (ahora en el entorno

@@ -164,7 +164,7 @@ Genera audios con **la voz real de la locutora de COSSMIL** — la de `assets/vo
 4. Se descarga **`vof_tutorial_….zip`** con las voces del Modo Guiado (y del tutorial): extrae los mp3 **directo** en `assets/vof_tutorial/`.
 5. Para cualquier otro texto: celda **8 · Estudio**.
 
-> Si una frase no te convence, en la celda 8 cambia la **SEMILLA** (otra "toma" de la misma locutora) o sube/baja **EXPRESIVIDAD**. Más grabaciones limpias de ella en `MyDrive/cossmil_rvc/audio_extra/` también ayudan (se usan como referencia)."""),
+> Cada frase se **limpia de ruido** y se **escucha con Whisper**: si sale cortada o con balbuceo se rehace sola (hasta 4 tomas) y al final se listan las que conviene revisar. Si alguna no te convence, rehazla con otra **SEMILLA** (celda 7 → `SOLO_ESTOS`; celda 8 para textos libres) (otra "toma" de la misma locutora) o sube/baja **EXPRESIVIDAD**. Más grabaciones limpias de ella en `MyDrive/cossmil_rvc/audio_extra/` también ayudan (se usan como referencia)."""),
 
 code("""#@title 1 · Configuración general
 USAR_DRIVE = True        #@param {type:"boolean"}
@@ -247,7 +247,7 @@ if not os.path.exists(f'{VENV}/.ok'):
     !uv pip install -q --python {PY} "@@CHATTERBOX@@" soundfile scipy
     !touch {VENV}/.ok
 # perth (componente de chatterbox) importa pkg_resources: uv no trae setuptools en el entorno.
-!uv pip install -q --python {PY} "setuptools<81" pyyaml
+!uv pip install -q --python {PY} "setuptools<81" pyyaml noisereduce
 !{PY} -c "import torch, chatterbox; from perth.perth_net.perth_net_implicit.perth_watermarker import PerthImplicitWatermarker; print('torch', torch.__version__, '· GPU' if torch.cuda.is_available() else '· CPU')"
 print('Motor de voz listo ✔ (entorno aparte: no toca el numpy/torch de Colab)')"""),
 
@@ -288,7 +288,8 @@ similitudes = lambda refs, cands: remoto('similitudes', refs, cands)
 
 GUION = @@GUION@@
 NOMBRES_VOF = @@NOMBRES_VOF@@
-AJUSTES = dict(exageracion=0.5, cfg=0.5, temperatura=0.8, semilla=1234, intentos=3, silabas_s=5.5,
+AJUSTES = dict(exageracion=0.5, cfg=0.5, temperatura=0.8, semilla=1234, intentos=4, silabas_s=5.5,
+               verificar=True, asr='openai/whisper-large-v3-turbo', limpiar_ruido=True, fuerza_limpieza=0.9,
                pitch=0, index_rate=0.6, protect=0.33, envolvente=1.0, limpiar=False,
                formato='mp3', normalizar=True, lufs=-16.0)
 REFERENCIA = None   # la fija la celda 6
@@ -307,9 +308,17 @@ def convertir_rvc(entrada, salida):
     if len(glob.glob(f'{salida}/*.wav')) < len(glob.glob(f'{entrada}/*.wav')):
         fallo('batch-infer', t, mostrado=False)
 
+CLAVES_CLON = ('exageracion', 'cfg', 'temperatura', 'semilla', 'intentos', 'silabas_s',
+               'verificar', 'asr', 'limpiar_ruido', 'fuerza_limpieza')
+ULTIMO_INFORME = []
+
 def clonar(trabajos):
-    ajustes = {k: AJUSTES[k] for k in ('exageracion', 'cfg', 'temperatura', 'semilla', 'intentos', 'silabas_s')}
-    return remoto('clonar_lote', trabajos, REFERENCIA, ajustes, mostrar=True)
+    global ULTIMO_INFORME
+    if AJUSTES['verificar']:
+        print('  (cada frase se escucha con Whisper y se regenera si sale cortada o con ruido; '
+              'la 1ª vez descarga Whisper, ~1,6 GB)')
+    ULTIMO_INFORME = remoto('clonar_lote', trabajos, REFERENCIA, {k: AJUSTES[k] for k in CLAVES_CLON}, mostrar=True)
+    return ULTIMO_INFORME
 
 def producir(pares, lote='estudio', mostrar=12, descargar=True, textos=True):
     if not pares:
@@ -322,6 +331,14 @@ def producir(pares, lote='estudio', mostrar=12, descargar=True, textos=True):
                         sintetizar_lote=clonar, max_car=250, pronunciacion=PRONUNCIACION,
                         formato=AJUSTES['formato'], normalizar=AJUSTES['normalizar'], lufs=AJUSTES['lufs'])
     texto_de = dict(pares)
+    dudosos = sorted({pares[int(r['ruta'][:3]) - 1][0] for r in ULTIMO_INFORME if not r['ok']})
+    if dudosos:
+        print(f"\\n⚠ {len(dudosos)} audio(s) para escuchar con atención: {', '.join(dudosos)}\\n"
+              f"  Si alguno no te convence: cambia la SEMILLA y regenera solo esos (celda 7: SOLO_ESTOS).")
+    elif any(r['parecido'] is not None for r in ULTIMO_INFORME):
+        print('\\n✔ Todas las frases se entendieron completas (verificadas con Whisper).')
+    else:
+        print('\\n(sin verificación Whisper: solo se revisó la duración de cada frase)')
     for i, (nombre, ruta) in enumerate(salidas.items()):
         if i == mostrar:
             print(f'… y {len(salidas) - mostrar} más en el ZIP.'); break
@@ -406,16 +423,27 @@ print(f"\\nReferencia elegida ✔ {CAL['clip']} (guardada en {REF_GUARDADA})")""
 code("""#@title 7 · Voces del Modo Guiado (+ resto del guion de la app) → ZIP para `assets/vof_tutorial/`
 GENERAR_VOCES_APP = True  #@param {type:"boolean"}
 INCLUIR_TUTORIAL = True   #@param {type:"boolean"}
+SOLO_ESTOS = ""           #@param {type:"string"}
+#@markdown Para rehacer solo algunos: sus nombres separados por coma (p. ej. `guiado_hora, ficha_03`). Vacío = todos.
+SEMILLA_APP = 1234        #@param {type:"integer"}
+#@markdown Otra semilla = otra toma de la misma voz (úsala junto con `SOLO_ESTOS`).
 #@markdown Siempre genera las 8 `guiado_*`. Con `INCLUIR_TUTORIAL` también las 19 del tutorial, para que **toda la app** tenga la misma voz.
 #@markdown Extrae los mp3 del ZIP **directo** en `assets/vof_tutorial/` (sin subcarpeta).
 if GENERAR_VOCES_APP:
-    pares = [(k, v) for k, v in GUION.items() if INCLUIR_TUTORIAL or k.startswith('guiado_')]
+    elegidos = {x.strip() for x in SOLO_ESTOS.split(',') if x.strip()}
+    faltan = elegidos - set(GUION)
+    assert not faltan, f'No existen en el guion: {sorted(faltan)}. Nombres válidos: {sorted(GUION)}'
+    if elegidos:
+        pares = [(k, v) for k, v in GUION.items() if k in elegidos]
+    else:
+        pares = [(k, v) for k, v in GUION.items() if INCLUIR_TUTORIAL or k.startswith('guiado_')]
     pares.sort(key=lambda p: not p[0].startswith('guiado_'))  # las del Modo Guiado primero (se escuchan arriba)
-    formato_previo, AJUSTES['formato'] = AJUSTES['formato'], 'mp3'  # la app usa <id>.mp3
+    previo = dict(AJUSTES)
+    AJUSTES.update(formato='mp3', semilla=SEMILLA_APP)  # la app usa <id>.mp3
     try:
-        producir(pares, lote='vof_tutorial', mostrar=8)
+        producir(pares, lote='vof_tutorial', mostrar=8 if not elegidos else len(pares))
     finally:
-        AJUSTES['formato'] = formato_previo
+        AJUSTES.update(formato=previo['formato'], semilla=previo['semilla'])
 else:
     print('Omitido (marca GENERAR_VOCES_APP).')"""),
 
@@ -436,6 +464,8 @@ Una línea sin nombre también sirve: se llamará clip_01_una-linea-sin-nombre.
 - Textos largos se parten solos en frases.
 - Si una palabra suena mal, agrégala a `PRONUNCIACION` (p. ej. `'COSSMIL': 'Cossmil'`).
 
+**Calidad:** cada frase se limpia de ruido, se **escucha con Whisper** y, si no se entiende completa (corte, balbuceo, palabra comida), se rehace con otra toma; al final verás cuáles conviene revisar.
+
 **Ajustes:** `EXPRESIVIDAD` más alta = más emoción (0.5 es natural y sereno); `RITMO` más bajo = más pausado y articulado; `VARIACION` más baja = más estable; **`SEMILLA`**: otra toma distinta de la misma voz (si una frase no te gusta, cámbiala)."""),
 
 code('''#@title 8 · Estudio — escribe tus textos y ejecuta esta celda
@@ -448,6 +478,10 @@ EXPRESIVIDAD = 0.5   #@param {type:"slider", min:0.25, max:1.0, step:0.05}
 RITMO = 0.5          #@param {type:"slider", min:0.2, max:0.8, step:0.05}
 VARIACION = 0.8      #@param {type:"slider", min:0.4, max:1.2, step:0.05}
 SEMILLA = 1234       #@param {type:"integer"}
+LIMPIAR_RUIDO = True #@param {type:"boolean"}
+VERIFICAR_CON_WHISPER = True  #@param {type:"boolean"}
+#@markdown Escucha cada frase y la rehace (hasta `TOMAS_MAX` veces) si sale cortada, con balbuceo o ruido.
+TOMAS_MAX = 4        #@param {type:"slider", min:1, max:8, step:1}
 FORMATO = "mp3"      #@param ["mp3", "wav"]
 NORMALIZAR_VOLUMEN = True  #@param {type:"boolean"}
 DESCARGAR = True     #@param {type:"boolean"}
@@ -463,6 +497,7 @@ else:  # una vof concreta como referencia (preparada en la celda 6)
     if not os.path.exists(REFERENCIA):
         remoto('preparar_referencias', sorted(glob.glob(f'{DATASET}/*.wav')), '/content/calibracion/refs')
 AJUSTES.update(exageracion=EXPRESIVIDAD, cfg=RITMO, temperatura=VARIACION, semilla=SEMILLA,
+               limpiar_ruido=LIMPIAR_RUIDO, verificar=VERIFICAR_CON_WHISPER, intentos=TOMAS_MAX,
                formato=FORMATO, normalizar=NORMALIZAR_VOLUMEN)
 producir(parse_textos(TEXTOS), lote=nombre_seguro(NOMBRE_LOTE), descargar=DESCARGAR)'''),
 

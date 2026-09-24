@@ -206,6 +206,50 @@ def _numeros(texto):
     return re.sub(r'(?<![\w.,])(\d+)(?![\w]|[.,]\d)(\s+(?=[^\W\d_]))?', entero, texto)
 
 
+def cerrar_frase(texto):
+    """El modelo tiende a cortar o balbucear si la frase no termina en puntuación."""
+    texto = texto.strip()
+    return texto if not texto or texto[-1] in '.!?…' else texto.rstrip(',;:') + '.'
+
+
+def _palabras(texto):
+    t = unicodedata.normalize('NFKD', texto.lower()).encode('ascii', 'ignore').decode()
+    return re.findall(r'[a-z0-9]+', t)
+
+
+def coincidencia(esperado, oido):
+    """Compara el texto pedido con lo que se entiende en el audio (transcripción).
+    Devuelve (parecido 0–1 por palabras, ¿se oye el final?) — detecta cortes y balbuceos."""
+    import difflib
+    a, b = _palabras(numeros_a_palabras(esperado)), _palabras(numeros_a_palabras(oido))
+    if not a:
+        return 1.0, True
+    if not b:
+        return 0.0, False
+    conocidas = set(a)
+    for i, w in enumerate(b):  # variantes de escritura (Cossmil/Cosmil) cuentan como la misma palabra
+        if w not in conocidas:
+            cerca = max(conocidas, key=lambda c: difflib.SequenceMatcher(None, c, w).ratio())
+            if difflib.SequenceMatcher(None, cerca, w).ratio() >= 0.8:
+                b[i] = cerca
+    parecido = difflib.SequenceMatcher(None, a, b, autojunk=False).ratio()
+    cola = b[-4:]
+    fin = any(difflib.SequenceMatcher(None, a[-1], w).ratio() >= 0.75 for w in cola)
+    if len(a) >= 2:  # la penúltima también debe estar cerca del final
+        fin = fin and any(difflib.SequenceMatcher(None, a[-2], w).ratio() >= 0.75 for w in b[-6:])
+    return round(parecido, 3), fin
+
+
+def puntuar_toma(parecido, fin, razon_duracion, snr_db=None):
+    """Nota de una toma: manda que se entienda completa, luego duración y limpieza."""
+    import math
+    nota = parecido + (0.1 if fin else -0.35)
+    nota -= 0.3 * max(0.0, abs(math.log(max(razon_duracion, 1e-3))) - math.log(1.5))
+    if snr_db is not None:
+        nota -= 0.01 * max(0.0, 40.0 - snr_db)
+    return round(nota, 4)
+
+
 def silabas_estimadas(texto):
     """Sílabas aproximadas (grupos vocálicos) para prever cuánto debería durar un audio."""
     return max(1, len(re.findall(r'[aeiouáéíóúü]+', texto.lower())))
@@ -306,18 +350,17 @@ def ensamblar(partes, ruta_salida):
 
 
 def masterizar(ruta_wav, ruta_salida, formato='mp3', normalizar=True, cola=0.25, lufs=-16.0):
-    """Recorta silencios de borde, iguala el volumen a `lufs` (el de la locutora), suaviza bordes y exporta."""
-    filtros = [
-        'silenceremove=start_periods=1:start_threshold=-50dB:start_silence=0.05',
-        'areverse',
-        'silenceremove=start_periods=1:start_threshold=-50dB:start_silence=0.05',
-        'areverse',
-    ]
+    """Recorta silencios de borde SIN comerse finales de palabra (umbral bajo y 150 ms de
+    margen), quita zumbidos graves, iguala el volumen a `lufs` (el de la locutora), funde
+    suavemente entrada y salida y exporta."""
+    borde = 'silenceremove=start_periods=1:start_threshold=-58dB:start_silence=0.15'
+    filtros = ['highpass=f=70', borde, 'areverse', borde, 'afade=t=in:d=0.06', 'areverse',
+               'afade=t=in:d=0.02']
     if normalizar:
         filtros.append(f'loudnorm=I={max(-30.0, min(-9.0, lufs)):.1f}:TP=-1.0:LRA=11')
-    filtros += ['afade=t=in:d=0.02', f'apad=pad_dur={cola}']
+    filtros.append(f'apad=pad_dur={cola}')
     args = ['-i', ruta_wav, '-af', ','.join(filtros), '-ac', 1, '-ar', 44100]
-    args += ['-b:a', '128k'] if formato == 'mp3' else ['-c:a', 'pcm_s16le']
+    args += ['-b:a', '160k'] if formato == 'mp3' else ['-c:a', 'pcm_s16le']
     _ffmpeg(*args, ruta_salida)
 
 
@@ -344,6 +387,7 @@ def generar(pares, voz, carpeta, convertir, velocidad=0, tono_hz=0, pronunciacio
         limpio = numeros_a_palabras(aplicar_pronunciacion(texto, pronunciacion))
         for j, (tipo, valor) in enumerate(segmentar(limpio, max_car=max_car)):
             if tipo == 'habla':
+                valor = cerrar_frase(valor)
                 pieza = f'{i:03d}_{j:03d}'
                 trabajos.append([valor, os.path.join(base_dir, pieza + '.wav')])
                 plan.append(('wav', pieza))
@@ -511,38 +555,107 @@ def _modelo_clonacion():
     return ChatterboxMultilingualTTS.from_pretrained(device='cuda' if torch.cuda.is_available() else 'cpu')
 
 
-def _clonar(modelo, trabajos, ajustes, mostrar=True):
-    """Lee cada [texto, ruta_wav] con la voz ya condicionada en `modelo`. Si un audio sale
-    demasiado corto o largo para su texto (frase cortada o balbuceo), lo regenera con otra
-    semilla y se queda con el de duración más plausible."""
+def _cargar_asr(nombre='openai/whisper-large-v3-turbo'):
+    """Whisper para 'escuchar' cada toma. Devuelve transcribir(y, sr) o None si no se puede."""
+    try:
+        import librosa
+        import torch
+        from transformers import WhisperForConditionalGeneration, WhisperProcessor
+        dev = 'cuda' if torch.cuda.is_available() else 'cpu'
+        tipo = torch.float16 if dev == 'cuda' else torch.float32
+        proc = WhisperProcessor.from_pretrained(nombre)
+        red = WhisperForConditionalGeneration.from_pretrained(nombre).to(dev, dtype=tipo).eval()
+
+        def transcribir(y, sr):
+            y16 = librosa.resample(y, orig_sr=sr, target_sr=16000) if sr != 16000 else y
+            x = proc(y16, sampling_rate=16000, return_tensors='pt').input_features.to(dev, dtype=tipo)
+            with torch.no_grad():
+                ids = red.generate(x, language='es', task='transcribe', max_new_tokens=220)
+            return proc.batch_decode(ids, skip_special_tokens=True)[0]
+        return transcribir
+    except Exception as e:  # noqa: BLE001
+        print(f'  [aviso] verificación con Whisper no disponible ({type(e).__name__}: {str(e)[:120]}); '
+              'se usa solo la duración', flush=True)
+        return None
+
+
+def relacion_senal_ruido(y, sr):
+    """dB entre la voz (percentil 95 de energía) y el fondo (percentil 10)."""
+    import numpy as np
+    marco = int(0.02 * sr)
+    n = len(y) // marco
+    if n < 10:
+        return 60.0
+    e = np.sqrt(np.mean(y[:n * marco].reshape(n, marco) ** 2, axis=1)) + 1e-9
+    return float(20 * np.log10(np.percentile(e, 95) / np.percentile(e, 10)))
+
+
+_AVISOS = {}
+
+
+def limpiar_ruido(y, sr, fuerza=0.9):
+    """Quita zumbido grave y ruido de fondo (reducción espectral) sin tocar la voz."""
+    try:
+        import noisereduce as nr
+        from scipy.signal import butter, sosfiltfilt
+        y = sosfiltfilt(butter(4, 70, 'highpass', fs=sr, output='sos'), y).astype('float32')
+        return nr.reduce_noise(y=y, sr=sr, stationary=True, prop_decrease=fuerza,
+                               n_std_thresh_stationary=1.5).astype('float32')
+    except Exception as e:  # noqa: BLE001
+        if not _AVISOS.get('limpieza'):
+            _AVISOS['limpieza'] = True
+            print(f'  [aviso] limpieza de ruido omitida ({type(e).__name__}: {str(e)[:100]})', flush=True)
+        return y
+
+
+def _clonar(modelo, trabajos, ajustes, mostrar=True, asr=None):
+    """Lee cada [texto, ruta_wav] con la voz ya condicionada en `modelo`. Cada toma se limpia
+    de ruido y se 'escucha' con Whisper: si no se entiende completa (corte, balbuceo, palabra
+    comida) o su duración no cuadra, se genera otra toma con otra semilla y se guarda la mejor."""
     import os
     import random
     import numpy as np
     import soundfile as sf
     import torch
     ritmo = ajustes.get('silabas_s', 5.5)
+    max_tomas = int(ajustes.get('intentos', 4))
     informe = []
     for n, (texto, ruta) in enumerate(trabajos):
         esperado = silabas_estimadas(texto) / ritmo
         mejor = None
-        for intento in range(int(ajustes.get('intentos', 3))):
-            semilla = int(ajustes.get('semilla', 1234)) + 1000 * intento + n
+        for toma in range(max_tomas):
+            semilla = int(ajustes.get('semilla', 1234)) + 1000 * toma + n
             random.seed(semilla); np.random.seed(semilla); torch.manual_seed(semilla)
             wav = modelo.generate(texto, language_id='es',
                                   exaggeration=ajustes.get('exageracion', 0.5),
                                   cfg_weight=ajustes.get('cfg', 0.5),
                                   temperature=ajustes.get('temperatura', 0.8))
             y = wav.squeeze(0).detach().cpu().numpy().astype('float32')
+            if ajustes.get('limpiar_ruido', True):
+                y = limpiar_ruido(y, modelo.sr, ajustes.get('fuerza_limpieza', 0.9))
             razon = (len(y) / modelo.sr) / max(esperado, 0.3)
-            if mejor is None or abs(np.log(razon)) < abs(np.log(mejor[1])):
-                mejor = (y, razon, intento + 1)
-            if 0.6 <= razon <= 1.7:
+            snr = relacion_senal_ruido(y, modelo.sr)
+            oido, parecido, fin = None, None, True
+            if asr:
+                oido = asr(y, modelo.sr)
+                parecido, fin = coincidencia(texto, oido)
+            nota = puntuar_toma(parecido if parecido is not None else 1.0, fin, razon, snr)
+            if mejor is None or nota > mejor['nota']:
+                mejor = dict(y=y, nota=nota, razon=razon, parecido=parecido, fin=fin, oido=oido,
+                             snr=snr, tomas=toma + 1)
+            buena = 0.6 <= razon <= 1.7 and (parecido is None or (parecido >= 0.92 and fin))
+            if buena:
                 break
-        sf.write(ruta, mejor[0], modelo.sr)
-        informe.append({'ruta': os.path.basename(ruta), 'razon': round(mejor[1], 2), 'intentos': mejor[2]})
+        mejor['tomas'] = toma + 1
+        sf.write(ruta, mejor['y'], modelo.sr)
+        ok = mejor['parecido'] is None or (mejor['parecido'] >= 0.85 and mejor['fin'])
+        informe.append({'ruta': os.path.basename(ruta), 'texto': texto, 'oido': mejor['oido'],
+                        'parecido': mejor['parecido'], 'fin': mejor['fin'], 'razon': round(mejor['razon'], 2),
+                        'snr': round(mejor['snr'], 1), 'tomas': mejor['tomas'], 'ok': ok})
         if mostrar:
-            extra = f' (reintentos: {mejor[2] - 1})' if mejor[2] > 1 else ''
-            print(f'  [{n + 1}/{len(trabajos)}] {texto[:70]}{extra}', flush=True)
+            extra = f" · {mejor['tomas']} tomas" if mejor['tomas'] > 1 else ''
+            marca = '' if ok else f" ⚠ revisar (se oyó: «{(mejor['oido'] or '')[:70]}»)"
+            print(f"  [{n + 1}/{len(trabajos)}] {texto[:70]}{extra}{marca}", flush=True)
     return informe
 
 
@@ -550,7 +663,8 @@ def clonar_lote(trabajos, referencia, ajustes):
     """Chatterbox Multilingual (MIT): clona la voz de `referencia` y lee cada [texto, ruta_wav]."""
     modelo = _modelo_clonacion()
     modelo.prepare_conditionals(referencia, exaggeration=ajustes.get('exageracion', 0.5))
-    return _clonar(modelo, trabajos, ajustes)
+    asr = _cargar_asr(ajustes.get('asr', 'openai/whisper-large-v3-turbo')) if ajustes.get('verificar', True) else None
+    return _clonar(modelo, trabajos, ajustes, asr=asr)
 
 
 def clonar_candidatas(frase, referencias, carpeta, ajustes):
@@ -562,7 +676,7 @@ def clonar_candidatas(frase, referencias, carpeta, ajustes):
     for i, ref in enumerate(referencias):
         modelo.prepare_conditionals(ref, exaggeration=ajustes.get('exageracion', 0.5))
         ruta = os.path.join(carpeta, f'cand_{i + 1:02d}.wav')
-        _clonar(modelo, [[frase, ruta]], ajustes, mostrar=False)
+        _clonar(modelo, [[frase, ruta]], dict(ajustes, intentos=2), mostrar=False)
         print(f'  referencia {i + 1}/{len(referencias)} lista', flush=True)
         salidas.append(ruta)
     return salidas
