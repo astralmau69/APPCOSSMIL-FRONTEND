@@ -5,7 +5,7 @@ metadata:
   node_type: memory
   type: reference
   originSessionId: 7d00141f-c119-4a05-8a21-72cbae719de7
-  modified: 2026-07-27T14:49:20.598Z
+  modified: 2026-09-24T01:01:51.687Z
 ---
 
 El usuario quiere que la instructora del tutorial DIGA cada paso con la misma
@@ -59,4 +59,34 @@ Colab. Todo lo previo quedó preparado en **`tools/rvc/`**:
   las líneas — puede quedar raro celebrando en pasos serios; se puede cambiar a un
   set explica-based. La caminata es la ENTRADA (no un loop idle perpetuo, decisión
   deliberada). Falta ver en dispositivo con clips reales.
-Relacionado: [[tutorial-flow-system]], [[instructora-tutorial-asset]].
+**Modo Guiado (nuevo, 22 sep 2026 — rama `preTutorial`):** además del tutorial-demo
+(que se CONSERVA), se diseñó un "Modo Guiado" = reserva REAL narrada. Al tocar
+"Nueva Reserva" saldrá una hoja con 2 tarjetas (Clásico/Guiado). El guiado se ve
+IGUAL al clásico (sin alto contraste); solo agrega instructora+voz+burbujas que no
+tapan opciones; crea cita real (no mockea, no bloquea). Arquitectura: bandera
+`BookingState.guidedMode` + `TutorialCoachOverlay(narrateOnly:true)` (sin
+GuidedTapHint). Voces nuevas `guiado_*` (intro, regional, especialidad, medico,
+dia, hora, confirmar, final) YA agregadas a `tools/rvc/tutorial_lines.{md,json}`
+en tono profesional/institucional militar, trato de usted. Falta: generarlas en
+Colab (reentrenar, no se sabe si el .pth sigue en Drive) y colocarlas en
+`assets/vof_tutorial/`. Spec: `docs/superpowers/specs/2026-09-22-modo-guiado-reserva-design.md`;
+plan TDD: `docs/superpowers/plans/2026-09-22-modo-guiado-reserva.md`.
+**Notebook Colab autocontenido (23 sep 2026, rama `v1`):**
+`tools/rvc/COSSMIL_voces_guiado.ipynb` — trae las 7 vof en base64 + las 27 líneas
+del guion embebidas (cero subidas); "Ejecutar todo" → ZIP plano de mp3. Se genera
+con `tools/rvc/build_colab_notebook.py` (editar ESE script, no el .ipynb, y
+regenerar). Lecciones de la 1ª corrida en Colab: (1) `subprocess.run` NO muestra
+salida en la celda → se usa Popen + print en vivo; (2) el Applio actual usa CLI
+Click/Typer: `--help` (no `-h`) y probablemente flags con guion (`--model-name`)
+→ el helper `applio()` lee `<cmd> --help` y adapta `_`↔`-`, omitiendo opcionales
+inexistentes; (3) los "dependency conflicts" rojos de pip en Colab son inocuos.
+La versión adaptativa AÚN NO se probó en Colab: si falla, pedir el error y el
+bloque `===== preprocess =====` de la celda 3. Decisión por defecto
+`SOLO_GUIADO=False` (regenerar las 27 para que toda la app quede con la misma
+voz, porque el modelo se reentrena). El `.pth` anterior no se ubicó; si aparece,
+copiarlo con su `.index` a `MyDrive/cossmil_rvc/modelo/` y la celda 5 no reentrena.
+**Bug a arreglar (parte del plan):** `ficha_01` (regional) no suena en el demo por
+la carrera Inicio→Reserva (el `stop()` del coach que se desmonta mata el clip
+entrante); fix = `TutorialVoice.stopIfToken(token)` y comparar en `dispose`.
+
+Relacionado: [[tutorial-flow-system]], [[instructora-tutorial-asset]], [[entorno-claude-code-replica]].

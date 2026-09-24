@@ -8,6 +8,10 @@ Objetivo: que la instructora **diga en voz alta** cada paso del tutorial, con la
 > modelos). Se entrena/convierte en **Google Colab** (gratis) o en un PC con
 > GPU. Aquí queda todo lo PREVIO ya preparado: dataset, guion y narración fuente.
 
+> **Atajo (sep 2026):** `COSSMIL_voces_guiado.ipynb` hace todo esto en Colab con
+> "Ejecutar todo" (vof y guion embebidos). Se regenera con
+> `python3 tools/rvc/build_colab_notebook.py`.
+
 ## Piezas de esta carpeta
 
 | Archivo | Qué hace | Dónde corre |

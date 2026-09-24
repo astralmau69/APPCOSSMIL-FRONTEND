@@ -534,7 +534,7 @@ Run local: `bash tools/rvc/prep_dataset.sh` → genera `tools/rvc/rvc_dataset/*.
 
 - [ ] **Step 2: Colab (reentrenar + convertir)**
 
-Seguir `tools/rvc/COLAB_notebook.md` celdas 1–6 con GPU T4. La Celda 3 usa `tutorial_lines.json` (ya incluye `guiado_*`) → genera narración fuente de TODAS las líneas; la Celda 5 convierte en lote. Descargar el ZIP.
+Subir `tools/rvc/COSSMIL_voces_guiado.ipynb` a Colab (GPU T4) y "Ejecutar todo" (autocontenido; reemplaza seguir `tools/rvc/COLAB_notebook.md` a mano). La Celda 3 usa `tutorial_lines.json` (ya incluye `guiado_*`) → genera narración fuente de TODAS las líneas; la Celda 5 convierte en lote. Descargar el ZIP.
 
 - [ ] **Step 3: Colocar clips**
 

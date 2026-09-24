@@ -23,3 +23,5 @@
 - [Carnet digital habilitado](carnet-digital-habilitado.md) — vivo desde el 2026-08-04; qué sigue siendo mock (fechas, secreto del QR) y la trampa del hit-test con matrices en perspectiva.
 - [Procedimientos COSSMIL en "coming soon"](procedimientos-coming-soon.md) — tarjeta de Inicio gateada como Mi Carnet COSSMIL; el tutorial guiado sigue intacto y funcional.
 - [Número de soporte COSSMIL](numero-soporte-cossmil.md) — vive en 2 sitios sin relación (Contactos/DNTIC y Login); ahora 71292794 (móvil, con botón WhatsApp).
+- [Modo Guiado de reserva (rama preTutorial)](tutorial-voz-rvc.md) — reserva REAL narrada, hoja Clásico/Guiado, voces guiado_* nuevas; spec+plan en docs/superpowers, falta generarlas en Colab.
+- [Replicar entorno Claude Code](entorno-claude-code-replica.md) — guía+script en docs/setup y tools/setup para clonar plugins/MCP/config/memoria en otra PC, sin secretos.
