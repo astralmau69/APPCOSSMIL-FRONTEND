@@ -138,10 +138,28 @@ if [[ -d "$SKILLS_SRC" ]]; then
   run "cp -rn \"$SKILLS_SRC\"/. \"$SKILLS_DEST\"/"
 fi
 
-# --- 7. Lo que llega solo con la cuenta --------------------------------------
-# El plugin "mis-skills-claude-code" y las skills de ~/.claude/skills/synced se
-# sincronizan desde claude.ai: aparecen al iniciar sesion con la MISMA cuenta.
-log "Nota: 'mis-skills-claude-code' llega solo al iniciar sesion con tu cuenta de claude.ai."
+# --- 7. Plugin propio "mis-skills-claude-code" (19 skills + MCP claude-code-docs)
+# En claude.ai se sincroniza solo con tu cuenta. Si ya llego por esa via, no se
+# duplica; si no, se instala desde el marketplace local versionado en el repo.
+if compgen -G "$CLAUDE_HOME/plugins/synced/*/mis-skills-claude-code" >/dev/null; then
+  log "mis-skills-claude-code ya llego sincronizado con tu cuenta; se omite."
+else
+  log "Instalando mis-skills-claude-code desde el marketplace local..."
+  run "claude plugin marketplace add \"$CFG_DIR/local-marketplace\" || true"
+  run "claude plugin install mis-skills-claude-code@cossmil-local || true"
+fi
+
+# --- 8. Skills de usuario (~/.claude/skills) ----------------------------------
+# skill-creator (Apache 2.0). docx/pdf/pptx/xlsx/docs/morning/import-memory son
+# de Anthropic (no redistribuibles): llegan solas al iniciar sesion con la cuenta.
+if compgen -G "$CLAUDE_HOME/skills/synced/*/skill-creator" >/dev/null; then
+  log "skill-creator ya llego sincronizado con tu cuenta; se omite."
+else
+  log "Copiando skills de usuario -> $CLAUDE_HOME/skills"
+  run "mkdir -p \"$CLAUDE_HOME/skills\""
+  run "cp -rn \"$CFG_DIR/account-skills\"/. \"$CLAUDE_HOME/skills\"/"
+fi
+log "Nota: docx/pdf/pptx/xlsx/docs/morning llegan al iniciar sesion con tu cuenta de claude.ai."
 
 log "Listo. Abre Claude Code en el proyecto y verifica con: /plugin  /mcp  y  /skills"
 [[ $DRY -eq 1 ]] && warn "Fue dry-run: no se cambio nada."

@@ -103,10 +103,18 @@ claude            # dentro del repo
   `docs/setup/claude-config/project-skills/` y el script las copia a
   `.claude/skills/` del repo.
 
-### Lo que llega solo con tu cuenta
-- El plugin **`mis-skills-claude-code`** y las skills sincronizadas
-  (`~/.claude/skills/synced`, artifact-design, dataviz, docs, pdf, etc.) vienen de
-  claude.ai: aparecen al iniciar sesión con la **misma cuenta**. No se copian.
+### Plugin propio `mis-skills-claude-code`
+- 19 skills (superpowers, angular-developer, ui-ux-pro-max, web-design-guidelines,
+  find-skills, writing-*…) + MCP remoto `claude-code-docs`.
+- Se sincroniza desde claude.ai con tu cuenta. Por si no llega, va como
+  marketplace local en `docs/setup/claude-config/local-marketplace/`; el script
+  lo instala solo si no apareció sincronizado (para no duplicar).
+
+### Skills de usuario (`~/.claude/skills`)
+- `skill-creator` (Apache 2.0) va en `docs/setup/claude-config/account-skills/`.
+- `docx`, `pdf`, `pptx`, `xlsx`, `docs`, `morning`, `import-memory` son de
+  Anthropic (licencia no redistribuible; el repo es público): **no** se suben,
+  llegan solas al iniciar sesión con la **misma cuenta**.
 
 ---
 
@@ -145,6 +153,13 @@ cp docs/setup/claude-config/settings.json  ~/.claude/settings.json
 
 # 6) Skills del proyecto
 mkdir -p .claude/skills && cp -rn docs/setup/claude-config/project-skills/. .claude/skills/
+
+# 7) Plugin propio (solo si no llegó sincronizado con la cuenta)
+claude plugin marketplace add ./docs/setup/claude-config/local-marketplace
+claude plugin install mis-skills-claude-code@cossmil-local
+
+# 8) Skills de usuario
+mkdir -p ~/.claude/skills && cp -rn docs/setup/claude-config/account-skills/. ~/.claude/skills/
 ```
 
 En PowerShell el paso 6 es:

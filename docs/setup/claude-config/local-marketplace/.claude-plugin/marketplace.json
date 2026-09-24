@@ -1,0 +1,14 @@
+{
+  "name": "cossmil-local",
+  "owner": {
+    "name": "Mauricio"
+  },
+  "description": "Plugins propios de Mauricio para replicar su entorno de Claude Code (COSSMIL).",
+  "plugins": [
+    {
+      "name": "mis-skills-claude-code",
+      "source": "./plugins/mis-skills-claude-code",
+      "description": "Las 19 skills de Mauricio (superpowers, Angular, UI/UX Pro Max, guías de Vercel y más) + MCP de documentación de Claude Code."
+    }
+  ]
+}

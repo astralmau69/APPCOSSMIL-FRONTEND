@@ -1,0 +1,6 @@
+{
+  "name": "mis-skills-claude-code",
+  "version": "0.1.0",
+  "description": "Las 19 skills de Mauricio traídas desde Claude Code (superpowers, Angular, UI/UX Pro Max, guías de Vercel y más) y el MCP de documentación de Claude Code.",
+  "author": { "name": "Mauricio" }
+}
