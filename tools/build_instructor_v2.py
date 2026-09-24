@@ -137,6 +137,147 @@ def build_body(cfg, src, s, pieces):
     return control, _coverage(src, masks, cfg["bodyTopY"])
 
 
+def _tiles(path, gw, gh):
+    im = alpha_from_magenta(Image.open(path))
+    tw, th = im.width // gw, im.height // gh
+    out = []
+    for i in range(gw * gh):
+        c, r = i % gw, i // gw
+        out.append(im.crop((c * tw, r * th, (c + 1) * tw, (r + 1) * th)))
+    return out
+
+
+def _anchor_of(t):
+    """Centroide horizontal y coronilla de la figura de una casilla."""
+    a = np.asarray(t)[..., 3] > 40
+    ys, xs = np.where(a)
+    return float(xs.mean()), float(ys.min())
+
+
+def _helmet_width(t):
+    """Ancho maximo del casco: el pico en el 45% superior de la figura."""
+    a = np.asarray(t)[..., 3] > 40
+    ys = np.where(a.any(axis=1))[0]
+    y0, y1 = ys.min(), ys.max()
+    top = a[y0 : y0 + max(1, int((y1 - y0) * 0.45))]
+    return max(
+        int(np.where(row)[0].max() - np.where(row)[0].min() + 1)
+        for row in top
+        if row.any()
+    )
+
+
+def _normalize(t, target_cx, target_ty, scale, size):
+    """Lleva una casilla a la geometria de la casilla ancla de ojos.
+
+    Las casillas de columnas distintas estan corridas hasta 14 px entre si. Sin
+    esta normalizacion, el recorte fijo del ojo caeria en sitios distintos y el
+    ojo saltaria al parpadear.
+    """
+    if abs(scale - 1.0) > 1e-4:
+        t = t.resize((round(t.width * scale), round(t.height * scale)), Image.LANCZOS)
+    cx, ty = _anchor_of(t)
+    out = Image.new("RGBA", size, (0, 0, 0, 0))
+    out.alpha_composite(t, (round(target_cx - cx), round(target_ty - ty)))
+    return out
+
+
+def build_faces(cfg, s, pieces):
+    """Cabeza + overlays de ojos y boca, registrados entre si.
+
+    La cabeza NO sale de la A-pose: sale de la lamina de ojos, que tiene 0.0% de
+    deriva entre sus casillas. Asi el registro de ojos y boca es exacto por
+    construccion y el unico empalme aproximado cae en el cuello, tapado por el
+    cuello alto y el barboquejo.
+    """
+    f = cfg["faces"]
+    js = f["junctionScale"]
+    gw, gh = f["grid"]
+    eyes = _tiles(f["eyesSheet"], gw, gh)
+    mouths = _tiles(f["mouthSheet"], gw, gh)
+    size = eyes[0].size
+
+    ancla = eyes[f["anchorTile"]]
+    base_cx, base_ty = _anchor_of(ancla)
+    # La lamina de boca esta a otra escala (2.0% medido): se iguala por casco.
+    mouth_scale = _helmet_width(ancla) / _helmet_width(mouths[0])
+    print(f"  escala lamina boca -> ojos: x{mouth_scale:.4f}")
+
+    # --- cabeza: casilla ancla recortada bajo el cuello ---
+    corte = f["neckY"] + f["cutBelowNeck"]
+    head = ancla.crop((0, 0, size[0], corte))
+    head = head.resize(
+        (round(head.width * js * s), round(head.height * js * s)), Image.LANCZOS
+    )
+    bb = head.getbbox()
+    head = head.crop(bb)
+    save_quant(head, OUT / "cabeza.png")
+
+    hx, hy = f["headPivotNative"]
+    tpx, tpy = next(q["pivot"] for q in cfg["pieces"] if q["name"] == "torso")
+    # El pivote de la cabeza es su cuello: donde la columna se estrecha.
+    anchor_head = ((base_cx * js * s) - bb[0], (f["neckY"] * js * s) - bb[1])
+    pieces.append(
+        {
+            "name": "cabeza",
+            "parent": "torso",
+            "asset": "cabeza.png",
+            "pivot": [round((hx - tpx) * s, 2), round((hy - tpy) * s, 2)],
+            "anchor": [round(anchor_head[0], 2), round(anchor_head[1], 2)],
+            "size": [head.width, head.height],
+            "z": 20,
+        }
+    )
+    print(f"  {'cabeza':<18} {head.width}x{head.height}")
+
+    def overlay(tile, rect, name, z, scale, transform=None):
+        norm = _normalize(tile, base_cx, base_ty, scale, size)
+        x, y, w, h = rect
+        sub = norm.crop((x, y, x + w, y + h))
+        if transform:
+            sub = transform(sub)
+        sub = sub.resize(
+            (max(1, round(w * js * s)), max(1, round(h * js * s))), Image.LANCZOS
+        )
+        save_quant(sub, OUT / f"{name}.png")
+        pieces.append(
+            {
+                "name": name,
+                "parent": "cabeza",
+                "asset": f"{name}.png",
+                # relativo al pivote de la cabeza (cuello), en canonicas
+                "pivot": [
+                    round((x - base_cx) * js * s, 2),
+                    round((y - f["neckY"]) * js * s, 2),
+                ],
+                "anchor": [0.0, 0.0],
+                "size": [sub.width, sub.height],
+                "z": z,
+            }
+        )
+
+    for nom, idx in f["eyeTiles"].items():
+        overlay(eyes[idx], f["eyeRect"], f"ojos_{nom}", 21, 1.0)
+
+    # El medio parpadeo se SINTETIZA: la casilla 2 de la lamina salio duplicada
+    # de la 0, asi que se fabrica aplastando el ojo abierto al 50% anclado en el
+    # parpado superior. Sale mas consistente que un dibujo nuevo.
+    def squash(im):
+        half = im.resize((im.width, max(1, im.height // 2)), Image.LANCZOS)
+        out = Image.new("RGBA", im.size, (0, 0, 0, 0))
+        out.alpha_composite(half, (0, 0))
+        return out
+
+    overlay(eyes[f["eyeTiles"]["abiertos"]], f["eyeRect"], "ojos_medio", 21, 1.0,
+            transform=squash)
+
+    for i in f["mouthTiles"]:
+        overlay(mouths[i], f["mouthRect"], f"boca_{i}", 22, mouth_scale)
+
+    print(f"  {'ojos':<18} 6 variantes")
+    print(f"  {'bocas':<18} {len(f['mouthTiles'])} variantes")
+
+
 def main():
     cfg = json.loads(CUTS.read_text(encoding="utf-8"))
     OUT.mkdir(parents=True, exist_ok=True)
@@ -147,6 +288,7 @@ def main():
 
     pieces = []
     control, coverage = build_body(cfg, src, s, pieces)
+    build_faces(cfg, s, pieces)
     control.crop((x0, y0, x1 + 1, y1 + 1)).save(OUT / "_control.png")
 
     (OUT / "manifest.json").write_text(

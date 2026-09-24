@@ -98,7 +98,47 @@ def main():
         f"peor par de piezas {cov.get('peorPar', 100):.0f}% de la menor (maximo 70%)",
     )
 
+    _face_checks(m)
+
     return finish()
+
+
+def _face_checks(m):
+    """La cabeza sale de lamina1 y los overlays deben registrar contra ella."""
+    by = {p["name"]: p for p in m["pieces"]}
+    check("cabeza" in by, "existe la pieza 'cabeza'")
+    if "cabeza" in by:
+        check(by["cabeza"]["parent"] == "torso", "la cabeza cuelga del torso")
+
+    for n in (
+        "ojos_abiertos",
+        "ojos_cerrados",
+        "ojos_medio",
+        "ojos_guino",
+        "ojos_feliz",
+        "ojos_sorpresa",
+    ):
+        check(n in by, f"existe '{n}'")
+        if n in by:
+            check(by[n]["parent"] == "cabeza", f"'{n}' cuelga de la cabeza")
+
+    for i in range(6):
+        n = f"boca_{i}"
+        check(n in by, f"existe '{n}'")
+        if n in by:
+            check(by[n]["parent"] == "cabeza", f"'{n}' cuelga de la cabeza")
+
+    # Los ojos vienen de una lamina con 0.0% de deriva entre casillas: sus
+    # pivotes tienen que coincidir, o el ojo saltaria al parpadear.
+    for pref, limite in (("ojos_", 2.0), ("boca_", 2.0)):
+        piv = [by[n]["pivot"] for n in by if n.startswith(pref)]
+        if len(piv) > 1:
+            dx = max(p[0] for p in piv) - min(p[0] for p in piv)
+            dy = max(p[1] for p in piv) - min(p[1] for p in piv)
+            check(
+                dx <= limite and dy <= limite,
+                f"'{pref}*' registrados entre si (dx={dx:.1f} dy={dy:.1f}, max {limite})",
+            )
 
 
 def finish():

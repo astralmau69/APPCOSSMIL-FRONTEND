@@ -351,5 +351,49 @@
       ]
     }
   ],
-  "_nota_z": "Orden de dibujo: brazo superior DETRAS del torso (8) para que el chaleco tape la costura del hombro; antebrazo y mano DELANTE (12/13) porque son los que cruzan el cuerpo al gesticular (p.ej. piensa). Piernas detras (9): el chaleco cuelga sobre la cadera."
+  "_nota_z": "Orden de dibujo: brazo superior DETRAS del torso (8) para que el chaleco tape la costura del hombro; antebrazo y mano DELANTE (12/13) porque son los que cruzan el cuerpo al gesticular (p.ej. piensa). Piernas detras (9): el chaleco cuelga sobre la cadera.",
+  "faces": {
+    "eyesSheet": "tools/instructor_v2_src/lamina1_ojos.png",
+    "mouthSheet": "tools/instructor_v2_src/lamina2_boca.png",
+    "grid": [
+      2,
+      3
+    ],
+    "anchorTile": 0,
+    "junctionScale": 1.0395,
+    "neckY": 352,
+    "cutBelowNeck": 15,
+    "headPivotNative": [
+      512,
+      381
+    ],
+    "eyeRect": [
+      185,
+      188,
+      210,
+      104
+    ],
+    "mouthRect": [
+      235,
+      288,
+      90,
+      60
+    ],
+    "eyeTiles": {
+      "abiertos": 0,
+      "cerrados": 1,
+      "guino": 3,
+      "feliz": 4,
+      "sorpresa": 5
+    },
+    "mouthTiles": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5
+    ],
+    "_nota": "junctionScale 1.0395 sale de medir cuello contra cuello (158 px en la A-pose, 152 en lamina1), no casco contra casco. Es el factor del punto donde los dos dibujos se tocan. neckY/cutBelowNeck ponen la costura donde el desajuste entre ambos dibujos es 1.4-2.3%."
+  }
 }

@@ -222,6 +222,240 @@
         55
       ],
       "z": 13
+    },
+    {
+      "name": "cabeza",
+      "parent": "torso",
+      "asset": "cabeza.png",
+      "pivot": [
+        0.0,
+        -300.13
+      ],
+      "anchor": [
+        111.82,
+        191.46
+      ],
+      "size": [
+        225,
+        200
+      ],
+      "z": 20
+    },
+    {
+      "name": "ojos_abiertos",
+      "parent": "cabeza",
+      "asset": "ojos_abiertos.png",
+      "pivot": [
+        -48.57,
+        -91.53
+      ],
+      "anchor": [
+        0.0,
+        0.0
+      ],
+      "size": [
+        117,
+        58
+      ],
+      "z": 21
+    },
+    {
+      "name": "ojos_cerrados",
+      "parent": "cabeza",
+      "asset": "ojos_cerrados.png",
+      "pivot": [
+        -48.57,
+        -91.53
+      ],
+      "anchor": [
+        0.0,
+        0.0
+      ],
+      "size": [
+        117,
+        58
+      ],
+      "z": 21
+    },
+    {
+      "name": "ojos_guino",
+      "parent": "cabeza",
+      "asset": "ojos_guino.png",
+      "pivot": [
+        -48.57,
+        -91.53
+      ],
+      "anchor": [
+        0.0,
+        0.0
+      ],
+      "size": [
+        117,
+        58
+      ],
+      "z": 21
+    },
+    {
+      "name": "ojos_feliz",
+      "parent": "cabeza",
+      "asset": "ojos_feliz.png",
+      "pivot": [
+        -48.57,
+        -91.53
+      ],
+      "anchor": [
+        0.0,
+        0.0
+      ],
+      "size": [
+        117,
+        58
+      ],
+      "z": 21
+    },
+    {
+      "name": "ojos_sorpresa",
+      "parent": "cabeza",
+      "asset": "ojos_sorpresa.png",
+      "pivot": [
+        -48.57,
+        -91.53
+      ],
+      "anchor": [
+        0.0,
+        0.0
+      ],
+      "size": [
+        117,
+        58
+      ],
+      "z": 21
+    },
+    {
+      "name": "ojos_medio",
+      "parent": "cabeza",
+      "asset": "ojos_medio.png",
+      "pivot": [
+        -48.57,
+        -91.53
+      ],
+      "anchor": [
+        0.0,
+        0.0
+      ],
+      "size": [
+        117,
+        58
+      ],
+      "z": 21
+    },
+    {
+      "name": "boca_0",
+      "parent": "cabeza",
+      "asset": "boca_0.png",
+      "pivot": [
+        -20.66,
+        -35.72
+      ],
+      "anchor": [
+        0.0,
+        0.0
+      ],
+      "size": [
+        50,
+        33
+      ],
+      "z": 22
+    },
+    {
+      "name": "boca_1",
+      "parent": "cabeza",
+      "asset": "boca_1.png",
+      "pivot": [
+        -20.66,
+        -35.72
+      ],
+      "anchor": [
+        0.0,
+        0.0
+      ],
+      "size": [
+        50,
+        33
+      ],
+      "z": 22
+    },
+    {
+      "name": "boca_2",
+      "parent": "cabeza",
+      "asset": "boca_2.png",
+      "pivot": [
+        -20.66,
+        -35.72
+      ],
+      "anchor": [
+        0.0,
+        0.0
+      ],
+      "size": [
+        50,
+        33
+      ],
+      "z": 22
+    },
+    {
+      "name": "boca_3",
+      "parent": "cabeza",
+      "asset": "boca_3.png",
+      "pivot": [
+        -20.66,
+        -35.72
+      ],
+      "anchor": [
+        0.0,
+        0.0
+      ],
+      "size": [
+        50,
+        33
+      ],
+      "z": 22
+    },
+    {
+      "name": "boca_4",
+      "parent": "cabeza",
+      "asset": "boca_4.png",
+      "pivot": [
+        -20.66,
+        -35.72
+      ],
+      "anchor": [
+        0.0,
+        0.0
+      ],
+      "size": [
+        50,
+        33
+      ],
+      "z": 22
+    },
+    {
+      "name": "boca_5",
+      "parent": "cabeza",
+      "asset": "boca_5.png",
+      "pivot": [
+        -20.66,
+        -35.72
+      ],
+      "anchor": [
+        0.0,
+        0.0
+      ],
+      "size": [
+        50,
+        33
+      ],
+      "z": 22
     }
   ]
 }
