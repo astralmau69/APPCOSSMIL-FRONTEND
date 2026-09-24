@@ -246,7 +246,9 @@ if not os.path.exists(f'{VENV}/.ok'):
     !uv venv -q --python 3.11 {VENV}
     !uv pip install -q --python {PY} "@@CHATTERBOX@@" soundfile scipy
     !touch {VENV}/.ok
-!{PY} -c "import torch, chatterbox; print('torch', torch.__version__, '· GPU' if torch.cuda.is_available() else '· CPU')"
+# perth (componente de chatterbox) importa pkg_resources: uv no trae setuptools en el entorno.
+!uv pip install -q --python {PY} "setuptools<81" pyyaml
+!{PY} -c "import torch, chatterbox; from perth.perth_net.perth_net_implicit.perth_watermarker import PerthImplicitWatermarker; print('torch', torch.__version__, '· GPU' if torch.cuda.is_available() else '· CPU')"
 print('Motor de voz listo ✔ (entorno aparte: no toca el numpy/torch de Colab)')"""),
 
 code(None),  # celda 4: RVC opcional (componer_celda_rvc)
