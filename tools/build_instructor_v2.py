@@ -278,6 +278,113 @@ def build_faces(cfg, s, pieces):
     print(f"  {'bocas':<18} {len(f['mouthTiles'])} variantes")
 
 
+def _wrist_width(t, pct_from_bottom):
+    """Ancho de la muneca: fila a `pct` por encima de la base de la figura."""
+    a = np.asarray(t)[..., 3] > 40
+    ys = np.where(a.any(axis=1))[0]
+    y0, y1 = ys.min(), ys.max()
+    y = int(y1 - (y1 - y0) * pct_from_bottom / 100.0)
+    cols = np.where(a[y])[0]
+    return (int(cols.max() - cols.min() + 1) if len(cols) else 1), y
+
+
+def build_hands(cfg, pieces):
+    """Las manos de gesto: alternativas del hueso de la mano en reposo.
+
+    Se normalizan para que la muneca mida lo mismo que la de `mano_der`, que sale
+    de la A-pose y por tanto encaja exacto con su antebrazo. La lamina traia 7.1%
+    de deriva entre casillas; la muneca es ancla inequivoca y la lleva a cero.
+    """
+    h = cfg["hands"]
+    gw, gh = h["grid"]
+    tiles = _tiles(h["sheet"], gw, gh)
+    base = next(p for p in pieces if p["name"] == "mano_der")
+    objetivo = base["size"][0] * 0.62  # la muneca es ~62% del ancho del puno
+
+    for nombre, idx in h["tiles"].items():
+        t = tiles[idx]
+        bb = t.getbbox()
+        t = t.crop(bb)
+        w, _ = _wrist_width(t, h["wristFromBottomPct"])
+        k = objetivo / max(1, w)
+        t = t.resize(
+            (max(1, round(t.width * k)), max(1, round(t.height * k))), Image.LANCZOS
+        )
+        wn, yn = _wrist_width(t, h["wristFromBottomPct"])
+        name = f"mano_g_{nombre}"
+        save_quant(t, OUT / f"{name}.png")
+        cols = np.where(np.asarray(t)[..., 3][yn] > 40)[0]
+        cx = float((cols.min() + cols.max()) / 2) if len(cols) else t.width / 2
+        pieces.append(
+            {
+                "name": name,
+                "parent": base["parent"],
+                "asset": f"{name}.png",
+                "pivot": list(base["pivot"]),
+                "anchor": [round(cx, 2), round(float(yn), 2)],
+                "size": [t.width, t.height],
+                "z": base["z"],
+                "wrist": wn,
+            }
+        )
+        print(f"  {name:<18} {t.width}x{t.height}  (muneca {wn} px, k={k:.3f})")
+
+
+def build_profile(cfg):
+    """Segundo rig, de perfil, para la entrada caminando."""
+    pr = cfg["profile"]
+    src = alpha_from_magenta(Image.open(pr["source"]))
+    x0, y0, x1, y1 = pr["figureBBox"]
+    fh = y1 - y0 + 1
+    s = cfg["canonicalHeight"] / fh
+    by_name = {p["name"]: p for p in pr["pieces"]}
+    control = Image.new("RGBA", src.size, (0, 0, 0, 0))
+    masks, out = [], []
+
+    for p in sorted(pr["pieces"], key=lambda q: q["z"]):
+        piece = cut(src, p["polygon"])
+        control.alpha_composite(piece)
+        masks.append(np.asarray(piece)[..., 3] > 40)
+        bb = piece.getbbox()
+        if bb is None:
+            raise SystemExit(f"pieza de perfil vacia: {p['name']}")
+        crop = piece.crop(bb)
+        w = max(1, round(crop.width * s))
+        h = max(1, round(crop.height * s))
+        save_quant(crop.resize((w, h), Image.LANCZOS), OUT / f"{p['name']}.png")
+
+        px, py = p["pivot"]
+        parent = p["parent"]
+        if parent is None:
+            pivot = [(px - x0) * s, (py - y0) * s]
+        else:
+            ppx, ppy = by_name[parent]["pivot"]
+            pivot = [(px - ppx) * s, (py - ppy) * s]
+        out.append(
+            {
+                "name": p["name"],
+                "parent": parent,
+                "asset": f"{p['name']}.png",
+                "pivot": [round(v, 2) for v in pivot],
+                "anchor": [round((px - bb[0]) * s, 2), round((py - bb[1]) * s, 2)],
+                "size": [w, h],
+                "z": p["z"],
+            }
+        )
+        print(f"  {p['name']:<18} {w}x{h}")
+
+    control.crop((x0, y0, x1 + 1, y1 + 1)).save(OUT / "_control_perfil.png")
+    fig = np.asarray(src)[..., 3] > 40
+    cub = np.zeros(fig.shape, bool)
+    for m in masks:
+        cub |= m
+    return {
+        "aspect": round((x1 - x0 + 1) / fh, 4),
+        "cubierto": round(100.0 * int((cub & fig).sum()) / max(1, int(fig.sum())), 2),
+        "pieces": out,
+    }
+
+
 def main():
     cfg = json.loads(CUTS.read_text(encoding="utf-8"))
     OUT.mkdir(parents=True, exist_ok=True)
@@ -289,6 +396,8 @@ def main():
     pieces = []
     control, coverage = build_body(cfg, src, s, pieces)
     build_faces(cfg, s, pieces)
+    build_hands(cfg, pieces)
+    profile = build_profile(cfg)
     control.crop((x0, y0, x1 + 1, y1 + 1)).save(OUT / "_control.png")
 
     (OUT / "manifest.json").write_text(
@@ -297,6 +406,7 @@ def main():
                 "canonicalHeight": cfg["canonicalHeight"],
                 "aspect": round((x1 - x0 + 1) / fh, 4),
                 "coverage": coverage,
+                "profile": profile,
                 "pieces": pieces,
             },
             indent=2,

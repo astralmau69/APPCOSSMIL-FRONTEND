@@ -6,6 +6,120 @@
     "solapado": 13.51,
     "peorPar": 65.4
   },
+  "profile": {
+    "aspect": 0.3397,
+    "cubierto": 97.0,
+    "pieces": [
+      {
+        "name": "perfil_muslo_b",
+        "parent": "perfil_torso",
+        "asset": "perfil_muslo_b.png",
+        "pivot": [
+          39.53,
+          1.1
+        ],
+        "anchor": [
+          35.14,
+          8.79
+        ],
+        "size": [
+          69,
+          102
+        ],
+        "z": 7
+      },
+      {
+        "name": "perfil_pantorrilla_b",
+        "parent": "perfil_muslo_b",
+        "asset": "perfil_pantorrilla_b.png",
+        "pivot": [
+          0.0,
+          86.75
+        ],
+        "anchor": [
+          45.02,
+          4.39
+        ],
+        "size": [
+          108,
+          178
+        ],
+        "z": 7
+      },
+      {
+        "name": "perfil_muslo_a",
+        "parent": "perfil_torso",
+        "asset": "perfil_muslo_a.png",
+        "pivot": [
+          -38.44,
+          1.1
+        ],
+        "anchor": [
+          59.3,
+          8.79
+        ],
+        "size": [
+          105,
+          102
+        ],
+        "z": 9
+      },
+      {
+        "name": "perfil_pantorrilla_a",
+        "parent": "perfil_muslo_a",
+        "asset": "perfil_pantorrilla_a.png",
+        "pivot": [
+          -4.39,
+          86.75
+        ],
+        "anchor": [
+          58.75,
+          4.39
+        ],
+        "size": [
+          109,
+          179
+        ],
+        "z": 9
+      },
+      {
+        "name": "perfil_torso",
+        "parent": null,
+        "asset": "perfil_torso.png",
+        "pivot": [
+          140.01,
+          537.54
+        ],
+        "anchor": [
+          138.37,
+          537.54
+        ],
+        "size": [
+          237,
+          544
+        ],
+        "z": 10
+      },
+      {
+        "name": "perfil_brazo",
+        "parent": "perfil_torso",
+        "asset": "perfil_brazo.png",
+        "pivot": [
+          -76.87,
+          -296.5
+        ],
+        "anchor": [
+          25.26,
+          12.08
+        ],
+        "size": [
+          162,
+          292
+        ],
+        "z": 12
+      }
+    ]
+  },
   "pieces": [
     {
       "name": "antena",
@@ -456,6 +570,63 @@
         33
       ],
       "z": 22
+    },
+    {
+      "name": "mano_g_senala",
+      "parent": "antebrazo_der",
+      "asset": "mano_g_senala.png",
+      "pivot": [
+        46.71,
+        47.25
+      ],
+      "anchor": [
+        24.0,
+        90.0
+      ],
+      "size": [
+        50,
+        108
+      ],
+      "z": 13,
+      "wrist": 41
+    },
+    {
+      "name": "mano_g_pulgar",
+      "parent": "antebrazo_der",
+      "asset": "mano_g_pulgar.png",
+      "pivot": [
+        46.71,
+        47.25
+      ],
+      "anchor": [
+        22.5,
+        76.0
+      ],
+      "size": [
+        47,
+        91
+      ],
+      "z": 13,
+      "wrist": 42
+    },
+    {
+      "name": "mano_g_abierta",
+      "parent": "antebrazo_der",
+      "asset": "mano_g_abierta.png",
+      "pivot": [
+        46.71,
+        47.25
+      ],
+      "anchor": [
+        26.5,
+        87.0
+      ],
+      "size": [
+        50,
+        104
+      ],
+      "z": 13,
+      "wrist": 42
     }
   ]
 }

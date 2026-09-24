@@ -99,8 +99,62 @@ def main():
     )
 
     _face_checks(m)
+    _hand_checks(m)
+    _profile_checks(m)
 
     return finish()
+
+
+def _hand_checks(m):
+    """Manos de gesto: alternativas del mismo hueso que la mano en reposo."""
+    by = {p["name"]: p for p in m["pieces"]}
+    gestos = [n for n in by if n.startswith("mano_g_")]
+    check(len(gestos) == 3, f"3 manos de gesto (hay {len(gestos)})")
+    for n in gestos:
+        check(
+            by[n]["parent"] == by["mano_der"]["parent"],
+            f"'{n}' cuelga del mismo hueso que mano_der",
+        )
+        check(
+            by[n]["pivot"] == by["mano_der"]["pivot"],
+            f"'{n}' comparte el pivote de muneca con mano_der",
+        )
+    # Se comparan las MUNECAS, no el ancho del PNG: una mano senalando es
+    # legitimamente mas angosta que una abierta. La lamina traia 7.1% de deriva.
+    munecas = [by[n]["wrist"] for n in gestos if "wrist" in by.get(n, {})]
+    if len(munecas) > 1:
+        d = 100 * (max(munecas) - min(munecas)) / (sum(munecas) / len(munecas))
+        check(d <= 5.0, f"munecas normalizadas entre si ({d:.1f}%, limite 5%)")
+
+
+def _profile_checks(m):
+    """El segundo rig, para la entrada caminando."""
+    check("profile" in m, "el manifest trae el rig de perfil")
+    if "profile" not in m:
+        return
+    pr = m["profile"]
+    nombres = [p["name"] for p in pr["pieces"]]
+    for n in (
+        "perfil_torso",
+        "perfil_brazo",
+        "perfil_muslo_a",
+        "perfil_muslo_b",
+        "perfil_pantorrilla_a",
+        "perfil_pantorrilla_b",
+    ):
+        check(n in nombres, f"perfil: existe '{n}'")
+    for p in pr["pieces"]:
+        f = OUT / p["asset"]
+        check(f.exists(), f"perfil: existe {p['asset']}")
+        if f.exists():
+            a = np.asarray(Image.open(f).convert("RGBA"))
+            check(a[..., 3].max() > 0, f"perfil: {p['name']} no esta vacia")
+        if p["parent"] is not None:
+            check(p["parent"] in nombres, f"perfil: padre de '{p['name']}' existe")
+    check(
+        pr.get("cubierto", 0) >= 97.0,
+        f"perfil: cobertura {pr.get('cubierto', 0):.1f}% (minimo 97%)",
+    )
 
 
 def _face_checks(m):
