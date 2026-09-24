@@ -164,7 +164,7 @@ Genera audios con **la voz real de la locutora de COSSMIL** — la de `assets/vo
 4. Se descarga **`vof_tutorial_….zip`** con las voces del Modo Guiado (y del tutorial): extrae los mp3 **directo** en `assets/vof_tutorial/`.
 5. Para cualquier otro texto: celda **8 · Estudio**.
 
-> Cada frase se **limpia de ruido** y se **escucha con Whisper**: si sale cortada o con balbuceo se rehace sola (hasta 4 tomas) y al final se listan las que conviene revisar. Si alguna no te convence, rehazla con otra **SEMILLA** (celda 7 → `SOLO_ESTOS`; celda 8 para textos libres) (otra "toma" de la misma locutora) o sube/baja **EXPRESIVIDAD**. Más grabaciones limpias de ella en `MyDrive/cossmil_rvc/audio_extra/` también ayudan (se usan como referencia)."""),
+> **Calidad por frase:** se generan varias tomas; **Whisper** comprueba que se entienda completa (sin cortes ni balbuceos), **UTMOS** elige la más natural (la menos robótica) y **Resemble Enhance** la limpia con red neuronal y la deja nítida a 44,1 kHz. Al final se listan las frases a revisar; rehazlas con otra **SEMILLA** (celda 7 → `SOLO_ESTOS`; celda 8 para textos libres). Más grabaciones limpias de la locutora en `MyDrive/cossmil_rvc/audio_extra/` también ayudan."""),
 
 code("""#@title 1 · Configuración general
 USAR_DRIVE = True        #@param {type:"boolean"}
@@ -249,6 +249,34 @@ if not os.path.exists(f'{VENV}/.ok'):
 # perth (componente de chatterbox) importa pkg_resources: uv no trae setuptools en el entorno.
 !uv pip install -q --python {PY} "setuptools<81" pyyaml noisereduce
 !{PY} -c "import torch, chatterbox; from perth.perth_net.perth_net_implicit.perth_watermarker import PerthImplicitWatermarker; print('torch', torch.__version__, '· GPU' if torch.cuda.is_available() else '· CPU')"
+
+# Nitidez de estudio: Resemble Enhance (MIT) limpia con red neuronal y reconstruye la voz a 44,1 kHz.
+# Sus dependencias fijadas (torch 2.1, deepspeed) solo hacen falta para ENTRENARLO: se instala sin
+# ellas y con un sustituto mínimo de deepspeed (que en inferencia nunca se llama).
+if not os.path.exists(f'{VENV}/.ok_realce'):
+    !command -v git-lfs > /dev/null || (apt-get -qq update > /dev/null && apt-get -qq install -y git-lfs > /dev/null)
+    !git lfs install --skip-repo > /dev/null
+    !uv pip install -q --python {PY} --no-deps resemble-enhance==0.0.1
+    !uv pip install -q --python {PY} omegaconf rich resampy matplotlib pandas tqdm
+    SITIO = !{PY} -c "import site; print(site.getsitepackages()[0])"
+    DS = f'{SITIO[-1]}/deepspeed'
+    if not os.path.exists(f'{DS}/runtime/engine.py'):
+        for d in ('', '/accelerator', '/runtime'):
+            os.makedirs(DS + d, exist_ok=True)
+        _no = "raise RuntimeError('deepspeed no instalado: solo hace falta para entrenar Resemble Enhance')"
+        open(f'{DS}/__init__.py', 'w').write(f"class DeepSpeedConfig:\\n    def __init__(self, *a, **k): {_no}\\n"
+                                              f"def init_distributed(*a, **k): {_no}\\n")
+        open(f'{DS}/accelerator/__init__.py', 'w').write(f"def get_accelerator(*a, **k): {_no}\\n")
+        open(f'{DS}/runtime/__init__.py', 'w').write('')
+        open(f'{DS}/runtime/engine.py', 'w').write('class DeepSpeedEngine:\\n    pass\\n')
+        open(f'{DS}/runtime/utils.py', 'w').write(f"def clip_grad_norm_(*a, **k): {_no}\\n")
+    # descarga el modelo de realce ahora (git lfs, ~1 GB) para no hacerlo a mitad de una generación
+    r = !{PY} -c "from resemble_enhance.enhancer.download import download; print('realce OK', download())" 2>&1
+    print(r[-1])
+    if 'realce OK' in r[-1]:
+        !touch {VENV}/.ok_realce
+    else:
+        print('⚠ Nitidez no disponible (se generará igual, a 24 kHz). Detalle:', *r[-6:], sep='\\n')
 print('Motor de voz listo ✔ (entorno aparte: no toca el numpy/torch de Colab)')"""),
 
 code(None),  # celda 4: RVC opcional (componer_celda_rvc)
@@ -270,7 +298,10 @@ from IPython.display import Audio, HTML, display
 def remoto(funcion, *args, mostrar=False):
     p = subprocess.Popen([PY, '/content/estudio_voz_lib.py', funcion, json.dumps(args)], cwd='/content',
                          stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, bufsize=1,
-                         env={**os.environ, 'PYTORCH_JIT': '0', 'TOKENIZERS_PARALLELISM': 'false'})
+                         env={**os.environ, 'PYTORCH_JIT': '0', 'TOKENIZERS_PARALLELISM': 'false',
+                              # checkpoint oficial de Resemble Enhance (formato deepspeed): torch 2.6 lo
+                              # rechazaría con su carga "solo pesos" por defecto
+                              'TORCH_FORCE_NO_WEIGHTS_ONLY_LOAD': '1'})
     salida, resultado, listo = [], None, False
     for linea in p.stdout:
         if linea.startswith('@@RESULTADO@@'):
@@ -288,8 +319,9 @@ similitudes = lambda refs, cands: remoto('similitudes', refs, cands)
 
 GUION = @@GUION@@
 NOMBRES_VOF = @@NOMBRES_VOF@@
-AJUSTES = dict(exageracion=0.5, cfg=0.5, temperatura=0.8, semilla=1234, intentos=4, silabas_s=5.5,
-               verificar=True, asr='openai/whisper-large-v3-turbo', limpiar_ruido=True, fuerza_limpieza=0.9,
+AJUSTES = dict(exageracion=0.5, cfg=0.4, temperatura=0.75, semilla=1234, intentos=5, tomas_min=3, silabas_s=5.5,
+               verificar=True, asr='openai/whisper-large-v3-turbo', naturalidad=True,
+               nitidez=True, fuerza_realce=0.3, limpiar_ruido=False,
                pitch=0, index_rate=0.6, protect=0.33, envolvente=1.0, limpiar=False,
                formato='mp3', normalizar=True, lufs=-16.0)
 REFERENCIA = None   # la fija la celda 6
@@ -308,15 +340,16 @@ def convertir_rvc(entrada, salida):
     if len(glob.glob(f'{salida}/*.wav')) < len(glob.glob(f'{entrada}/*.wav')):
         fallo('batch-infer', t, mostrado=False)
 
-CLAVES_CLON = ('exageracion', 'cfg', 'temperatura', 'semilla', 'intentos', 'silabas_s',
-               'verificar', 'asr', 'limpiar_ruido', 'fuerza_limpieza')
+CLAVES_CLON = ('exageracion', 'cfg', 'temperatura', 'semilla', 'intentos', 'tomas_min', 'silabas_s',
+               'verificar', 'asr', 'naturalidad', 'nitidez', 'fuerza_realce', 'limpiar_ruido')
 ULTIMO_INFORME = []
 
 def clonar(trabajos):
     global ULTIMO_INFORME
     if AJUSTES['verificar']:
-        print('  (cada frase se escucha con Whisper y se regenera si sale cortada o con ruido; '
-              'la 1ª vez descarga Whisper, ~1,6 GB)')
+        print(f"  (por frase: {AJUSTES['tomas_min']}+ tomas → Whisper verifica que se entienda completa, "
+              "UTMOS elige la más natural y Resemble Enhance la deja nítida a 44,1 kHz; "
+              "la 1ª vez descarga los modelos)")
     ULTIMO_INFORME = remoto('clonar_lote', trabajos, REFERENCIA, {k: AJUSTES[k] for k in CLAVES_CLON}, mostrar=True)
     return ULTIMO_INFORME
 
@@ -464,7 +497,7 @@ Una línea sin nombre también sirve: se llamará clip_01_una-linea-sin-nombre.
 - Textos largos se parten solos en frases.
 - Si una palabra suena mal, agrégala a `PRONUNCIACION` (p. ej. `'COSSMIL': 'Cossmil'`).
 
-**Calidad:** cada frase se limpia de ruido, se **escucha con Whisper** y, si no se entiende completa (corte, balbuceo, palabra comida), se rehace con otra toma; al final verás cuáles conviene revisar.
+**Calidad:** por frase se generan al menos `TOMAS_MIN` tomas; Whisper descarta las cortadas o con balbuceo, UTMOS elige la más natural y Resemble Enhance la deja limpia y nítida (44,1 kHz). Al final verás cuáles conviene revisar.
 
 **Ajustes:** `EXPRESIVIDAD` más alta = más emoción (0.5 es natural y sereno); `RITMO` más bajo = más pausado y articulado; `VARIACION` más baja = más estable; **`SEMILLA`**: otra toma distinta de la misma voz (si una frase no te gusta, cámbiala)."""),
 
@@ -475,13 +508,18 @@ Este es un texto de prueba: puede escribir aquí cualquier cosa que necesite, y 
 """
 REFERENCIA_VOZ = "automática (la mejor)"  #@param @@REFS_OPCIONES@@
 EXPRESIVIDAD = 0.5   #@param {type:"slider", min:0.25, max:1.0, step:0.05}
-RITMO = 0.5          #@param {type:"slider", min:0.2, max:0.8, step:0.05}
-VARIACION = 0.8      #@param {type:"slider", min:0.4, max:1.2, step:0.05}
+RITMO = 0.4          #@param {type:"slider", min:0.2, max:0.8, step:0.05}
+VARIACION = 0.75     #@param {type:"slider", min:0.4, max:1.2, step:0.05}
 SEMILLA = 1234       #@param {type:"integer"}
-LIMPIAR_RUIDO = True #@param {type:"boolean"}
+NITIDEZ_ESTUDIO = True  #@param {type:"boolean"}
+#@markdown Limpia con red neuronal y deja la voz a 44,1 kHz (Resemble Enhance). `FUERZA_LIMPIEZA` alta si oyes ruido de fondo.
+FUERZA_LIMPIEZA = 0.3   #@param {type:"slider", min:0, max:1, step:0.05}
+ELEGIR_LA_MAS_NATURAL = True  #@param {type:"boolean"}
+#@markdown Genera al menos `TOMAS_MIN` tomas por frase y se queda con la más humana (medidor UTMOS).
+TOMAS_MIN = 3        #@param {type:"slider", min:1, max:6, step:1}
 VERIFICAR_CON_WHISPER = True  #@param {type:"boolean"}
 #@markdown Escucha cada frase y la rehace (hasta `TOMAS_MAX` veces) si sale cortada, con balbuceo o ruido.
-TOMAS_MAX = 4        #@param {type:"slider", min:1, max:8, step:1}
+TOMAS_MAX = 5        #@param {type:"slider", min:1, max:8, step:1}
 FORMATO = "mp3"      #@param ["mp3", "wav"]
 NORMALIZAR_VOLUMEN = True  #@param {type:"boolean"}
 DESCARGAR = True     #@param {type:"boolean"}
@@ -497,7 +535,8 @@ else:  # una vof concreta como referencia (preparada en la celda 6)
     if not os.path.exists(REFERENCIA):
         remoto('preparar_referencias', sorted(glob.glob(f'{DATASET}/*.wav')), '/content/calibracion/refs')
 AJUSTES.update(exageracion=EXPRESIVIDAD, cfg=RITMO, temperatura=VARIACION, semilla=SEMILLA,
-               limpiar_ruido=LIMPIAR_RUIDO, verificar=VERIFICAR_CON_WHISPER, intentos=TOMAS_MAX,
+               nitidez=NITIDEZ_ESTUDIO, fuerza_realce=FUERZA_LIMPIEZA, naturalidad=ELEGIR_LA_MAS_NATURAL,
+               tomas_min=TOMAS_MIN, verificar=VERIFICAR_CON_WHISPER, intentos=max(TOMAS_MAX, TOMAS_MIN),
                formato=FORMATO, normalizar=NORMALIZAR_VOLUMEN)
 producir(parse_textos(TEXTOS), lote=nombre_seguro(NOMBRE_LOTE), descargar=DESCARGAR)'''),
 

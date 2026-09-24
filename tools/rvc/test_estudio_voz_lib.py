@@ -192,6 +192,47 @@ def test_limpieza_y_snr():
     assert L.relacion_senal_ruido(limpio, sr) > L.relacion_senal_ruido(voz + ruido, sr) + 6
 
 
+def test_seleccion_de_tomas():
+    try:
+        import numpy as np
+        import soundfile as sf
+    except ImportError:
+        return
+    import types
+    if 'torch' not in sys.modules:  # la lógica de tomas no necesita torch real
+        sys.modules['torch'] = types.SimpleNamespace(manual_seed=lambda s: None)
+
+    class Onda:
+        def __init__(self, y): self.y = y
+        def squeeze(self, i): return self
+        def detach(self): return self
+        def cpu(self): return self
+        def numpy(self): return self.y
+
+    class Modelo:
+        sr = 24000
+        def __init__(self): self.n = 0
+        def generate(self, texto, **k):
+            self.n += 1
+            return Onda(np.full(int(self.sr * 2.0), 0.1 * self.n, dtype='float32'))  # toma n = amplitud n
+
+    frase = 'Ahora, elija el horario que prefiera.'
+    oidos = {1: 'Ahora, elija el horario', 2: frase, 3: frase, 4: frase, 5: frase}  # la toma 1 sale cortada
+    asr = lambda y, sr: oidos[round(float(y[0]) * 10)]
+    mos = lambda y, sr: {1: 4.5, 2: 3.2, 3: 4.1, 4: 3.9, 5: 3.0}[round(float(y[0]) * 10)]
+    realzar = lambda y, sr: (np.repeat(y, 2), sr * 2)
+    with tempfile.TemporaryDirectory() as tmp:
+        ruta = os.path.join(tmp, 'x.wav')
+        inf = L._clonar(Modelo(), [[frase, ruta]], {'silabas_s': 5.5, 'intentos': 5, 'tomas_min': 3},
+                        mostrar=False, asr=asr, mos=mos, realzar=realzar)[0]
+        y, sr = sf.read(ruta)
+        assert inf['tomas'] == 3 and inf['ok'] and inf['mos'] == 4.1, inf  # la 1 (cortada) pierde pese a su MOS
+        assert sr == 48000 and abs(y[0] - 0.3) < 1e-3                       # se guardó la toma 3, realzada
+        inf = L._clonar(Modelo(), [[frase, ruta]], {'silabas_s': 5.5, 'intentos': 2, 'tomas_min': 3},
+                        mostrar=False, asr=lambda y, sr: 'Ahora elija', mos=None)[0]
+        assert inf['tomas'] == 2 and not inf['ok']                           # sin toma buena: se marca ⚠
+
+
 if __name__ == '__main__':
     for nombre, f in list(globals().items()):
         if nombre.startswith('test_'):

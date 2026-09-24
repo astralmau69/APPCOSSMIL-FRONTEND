@@ -240,13 +240,16 @@ def coincidencia(esperado, oido):
     return round(parecido, 3), fin
 
 
-def puntuar_toma(parecido, fin, razon_duracion, snr_db=None):
-    """Nota de una toma: manda que se entienda completa, luego duración y limpieza."""
+def puntuar_toma(parecido, fin, razon_duracion, snr_db=None, mos=None):
+    """Nota de una toma: manda que se entienda completa; luego naturalidad (MOS 1–5, lo que
+    separa una toma humana de una robótica), duración plausible y limpieza."""
     import math
     nota = parecido + (0.1 if fin else -0.35)
     nota -= 0.3 * max(0.0, abs(math.log(max(razon_duracion, 1e-3))) - math.log(1.5))
     if snr_db is not None:
         nota -= 0.01 * max(0.0, 40.0 - snr_db)
+    if mos is not None:
+        nota += 0.3 * (mos - 3.5)
     return round(nota, 4)
 
 
@@ -339,8 +342,9 @@ def ensamblar(partes, ruta_salida):
                 audio = audio.mean(axis=1)
             if sr is None:
                 sr = sr_i
-            elif sr_i != sr:
-                raise RuntimeError(f'frecuencias distintas ({sr_i} vs {sr}) en {valor}')
+            elif sr_i != sr:  # p. ej. un trozo sin realce (24 kHz) entre trozos realzados (44,1 kHz)
+                import librosa
+                audio = librosa.resample(audio, orig_sr=sr_i, target_sr=sr)
             bloques.append(audio)
         else:
             bloques.append(('silencio', valor))
@@ -579,6 +583,43 @@ def _cargar_asr(nombre='openai/whisper-large-v3-turbo'):
         return None
 
 
+def _cargar_mos():
+    """UTMOS (predictor de naturalidad, MOS 1–5). Devuelve mos(y, sr) o None."""
+    try:
+        import librosa
+        import torch
+        dev = 'cuda' if torch.cuda.is_available() else 'cpu'
+        red = torch.hub.load('tarepan/SpeechMOS:v1.2.0', 'utmos22_strong', trust_repo=True).to(dev).eval()
+
+        def mos(y, sr):
+            y16 = librosa.resample(y, orig_sr=sr, target_sr=16000) if sr != 16000 else y
+            with torch.no_grad():
+                return float(red(torch.from_numpy(y16).float().unsqueeze(0).to(dev), 16000).item())
+        return mos
+    except Exception as e:  # noqa: BLE001
+        print(f'  [aviso] medidor de naturalidad (UTMOS) no disponible ({type(e).__name__}: {str(e)[:100]})', flush=True)
+        return None
+
+
+def _cargar_realce(fuerza=0.3):
+    """Resemble Enhance (MIT): quita ruido con una red neuronal y reconstruye la voz a 44,1 kHz
+    (más nítida que los 24 kHz del modelo de voz). Devuelve realzar(y, sr) -> (y, sr) o None."""
+    try:
+        import torch
+        from resemble_enhance.enhancer.inference import enhance
+        dev = 'cuda' if torch.cuda.is_available() else 'cpu'
+
+        def realzar(y, sr):
+            wav, sr2 = enhance(torch.from_numpy(y).float(), sr, dev, nfe=64, solver='midpoint',
+                               lambd=fuerza, tau=0.5)
+            return wav.detach().cpu().numpy().astype('float32'), int(sr2)
+        return realzar
+    except Exception as e:  # noqa: BLE001
+        print(f'  [aviso] realce de nitidez (Resemble Enhance) no disponible ({type(e).__name__}: {str(e)[:100]})',
+              flush=True)
+        return None
+
+
 def relacion_senal_ruido(y, sr):
     """dB entre la voz (percentil 95 de energía) y el fondo (percentil 10)."""
     import numpy as np
@@ -608,17 +649,20 @@ def limpiar_ruido(y, sr, fuerza=0.9):
         return y
 
 
-def _clonar(modelo, trabajos, ajustes, mostrar=True, asr=None):
-    """Lee cada [texto, ruta_wav] con la voz ya condicionada en `modelo`. Cada toma se limpia
-    de ruido y se 'escucha' con Whisper: si no se entiende completa (corte, balbuceo, palabra
-    comida) o su duración no cuadra, se genera otra toma con otra semilla y se guarda la mejor."""
+def _clonar(modelo, trabajos, ajustes, mostrar=True, asr=None, mos=None, realzar=None):
+    """Lee cada [texto, ruta_wav] con la voz ya condicionada en `modelo`.
+
+    Por frase genera varias tomas (al menos `tomas_min`, hasta `intentos`): cada una se
+    'escucha' con Whisper (¿se entiende completa?) y se puntúa su naturalidad con UTMOS. Se
+    queda la mejor y solo esa pasa por el realce de nitidez (Resemble Enhance, 44,1 kHz)."""
     import os
     import random
     import numpy as np
     import soundfile as sf
     import torch
     ritmo = ajustes.get('silabas_s', 5.5)
-    max_tomas = int(ajustes.get('intentos', 4))
+    max_tomas = max(1, int(ajustes.get('intentos', 5)))
+    min_tomas = min(max_tomas, max(1, int(ajustes.get('tomas_min', 3))))
     informe = []
     for n, (texto, ruta) in enumerate(trabajos):
         esperado = silabas_estimadas(texto) / ritmo
@@ -628,34 +672,41 @@ def _clonar(modelo, trabajos, ajustes, mostrar=True, asr=None):
             random.seed(semilla); np.random.seed(semilla); torch.manual_seed(semilla)
             wav = modelo.generate(texto, language_id='es',
                                   exaggeration=ajustes.get('exageracion', 0.5),
-                                  cfg_weight=ajustes.get('cfg', 0.5),
-                                  temperature=ajustes.get('temperatura', 0.8))
+                                  cfg_weight=ajustes.get('cfg', 0.4),
+                                  temperature=ajustes.get('temperatura', 0.75))
             y = wav.squeeze(0).detach().cpu().numpy().astype('float32')
-            if ajustes.get('limpiar_ruido', True):
-                y = limpiar_ruido(y, modelo.sr, ajustes.get('fuerza_limpieza', 0.9))
             razon = (len(y) / modelo.sr) / max(esperado, 0.3)
             snr = relacion_senal_ruido(y, modelo.sr)
             oido, parecido, fin = None, None, True
             if asr:
                 oido = asr(y, modelo.sr)
                 parecido, fin = coincidencia(texto, oido)
-            nota = puntuar_toma(parecido if parecido is not None else 1.0, fin, razon, snr)
+            natural = mos(y, modelo.sr) if mos else None
+            nota = puntuar_toma(parecido if parecido is not None else 1.0, fin, razon, snr, natural)
+            completa = 0.6 <= razon <= 1.7 and (parecido is None or (parecido >= 0.92 and fin))
             if mejor is None or nota > mejor['nota']:
                 mejor = dict(y=y, nota=nota, razon=razon, parecido=parecido, fin=fin, oido=oido,
-                             snr=snr, tomas=toma + 1)
-            buena = 0.6 <= razon <= 1.7 and (parecido is None or (parecido >= 0.92 and fin))
-            if buena:
+                             snr=snr, mos=natural, completa=completa)
+            if toma + 1 >= min_tomas and mejor['completa']:
                 break
-        mejor['tomas'] = toma + 1
-        sf.write(ruta, mejor['y'], modelo.sr)
+        y, sr = mejor['y'], modelo.sr
+        if realzar:
+            try:
+                y, sr = realzar(y, sr)
+            except Exception as e:  # noqa: BLE001
+                print(f'  [aviso] realce omitido en esta frase ({type(e).__name__})', flush=True)
+        elif ajustes.get('limpiar_ruido', False) and mejor['snr'] < 30:
+            y = limpiar_ruido(y, sr, 0.6)  # respaldo suave solo si hay ruido de verdad
+        sf.write(ruta, y, sr)
         ok = mejor['parecido'] is None or (mejor['parecido'] >= 0.85 and mejor['fin'])
         informe.append({'ruta': os.path.basename(ruta), 'texto': texto, 'oido': mejor['oido'],
                         'parecido': mejor['parecido'], 'fin': mejor['fin'], 'razon': round(mejor['razon'], 2),
-                        'snr': round(mejor['snr'], 1), 'tomas': mejor['tomas'], 'ok': ok})
+                        'snr': round(mejor['snr'], 1), 'mos': None if mejor['mos'] is None else round(mejor['mos'], 2),
+                        'tomas': toma + 1, 'ok': ok})
         if mostrar:
-            extra = f" · {mejor['tomas']} tomas" if mejor['tomas'] > 1 else ''
+            nat = f" · naturalidad {mejor['mos']:.2f}/5" if mejor['mos'] is not None else ''
             marca = '' if ok else f" ⚠ revisar (se oyó: «{(mejor['oido'] or '')[:70]}»)"
-            print(f"  [{n + 1}/{len(trabajos)}] {texto[:70]}{extra}{marca}", flush=True)
+            print(f"  [{n + 1}/{len(trabajos)}] {texto[:60]} · {toma + 1} tomas{nat}{marca}", flush=True)
     return informe
 
 
@@ -664,7 +715,9 @@ def clonar_lote(trabajos, referencia, ajustes):
     modelo = _modelo_clonacion()
     modelo.prepare_conditionals(referencia, exaggeration=ajustes.get('exageracion', 0.5))
     asr = _cargar_asr(ajustes.get('asr', 'openai/whisper-large-v3-turbo')) if ajustes.get('verificar', True) else None
-    return _clonar(modelo, trabajos, ajustes, asr=asr)
+    mos = _cargar_mos() if ajustes.get('naturalidad', True) else None
+    realzar = _cargar_realce(ajustes.get('fuerza_realce', 0.3)) if ajustes.get('nitidez', True) else None
+    return _clonar(modelo, trabajos, ajustes, asr=asr, mos=mos, realzar=realzar)
 
 
 def clonar_candidatas(frase, referencias, carpeta, ajustes):
@@ -676,7 +729,7 @@ def clonar_candidatas(frase, referencias, carpeta, ajustes):
     for i, ref in enumerate(referencias):
         modelo.prepare_conditionals(ref, exaggeration=ajustes.get('exageracion', 0.5))
         ruta = os.path.join(carpeta, f'cand_{i + 1:02d}.wav')
-        _clonar(modelo, [[frase, ruta]], dict(ajustes, intentos=2), mostrar=False)
+        _clonar(modelo, [[frase, ruta]], dict(ajustes, intentos=1, tomas_min=1), mostrar=False)
         print(f'  referencia {i + 1}/{len(referencias)} lista', flush=True)
         salidas.append(ruta)
     return salidas

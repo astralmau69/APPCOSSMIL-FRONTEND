@@ -133,3 +133,12 @@ Textos `guiado_*` REESCRITOS PARA LA VOZ (24 sep 2026): al usuario no le convenc
 Regla: frases ≤ ~15 palabras, palabras comunes, comas donde se respira, punto final,
 usted, sin "¡" de apertura. Fuente única `tools/rvc/tutorial_lines.{json,md}` + tabla
 de la spec. Celda 7 ahora por defecto solo `guiado_*` (`INCLUIR_TUTORIAL=False`).
+"Aún robótico" (24 sep 2026): sospecha principal = el `noisereduce` 0,9 que añadí
+(ruido musical/acuoso sobre voz ya limpia) → desactivado por defecto (solo respaldo
+suave si SNR < 30 dB). Nuevo pipeline por frase: ≥3 tomas (`tomas_min`, hasta 5) con
+cfg 0,4 / temp 0,75; Whisper descarta cortadas; UTMOS (`torch.hub tarepan/SpeechMOS:v1.2.0
+utmos22_strong`) puntúa naturalidad (peso 0,3·(MOS−3,5) en `puntuar_toma`); la mejor
+pasa por **Resemble Enhance** (`resemble-enhance==0.0.1 --no-deps`, λ=0,3, nfe 64,
+→ 44,1 kHz). Sus pins (torch 2.1, deepspeed) solo son de entrenamiento: stub mínimo
+de `deepspeed` en el venv; modelo por git-lfs; env `TORCH_FORCE_NO_WEIGHTS_ONLY_LOAD=1`.
+Todo con respaldo: si algo no carga, avisa y sigue a 24 kHz. Sin probar en Colab real.
