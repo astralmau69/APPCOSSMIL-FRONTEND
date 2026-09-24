@@ -3,7 +3,8 @@
 # setup-claude-env.sh
 # Replica en tu PC el entorno de Claude Code usado en el proyecto COSSMIL:
 # marketplaces + plugins (superpowers, claude-mem, taskmaster, fullstack-dev,
-# stitch), MCP ruflo, config global (settings.json + CLAUDE.md) y la memoria.
+# stitch), MCP ruflo, config global (settings.json + CLAUDE.md), la memoria
+# y las skills del proyecto (.claude/skills).
 #
 # Uso:
 #   bash tools/setup/setup-claude-env.sh            # instala todo
@@ -125,5 +126,22 @@ warn "  (si Claude Code creo otro nombre de carpeta, copia los .md al 'memory' c
 run "mkdir -p \"$MEM_DEST\""
 run "cp -n \"$CFG_DIR/memory/\"*.md \"$MEM_DEST\"/ 2>/dev/null || true"
 
-log "Listo. Abre Claude Code en el proyecto y verifica con: /plugin  y  /mcp"
+# --- 6. Skills del proyecto (.claude/skills, ignorado por git) ---------------
+# flutter-*, gsap-*, frontend-design y skills de seguridad (pentest movil, JWT,
+# OAuth...), instaladas en su dia con `npx skills` (ver skills-lock.json).
+# Se versionan como copia en docs/setup/claude-config/project-skills/.
+SKILLS_SRC="$CFG_DIR/project-skills"
+SKILLS_DEST="$REPO_DIR/.claude/skills"
+if [[ -d "$SKILLS_SRC" ]]; then
+  log "Copiando skills del proyecto -> $SKILLS_DEST (no pisa las existentes)"
+  run "mkdir -p \"$SKILLS_DEST\""
+  run "cp -rn \"$SKILLS_SRC\"/. \"$SKILLS_DEST\"/"
+fi
+
+# --- 7. Lo que llega solo con la cuenta --------------------------------------
+# El plugin "mis-skills-claude-code" y las skills de ~/.claude/skills/synced se
+# sincronizan desde claude.ai: aparecen al iniciar sesion con la MISMA cuenta.
+log "Nota: 'mis-skills-claude-code' llega solo al iniciar sesion con tu cuenta de claude.ai."
+
+log "Listo. Abre Claude Code en el proyecto y verifica con: /plugin  /mcp  y  /skills"
 [[ $DRY -eq 1 ]] && warn "Fue dry-run: no se cambio nada."

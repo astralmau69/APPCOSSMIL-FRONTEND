@@ -87,12 +87,26 @@ claude            # dentro del repo
 - `CLAUDE.md` — nota de integración de ruflo (la escribe `ruflo init`).
 
 ### Memoria del proyecto
-- 24 archivos `.md` en `docs/setup/claude-config/memory/` → se restauran en
+- 24 archivos `.md` (+ índice `MEMORY.md`) en `docs/setup/claude-config/memory/` → se restauran en
   `~/.claude/projects/<ruta-codificada>/memory/`.
 - La `<ruta-codificada>` es la ruta absoluta del proyecto con `/`, `_` y `.`
   cambiados por `-`. Si Claude Code creó otro nombre, copia los `.md` a la
   carpeta `memory/` que él haya creado (abre una sesión primero y revisa
   `~/.claude/projects/`).
+
+### Skills del proyecto (`.claude/skills/`)
+- 31 skills instaladas con `npx skills` (fuentes en `skills-lock.json`):
+  `flutter-*` (tests, animaciones, layout responsivo, arquitectura),
+  `gsap-*`, `frontend-design` y skills de seguridad (pentest móvil, JWT, OAuth,
+  CORS, almacenamiento inseguro...).
+- `.claude/skills/` está en `.gitignore`, así que van como copia en
+  `docs/setup/claude-config/project-skills/` y el script las copia a
+  `.claude/skills/` del repo.
+
+### Lo que llega solo con tu cuenta
+- El plugin **`mis-skills-claude-code`** y las skills sincronizadas
+  (`~/.claude/skills/synced`, artifact-design, dataviz, docs, pdf, etc.) vienen de
+  claude.ai: aparecen al iniciar sesión con la **misma cuenta**. No se copian.
 
 ---
 
@@ -128,6 +142,15 @@ cp docs/setup/claude-config/settings.json  ~/.claude/settings.json
 
 # 5) Memoria: copia docs/setup/claude-config/memory/*.md a
 #    ~/.claude/projects/<ruta-codificada>/memory/
+
+# 6) Skills del proyecto
+mkdir -p .claude/skills && cp -rn docs/setup/claude-config/project-skills/. .claude/skills/
+```
+
+En PowerShell el paso 6 es:
+```powershell
+New-Item -ItemType Directory -Force .claude\skills | Out-Null
+Copy-Item -Recurse -Force docs\setup\claude-config\project-skills\* .claude\skills\
 ```
 
 ---
@@ -148,6 +171,7 @@ cp docs/setup/claude-config/settings.json  ~/.claude/settings.json
 ```bash
 claude
 /plugin      # superpowers, claude-mem, taskmaster, fullstack-dev-skills, stitch-*
+/skills      # flutter-*, gsap-*, frontend-design, seguridad…
 /mcp         # ruflo: connected
 ```
 En una tarea nueva, deberías ver los skills de superpowers disponibles y las
