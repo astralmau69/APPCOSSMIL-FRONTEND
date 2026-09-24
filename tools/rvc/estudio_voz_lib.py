@@ -1,0 +1,322 @@
+"""Motor del Estudio de voz COSSMIL (texto libre → voz de la locutora vof).
+
+Este archivo se EMBEBE en la celda "Motor" del notebook de Colab al correr
+`build_colab_notebook.py`. La parte de texto (parse_textos, segmentar, …) es
+Python puro y se prueba localmente con `test_estudio_voz_lib.py`; la parte de
+audio (edge-tts → RVC/Applio → ffmpeg) solo corre en Colab.
+
+Formato del texto (una línea = un audio):
+
+    # comentario (se ignora)
+    bienvenida | Bienvenido a COSSMIL. [pausa] Le ayudaré con su cita.
+    Esta línea no tiene nombre: se llamará clip_02_esta-linea-no-tiene.
+
+Marcas dentro del texto: [pausa] (0,6 s), [pausa 1.5] o [pausa 800ms].
+"""
+import csv
+import io
+import json
+import re
+import unicodedata
+
+PAUSA_DEFECTO = 0.6      # segundos de [pausa]
+PAUSA_ENTRE_TROZOS = 0.25  # silencio al unir frases de un texto largo
+MAX_CARACTERES = 400     # trozo máximo que se sintetiza de una vez
+
+# Palabras que el TTS lee mal. Se aplican con límite de palabra y respetando mayúsculas.
+PRONUNCIACION_DEFECTO = {
+    'COSSMIL': 'Cossmil',
+    'Dra.': 'doctora',
+    'Dr.': 'doctor',
+    'Nro.': 'número',
+    'N°': 'número',
+    'Sr.': 'señor',
+    'Sra.': 'señora',
+    'Cap.': 'capitán',
+    'Tte.': 'teniente',
+    'Cnl.': 'coronel',
+}
+
+_ID_VALIDO = re.compile(r'^[A-Za-z0-9][A-Za-z0-9_.-]{0,59}$')
+_PAUSA = re.compile(r'\[\s*pausa(?:\s*[=:]?\s*(\d+(?:[.,]\d+)?)\s*(ms|s)?)?\s*\]', re.IGNORECASE)
+_FIN_FRASE = re.compile(r'(?<=[.!?…;])\s+')
+
+
+def slug(texto, palabras=4, largo=32):
+    """'¡Hola, señor Pérez!' → 'hola-senor-perez' (seguro para nombre de archivo)."""
+    t = unicodedata.normalize('NFKD', texto).encode('ascii', 'ignore').decode().lower()
+    t = re.sub(r'\[[^\]]*\]', ' ', t)
+    partes = re.findall(r'[a-z0-9]+', t)[:palabras]
+    return '-'.join(partes)[:largo].strip('-') or 'audio'
+
+
+def nombre_seguro(nombre):
+    """Limpia un id escrito por el usuario para usarlo como nombre de archivo."""
+    base = unicodedata.normalize('NFKD', nombre).encode('ascii', 'ignore').decode()
+    base = re.sub(r'\.(mp3|wav|ogg|m4a)$', '', base.strip(), flags=re.IGNORECASE)
+    base = re.sub(r'[^A-Za-z0-9_.-]+', '_', base).strip('._-')
+    return base[:60] or 'audio'
+
+
+def _auto(contador, texto):
+    contador[0] += 1
+    return f'clip_{contador[0]:02d}_{slug(texto)}'
+
+
+def _unicos(pares):
+    vistos, salida = {}, []
+    for nombre, texto in pares:
+        n = nombre
+        if n in vistos:
+            vistos[n] += 1
+            n = f'{nombre}_{vistos[nombre]}'
+        else:
+            vistos[n] = 1
+        salida.append((n, texto))
+    return salida
+
+
+def parse_textos(crudo):
+    """Texto del formulario → [(nombre, texto)]. Ver formato en el docstring del módulo."""
+    pares, auto = [], [0]
+    for linea in crudo.splitlines():
+        linea = linea.strip()
+        if not linea or linea.startswith('#'):
+            continue
+        nombre, texto = None, linea
+        if '|' in linea:
+            izq, der = linea.split('|', 1)
+            if _ID_VALIDO.match(izq.strip()) and der.strip():
+                nombre, texto = nombre_seguro(izq), der.strip()
+        if not re.sub(_PAUSA, '', texto).strip():
+            continue
+        if nombre is None:
+            nombre = _auto(auto, texto)
+        pares.append((nombre, texto))
+    return _unicos(pares)
+
+
+def parse_archivo(nombre_archivo, datos):
+    """Archivo subido (.txt / .json / .csv) → [(nombre, texto)]."""
+    texto = datos.decode('utf-8-sig') if isinstance(datos, bytes) else datos
+    ext = nombre_archivo.lower().rsplit('.', 1)[-1]
+    auto = [0]
+    if ext == 'json':
+        obj = json.loads(texto)
+        if isinstance(obj, dict) and isinstance(obj.get('lines'), (dict, list)):
+            obj = obj['lines']
+        if isinstance(obj, dict):
+            pares = [(nombre_seguro(k), str(v).strip()) for k, v in obj.items()]
+        else:
+            pares = []
+            for it in obj:
+                if isinstance(it, str):
+                    pares.append((_auto(auto, it), it.strip()))
+                else:
+                    t = str(it.get('text') or it.get('texto') or '').strip()
+                    n = it.get('id') or it.get('nombre')
+                    pares.append((nombre_seguro(str(n)) if n else _auto(auto, t), t))
+        return _unicos([(n, t) for n, t in pares if t])
+    if ext == 'csv':
+        filas = [f for f in csv.reader(io.StringIO(texto)) if any(c.strip() for c in f)]
+        if filas and [c.strip().lower() for c in filas[0][:2]] in (['id', 'text'], ['id', 'texto'], ['nombre', 'texto']):
+            filas = filas[1:]
+        pares = []
+        for f in filas:
+            if len(f) >= 2 and f[1].strip():
+                pares.append((nombre_seguro(f[0]) if f[0].strip() else _auto(auto, f[1]), f[1].strip()))
+            elif f[0].strip():
+                pares.append((_auto(auto, f[0]), f[0].strip()))
+        return _unicos(pares)
+    return parse_textos(texto)
+
+
+def aplicar_pronunciacion(texto, diccionario):
+    """Reemplaza palabras mal leídas por el TTS (claves más largas primero)."""
+    for clave in sorted(diccionario, key=len, reverse=True):
+        izq = r'(?<!\w)' if clave[0].isalnum() else ''
+        der = r'(?!\w)' if clave[-1].isalnum() else ''
+        texto = re.sub(izq + re.escape(clave) + der, diccionario[clave], texto)
+    return texto
+
+
+def _segundos(num, unidad):
+    if num is None:
+        return PAUSA_DEFECTO
+    v = float(num.replace(',', '.'))
+    return v / 1000 if (unidad or '').lower() == 'ms' else v
+
+
+def _trocear(frase, max_car):
+    """Parte un texto largo en trozos ≤ max_car cortando en fin de frase (o en comas)."""
+    if len(frase) <= max_car:
+        return [frase]
+    trozos, actual = [], ''
+    for oracion in _FIN_FRASE.split(frase):
+        piezas = [oracion] if len(oracion) <= max_car else re.split(r'(?<=,)\s+', oracion)
+        for p in piezas:
+            while len(p) > max_car:  # sin puntuación: corte duro en el último espacio
+                corte = p.rfind(' ', 0, max_car)
+                corte = corte if corte > 0 else max_car
+                if actual:
+                    trozos.append(actual); actual = ''
+                trozos.append(p[:corte].strip()); p = p[corte:].strip()
+            if actual and len(actual) + 1 + len(p) > max_car:
+                trozos.append(actual); actual = p
+            else:
+                actual = f'{actual} {p}'.strip()
+    if actual:
+        trozos.append(actual)
+    return [t for t in trozos if t]
+
+
+def segmentar(texto, max_car=MAX_CARACTERES, pausa_trozos=PAUSA_ENTRE_TROZOS):
+    """Texto → [('habla', str) | ('silencio', segundos)] listo para sintetizar."""
+    salida, pos = [], 0
+
+    def agregar_habla(fragmento):
+        fragmento = re.sub(r'\s+', ' ', fragmento).strip()
+        if not fragmento:
+            return
+        for i, t in enumerate(_trocear(fragmento, max_car)):
+            if i:
+                salida.append(('silencio', pausa_trozos))
+            salida.append(('habla', t))
+
+    for m in _PAUSA.finditer(texto):
+        agregar_habla(texto[pos:m.start()])
+        salida.append(('silencio', _segundos(m.group(1), m.group(2))))
+        pos = m.end()
+    agregar_habla(texto[pos:])
+    while salida and salida[0][0] == 'silencio':
+        salida.pop(0)
+    while salida and salida[-1][0] == 'silencio':
+        salida.pop()
+    return salida
+
+
+# ─────────────────────────── Audio (solo Colab) ───────────────────────────
+
+def _ffmpeg(*args):
+    import subprocess
+    r = subprocess.run(['ffmpeg', '-hide_banner', '-loglevel', 'error', '-y', *map(str, args)],
+                       capture_output=True, text=True)
+    if r.returncode:
+        raise RuntimeError(f'ffmpeg falló: {r.stderr[-800:]}')
+
+
+def duracion(ruta):
+    import subprocess
+    out = subprocess.run(['ffprobe', '-v', 'error', '-show_entries', 'format=duration',
+                          '-of', 'default=nk=1:nw=1', ruta], capture_output=True, text=True).stdout
+    return float(out or 0)
+
+
+def sintetizar_base(texto, ruta_wav, voz, velocidad=0, tono_hz=0, intentos=4):
+    """edge-tts (gratis, voz femenina neural) → WAV mono 44,1 kHz. Reintenta cortes de red."""
+    import os, time
+    import edge_tts
+    mp3 = ruta_wav[:-4] + '.mp3'
+    for n in range(1, intentos + 1):
+        try:
+            edge_tts.Communicate(texto, voice=voz, rate=f'{int(velocidad):+d}%',
+                                 pitch=f'{int(tono_hz):+d}Hz').save_sync(mp3)
+            if os.path.getsize(mp3) > 0:
+                break
+        except Exception as e:  # noqa: BLE001 — red de Colab inestable
+            if n == intentos:
+                raise RuntimeError(f'edge-tts no respondió ({e}). Revisa la conexión y re-ejecuta.') from e
+            time.sleep(2 * n)
+    _ffmpeg('-i', mp3, '-ac', 1, '-ar', 44100, ruta_wav)
+    os.remove(mp3)
+
+
+def ensamblar(partes, ruta_salida):
+    """partes = [('wav', ruta) | ('silencio', seg)] → un solo WAV (misma frecuencia)."""
+    import numpy as np
+    import soundfile as sf
+    sr, bloques = None, []
+    for tipo, valor in partes:
+        if tipo == 'wav':
+            audio, sr_i = sf.read(valor, dtype='float32', always_2d=False)
+            if audio.ndim > 1:
+                audio = audio.mean(axis=1)
+            if sr is None:
+                sr = sr_i
+            elif sr_i != sr:
+                raise RuntimeError(f'frecuencias distintas ({sr_i} vs {sr}) en {valor}')
+            bloques.append(audio)
+        else:
+            bloques.append(('silencio', valor))
+    sr = sr or 44100
+    final = [np.zeros(int(b[1] * sr), dtype='float32') if isinstance(b, tuple) else b for b in bloques]
+    sf.write(ruta_salida, np.concatenate(final) if final else np.zeros(1, 'float32'), sr)
+
+
+def masterizar(ruta_wav, ruta_salida, formato='mp3', normalizar=True, cola=0.25):
+    """Recorta silencios de borde, normaliza volumen (-16 LUFS), suaviza bordes y exporta."""
+    filtros = [
+        'silenceremove=start_periods=1:start_threshold=-50dB:start_silence=0.05',
+        'areverse',
+        'silenceremove=start_periods=1:start_threshold=-50dB:start_silence=0.05',
+        'areverse',
+    ]
+    if normalizar:
+        filtros.append('loudnorm=I=-16:TP=-1.5:LRA=11')
+    filtros += ['afade=t=in:d=0.02', f'apad=pad_dur={cola}']
+    args = ['-i', ruta_wav, '-af', ','.join(filtros), '-ac', 1, '-ar', 44100]
+    args += ['-b:a', '128k'] if formato == 'mp3' else ['-c:a', 'pcm_s16le']
+    _ffmpeg(*args, ruta_salida)
+
+
+def generar(pares, voz, carpeta, convertir, velocidad=0, tono_hz=0, pronunciacion=None,
+            formato='mp3', normalizar=True, sintetizar=None, log=print):
+    """[(nombre, texto)] → {nombre: ruta_final}.
+
+    `convertir(carpeta_entrada, carpeta_salida)` aplica RVC a todos los WAV de una
+    vez (el modelo se carga una sola vez) y deja `<base>.wav` en la salida.
+    """
+    import glob, os, shutil
+    sintetizar = sintetizar or sintetizar_base
+    pronunciacion = PRONUNCIACION_DEFECTO if pronunciacion is None else pronunciacion
+    base_dir, rvc_dir, fin_dir = (os.path.join(carpeta, d) for d in ('base', 'rvc', 'final'))
+    for d in (base_dir, rvc_dir, fin_dir):
+        shutil.rmtree(d, ignore_errors=True)
+        os.makedirs(d)
+
+    planes = {}
+    for i, (nombre, texto) in enumerate(pares, 1):
+        plan = []
+        for j, (tipo, valor) in enumerate(segmentar(aplicar_pronunciacion(texto, pronunciacion))):
+            if tipo == 'habla':
+                pieza = f'{i:03d}_{j:03d}'
+                sintetizar(valor, os.path.join(base_dir, pieza + '.wav'), voz, velocidad, tono_hz)
+                plan.append(('wav', pieza))
+            else:
+                plan.append(('silencio', valor))
+        planes[nombre] = plan
+        log(f'  [{i}/{len(pares)}] texto base: {nombre}')
+
+    log('  convirtiendo a la voz de la locutora (RVC)…')
+    convertir(base_dir, rvc_dir)
+
+    salidas = {}
+    for nombre, plan in planes.items():
+        partes = []
+        for tipo, valor in plan:
+            if tipo == 'wav':
+                ruta = os.path.join(rvc_dir, valor + '.wav')
+                if not os.path.exists(ruta):
+                    raise RuntimeError(f'RVC no produjo {valor}.wav (¿falló la conversión?). '
+                                       f'Archivos en salida: {sorted(os.listdir(rvc_dir))[:5]}')
+                partes.append(('wav', ruta))
+            else:
+                partes.append(('silencio', valor))
+        crudo = os.path.join(rvc_dir, f'_{nombre}.wav')
+        ensamblar(partes, crudo)
+        final = os.path.join(fin_dir, f'{nombre}.{formato}')
+        masterizar(crudo, final, formato, normalizar)
+        salidas[nombre] = final
+    for f in glob.glob(os.path.join(rvc_dir, '_*.wav')):
+        os.remove(f)
+    return salidas

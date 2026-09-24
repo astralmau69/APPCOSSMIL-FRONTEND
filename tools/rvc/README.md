@@ -8,9 +8,18 @@ Objetivo: que la instructora **diga en voz alta** cada paso del tutorial, con la
 > modelos). Se entrena/convierte en **Google Colab** (gratis) o en un PC con
 > GPU. Aquí queda todo lo PREVIO ya preparado: dataset, guion y narración fuente.
 
-> **Atajo (sep 2026):** `COSSMIL_voces_guiado.ipynb` hace todo esto en Colab con
-> "Ejecutar todo" (vof y guion embebidos). Se regenera con
-> `python3 tools/rvc/build_colab_notebook.py`.
+> **Atajo (sep 2026): usar `COSSMIL_estudio_voz.ipynb`.** Estudio de voz en Colab:
+> entrena una vez con las vof (embebidas) y luego genera **cualquier texto** con la
+> voz de la locutora (celda 6), desde archivos .txt/.json/.csv (celda 7), el guion
+> completo de la app (celda 8) o compara voces base (celda 9). El modelo queda en
+> `MyDrive/cossmil_rvc/modelo/` y no se reentrena salvo que agregues audio en
+> `MyDrive/cossmil_rvc/audio_extra/`. Lo de abajo es la receta manual de referencia.
+>
+> - Motor: `estudio_voz_lib.py` (pruebas: `python3 tools/rvc/test_estudio_voz_lib.py`).
+> - Notebook: se genera con `python3 tools/rvc/build_colab_notebook.py` (editar el
+>   script o el motor, nunca el `.ipynb`).
+> - Applio está fijado al commit con el que se validaron los flags (CLI Click con
+>   guiones: `batch-infer`, `--model-name`…); la celda 3 permite probar `main`.
 
 ## Piezas de esta carpeta
 

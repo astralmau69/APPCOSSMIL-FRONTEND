@@ -71,20 +71,21 @@ en tono profesional/institucional militar, trato de usted. Falta: generarlas en
 Colab (reentrenar, no se sabe si el .pth sigue en Drive) y colocarlas en
 `assets/vof_tutorial/`. Spec: `docs/superpowers/specs/2026-09-22-modo-guiado-reserva-design.md`;
 plan TDD: `docs/superpowers/plans/2026-09-22-modo-guiado-reserva.md`.
-**Notebook Colab autocontenido (23 sep 2026, rama `v1`):**
-`tools/rvc/COSSMIL_voces_guiado.ipynb` — trae las 7 vof en base64 + las 27 líneas
-del guion embebidas (cero subidas); "Ejecutar todo" → ZIP plano de mp3. Se genera
-con `tools/rvc/build_colab_notebook.py` (editar ESE script, no el .ipynb, y
-regenerar). Lecciones de la 1ª corrida en Colab: (1) `subprocess.run` NO muestra
-salida en la celda → se usa Popen + print en vivo; (2) el Applio actual usa CLI
-Click/Typer: `--help` (no `-h`) y probablemente flags con guion (`--model-name`)
-→ el helper `applio()` lee `<cmd> --help` y adapta `_`↔`-`, omitiendo opcionales
-inexistentes; (3) los "dependency conflicts" rojos de pip en Colab son inocuos.
-La versión adaptativa AÚN NO se probó en Colab: si falla, pedir el error y el
-bloque `===== preprocess =====` de la celda 3. Decisión por defecto
-`SOLO_GUIADO=False` (regenerar las 27 para que toda la app quede con la misma
-voz, porque el modelo se reentrena). El `.pth` anterior no se ubicó; si aparece,
-copiarlo con su `.index` a `MyDrive/cossmil_rvc/modelo/` y la celda 5 no reentrena.
+**Estudio de voz (24 sep 2026, rama `v1-dev`):** el notebook anterior
+(`COSSMIL_voces_guiado.ipynb`) se reemplazó por `tools/rvc/COSSMIL_estudio_voz.ipynb`:
+texto LIBRE → voz de la locutora vof (edge-tts femenina → RVC/Applio). Entrena una
+vez; modelo + `huella.txt` (hash del dataset) en `MyDrive/cossmil_rvc/modelo/`; si
+cambia el audio en `MyDrive/cossmil_rvc/audio_extra/` reentrena solo. Celdas: 6
+estudio (`nombre | texto`, `[pausa 1.5]`, diccionario `PRONUNCIACION`, ej.
+COSSMIL→Cossmil), 7 archivo txt/json/csv, 8 guion de la app (`GENERAR_GUION_APP`,
+`SOLO_GUIADO`), 9 comparar voces base. Motor en `tools/rvc/estudio_voz_lib.py`
+(embebido por `build_colab_notebook.py`; pruebas `test_estudio_voz_lib.py`).
+Lecciones Applio (commit fijado `939d9ed`): CLI Click con GUIONES en comandos y
+flags (`batch-infer`, NO `batch_infer`; `--model-name`); flags booleanos sin valor
+(`--save-only-latest`, `--pretrained`); `core.py` devuelve 0 aunque falle por
+dentro → validar archivos en disco; con ~1 min de voz el batch 8 da <3 lotes y
+`train` aborta "Not enough data" → batch adaptativo `max(2, min(8, trozos//6))`;
+batch-infer nombra la salida `<base>_output.wav`. Aún no corrido en Colab real.
 **Bug a arreglar (parte del plan):** `ficha_01` (regional) no suena en el demo por
 la carrera Inicio→Reserva (el `stop()` del coach que se desmonta mata el clip
 entrante); fix = `TutorialVoice.stopIfToken(token)` y comparar en `dispose`.

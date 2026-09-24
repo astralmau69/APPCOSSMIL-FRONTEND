@@ -10,33 +10,37 @@ Feature en curso: **Modo Guiado de reserva** (reserva REAL narrada por la instru
 - Voces `guiado_*` (Task 8): guion listo en `tools/rvc/tutorial_lines.{md,json}`;
   **generación en Colab en curso** (ver abajo).
 
-## Voces nuevas — notebook de Colab
+## Estudio de voz — notebook de Colab (rama `v1-dev`)
 
-`tools/rvc/COSSMIL_voces_guiado.ipynb` es autocontenido (trae las 7 `vof` y las
-27 líneas del guion embebidas; no hay que subir nada):
+`tools/rvc/COSSMIL_estudio_voz.ipynb` reemplaza al notebook `COSSMIL_voces_guiado`.
+Es autocontenido (trae las 7 `vof`, el guion de 27 líneas y el motor) y sirve para
+generar **cualquier texto** con la voz femenina de la locutora de `assets/vof/`:
 
 1. colab.research.google.com → Archivo → Subir notebook.
 2. Entorno de ejecución → Cambiar tipo → **T4 GPU**.
-3. Ejecutar todo (acepta el permiso de Drive). ~30–60 min.
-4. Descarga `vof_tutorial.zip` → extraer los mp3 **directo** en
-   `assets/vof_tutorial/` (sin subcarpeta).
+3. Ejecutar todo (acepta el permiso de Drive). La 1ª vez entrena (~30–45 min) y
+   guarda el modelo en `MyDrive/cossmil_rvc/modelo/`; después no reentrena.
+4. Celda 6 · Estudio: una línea por audio (`nombre | texto`, `[pausa 1.5]`),
+   ajustes de voz/velocidad/tono, previsualización y ZIP (copia en
+   `MyDrive/cossmil_rvc/salidas/`).
+5. Clips de la app: celda 8 (`GENERAR_GUION_APP`, `SOLO_GUIADO`) → extraer los mp3
+   **directo** en `assets/vof_tutorial/`.
 
-La voz final es la de la locutora de `assets/vof/` (RVC cambia el timbre de una
-narración base de edge-tts). `SOLO_GUIADO=False` regenera las 27 líneas para que
-toda la app quede con la misma voz del modelo reentrenado.
+Más parecido: dejar grabaciones limpias de la locutora en
+`MyDrive/cossmil_rvc/audio_extra/`; la huella del dataset cambia y reentrena solo.
 
-**Estado:** la 1ª corrida mostró que el Applio actual usa CLI Click/Typer
-(`--help`, no `-h`; flags probablemente con guion). El notebook ya lee la ayuda de
-cada comando y adapta los flags solo, pero esa versión **aún no se probó en Colab**.
-Si falla: copiar el error y el bloque `===== preprocess =====` de la celda 3.
-Los avisos rojos de `pip` ("dependency conflicts") son inocuos.
+**Estado:** validado con una corrida simulada completa (dobles de Colab/Applio/
+edge-tts) y con los argumentos pasados por el parser Click real de Applio fijado
+en `939d9ed` (esto descubrió que el comando es `batch-infer`, con guion). **Aún
+no se corrió en Colab real.** Si falla, copiar el error de la celda.
 
-Para cambiar el notebook, editar `tools/rvc/build_colab_notebook.py` y correr
-`python3 tools/rvc/build_colab_notebook.py` (no editar el `.ipynb` a mano).
+Para cambiarlo: editar `tools/rvc/build_colab_notebook.py` o
+`tools/rvc/estudio_voz_lib.py` y correr `python3 tools/rvc/build_colab_notebook.py`
+(no editar el `.ipynb`). Pruebas del motor: `python3 tools/rvc/test_estudio_voz_lib.py`.
 
 ## Siguientes pasos
 
-1. Terminar la corrida de Colab y colocar los clips (Task 8, pasos 3–4).
+1. Correr el Estudio de voz en Colab y colocar los clips (Task 8, pasos 3–4).
 2. Implementar Tasks 1–7 del plan (TDD); la Task 7 arregla que `ficha_01` no
    suene en el demo.
 3. Probar en dispositivo (Task 8, paso 5).
