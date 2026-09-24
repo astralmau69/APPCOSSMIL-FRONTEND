@@ -1,0 +1,227 @@
+{
+  "canonicalHeight": 800,
+  "aspect": 0.6315,
+  "coverage": {
+    "cubierto": 99.72,
+    "solapado": 13.51,
+    "peorPar": 65.4
+  },
+  "pieces": [
+    {
+      "name": "antena",
+      "parent": "torso",
+      "asset": "antena.png",
+      "pivot": [
+        62.82,
+        -289.93
+      ],
+      "anchor": [
+        9.13,
+        37.58
+      ],
+      "size": [
+        20,
+        42
+      ],
+      "z": 5
+    },
+    {
+      "name": "brazo_sup_der",
+      "parent": "torso",
+      "asset": "brazo_sup_der.png",
+      "pivot": [
+        104.16,
+        -262.01
+      ],
+      "anchor": [
+        35.44,
+        7.52
+      ],
+      "size": [
+        138,
+        143
+      ],
+      "z": 8
+    },
+    {
+      "name": "brazo_sup_izq",
+      "parent": "torso",
+      "asset": "brazo_sup_izq.png",
+      "pivot": [
+        -104.16,
+        -262.01
+      ],
+      "anchor": [
+        102.55,
+        7.52
+      ],
+      "size": [
+        139,
+        143
+      ],
+      "z": 8
+    },
+    {
+      "name": "muslo_izq",
+      "parent": "torso",
+      "asset": "muslo_izq.png",
+      "pivot": [
+        -62.28,
+        3.22
+      ],
+      "anchor": [
+        63.36,
+        9.66
+      ],
+      "size": [
+        124,
+        108
+      ],
+      "z": 9
+    },
+    {
+      "name": "pantorrilla_izq",
+      "parent": "muslo_izq",
+      "asset": "pantorrilla_izq.png",
+      "pivot": [
+        0.0,
+        93.42
+      ],
+      "anchor": [
+        76.24,
+        5.37
+      ],
+      "size": [
+        111,
+        210
+      ],
+      "z": 9
+    },
+    {
+      "name": "muslo_der",
+      "parent": "torso",
+      "asset": "muslo_der.png",
+      "pivot": [
+        62.28,
+        3.22
+      ],
+      "anchor": [
+        59.6,
+        9.66
+      ],
+      "size": [
+        132,
+        108
+      ],
+      "z": 9
+    },
+    {
+      "name": "pantorrilla_der",
+      "parent": "muslo_der",
+      "asset": "pantorrilla_der.png",
+      "pivot": [
+        0.0,
+        93.42
+      ],
+      "anchor": [
+        34.36,
+        5.37
+      ],
+      "size": [
+        111,
+        210
+      ],
+      "z": 9
+    },
+    {
+      "name": "torso",
+      "parent": null,
+      "asset": "torso.png",
+      "pivot": [
+        252.35,
+        498.26
+      ],
+      "anchor": [
+        135.3,
+        296.38
+      ],
+      "size": [
+        281,
+        301
+      ],
+      "z": 10
+    },
+    {
+      "name": "antebrazo_der",
+      "parent": "brazo_sup_der",
+      "asset": "antebrazo_der.png",
+      "pivot": [
+        66.58,
+        133.15
+      ],
+      "anchor": [
+        44.03,
+        14.5
+      ],
+      "size": [
+        120,
+        69
+      ],
+      "z": 12
+    },
+    {
+      "name": "antebrazo_izq",
+      "parent": "brazo_sup_izq",
+      "asset": "antebrazo_izq.png",
+      "pivot": [
+        -66.58,
+        133.15
+      ],
+      "anchor": [
+        74.63,
+        14.5
+      ],
+      "size": [
+        119,
+        69
+      ],
+      "z": 12
+    },
+    {
+      "name": "mano_der",
+      "parent": "antebrazo_der",
+      "asset": "mano_der.png",
+      "pivot": [
+        46.71,
+        47.25
+      ],
+      "anchor": [
+        31.68,
+        4.3
+      ],
+      "size": [
+        67,
+        55
+      ],
+      "z": 13
+    },
+    {
+      "name": "mano_izq",
+      "parent": "antebrazo_izq",
+      "asset": "mano_izq.png",
+      "pivot": [
+        -46.71,
+        47.25
+      ],
+      "anchor": [
+        34.36,
+        4.3
+      ],
+      "size": [
+        67,
+        55
+      ],
+      "z": 13
+    }
+  ]
+}

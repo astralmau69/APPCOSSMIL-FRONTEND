@@ -1,0 +1,176 @@
+"""Corta las laminas del avatar v2 en piezas de rig, con pivote y manifest.
+
+Entrada : tools/instructor_v2_src/*.png  (laminas evaluadas, ver su README)
+Config  : tools/instructor_v2_cuts.json  (poligonos y pivotes, escritos a mano)
+Salida  : assets/images/instructor/*.png + manifest.json + _control.png
+
+La imagen de control recompone todas las piezas en su pose de reposo: si no se
+ve identica a la A-pose original, el corte esta mal y se nota de inmediato.
+"""
+
+import json
+from pathlib import Path
+
+import numpy as np
+from PIL import Image, ImageDraw
+
+CUTS = Path("tools/instructor_v2_cuts.json")
+OUT = Path("assets/images/instructor")
+
+
+def alpha_from_magenta(im):
+    """Quita el fondo magenta dejando alfa SUAVE y sin flecos.
+
+    Un umbral duro deja un anillo magenta en los bordes antialiasados. Aqui se
+    mide cuanto tira a magenta cada pixel (el magenta es el unico color donde
+    R y B superan a G a la vez) y se usa eso como transparencia, desmultiplicando
+    despues el color para recuperar el tono real del borde.
+    """
+    a = np.asarray(im.convert("RGB")).astype(np.float32)
+    r, g, b = a[..., 0], a[..., 1], a[..., 2]
+    m = np.clip((np.minimum(r, b) - g) / 128.0, 0.0, 1.0)
+    alpha = (1.0 - m)[..., None]
+    bg = np.array([255.0, 0.0, 255.0])
+    with np.errstate(divide="ignore", invalid="ignore"):
+        col = np.where(alpha > 0.004, (a - m[..., None] * bg) / np.maximum(alpha, 1e-6), 0.0)
+    out = np.concatenate(
+        [np.clip(col, 0, 255), np.clip(alpha * 255.0, 0, 255)], axis=-1
+    ).astype(np.uint8)
+    return Image.fromarray(out, "RGBA")
+
+
+def cut(src, poly):
+    """Recorta el poligono de `src` conservando el alfa original."""
+    mask = Image.new("L", src.size, 0)
+    ImageDraw.Draw(mask).polygon([tuple(p) for p in poly], fill=255)
+    piece = Image.new("RGBA", src.size, (0, 0, 0, 0))
+    piece.paste(src, (0, 0), mask)
+    return piece
+
+
+def save_quant(im, path):
+    """PNG de 256 colores conservando el alfa, como el resto de assets del repo."""
+    im.quantize(colors=256, method=Image.FASTOCTREE).save(path, optimize=True)
+
+
+def _coverage(src, pieces_masks, body_top_y):
+    """Que parte del CUERPO queda cubierta, y que parte por dos piezas.
+
+    Solo cuenta de [body_top_y] para abajo: la cabeza no sale de esta lamina
+    sino de la de caras, asi que arriba de esa linea no hay nada que cubrir y
+    contarlo daria un falso hueco del 20%.
+    """
+    figura = np.asarray(src)[..., 3] > 40
+    fig = figura.copy()
+    fig[:body_top_y] = False
+    total = int(fig.sum())
+    if total == 0:
+        return {"cubierto": 0.0, "solapado": 100.0, "peorPar": 100.0}
+    masks = [m & fig for m in pieces_masks]
+    veces = np.zeros(fig.shape, dtype=np.int16)
+    for m in masks:
+        veces += m.astype(np.int16)
+
+    # El solape agregado siempre es alto: son las ocho articulaciones mas los
+    # casquetes de hombro y cadera. Lo que si seria un fallo es que una pieza se
+    # trague a otra, y eso lo dice el peor par.
+    # El peor par se mide sobre las piezas ENTERAS, no sobre el recorte al
+    # cuerpo: la antena vive casi toda por encima de la linea del cuello y
+    # recortarla dejaria un sliver que da un falso 100%.
+    enteras = [m & figura for m in pieces_masks]
+    peor = 0.0
+    for i in range(len(enteras)):
+        for j in range(i + 1, len(enteras)):
+            c = int((enteras[i] & enteras[j]).sum())
+            if c == 0:
+                continue
+            menor = min(int(enteras[i].sum()), int(enteras[j].sum()))
+            if menor:
+                peor = max(peor, 100.0 * c / menor)
+    return {
+        "cubierto": round(100.0 * int((veces >= 1).sum()) / total, 2),
+        "solapado": round(100.0 * int((veces >= 2).sum()) / total, 2),
+        "peorPar": round(peor, 1),
+    }
+
+
+def build_body(cfg, src, s, pieces):
+    """Las 10 piezas del cuerpo de la A-pose frontal."""
+    x0, y0, _, _ = cfg["figureBBox"]
+    by_name = {p["name"]: p for p in cfg["pieces"]}
+    control = Image.new("RGBA", src.size, (0, 0, 0, 0))
+    masks = []
+
+    for p in sorted(cfg["pieces"], key=lambda q: q["z"]):
+        piece = cut(src, p["polygon"])
+        control.alpha_composite(piece)
+        arr = np.asarray(piece)[..., 3] > 40
+        masks.append(arr)
+        bb = piece.getbbox()
+        if bb is None:
+            raise SystemExit(f"pieza vacia: {p['name']} (revisa el poligono)")
+        crop = piece.crop(bb)
+        w = max(1, round(crop.width * s))
+        h = max(1, round(crop.height * s))
+        save_quant(crop.resize((w, h), Image.LANCZOS), OUT / f"{p['name']}.png")
+
+        px, py = p["pivot"]
+        parent = p["parent"]
+        if parent is None:
+            pivot = [(px - x0) * s, (py - y0) * s]
+        else:
+            ppx, ppy = by_name[parent]["pivot"]
+            pivot = [(px - ppx) * s, (py - ppy) * s]
+        pieces.append(
+            {
+                "name": p["name"],
+                "parent": parent,
+                "asset": f"{p['name']}.png",
+                "pivot": [round(v, 2) for v in pivot],
+                "anchor": [round((px - bb[0]) * s, 2), round((py - bb[1]) * s, 2)],
+                "size": [w, h],
+                "z": p["z"],
+            }
+        )
+        print(f"  {p['name']:<18} {w}x{h}")
+
+    return control, _coverage(src, masks, cfg["bodyTopY"])
+
+
+def main():
+    cfg = json.loads(CUTS.read_text(encoding="utf-8"))
+    OUT.mkdir(parents=True, exist_ok=True)
+    src = alpha_from_magenta(Image.open(cfg["source"]))
+    x0, y0, x1, y1 = cfg["figureBBox"]
+    fh = y1 - y0 + 1
+    s = cfg["canonicalHeight"] / fh
+
+    pieces = []
+    control, coverage = build_body(cfg, src, s, pieces)
+    control.crop((x0, y0, x1 + 1, y1 + 1)).save(OUT / "_control.png")
+
+    (OUT / "manifest.json").write_text(
+        json.dumps(
+            {
+                "canonicalHeight": cfg["canonicalHeight"],
+                "aspect": round((x1 - x0 + 1) / fh, 4),
+                "coverage": coverage,
+                "pieces": pieces,
+            },
+            indent=2,
+            ensure_ascii=False,
+        ),
+        encoding="utf-8",
+    )
+
+    kb = sum(
+        f.stat().st_size for f in OUT.glob("*.png") if not f.name.startswith("_")
+    ) / 1024
+    print(f"\n{len(pieces)} piezas -> {OUT}")
+    print(f"cobertura de la figura : {coverage['cubierto']:.1f}%")
+    print(f"solape entre piezas    : {coverage['solapado']:.1f}%")
+    print(f"peso total             : {kb:.0f} KB")
+
+
+if __name__ == "__main__":
+    main()

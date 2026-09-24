@@ -1,0 +1,355 @@
+{
+  "source": "tools/instructor_v2_src/lamina0_apose_frontal.png",
+  "canonicalHeight": 800,
+  "figureBBox": [
+    42,
+    12,
+    982,
+    1501
+  ],
+  "bodyTopY": 396,
+  "_nota": "bodyTopY marca donde empieza el cuerpo: por encima va la cabeza, que NO sale de esta lamina sino de lamina1_ojos.png (ver spec, 'La linea de corte del cuello'). La metrica de cobertura solo mide de ahi para abajo.",
+  "pieces": [
+    {
+      "name": "antena",
+      "parent": "torso",
+      "z": 5,
+      "pivot": [
+        629,
+        400
+      ],
+      "polygon": [
+        [
+          612,
+          330
+        ],
+        [
+          648,
+          330
+        ],
+        [
+          648,
+          408
+        ],
+        [
+          612,
+          408
+        ]
+      ]
+    },
+    {
+      "name": "torso",
+      "parent": null,
+      "z": 10,
+      "pivot": [
+        512,
+        940
+      ],
+      "polygon": [
+        [
+          300,
+          388
+        ],
+        [
+          730,
+          388
+        ],
+        [
+          772,
+          560
+        ],
+        [
+          782,
+          700
+        ],
+        [
+          764,
+          948
+        ],
+        [
+          262,
+          948
+        ],
+        [
+          276,
+          700
+        ],
+        [
+          260,
+          560
+        ]
+      ]
+    },
+    {
+      "name": "brazo_sup_der",
+      "parent": "torso",
+      "z": 8,
+      "pivot": [
+        706,
+        452
+      ],
+      "polygon": [
+        [
+          640,
+          438
+        ],
+        [
+          724,
+          438
+        ],
+        [
+          900,
+          700
+        ],
+        [
+          730,
+          706
+        ]
+      ]
+    },
+    {
+      "name": "antebrazo_der",
+      "parent": "brazo_sup_der",
+      "z": 12,
+      "pivot": [
+        830,
+        700
+      ],
+      "polygon": [
+        [
+          748,
+          676
+        ],
+        [
+          912,
+          672
+        ],
+        [
+          978,
+          800
+        ],
+        [
+          862,
+          800
+        ]
+      ]
+    },
+    {
+      "name": "mano_der",
+      "parent": "antebrazo_der",
+      "z": 13,
+      "pivot": [
+        917,
+        788
+      ],
+      "polygon": [
+        [
+          856,
+          780
+        ],
+        [
+          996,
+          780
+        ],
+        [
+          996,
+          898
+        ],
+        [
+          856,
+          898
+        ]
+      ]
+    },
+    {
+      "name": "brazo_sup_izq",
+      "parent": "torso",
+      "z": 8,
+      "pivot": [
+        318,
+        452
+      ],
+      "polygon": [
+        [
+          300,
+          438
+        ],
+        [
+          384,
+          438
+        ],
+        [
+          294,
+          706
+        ],
+        [
+          124,
+          700
+        ]
+      ]
+    },
+    {
+      "name": "antebrazo_izq",
+      "parent": "brazo_sup_izq",
+      "z": 12,
+      "pivot": [
+        194,
+        700
+      ],
+      "polygon": [
+        [
+          112,
+          672
+        ],
+        [
+          276,
+          676
+        ],
+        [
+          162,
+          800
+        ],
+        [
+          46,
+          800
+        ]
+      ]
+    },
+    {
+      "name": "mano_izq",
+      "parent": "antebrazo_izq",
+      "z": 13,
+      "pivot": [
+        107,
+        788
+      ],
+      "polygon": [
+        [
+          28,
+          780
+        ],
+        [
+          168,
+          780
+        ],
+        [
+          168,
+          898
+        ],
+        [
+          28,
+          898
+        ]
+      ]
+    },
+    {
+      "name": "muslo_izq",
+      "parent": "torso",
+      "z": 9,
+      "pivot": [
+        396,
+        946
+      ],
+      "polygon": [
+        [
+          258,
+          928
+        ],
+        [
+          512,
+          928
+        ],
+        [
+          512,
+          1128
+        ],
+        [
+          264,
+          1128
+        ]
+      ]
+    },
+    {
+      "name": "pantorrilla_izq",
+      "parent": "muslo_izq",
+      "z": 9,
+      "pivot": [
+        396,
+        1120
+      ],
+      "polygon": [
+        [
+          252,
+          1110
+        ],
+        [
+          512,
+          1110
+        ],
+        [
+          512,
+          1512
+        ],
+        [
+          240,
+          1512
+        ]
+      ]
+    },
+    {
+      "name": "muslo_der",
+      "parent": "torso",
+      "z": 9,
+      "pivot": [
+        628,
+        946
+      ],
+      "polygon": [
+        [
+          512,
+          928
+        ],
+        [
+          766,
+          928
+        ],
+        [
+          760,
+          1128
+        ],
+        [
+          512,
+          1128
+        ]
+      ]
+    },
+    {
+      "name": "pantorrilla_der",
+      "parent": "muslo_der",
+      "z": 9,
+      "pivot": [
+        628,
+        1120
+      ],
+      "polygon": [
+        [
+          512,
+          1110
+        ],
+        [
+          772,
+          1110
+        ],
+        [
+          784,
+          1512
+        ],
+        [
+          512,
+          1512
+        ]
+      ]
+    }
+  ],
+  "_nota_z": "Orden de dibujo: brazo superior DETRAS del torso (8) para que el chaleco tape la costura del hombro; antebrazo y mano DELANTE (12/13) porque son los que cruzan el cuerpo al gesticular (p.ej. piensa). Piernas detras (9): el chaleco cuelga sobre la cadera."
+}

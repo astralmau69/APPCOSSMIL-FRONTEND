@@ -96,6 +96,7 @@ flutter:
 
   assets:
     - assets/images/
+    - assets/images/instructor/
     - assets/vof/
     - assets/vof_tutorial/
     - assets/sounds/
