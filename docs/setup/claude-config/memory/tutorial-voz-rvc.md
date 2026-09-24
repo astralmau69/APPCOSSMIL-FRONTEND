@@ -128,3 +128,8 @@ hasta 4 tomas y se queda la de mejor `puntuar_toma`; cada trozo termina en
 puntuación (`cerrar_frase`); masterizado recorta bordes a -58 dB con 150 ms de margen y
 fundido de salida (antes -50 dB/50 ms podía comerse finales); mp3 160k. Celda 7:
 `SOLO_ESTOS` + `SEMILLA_APP` para rehacer clips puntuales; al final lista los ⚠.
+Textos `guiado_*` REESCRITOS PARA LA VOZ (24 sep 2026): al usuario no le convenció
+`guiado_regional` ("Seleccione el establecimiento… agrupados por regional", atropellado).
+Regla: frases ≤ ~15 palabras, palabras comunes, comas donde se respira, punto final,
+usted, sin "¡" de apertura. Fuente única `tools/rvc/tutorial_lines.{json,md}` + tabla
+de la spec. Celda 7 ahora por defecto solo `guiado_*` (`INCLUIR_TUTORIAL=False`).

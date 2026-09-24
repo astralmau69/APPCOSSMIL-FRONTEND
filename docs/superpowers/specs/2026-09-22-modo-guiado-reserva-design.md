@@ -109,14 +109,14 @@ jergas, ortografía cuidada. Recuerda que la cita es real.
 
 | id | texto |
 |---|---|
-| `guiado_intro` | Bienvenido al asistente de reserva guiada de COSSMIL. Le acompañaré en cada paso. Tenga presente que esta gestión registrará una cita médica real. Le indicaré qué hacer en cada pantalla y usted seleccionará las opciones que correspondan. Comencemos. |
-| `guiado_regional` | Seleccione el establecimiento donde desea ser atendido. Los hospitales y policlínicos se encuentran agrupados por regional. |
-| `guiado_especialidad` | Seleccione la especialidad médica que requiere. |
-| `guiado_medico` | Seleccione al profesional médico con quien desea reservar su cita. |
-| `guiado_dia` | Seleccione el día de atención. Cada tarjeta indica si el médico atiende y la disponibilidad de fichas. |
-| `guiado_hora` | Seleccione el horario de su preferencia dentro del día elegido. |
-| `guiado_confirmar` | Verifique que sus datos sean correctos. Al presionar Confirmar, su cita quedará registrada de manera definitiva. |
-| `guiado_final` | Su cita ha sido registrada correctamente. Puede consultar o descargar su ficha. Gracias por utilizar los servicios de COSSMIL. |
+| `guiado_intro` | Bienvenido a la reserva guiada de COSSMIL. Le acompañaré paso a paso. Tenga en cuenta que esta reserva es real, y su cita quedará registrada. Comencemos. |
+| `guiado_regional` | Primero, elija el hospital o policlínico donde desea atenderse. Están ordenados por regional. |
+| `guiado_especialidad` | Ahora, elija la especialidad médica que necesita. |
+| `guiado_medico` | Muy bien. Elija al médico con quien desea atenderse. |
+| `guiado_dia` | Elija el día de su cita. Cada tarjeta le muestra si el médico atiende, y si hay fichas disponibles. |
+| `guiado_hora` | Ahora, elija el horario que prefiera. |
+| `guiado_confirmar` | Revise que sus datos sean correctos. Cuando esté listo, presione Confirmar, y su cita quedará registrada. |
+| `guiado_final` | Su cita fue registrada con éxito. Puede ver o descargar su ficha cuando lo necesite. Gracias por confiar en COSSMIL. |
 
 ## 6. Pipeline de voz (Colab, RVC v2 — igual que antes)
 
