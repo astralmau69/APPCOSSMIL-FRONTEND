@@ -142,3 +142,8 @@ pasa por **Resemble Enhance** (`resemble-enhance==0.0.1 --no-deps`, λ=0,3, nfe 
 → 44,1 kHz). Sus pins (torch 2.1, deepspeed) solo son de entrenamiento: stub mínimo
 de `deepspeed` en el venv; modelo por git-lfs; env `TORCH_FORCE_NO_WEIGHTS_ONLY_LOAD=1`.
 Todo con respaldo: si algo no carga, avisa y sigue a 24 kHz. Sin probar en Colab real.
+✔ El usuario APROBÓ la calidad (varias tomas + UTMOS + Resemble Enhance). Luego pidió
+TODAS las voces de la app: las 19 del tutorial también se reescribieron para la voz
+(misma idea y casi mismas palabras que las burbujas, tono "tú", frases ≤ 15 palabras,
+sin ":", ";", "—"); las BURBUJAS del código NO se tocaron (el audio es su versión
+hablada, como ya lo era). Celda 7 por defecto genera las 27 (`INCLUIR_TUTORIAL=True`).

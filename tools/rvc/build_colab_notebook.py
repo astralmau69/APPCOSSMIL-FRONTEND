@@ -453,14 +453,14 @@ REFERENCIA = REF_GUARDADA
 AJUSTES.update(silabas_s=CAL['locutora']['silabas_s'], lufs=CAL['lufs'])
 print(f"\\nReferencia elegida ✔ {CAL['clip']} (guardada en {REF_GUARDADA})")"""),
 
-code("""#@title 7 · Voces del Modo Guiado (+ resto del guion de la app) → ZIP para `assets/vof_tutorial/`
+code("""#@title 7 · Todas las voces de la app (Modo Guiado + tutoriales) → ZIP para `assets/vof_tutorial/`
 GENERAR_VOCES_APP = True  #@param {type:"boolean"}
-INCLUIR_TUTORIAL = False  #@param {type:"boolean"}
+INCLUIR_TUTORIAL = True   #@param {type:"boolean"}
 SOLO_ESTOS = ""           #@param {type:"string"}
 #@markdown Para rehacer solo algunos: sus nombres separados por coma (p. ej. `guiado_hora, ficha_03`). Vacío = todos.
 SEMILLA_APP = 1234        #@param {type:"integer"}
 #@markdown Otra semilla = otra toma de la misma voz (úsala junto con `SOLO_ESTOS`).
-#@markdown Genera las 8 `guiado_*`. Marca `INCLUIR_TUTORIAL` para rehacer también las 19 del tutorial con la misma voz.
+#@markdown Genera **todas las voces de la app**: las 8 del Modo Guiado y, con `INCLUIR_TUTORIAL`, las 19 de los tutoriales (invitación, ficha, calendario y trámites).
 #@markdown Extrae los mp3 del ZIP **directo** en `assets/vof_tutorial/` (sin subcarpeta).
 if GENERAR_VOCES_APP:
     elegidos = {x.strip() for x in SOLO_ESTOS.split(',') if x.strip()}
