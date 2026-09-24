@@ -89,7 +89,11 @@ flags (`batch-infer`, NO `batch_infer`; `--model-name`); flags booleanos sin val
 (`--save-only-latest`, `--pretrained`); `core.py` devuelve 0 aunque falle por
 dentro → validar archivos en disco; con ~1 min de voz el batch 8 da <3 lotes y
 `train` aborta "Not enough data" → batch adaptativo `max(2, min(8, trozos//6))`;
-batch-infer nombra la salida `<base>_output.wav`. Aún no corrido en Colab real.
+batch-infer nombra la salida `<base>_output.wav`. 1ª corrida real (24 sep, Colab
+Python 3.13, torch CUDA 13): preprocess/extract/index OK (49 s de audio → 21 trozos);
+`train` cayó por "nvrtc: failed to open libnvrtc-builtins.so.13.0" (TorchScript de
+`fused_add_tanh_sigmoid_multiply` en commons.py) → fix: `PYTORCH_JIT=0` (+ libs
+nvidia en LD_LIBRARY_PATH) en el ENV de los subprocesos de Applio.
 **Bug a arreglar (parte del plan):** `ficha_01` (regional) no suena en el demo por
 la carrera Inicio→Reserva (el `stop()` del coach que se desmonta mata el clip
 entrante); fix = `TutorialVoice.stopIfToken(token)` y comparar en `dispose`.

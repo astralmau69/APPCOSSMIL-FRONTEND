@@ -139,7 +139,14 @@ print('Applio listo ✔  (los avisos rojos de pip sobre "dependency conflicts" s
 code("""#@title 4 · Modelo de la voz (reutiliza el de Drive o entrena)
 import glob, os, shutil, subprocess, time
 LOG = f'{APPLIO}/logs/{MODEL}'
-ENV = {**os.environ, 'COLUMNS': '200', 'NO_COLOR': '1', 'TERM': 'dumb', 'PYTHONUNBUFFERED': '1'}
+# PYTORCH_JIT=0: el torch de Colab (CUDA 13) no trae libnvrtc-builtins para compilar los kernels
+# TorchScript de RVC ("nvrtc: failed to open libnvrtc-builtins.so.13.0"); sin JIT corre igual.
+import site
+_libs = sorted({os.path.dirname(f) for d in site.getsitepackages()
+                for f in glob.glob(f'{d}/nvidia/**/libnvrtc*.so*', recursive=True)})
+ENV = {**os.environ, 'COLUMNS': '200', 'NO_COLOR': '1', 'TERM': 'dumb', 'PYTHONUNBUFFERED': '1',
+       'PYTORCH_JIT': '0',
+       'LD_LIBRARY_PATH': ':'.join(_libs + [os.environ.get('LD_LIBRARY_PATH', '')]).strip(':')}
 
 def applio(cmd, *args, mostrar=True):
     # Ejecuta `python core.py <cmd> ...` mostrando la salida en vivo (subprocess.run no la muestra en Colab).
