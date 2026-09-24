@@ -76,18 +76,16 @@ void main() {
     tester,
   ) async {
     await tester.pumpWidget(escena(InstructorPose.explica));
-    // Los PNG se decodifican fuera del reloj falso; sin esto se pintan vacíos.
-    await tester.runAsync(() async {
-      for (final asset in kInstructorAssets) {
-        await precacheImage(AssetImage(asset), llave.currentContext!);
-      }
-    });
+    // Las piezas del rig se decodifican fuera del reloj falso; sin esto se
+    // pintan vacías.
+    await tester.runAsync(precacheInstructorRig);
     await tester.pump(const Duration(milliseconds: 32));
 
     await volcar(tester, 'a-explica', pasos: 3);
 
     await tester.pumpWidget(escena(InstructorPose.piensa));
-    // 20 × 16 ms = 320 ms: cubre el fundido (180) y el golpe de squash (260).
+    // 20 × 16 ms = 320 ms: cubre el golpe de squash (260) y la interpolación
+    // del rig entre una pose y otra.
     await volcar(tester, 'b-a-piensa', pasos: 20);
 
     await tester.pumpWidget(escena(InstructorPose.celebra));

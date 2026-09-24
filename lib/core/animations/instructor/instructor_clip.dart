@@ -1,5 +1,4 @@
 import 'package:flutter/animation.dart';
-import 'package:flutter/painting.dart';
 
 /// Lo que una capa le hace a un hueso en un instante: girarlo, correrlo y
 /// escalarlo. Las capas se SUMAN, por eso el neutro es rot 0 / translate 0 /

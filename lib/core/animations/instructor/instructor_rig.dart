@@ -1,6 +1,5 @@
 import 'dart:convert';
 
-import 'package:flutter/painting.dart';
 import 'package:flutter/services.dart';
 
 /// Una pieza del rig de la instructora: su PNG, dónde gira y de quién cuelga.

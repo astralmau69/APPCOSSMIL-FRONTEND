@@ -42,9 +42,14 @@ Map<String, Matrix4> solveInstructorPose(
 
     final t = local[bone.name] ?? BoneTransform.identity;
     final m = base.clone()
-      ..translate(bone.pivot.dx + t.translate.dx, bone.pivot.dy + t.translate.dy)
+      ..translateByDouble(
+        bone.pivot.dx + t.translate.dx,
+        bone.pivot.dy + t.translate.dy,
+        0,
+        1,
+      )
       ..rotateZ(t.rot)
-      ..scale(t.scale, t.scale);
+      ..scaleByDouble(t.scale, t.scale, 1, 1);
     world[bone.name] = m;
     return m;
   }

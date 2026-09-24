@@ -1,11 +1,11 @@
 import 'dart:ui' as ui;
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../../utils/app_logger.dart';
 import 'instructor_rig.dart';
-import 'instructor_solver.dart' show Matrix4;
 
 const String _kDir = 'assets/images/instructor/';
 
@@ -17,6 +17,10 @@ class InstructorImages {
   final Map<String, ui.Image> byAsset;
 
   const InstructorImages._(this.byAsset);
+
+  /// Mientras el manifest ya cargó pero los PNG todavía no. El painter dibuja
+  /// nada y la pose sigue siendo observable.
+  static const empty = InstructorImages._({});
 
   @visibleForTesting
   factory InstructorImages.forTest(Map<String, ui.Image> m) =>
@@ -64,12 +68,17 @@ class InstructorRigView extends StatelessWidget {
   final Map<String, Matrix4> pose;
   final double height;
 
+  /// Huesos que NO se dibujan. Los ojos, la boca y la mano son grupos de
+  /// variantes excluyentes: de cada grupo se pinta una y el resto se oculta.
+  final Set<String> hidden;
+
   const InstructorRigView({
     super.key,
     required this.rig,
     required this.images,
     required this.pose,
     required this.height,
+    this.hidden = const {},
   });
 
   @override
@@ -87,6 +96,7 @@ class InstructorRigView extends StatelessWidget {
             images: images.byAsset,
             pose: pose,
             scale: h / rig.canonicalHeight,
+            hidden: hidden,
           ),
         ),
       ),
@@ -99,12 +109,14 @@ class InstructorRigPainter extends CustomPainter {
   final Map<String, ui.Image> images;
   final Map<String, Matrix4> pose;
   final double scale;
+  final Set<String> hidden;
 
   const InstructorRigPainter({
     required this.rig,
     required this.images,
     required this.pose,
     required this.scale,
+    this.hidden = const {},
   });
 
   @override
@@ -114,6 +126,7 @@ class InstructorRigPainter extends CustomPainter {
     canvas.save();
     canvas.scale(scale);
     for (final bone in rig.drawOrder) {
+      if (hidden.contains(bone.name)) continue;
       final img = images[bone.asset];
       final m = pose[bone.name];
       if (img == null || m == null) continue;
@@ -133,5 +146,8 @@ class InstructorRigPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(InstructorRigPainter old) =>
-      old.pose != pose || old.scale != scale || old.images != images;
+      old.pose != pose ||
+      old.scale != scale ||
+      old.images != images ||
+      !setEquals(old.hidden, hidden);
 }

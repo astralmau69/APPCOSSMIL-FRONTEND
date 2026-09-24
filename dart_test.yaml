@@ -1,0 +1,9 @@
+# El volcador de fotogramas de la instructora (tag `frames`) NO es un test de
+# aserciones: renderiza la animacion cuadro a cuadro y escribe PNG para poder
+# mirarla sin dispositivo. Tarda minutos y no afirma nada, asi que se excluye
+# de la suite normal. Para correrlo:
+#
+#     flutter test --tags frames test/core/tutorial_instructor_frames_test.dart
+tags:
+  frames:
+    skip: "herramienta de diagnostico; correr con --tags frames"

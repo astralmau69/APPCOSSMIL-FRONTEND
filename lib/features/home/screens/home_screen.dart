@@ -95,13 +95,10 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     await TutorialService.markFichaTutorialSeen();
     if (!mounted) return;
 
-    // Precarga TODAS las poses de la instructora: entra saludando y en cuanto
-    // el usuario acepta empieza a explicar y a parpadear, así que decodificar
+    // Precarga el rig de la instructora: entra saludando y en cuanto el
+    // usuario acepta empieza a explicar y a parpadear, así que decodificar
     // sobre la marcha se vería como un salto.
-    for (final asset in kInstructorAssets) {
-      if (!mounted) return;
-      await precacheImage(AssetImage(asset), context);
-    }
+    await precacheInstructorRig();
     if (!mounted) return;
 
     await showTutorialInviteDialog(

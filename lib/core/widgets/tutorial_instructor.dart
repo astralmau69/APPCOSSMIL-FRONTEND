@@ -3,6 +3,12 @@ import 'dart:math' as math;
 
 import 'package:flutter/cupertino.dart';
 
+import '../animations/instructor/instructor_clip.dart';
+import '../animations/instructor/instructor_clips.dart';
+import '../animations/instructor/instructor_rig.dart';
+import '../animations/instructor/instructor_rig_view.dart';
+import '../animations/instructor/instructor_solver.dart';
+
 /// Poses de la instructora. Cada una es una ilustración distinta recortada de
 /// las láminas del personaje con `tools/extract_instructor_frames.py`.
 enum InstructorPose {
@@ -31,81 +37,38 @@ enum InstructorPose {
   saludo,
 }
 
-const String _kReposo = 'assets/images/instructora_reposo.png';
-const String _kExplica = 'assets/images/instructora_explica.png';
-const String _kParpadeo = 'assets/images/instructora_parpadeo.png';
-const String _kGuino = 'assets/images/instructora_guino.png';
-const String _kCelebra = 'assets/images/instructora_celebra.png';
-const String _kFesteja = 'assets/images/instructora_festeja.png';
-const String _kPiensa = 'assets/images/instructora_piensa.png';
-const String _kSaludo = 'assets/images/instructora_saludo.png';
+/// Precarga el rig una sola vez por proceso. Lo llama Inicio antes de que la
+/// instructora aparezca, para que su primer fotograma no espere al disco.
+Future<void> precacheInstructorRig() => _InstructorAssets.warmUp();
 
-/// Ciclo de caminata de perfil (mirando a la derecha), 7 fotogramas alineados
-/// por cabeza y pies con `tools/build_instructor_walk.py`. Se reproducen en
-/// secuencia para la entrada "camina hasta su sitio".
-const List<String> kInstructorWalkFrames = [
-  'assets/images/instructora_walk_1.png',
-  'assets/images/instructora_walk_2.png',
-  'assets/images/instructora_walk_3.png',
-  'assets/images/instructora_walk_4.png',
-  'assets/images/instructora_walk_5.png',
-  'assets/images/instructora_walk_6.png',
-  'assets/images/instructora_walk_7.png',
-];
+class _InstructorAssets {
+  static InstructorRig? rig;
+  static InstructorImages? images;
+  static Future<InstructorRig>? _rigFuture;
+  static Future<InstructorImages>? _imgFuture;
 
-/// Fotograma del ciclo con las piernas casi juntas (silueta más parecida a la
-/// pose de pie): en él termina la caminata para que el relevo a la pose
-/// estática no dé un salto.
-const int _kWalkSettleFrame = 3; // instructora_walk_4
+  /// El manifest: un JSON chico. Llega rápido y ya da pose válida.
+  ///
+  /// Si ya está resuelto devuelve un Future NUEVO en vez del cacheado. No es
+  /// un detalle: un Future creado dentro de la zona fake-async de un test
+  /// jamás completa en la del siguiente, así que reutilizarlo colgaría a todo
+  /// widget montado después del primero.
+  static Future<InstructorRig> soloRig() {
+    final r = rig;
+    if (r != null) return Future.value(r);
+    return _rigFuture ??= loadInstructorRig().then((x) => rig = x);
+  }
 
-/// Todas las ilustraciones del personaje, para precargarlas antes de que
-/// aparezca (evita el parpadeo en blanco del primer fotograma).
-const List<String> kInstructorAssets = [
-  _kReposo,
-  _kExplica,
-  _kParpadeo,
-  _kGuino,
-  _kCelebra,
-  _kFesteja,
-  _kPiensa,
-  _kSaludo,
-  ...kInstructorWalkFrames,
-];
+  /// Los PNG decodificados. Tardan más, y la figura puede esperarlos con la
+  /// pose ya resuelta en vez de no existir.
+  static Future<InstructorImages> imagenes(InstructorRig r) {
+    final i = images;
+    if (i != null) return Future.value(i);
+    return _imgFuture ??= InstructorImages.load([r]).then((x) => images = x);
+  }
 
-/// Asset de la pose por defecto — el que conviene precargar si solo se va a
-/// precargar uno.
-const String kTutorialInstructorAsset = _kExplica;
-
-/// Corrección de escala por asset, para que la CABEZA mida lo mismo en todas
-/// las poses.
-///
-/// `piensa` y `festeja` salieron de otra lámina de Gemini (~240 px nativos
-/// reescalados a 520, frente a los ~700 px del resto) y, como cada pose se
-/// recorta a su propio bbox y se dibuja con `height: h`, a igual altura de
-/// render su cabeza quedaba un ~10% más grande. Resultado: la instructora
-/// pegaba un SALTO DE TAMAÑO en cada cambio de pose — y `explica → piensa`
-/// ocurre entre cada par de burbujas, mientras que `celebra ↔ festeja` alterna
-/// cada segundo durante el festejo.
-///
-/// El 0.91 sale de dos métricas independientes que coinciden dentro del 1%:
-/// ancho de cabeza (0.905 / 0.916) y ancho de boina (0.916 / 0.907). Las otras
-/// seis poses quedan dentro de ±1.5% entre sí, que es ruido de medición: no se
-/// corrigen para no introducir error donde no lo hay.
-///
-/// Es un PARCHE hasta que llegue el juego de poses regenerado con encuadre
-/// común (ver `tools/instructor_prompts.md`); cuando esté, esta tabla se borra.
-const Map<String, double> _kPoseScale = {_kPiensa: 0.91, _kFesteja: 0.91};
-
-double _poseScale(String asset) => _kPoseScale[asset] ?? 1.0;
-
-String _assetFor(InstructorPose pose) => switch (pose) {
-  InstructorPose.reposo => _kReposo,
-  InstructorPose.explica => _kExplica,
-  InstructorPose.celebra => _kCelebra,
-  InstructorPose.festeja => _kFesteja,
-  InstructorPose.piensa => _kPiensa,
-  InstructorPose.saludo => _kSaludo,
-};
+  static Future<void> warmUp() async => imagenes(await soloRig());
+}
 
 /// Instructora militar que guía los tutoriales. Está VIVA en tres capas:
 ///
@@ -189,25 +152,6 @@ class _TutorialInstructorState extends State<TutorialInstructor>
   late final AnimationController _swap;
   static const _swapDur = Duration(milliseconds: 260);
 
-  /// Punto del golpe en el que se releva el dibujo: el pico de compresión.
-  ///
-  /// El relevo es un CORTE SECO, no un fundido. Se comprobó volcando los
-  /// fotogramas (`test/core/tutorial_instructor_frames_test.dart`): con el
-  /// fundido cruzado de 180 ms se veían ~11 cuadros con DOS personajes
-  /// superpuestos —dos boinas, dos coletas, dos caras—, que es exactamente lo
-  /// que se percibía como "no fluido". La animación 2D nunca disuelve entre
-  /// poses: corta en el fotograma clave y esconde el cambio en el extremo de la
-  /// deformación, que es lo que hace este valor.
-  static const _kSwapCut = 0.32;
-
-  /// Pose que se estaba pintando al empezar el golpe; se sigue mostrando hasta
-  /// el corte. Nula cuando no hay relevo en curso.
-  InstructorPose? _poseDesde;
-
-  /// Equivalente para la alternancia celebra↔festeja, que no pasa por
-  /// didUpdateWidget.
-  int _talkIdxDesde = 0;
-
   /// Última casilla de la alternancia festejo vista, para disparar el golpe
   /// solo cuando el asset REALMENTE cambia (no en cada frame).
   int _lastTalkIdx = -1;
@@ -224,7 +168,6 @@ class _TutorialInstructorState extends State<TutorialInstructor>
   /// Duración de la caminata de entrada y cuántos pasos (ciclos del set de 7)
   /// da en ese trayecto — ~11 fps, que es donde una caminada chibi lee natural.
   static const _walkDur = Duration(milliseconds: 1300);
-  static const _walkCycles = 2.3;
 
   /// true mientras la caminata de entrada está en curso.
   bool get _walking => widget.walkIn && !_reduceMotion && _walk.value < 1.0;
@@ -244,9 +187,14 @@ class _TutorialInstructorState extends State<TutorialInstructor>
   final _rng = math.Random();
   Timer? _blinkTimer;
 
-  /// Asset de la micro-expresión activa (ojos cerrados o guiño); nulo cuando
-  /// está con su cara normal.
-  String? _microExpr;
+  /// Micro-expresión activa (parpadeo o guiño); nula con su cara normal.
+  InstructorEyes? _microOjos;
+
+  /// El esqueleto y sus piezas. Llegan en dos fases: primero el manifest
+  /// (rápido, es un JSON) y después los PNG decodificados. Así la figura tiene
+  /// pose válida desde el primer fotograma aunque las texturas tarden.
+  InstructorRig? _rig;
+  InstructorImages? _images;
   bool _reduceMotion = false;
 
   /// Recorre la alternancia celebra↔festeja mientras "habla"/celebra. Su
@@ -259,10 +207,6 @@ class _TutorialInstructorState extends State<TutorialInstructor>
   /// ella dice las palabras: corre en bucle SOLO mientras suena la locución y
   /// se detiene en cuanto calla, para que el gesto quede atado a la voz.
   late final AnimationController _speak;
-
-  /// Se marca la primera vez que se precargan las poses, para no repetir el
-  /// trabajo en cada `didChangeDependencies`.
-  bool _precached = false;
 
   bool get _celebrating => widget.pose == InstructorPose.celebra;
 
@@ -329,6 +273,7 @@ class _TutorialInstructorState extends State<TutorialInstructor>
     // Al caminar hasta su sitio, la aparición elástica sobra (llegaría dando un
     // respingo tras el último paso): la pose ya entra fundida desde el andar.
     if (!widget.entrance || widget.walkIn) _pop.value = 1.0;
+    _cargarRig();
     _walk.addStatusListener((s) {
       // Al llegar, arranca la vida "de pie": flote, parpadeo y la pose real
       // relevan al último fotograma de caminata.
@@ -353,13 +298,6 @@ class _TutorialInstructorState extends State<TutorialInstructor>
     // andar se decodificaban sobre la marcha — la causa principal de los
     // tirones. Ya en caché, el relevo entre poses es instantáneo. Es async y
     // fuera del hilo de UI, así que no bloquea el primer frame.
-    if (!_precached) {
-      _precached = true;
-      for (final asset in kInstructorAssets) {
-        precacheImage(AssetImage(asset), context);
-      }
-    }
-
     _reduceMotion = MediaQuery.disableAnimationsOf(context);
     if (_reduceMotion) {
       _pop.value = 1.0;
@@ -390,7 +328,6 @@ class _TutorialInstructorState extends State<TutorialInstructor>
     if (poseChanged) {
       _syncBlinking();
       // Se sigue pintando la pose vieja hasta el pico de compresión.
-      _poseDesde = oldWidget.pose;
       _kickSwap();
     }
     // La cadencia (calmo ↔ saltitos de festejo) la resuelve _syncIdle
@@ -439,7 +376,6 @@ class _TutorialInstructorState extends State<TutorialInstructor>
     final idx = (_talk.value * _talkSwaps).floor();
     if (idx == _lastTalkIdx) return;
     final primera = _lastTalkIdx < 0;
-    _talkIdxDesde = primera ? idx : _lastTalkIdx;
     _lastTalkIdx = idx;
     if (!primera) _kickSwap();
   }
@@ -515,6 +451,15 @@ class _TutorialInstructorState extends State<TutorialInstructor>
     }
   }
 
+  Future<void> _cargarRig() async {
+    final rig = await _InstructorAssets.soloRig();
+    if (!mounted) return;
+    setState(() => _rig = rig);
+    final imgs = await _InstructorAssets.imagenes(rig);
+    if (!mounted) return;
+    setState(() => _images = imgs);
+  }
+
   @override
   void dispose() {
     _blinkTimer?.cancel();
@@ -543,7 +488,7 @@ class _TutorialInstructorState extends State<TutorialInstructor>
   void _stopBlinking() {
     _blinkTimer?.cancel();
     _blinkTimer = null;
-    if (_microExpr != null && mounted) setState(() => _microExpr = null);
+    if (_microOjos != null && mounted) setState(() => _microOjos = null);
   }
 
   void _scheduleBlink() {
@@ -551,22 +496,37 @@ class _TutorialInstructorState extends State<TutorialInstructor>
     _blinkTimer = Timer(Duration(milliseconds: gap), () {
       if (!mounted) return;
       final guina = _rng.nextInt(_winkEveryN) == 0;
-      setState(() => _microExpr = guina ? _kGuino : _kParpadeo);
+      setState(
+        () => _microOjos = guina ? InstructorEyes.guino : InstructorEyes.cerrados,
+      );
       _blinkTimer = Timer(guina ? _winkDur : _blinkDur, () {
         if (!mounted) return;
-        setState(() => _microExpr = null);
+        setState(() => _microOjos = null);
         _scheduleBlink();
       });
     });
   }
 
-  /// Fotograma del ciclo para un progreso de caminata [p] (0..1). En el último
-  /// tramo fija el fotograma de piernas juntas: es donde termina el andar para
-  /// que el relevo a la pose de pie no dé un respingo.
-  int _walkFrameIndex(double p) {
-    final n = kInstructorWalkFrames.length;
-    if (p >= 0.9) return _kWalkSettleFrame;
-    return (p * _walkCycles * n).floor() % n;
+  /// Qué ojos corresponden a la pose cuando no hay micro-expresión encima.
+  InstructorEyes _ojosDePose(InstructorPose pose) => switch (pose) {
+    InstructorPose.celebra || InstructorPose.festeja => InstructorEyes.feliz,
+    InstructorPose.piensa => InstructorEyes.cerrados,
+    _ => InstructorEyes.abiertos,
+  };
+
+  /// Sprite de boca activo. Aquí siempre cerrada; el lip-sync entra cuando
+  /// suena la locución.
+  String _bocaActiva() => 'boca_0';
+
+  /// Las capas de animación activas en este instante, de base a encima.
+  ///
+  /// Cada capa declara sólo los huesos que toca, así que la respiración sigue
+  /// corriendo por debajo de cualquier gesto. Con reduce-motion no hay ninguna:
+  /// la figura queda en su pose de reposo.
+  List<ClipLayer> _capas() {
+    if (_reduceMotion || !widget.idle) return const [];
+    final base = _celebrating ? InstructorClips.idleParty : InstructorClips.idle;
+    return [ClipLayer(clip: base, t: _idle.value)];
   }
 
   @override
@@ -580,30 +540,14 @@ class _TutorialInstructorState extends State<TutorialInstructor>
         // caminata y el habla el fotograma cambia en cada frame.
         builder: (context, _) {
           final walking = _walking;
-          // ¿Estamos ANTES del corte? Mientras el golpe comprime, se sigue
-          // pintando la pose SALIENTE; el relevo ocurre de golpe en el pico de
-          // compresión. Ver [_kSwapCut].
-          final antesDelCorte = _swap.isAnimating && _swap.value < _kSwapCut;
-
-          final String asset;
-          if (walking) {
-            asset = kInstructorWalkFrames[_walkFrameIndex(_walk.value)];
-          } else if (_talking) {
-            // Festejo del paso de éxito: check↔risa según el progreso de la
-            // locución (el número de poses cabe justo en la duración del audio).
-            final idx = antesDelCorte
-                ? _talkIdxDesde
-                : (_talk.value * _talkSwaps).floor();
-            asset = idx.isEven ? _kCelebra : _kFesteja;
-          } else {
-            // Reposo/narración: pose neutral (explica) o la que fije el coach.
-            // Las micro-expresiones no esperan al corte: un parpadeo tiene que
-            // ser instantáneo.
-            final pose = (antesDelCorte && _poseDesde != null)
-                ? _poseDesde!
-                : widget.pose;
-            asset = _microExpr ?? _assetFor(pose);
-          }
+          // Las micro-expresiones no esperan al corte del golpe: un parpadeo
+          // tiene que ser instantáneo.
+          final ojos = _microOjos ?? _ojosDePose(widget.pose);
+          final hidden = instructorHidden(
+            ojos: instructorEyeAsset(ojos),
+            boca: _bocaActiva(),
+            mano: 'mano_der',
+          );
 
           final double dx; // desplazamiento horizontal (solo al caminar)
           final double dy;
@@ -676,16 +620,21 @@ class _TutorialInstructorState extends State<TutorialInstructor>
           // (ver [_kSwapCut]); quitarlo es lo que arregla la sensación de
           // "fantasma". Lo que vende el cambio es el golpe de compresión, que
           // ocurre justo encima del corte.
-          final figura = Image.asset(
-            asset,
-            height: h * _poseScale(asset),
-            fit: BoxFit.contain,
-            // La figura se mueve/escala cada frame: `low` (bilineal) es el
-            // filtrado recomendado para imágenes animadas — descarga a la GPU
-            // frente a `medium` (cúbico) y quita tirones en equipos flojos.
-            filterQuality: FilterQuality.low,
-            excludeFromSemantics: true,
-          );
+          // El rig sustituye a la lámina de cuerpo entero. Las
+          // transformaciones de AFUERA (flote, cabeceo, golpe, sombra) siguen
+          // siendo de figura completa y no cambian; lo que el rig añade es el
+          // movimiento INTERNO que un PNG no podía dar: respiración del torso,
+          // cabeceo propio y la antena llegando tarde.
+          final rig = _rig;
+          final figura = rig == null
+              ? SizedBox(height: h, width: h * 0.63)
+              : InstructorRigView(
+                  rig: rig,
+                  images: _images ?? InstructorImages.empty,
+                  pose: solveInstructorPose(rig, _capas()),
+                  height: h,
+                  hidden: hidden,
+                );
 
           return Opacity(
             opacity: opacity,
