@@ -12,33 +12,19 @@ Feature en curso: **Modo Guiado de reserva** (reserva REAL narrada por la instru
 
 ## Estudio de voz — notebook de Colab (rama `v1-dev`)
 
-`tools/rvc/COSSMIL_estudio_voz.ipynb` reemplaza al notebook `COSSMIL_voces_guiado`.
-Es autocontenido (trae las 7 `vof`, el guion de 27 líneas y el motor) y sirve para
-generar **cualquier texto** con la voz femenina de la locutora de `assets/vof/`:
+`tools/rvc/COSSMIL_estudio_voz.ipynb`: voz **clonada de las vof** con Chatterbox
+Multilingual (MIT) — la versión edge-tts + RVC sonaba robótica y quedó como opción.
 
-1. colab.research.google.com → Archivo → Subir notebook.
-2. Entorno de ejecución → Cambiar tipo → **T4 GPU**.
-3. Ejecutar todo (acepta el permiso de Drive). La 1ª vez entrena (~30–45 min) y
-   guarda el modelo en `MyDrive/cossmil_rvc/modelo/`; después no reentrena.
-4. Celda 6 calibra el parecido (tono ~218 Hz, ~5,5 sílabas/s, -16 LUFS de las
-   vof; elige entre 14 voces base con WavLM-SV) y lo guarda en
-   `modelo/calibracion.json`.
-5. Celda 7 (activa por defecto): voces del **Modo Guiado** (+ tutorial) → ZIP
-   `vof_tutorial_*.zip` → extraer los mp3 **directo** en `assets/vof_tutorial/`.
-6. Celda 8 · Estudio: cualquier texto (`nombre | texto`, `[pausa 1.5]`), ajuste
-   fino sobre la voz calibrada; copia en `MyDrive/cossmil_rvc/salidas/`.
+1. Subir a Colab, GPU T4, **Ejecutar todo** (1ª vez ~15 min; después ~5).
+2. Celda 6 elige sola la mejor referencia de la locutora (guardada en Drive).
+3. Celda 7 descarga `vof_tutorial_*.zip` con las voces del **Modo Guiado** (+ tutorial)
+   → extraer los mp3 **directo** en `assets/vof_tutorial/`.
+4. Celda 8: cualquier texto; si una frase no convence, cambiar `SEMILLA`.
 
-Más parecido: dejar grabaciones limpias de la locutora en
-`MyDrive/cossmil_rvc/audio_extra/`; la huella del dataset cambia y reentrena solo.
-
-**Estado:** validado con una corrida simulada completa (dobles de Colab/Applio/
-edge-tts) y con los argumentos pasados por el parser Click real de Applio fijado
-en `939d9ed` (esto descubrió que el comando es `batch-infer`, con guion). **Aún
-no se corrió en Colab real.** Si falla, copiar el error de la celda.
-
-Para cambiarlo: editar `tools/rvc/build_colab_notebook.py` o
-`tools/rvc/estudio_voz_lib.py` y correr `python3 tools/rvc/build_colab_notebook.py`
-(no editar el `.ipynb`). Pruebas del motor: `python3 tools/rvc/test_estudio_voz_lib.py`.
+Historial de corridas reales: RVC entrenó OK tras `PYTORCH_JIT=0`; el choque de numpy
+del kernel se resolvió corriendo todo lo pesado en subprocesos (ahora en el entorno
+aislado de Chatterbox). La versión con Chatterbox **aún no se corrió en Colab real**
+(validada con simulación completa y la API leída del paquete 0.1.7).
 
 ## Siguientes pasos
 

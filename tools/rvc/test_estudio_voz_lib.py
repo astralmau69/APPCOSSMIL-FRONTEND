@@ -1,7 +1,7 @@
 """Pruebas del motor del Estudio de voz: python3 tools/rvc/test_estudio_voz_lib.py
 
 La parte de texto no necesita nada. La de audio corre solo si hay ffmpeg,
-numpy y soundfile (edge-tts y RVC se reemplazan por dobles de prueba).
+numpy y soundfile (la voz clonada y RVC se reemplazan por dobles de prueba).
 """
 import os
 import shutil
@@ -99,6 +99,15 @@ def test_generar_extremo_a_extremo():
                         'es-BO-SofiaNeural', tmp, convertir, sintetizar=sintetizar, log=lambda *_: None)
         assert set(out) == {'uno', 'dos'} and all(p.endswith('.mp3') and os.path.getsize(p) > 1000 for p in out.values())
         assert llamadas == ['Hola Cossmil.', 'Adiós.', 'Solo esto.']
+        lotes = []
+
+        def lote(trabajos):
+            lotes.append([t for t, _ in trabajos])
+            for texto, ruta in trabajos:
+                sintetizar(texto, ruta, None, 0, 0)
+        out = L.generar([('c', 'Son las 8:30. [pausa] 1 médico.')], None, tmp, None,
+                        sintetizar_lote=lote, log=lambda *_: None)
+        assert lotes == [['Son las ocho y treinta.', 'un médico.']] and os.path.getsize(out['c']) > 1000
         wav = L.generar([('w', 'x [pausa 1] y')], 'v', tmp, convertir, sintetizar=sintetizar,
                         formato='wav', log=lambda *_: None)['w']
         a, sr = sf.read(wav)
@@ -117,7 +126,7 @@ def _voz_sintetica(ruta, f0, silabas_s, seg=6.0, sr=16000):
     sf.write(ruta, (0.2 * voz * env).astype('float32'), sr)
 
 
-def test_analizar_y_calibrar():
+def test_analizar_voz():
     try:
         import librosa  # noqa: F401
     except ImportError:
@@ -130,13 +139,23 @@ def test_analizar_y_calibrar():
         ref, base = L.analizar_voz(ref_p), L.analizar_voz(base_p)
         assert abs(ref['f0'] - 218) < 8 and abs(base['f0'] - 190) < 8, (ref, base)
         assert abs(ref['silabas_s'] - 6.0) < 0.8 and abs(base['silabas_s'] - 4.5) < 0.8, (ref, base)
-        c = L.calibrar_base(ref, base)
-        assert 20 <= c['velocidad'] <= 45 or c['velocidad'] == 25, c   # más rápida (tope +25 %)
-        assert 20 <= c['tono_hz'] <= 36, c                              # ~+28 Hz
         assert L.distancia_rasgos(ref, ref) == 0
         assert L.distancia_rasgos(ref, base) > L.distancia_rasgos(ref, dict(base, f0=ref['f0']))
         if shutil.which('ffmpeg'):
             assert -40 < L.medir_lufs(ref_p) < -5
+
+
+def test_numeros_a_palabras():
+    f = L.numeros_a_palabras
+    assert f('Llegue a la 1:00 o a las 14:05.') == 'Llegue a la una o a las catorce y cinco.'
+    assert f('Tiene 21 fichas y 1.500 afiliados; 15% más.') == \
+        'Tiene veintiún fichas y mil quinientos afiliados; quince por ciento más.'
+    assert f('1 médico, 31 días, 71. Año 2026') == 'un médico, treinta y un días, setenta y uno. Año dos mil veintiséis'
+    assert f('Carnet 4567891 y 100') == 'Carnet 4567891 y cien'
+    assert f('versión 2.5 y A12') == 'versión 2.5 y A12'
+    assert f('Hola. [pausa 1.5] 2 veces') == 'Hola. [pausa 1.5] dos veces'
+    assert L._cardinal(999999) == 'novecientos noventa y nueve mil novecientos noventa y nueve'
+    assert L._cardinal(21000) == 'veintiún mil' and L._cardinal(31000000) == 'treinta y un millones'
 
 
 if __name__ == '__main__':

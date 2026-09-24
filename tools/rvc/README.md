@@ -8,20 +8,24 @@ Objetivo: que la instructora **diga en voz alta** cada paso del tutorial, con la
 > modelos). Se entrena/convierte en **Google Colab** (gratis) o en un PC con
 > GPU. Aquí queda todo lo PREVIO ya preparado: dataset, guion y narración fuente.
 
-> **Atajo (sep 2026): usar `COSSMIL_estudio_voz.ipynb`.** Estudio de voz en Colab:
-> entrena una vez con las vof (embebidas), **calibra el parecido** (celda 6: mide
-> tono/ritmo/entonación/volumen de las vof, prueba 14 voces base femeninas
-> igualando esos rasgos y elige la más parecida con el verificador WavLM-SV),
-> genera por defecto las **voces del Modo Guiado** + tutorial (celda 7) y luego
-> **cualquier texto** (celda 8) o archivos .txt/.json/.csv (celda 9). El modelo queda en
-> `MyDrive/cossmil_rvc/modelo/` y no se reentrena salvo que agregues audio en
-> `MyDrive/cossmil_rvc/audio_extra/`. Lo de abajo es la receta manual de referencia.
+> **Usar `COSSMIL_estudio_voz.ipynb` (sep 2026).** La voz ya NO sale de edge-tts + RVC
+> (sonaba robótica): se **clona directamente** de las `vof` con **Chatterbox
+> Multilingual** (Resemble AI, licencia MIT, español), instalado en un entorno
+> aislado (`/content/voz_env`, Python 3.11) para no chocar con el numpy/torch de Colab.
 >
-> - Motor: `estudio_voz_lib.py` (pruebas: `python3 tools/rvc/test_estudio_voz_lib.py`).
-> - Notebook: se genera con `python3 tools/rvc/build_colab_notebook.py` (editar el
->   script o el motor, nunca el `.ipynb`).
-> - Applio está fijado al commit con el que se validaron los flags (CLI Click con
->   guiones: `batch-infer`, `--model-name`…); la celda 3 permite probar `main`.
+> - Celda 6 prepara una referencia por cada vof, clona la misma frase con cada una y
+>   elige la más parecida (WavLM-SV + tono/ritmo/entonación). Se guarda en
+>   `MyDrive/cossmil_rvc/modelo/referencia.wav` + `voz_clonada.json`.
+> - Celda 7 (activa): voces del **Modo Guiado** (+ tutorial) → `vof_tutorial_*.zip`.
+> - Celda 8: cualquier texto; `EXPRESIVIDAD`, `RITMO` (cfg), `VARIACION`, `SEMILLA`
+>   (otra toma) y referencia manual (una vof concreta).
+> - Cada frase se revisa por duración esperada (sílabas / ritmo de la locutora) y se
+>   regenera si sale cortada o con balbuceo; los números pasan a palabras.
+> - RVC (Applio) queda como refuerzo opcional (`REFORZAR_CON_RVC`, apagado).
+> - Motor: `estudio_voz_lib.py` (pruebas: `python3 tools/rvc/test_estudio_voz_lib.py`);
+>   notebook: `python3 tools/rvc/build_colab_notebook.py` (nunca editar el `.ipynb`).
+>
+> Lo de abajo es la receta RVC manual original, solo como referencia.
 
 ## Piezas de esta carpeta
 

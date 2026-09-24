@@ -1,12 +1,12 @@
 """Genera tools/rvc/COSSMIL_estudio_voz.ipynb autocontenido.
 
-Embebe las locuciones de assets/vof/ (dataset de la voz), el guion de la app
+Embebe las locuciones de assets/vof/ (la voz a clonar), el guion de la app
 (tutorial_lines.json) y el motor estudio_voz_lib.py. Editar ESTE script o el
 motor, nunca el .ipynb, y regenerar:
 
     python3 tools/rvc/build_colab_notebook.py
 """
-import base64, glob, json, os
+import base64, glob, json, os, textwrap
 
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
 RVC = f'{ROOT}/tools/rvc'
@@ -15,110 +15,17 @@ motor = open(f'{RVC}/estudio_voz_lib.py', encoding='utf-8').read()
 vof = {}
 for i, f in enumerate(sorted(glob.glob(f'{ROOT}/assets/vof/*.mp3')), 1):
     vof[f'vof_{i:02d}.mp3'] = base64.b64encode(open(f, 'rb').read()).decode()
+NOMBRES_VOF = {f'vof_{i:02d}': os.path.splitext(os.path.basename(f))[0]
+               for i, f in enumerate(sorted(glob.glob(f'{ROOT}/assets/vof/*.mp3')), 1)}
 
+# Motor de voz natural: Chatterbox Multilingual (Resemble AI, licencia MIT), en un entorno aislado.
+CHATTERBOX = 'chatterbox-tts==0.1.7'
 # Versión de Applio con la que se escribieron los flags de la CLI (Click, 23 sep 2026).
 APPLIO_COMMIT = '939d9ede94d563eb5b96a55dc3922e03f93d4064'
 
-VOCES = ['es-BO-SofiaNeural', 'es-MX-DaliaNeural', 'es-CO-SalomeNeural', 'es-AR-ElenaNeural',
-         'es-PE-CamilaNeural', 'es-CL-CatalinaNeural', 'es-EC-AndreaNeural', 'es-ES-ElviraNeural',
-         'es-ES-XimenaNeural', 'es-US-PalomaNeural', 'es-VE-PaolaNeural', 'es-UY-ValentinaNeural',
-         'es-PY-TaniaNeural', 'es-CR-MariaNeural']
-
-
-def md(src): return {'cell_type': 'markdown', 'metadata': {}, 'source': src}
-def code(src): return {'cell_type': 'code', 'metadata': {}, 'execution_count': None, 'outputs': [], 'source': src}
-
-
-cells = [
-md("""# 🎙️ COSSMIL — Estudio de voz
-
-Genera audios con la **voz femenina de la locutora de COSSMIL** (la de `assets/vof/`, que ya viene dentro de este cuaderno): las **voces del Modo Guiado** y **cualquier texto** que escribas.
-
-**Cómo logra el parecido:**
-1. Entrena un modelo **RVC** con las locuciones `vof` → copia el **timbre** de la locutora.
-2. **Calibra** (celda 6): mide su tono, ritmo, entonación y volumen, prueba 14 voces neurales femeninas igualando esos rasgos y elige, con un verificador de hablante, la que tras el modelo suena **más a ella**.
-3. Iguala el volumen final al de las `vof`.
-
-### Primera vez (≈ 40–50 min, una sola vez)
-1. `Entorno de ejecución → Cambiar tipo de entorno → GPU T4`.
-2. `Entorno de ejecución → Ejecutar todo` y acepta el permiso de Google Drive.
-3. Al terminar se descarga **`vof_tutorial_….zip`** con las voces del Modo Guiado (y del tutorial): extrae los mp3 directo en `assets/vof_tutorial/`.
-
-Modelo y calibración quedan en `MyDrive/cossmil_rvc/modelo/` → **las siguientes veces no se reentrena ni recalibra** (≈ 5 min en quedar listo). Luego usa la celda **8 · Estudio** para cualquier texto.
-
-> **Lo que más mejora el parecido:** más grabaciones **limpias** de la misma locutora (mp3/wav, sin música ni eco) en `MyDrive/cossmil_rvc/audio_extra/`. Hoy hay ~40 s de habla neta; con 3–5 min mejora mucho. El cuaderno detecta el cambio y reentrena y recalibra solo."""),
-
-code("""#@title 1 · Configuración general
-USAR_DRIVE = True        #@param {type:"boolean"}
-#@markdown Guarda el modelo, los audios extra y tus resultados en `MyDrive/cossmil_rvc` (sobrevive a desconexiones).
-SUBIR_AUDIO_EXTRA = False  #@param {type:"boolean"}
-#@markdown Pide subir ahora grabaciones extra de la MISMA locutora (también puedes dejarlas en `MyDrive/cossmil_rvc/audio_extra/`).
-REENTRENAR = False       #@param {type:"boolean"}
-#@markdown Fuerza un entrenamiento nuevo aunque ya exista un modelo en Drive.
-EPOCHS = 300             #@param {type:"slider", min:100, max:800, step:50}
-MODEL, SR = 'instructora', 40000
-
-import os, subprocess
-GPU = 'GPU' in subprocess.run(['nvidia-smi', '-L'], capture_output=True, text=True).stdout
-print('GPU:', 'sí ✔' if GPU else 'NO — entrenar exige GPU (Entorno de ejecución → Cambiar tipo → T4). '
-      'Si el modelo ya está en Drive, el estudio funciona igual en CPU, solo más lento.')
-
-BACKUP = None
-if USAR_DRIVE:
-    from google.colab import drive
-    drive.mount('/content/drive')
-    BACKUP = '/content/drive/MyDrive/cossmil_rvc'
-    for d in ('modelo', 'audio_extra', 'salidas'):
-        os.makedirs(f'{BACKUP}/{d}', exist_ok=True)
-    print('Drive:', BACKUP)"""),
-
-code("""#@title 2 · Dataset de la voz (vof embebidas + audio extra)
-import base64, glob, hashlib, os, shutil, subprocess
-VOF = @@VOF@@
-RAW, DATASET = '/content/raw_audio', '/content/rvc_dataset'
-shutil.rmtree(RAW, ignore_errors=True); shutil.rmtree(DATASET, ignore_errors=True)
-os.makedirs(RAW); os.makedirs(DATASET)
-for name, b64 in VOF.items():
-    open(f'{RAW}/{name}', 'wb').write(base64.b64decode(b64))
-
-AUDIO_EXT = ('.mp3', '.wav', '.m4a', '.ogg', '.flac', '.aac', '.opus')
-if BACKUP:
-    for f in sorted(glob.glob(f'{BACKUP}/audio_extra/*')):
-        if f.lower().endswith(AUDIO_EXT):
-            shutil.copy(f, f'{RAW}/drive_{os.path.basename(f)}')
-if SUBIR_AUDIO_EXTRA:
-    from google.colab import files
-    print('Sube grabaciones de la MISMA voz (sin música, sin eco, sin otras personas):')
-    for name, data in files.upload().items():
-        open(f'{RAW}/extra_{name}', 'wb').write(data)
-        if BACKUP:  # para que la próxima vez no haya que subirlas de nuevo
-            open(f'{BACKUP}/audio_extra/{name}', 'wb').write(data)
-
-# Sin duplicados (el mismo audio subido dos veces) y huella del contenido: si agregas audio, la celda 4 reentrena sola.
-digests = {}
-for f in sorted(glob.glob(f'{RAW}/*')):
-    d = hashlib.sha256(open(f, 'rb').read()).digest()
-    if d in digests: os.remove(f)
-    else: digests[d] = f
-HUELLA = hashlib.sha256(b''.join(sorted(digests))).hexdigest()[:16]
-
-total = 0.0
-for i, f in enumerate(sorted(glob.glob(f'{RAW}/*')), 1):
-    out = f'{DATASET}/clip_{i:03d}.wav'
-    r = subprocess.run(['ffmpeg', '-y', '-i', f, '-ac', '1', '-ar', '44100', '-af',
-                        'highpass=f=60,silenceremove=start_periods=1:start_threshold=-45dB:stop_periods=-1:stop_duration=0.6:stop_threshold=-45dB,loudnorm=I=-16:TP=-1.5:LRA=11',
-                        out], capture_output=True, text=True)
-    if r.returncode:
-        print(f'  ⚠ se omite {os.path.basename(f)} (no es audio legible)'); continue
-    d = float(subprocess.run(['ffprobe', '-v', 'error', '-show_entries', 'format=duration',
-                              '-of', 'default=nk=1:nw=1', out], capture_output=True, text=True).stdout or 0)
-    total += d
-    print(f'  {os.path.basename(f)[:40]:40s} {d:6.1f}s')
-print(f'\\nDataset: {len(glob.glob(DATASET + "/*.wav"))} clips, {total/60:.1f} min de voz · huella {HUELLA}')
-if total < 90:
-    print('Consejo: con más voz limpia de la locutora (3–5 min) el parecido y la claridad mejoran mucho.')"""),
-
-code("""#@title 3 · Instalar Applio (RVC v2) — ~5 min
+# Refuerzo opcional con RVC (Applio): celdas de la versión anterior, ahora detrás de
+# REFORZAR_CON_RVC. Se componen en una sola celda más abajo (componer_celda_rvc).
+RVC_INSTALAR = """#@title 3 · Instalar Applio (RVC v2) — ~5 min
 VERSION_APPLIO = "probada (recomendada)"  #@param ["probada (recomendada)", "última (main)"]
 import os
 APPLIO = '/content/Applio'
@@ -134,9 +41,9 @@ if not os.path.exists(f'{APPLIO}/.cossmil_ok'):
     !cp assets/config_template.json assets/config.json
     !touch .cossmil_ok
 %cd /content/Applio
-print('Applio listo ✔  (los avisos rojos de pip sobre "dependency conflicts" son inofensivos)')"""),
+print('Applio listo ✔  (los avisos rojos de pip sobre "dependency conflicts" son inofensivos)')"""
 
-code("""#@title 4 · Modelo de la voz (reutiliza el de Drive o entrena)
+RVC_MODELO = """#@title 4 · Modelo de la voz (reutiliza el de Drive o entrena)
 import glob, os, shutil, subprocess, time
 LOG = f'{APPLIO}/logs/{MODEL}'
 # PYTORCH_JIT=0: el torch de Colab (CUDA 13) no trae libnvrtc-builtins para compilar los kernels
@@ -225,41 +132,164 @@ if entrenar:
         PTH, INDEX = modelo_en(f'{BACKUP}/modelo')
         print('Modelo respaldado en Drive (el anterior quedó en modelo_anterior/)')
     print(f'Entrenado en {(time.time() - t0) / 60:.0f} min')
-print('modelo:', PTH, '\\nindex :', INDEX)"""),
+print('modelo:', PTH, '\\nindex :', INDEX)"""
+
+def componer_celda_rvc():
+    """Une instalación + modelo RVC en una celda que solo actúa con REFORZAR_CON_RVC."""
+    instalar = RVC_INSTALAR.split('\n', 1)[1]
+    modelo = RVC_MODELO.split('\n', 1)[1]
+    param = [l for l in instalar.split('\n') if l.startswith('VERSION_APPLIO')][0]
+    instalar = '\n'.join(l for l in instalar.split('\n') if not l.startswith('VERSION_APPLIO'))
+    return ('#@title 4 · (Opcional) Refuerzo de timbre con RVC — solo si marcaste REFORZAR_CON_RVC\n'
+            + param + '\nPTH = INDEX = None\nif REFORZAR_CON_RVC:\n'
+            + textwrap.indent(instalar.strip('\n') + '\n' + modelo.strip('\n'), '    ')
+            + "\nelse:\n    print('Omitido ✔ — se usa la voz clonada tal cual (lo más natural).')")
+
+
+def md(src): return {'cell_type': 'markdown', 'metadata': {}, 'source': src}
+def code(src): return {'cell_type': 'code', 'metadata': {}, 'execution_count': None, 'outputs': [], 'source': src}
+
+
+cells = [
+md("""# 🎙️ COSSMIL — Estudio de voz (voz natural clonada de las `vof`)
+
+Genera audios con **la voz real de la locutora de COSSMIL** — la de `assets/vof/`, que ya viene dentro de este cuaderno —: las **voces del Modo Guiado** y **cualquier texto** que escribas.
+
+**Cómo suena natural:** en vez de una voz sintética "maquillada", un modelo de **clonación de voz** (Chatterbox Multilingual, código abierto, licencia MIT) escucha a la locutora y **habla como ella**: su timbre, su entonación y su ritmo. El cuaderno elige solo el fragmento de las `vof` que mejor se clona (celda 6), revisa cada frase y regenera las que salgan cortadas, pasa los números a palabras e iguala el volumen al de las `vof`.
+
+### Uso
+1. `Entorno de ejecución → Cambiar tipo de entorno → GPU T4`.
+2. `Entorno de ejecución → Ejecutar todo` y acepta el permiso de Google Drive.
+3. La 1ª vez tarda ≈ 15 min (instala y elige la referencia); luego ≈ 5 min.
+4. Se descarga **`vof_tutorial_….zip`** con las voces del Modo Guiado (y del tutorial): extrae los mp3 **directo** en `assets/vof_tutorial/`.
+5. Para cualquier otro texto: celda **8 · Estudio**.
+
+> Si una frase no te convence, en la celda 8 cambia la **SEMILLA** (otra "toma" de la misma locutora) o sube/baja **EXPRESIVIDAD**. Más grabaciones limpias de ella en `MyDrive/cossmil_rvc/audio_extra/` también ayudan (se usan como referencia)."""),
+
+code("""#@title 1 · Configuración general
+USAR_DRIVE = True        #@param {type:"boolean"}
+#@markdown Guarda la referencia elegida, los audios extra y tus resultados en `MyDrive/cossmil_rvc`.
+SUBIR_AUDIO_EXTRA = False  #@param {type:"boolean"}
+#@markdown Pide subir grabaciones extra de la MISMA locutora (también puedes dejarlas en `MyDrive/cossmil_rvc/audio_extra/`).
+REFORZAR_CON_RVC = False #@param {type:"boolean"}
+#@markdown Opcional: además pasa la voz clonada por un modelo RVC entrenado con las vof (≈ +25 min la 1ª vez). Suele sonar **menos** natural; déjalo apagado salvo que quieras probarlo.
+REENTRENAR = False       #@param {type:"boolean"}
+EPOCHS = 300             #@param {type:"slider", min:100, max:800, step:50}
+MODEL, SR = 'instructora', 40000
+
+import os, subprocess
+GPU = 'GPU' in subprocess.run(['nvidia-smi', '-L'], capture_output=True, text=True).stdout
+print('GPU:', 'sí ✔' if GPU else 'NO — la voz clonada funciona en CPU pero MUY lento '
+      '(Entorno de ejecución → Cambiar tipo → T4).')
+
+BACKUP = None
+if USAR_DRIVE:
+    from google.colab import drive
+    drive.mount('/content/drive')
+    BACKUP = '/content/drive/MyDrive/cossmil_rvc'
+    for d in ('modelo', 'audio_extra', 'salidas'):
+        os.makedirs(f'{BACKUP}/{d}', exist_ok=True)
+    print('Drive:', BACKUP)"""),
+
+code("""#@title 2 · Voz de la locutora (vof embebidas + audio extra)
+import base64, glob, hashlib, os, shutil, subprocess
+VOF = @@VOF@@
+RAW, DATASET = '/content/raw_audio', '/content/rvc_dataset'
+shutil.rmtree(RAW, ignore_errors=True); shutil.rmtree(DATASET, ignore_errors=True)
+os.makedirs(RAW); os.makedirs(DATASET)
+for name, b64 in VOF.items():
+    open(f'{RAW}/{name}', 'wb').write(base64.b64decode(b64))
+
+AUDIO_EXT = ('.mp3', '.wav', '.m4a', '.ogg', '.flac', '.aac', '.opus')
+if BACKUP:
+    for f in sorted(glob.glob(f'{BACKUP}/audio_extra/*')):
+        if f.lower().endswith(AUDIO_EXT):
+            shutil.copy(f, f'{RAW}/drive_{os.path.basename(f)}')
+if SUBIR_AUDIO_EXTRA:
+    from google.colab import files
+    print('Sube grabaciones de la MISMA voz (sin música, sin eco, sin otras personas):')
+    for name, data in files.upload().items():
+        open(f'{RAW}/extra_{name}', 'wb').write(data)
+        if BACKUP:  # para que la próxima vez no haya que subirlas de nuevo
+            open(f'{BACKUP}/audio_extra/{name}', 'wb').write(data)
+
+# Sin duplicados (el mismo audio subido dos veces) y huella del contenido: si agregas audio, se vuelve a elegir la referencia.
+digests = {}
+for f in sorted(glob.glob(f'{RAW}/*')):
+    d = hashlib.sha256(open(f, 'rb').read()).digest()
+    if d in digests: os.remove(f)
+    else: digests[d] = f
+HUELLA = hashlib.sha256(b''.join(sorted(digests))).hexdigest()[:16]
+
+total = 0.0
+for i, f in enumerate(sorted(glob.glob(f'{RAW}/*')), 1):
+    out = f'{DATASET}/{os.path.splitext(os.path.basename(f))[0]}.wav'  # vof_03.wav, drive_x.wav…
+    r = subprocess.run(['ffmpeg', '-y', '-i', f, '-ac', '1', '-ar', '44100', '-af',
+                        'highpass=f=60,silenceremove=start_periods=1:start_threshold=-45dB:stop_periods=-1:stop_duration=0.6:stop_threshold=-45dB,loudnorm=I=-16:TP=-1.5:LRA=11',
+                        out], capture_output=True, text=True)
+    if r.returncode:
+        print(f'  ⚠ se omite {os.path.basename(f)} (no es audio legible)'); continue
+    d = float(subprocess.run(['ffprobe', '-v', 'error', '-show_entries', 'format=duration',
+                              '-of', 'default=nk=1:nw=1', out], capture_output=True, text=True).stdout or 0)
+    total += d
+    print(f'  {os.path.basename(f)[:40]:40s} {d:6.1f}s')
+print(f'\\nDataset: {len(glob.glob(DATASET + "/*.wav"))} clips, {total/60:.1f} min de voz · huella {HUELLA}')
+if total < 90:
+    print('Consejo: más grabaciones limpias de la locutora dan más referencias entre las que elegir.')"""),
+
+code("""#@title 3 · Instalar el motor de voz natural (Chatterbox, entorno aislado) — ~4 min la 1ª vez
+import os
+VENV = '/content/voz_env'
+PY = f'{VENV}/bin/python'
+if not os.path.exists(f'{VENV}/.ok'):
+    !command -v uv > /dev/null || pip -q install uv
+    !uv venv -q --python 3.11 {VENV}
+    !uv pip install -q --python {PY} "@@CHATTERBOX@@" soundfile scipy
+    !touch {VENV}/.ok
+!{PY} -c "import torch, chatterbox; print('torch', torch.__version__, '· GPU' if torch.cuda.is_available() else '· CPU')"
+print('Motor de voz listo ✔ (entorno aparte: no toca el numpy/torch de Colab)')"""),
+
+code(None),  # celda 4: RVC opcional (componer_celda_rvc)
 
 code("""%%writefile /content/estudio_voz_lib.py
 #@title 5 · Motor del estudio (no hace falta tocar nada aquí)
 @@MOTOR@@"""),
 
-code("""#@title 5b · Enlace del motor con Applio (no hace falta tocar nada aquí)
-# Las funciones que usan numpy/librosa/torch/edge-tts corren en un proceso aparte (remoto):
-# la instalación de Applio cambió numpy en disco y este kernel tiene cargado el de antes.
+code("""#@title 5b · Enlace del motor (no hace falta tocar nada aquí)
+# Todo lo que usa numpy/librosa/torch corre en un proceso aparte con el Python del entorno de voz.
 import datetime, glob, importlib, json, os, shutil, subprocess, sys
 sys.path.insert(0, '/content')
 import estudio_voz_lib as L
 importlib.reload(L)
 from estudio_voz_lib import (PRONUNCIACION_DEFECTO, parse_textos, parse_archivo, nombre_seguro,
-                             duracion, calibrar_base, distancia_rasgos, medir_lufs)
-
-def remoto(funcion, *args):
-    r = subprocess.run([sys.executable, '/content/estudio_voz_lib.py', funcion, json.dumps(args)],
-                       capture_output=True, text=True, cwd='/content', env={**os.environ, 'PYTORCH_JIT': '0'})
-    for linea in reversed(r.stdout.splitlines()):
-        if linea.startswith('@@RESULTADO@@'):
-            return json.loads(linea[len('@@RESULTADO@@'):])
-    raise RuntimeError(f'"{funcion}" falló:\\n' + (r.stdout + r.stderr)[-2500:])
-
-L.sintetizar_base = lambda texto, ruta, voz, velocidad=0, tono_hz=0: remoto('sintetizar_base', texto, ruta, voz, velocidad, tono_hz)
-L.ensamblar = lambda partes, ruta: remoto('ensamblar', partes, ruta)
-sintetizar_base = L.sintetizar_base
-analizar_varias = lambda entradas: remoto('analizar_varias', entradas)
-similitudes = lambda refs, cands: remoto('similitudes', refs, cands)
-generar = L.generar
+                             duracion, distancia_rasgos, medir_lufs)
 from IPython.display import Audio, HTML, display
 
+def remoto(funcion, *args, mostrar=False):
+    p = subprocess.Popen([PY, '/content/estudio_voz_lib.py', funcion, json.dumps(args)], cwd='/content',
+                         stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, bufsize=1,
+                         env={**os.environ, 'PYTORCH_JIT': '0', 'TOKENIZERS_PARALLELISM': 'false'})
+    salida, resultado, listo = [], None, False
+    for linea in p.stdout:
+        if linea.startswith('@@RESULTADO@@'):
+            resultado, listo = json.loads(linea[len('@@RESULTADO@@'):]), True
+        else:
+            salida.append(linea)
+            if mostrar and linea.startswith('  ['): print(linea, end='')
+    if p.wait() != 0 or not listo:
+        raise RuntimeError(f'"{funcion}" falló:\\n' + ''.join(salida)[-2500:])
+    return resultado
+
+L.ensamblar = lambda partes, ruta: remoto('ensamblar', partes, ruta)
+analizar_varias = lambda entradas: remoto('analizar_varias', entradas)
+similitudes = lambda refs, cands: remoto('similitudes', refs, cands)
+
 GUION = @@GUION@@
-AJUSTES = dict(voz='es-BO-SofiaNeural', velocidad=-8, tono_hz=0, pitch=0, index_rate=0.75,
-               protect=0.33, envolvente=1.0, limpiar=False, formato='mp3', normalizar=True, lufs=-16.0)
+NOMBRES_VOF = @@NOMBRES_VOF@@
+AJUSTES = dict(exageracion=0.5, cfg=0.5, temperatura=0.8, semilla=1234, intentos=3, silabas_s=5.5,
+               pitch=0, index_rate=0.6, protect=0.33, envolvente=1.0, limpiar=False,
+               formato='mp3', normalizar=True, lufs=-16.0)
+REFERENCIA = None   # la fija la celda 6
 PRONUNCIACION = dict(PRONUNCIACION_DEFECTO)
 
 def convertir_rvc(entrada, salida):
@@ -275,15 +305,20 @@ def convertir_rvc(entrada, salida):
     if len(glob.glob(f'{salida}/*.wav')) < len(glob.glob(f'{entrada}/*.wav')):
         fallo('batch-infer', t, mostrado=False)
 
+def clonar(trabajos):
+    ajustes = {k: AJUSTES[k] for k in ('exageracion', 'cfg', 'temperatura', 'semilla', 'intentos', 'silabas_s')}
+    return remoto('clonar_lote', trabajos, REFERENCIA, ajustes, mostrar=True)
+
 def producir(pares, lote='estudio', mostrar=12, descargar=True, textos=True):
     if not pares:
         print('No hay textos para generar.'); return {}
-    print(f'Generando {len(pares)} audio(s) · voz base {AJUSTES["voz"]} '
-          f'(velocidad {AJUSTES["velocidad"]:+d}%, tono {AJUSTES["tono_hz"]:+d} Hz)…')
-    salidas = generar(pares, AJUSTES['voz'], f'/content/trabajo_{lote}', convertir_rvc,
-                      velocidad=AJUSTES['velocidad'], tono_hz=AJUSTES['tono_hz'],
-                      pronunciacion=PRONUNCIACION, formato=AJUSTES['formato'],
-                      normalizar=AJUSTES['normalizar'], lufs=AJUSTES['lufs'])
+    assert REFERENCIA, 'Falta la referencia de la voz: ejecuta la celda 6.'
+    print(f'Generando {len(pares)} audio(s) con la voz clonada de la locutora '
+          f'(expresividad {AJUSTES["exageracion"]}, ritmo {AJUSTES["cfg"]}, semilla {AJUSTES["semilla"]})…')
+    salidas = L.generar(pares, None, f'/content/trabajo_{lote}',
+                        convertir_rvc if (REFORZAR_CON_RVC and PTH) else None,
+                        sintetizar_lote=clonar, max_car=250, pronunciacion=PRONUNCIACION,
+                        formato=AJUSTES['formato'], normalizar=AJUSTES['normalizar'], lufs=AJUSTES['lufs'])
     texto_de = dict(pares)
     for i, (nombre, ruta) in enumerate(salidas.items()):
         if i == mostrar:
@@ -306,86 +341,65 @@ def producir(pares, lote='estudio', mostrar=12, descargar=True, textos=True):
 
 print('Motor listo ✔')"""),
 
-code("""#@title 6 · Calibrar el parecido con la locutora (automático; ~5 min, se guarda en Drive)
-CALIBRAR = True     #@param {type:"boolean"}
+code("""#@title 6 · Elegir la mejor referencia de la locutora (automático; ~5 min la 1ª vez, se guarda en Drive)
 RECALIBRAR = False  #@param {type:"boolean"}
-#@markdown Mide el **tono, ritmo, entonación y volumen** de las `vof`, prueba varias voces base igualando esos rasgos,
-#@markdown las pasa por el modelo y elige la que suena **más a la locutora** (verificador de hablante WavLM).
-VOCES_CANDIDATAS = @@VOCES@@
+#@markdown Prepara una referencia por cada `vof`, clona con cada una la misma frase del Modo Guiado y se queda con la que
+#@markdown suena **más a la locutora** (verificador de hablante WavLM + tono, ritmo y entonación).
 import glob, json, os, shutil, statistics
 
-CAL_PATH = f'{BACKUP}/modelo/calibracion.json' if BACKUP else '/content/calibracion.json'
-CLAVE = f'{HUELLA}:{os.path.basename(PTH)}'
+CLAVE = f'{HUELLA}:chatterbox'
+CAL_PATH = f'{BACKUP}/modelo/voz_clonada.json' if BACKUP else '/content/voz_clonada.json'
+REF_GUARDADA = f'{BACKUP}/modelo/referencia.wav' if BACKUP else '/content/referencia.wav'
 CAL = None
-if os.path.exists(CAL_PATH) and not RECALIBRAR:
+if os.path.exists(CAL_PATH) and os.path.exists(REF_GUARDADA) and not RECALIBRAR:
     previo = json.load(open(CAL_PATH))
     CAL = previo if previo.get('clave') == CLAVE else None
 
-if CALIBRAR and CAL is None:
-    print('Analizando la voz de la locutora…')
+if CAL is None:
     DATA_WAVS = sorted(glob.glob(f'{DATASET}/*.wav'))
-    REF = analizar_varias([DATA_WAVS])[0]
+    print('Analizando la voz de la locutora…')
+    REF_RASGOS = analizar_varias([DATA_WAVS])[0]
     lufs_ref = statistics.median(medir_lufs(f) for f in sorted(glob.glob(f'{RAW}/*')))
-    print(f"  tono {REF['f0']:.0f} Hz · ritmo {REF['silabas_s']:.1f} sílabas/s · "
-          f"entonación {REF['rango_st']:.1f} st · volumen {lufs_ref:.1f} LUFS")
-    FRASE_CAL = GUION['guiado_regional'] + ' ' + GUION['guiado_dia']
+    print(f"  tono {REF_RASGOS['f0']:.0f} Hz · ritmo {REF_RASGOS['silabas_s']:.1f} sílabas/s · "
+          f"entonación {REF_RASGOS['rango_st']:.1f} st · volumen {lufs_ref:.1f} LUFS")
     CDIR = '/content/calibracion'
     shutil.rmtree(CDIR, ignore_errors=True)
-    for d in ('p1', 'p2', 'rvc'):
-        os.makedirs(f'{CDIR}/{d}')
-    print('Probando voces base…')
-    ok = []
-    for i, voz in enumerate(VOCES_CANDIDATAS):  # paso 1: voz base tal cual
-        try:
-            sintetizar_base(FRASE_CAL, f'{CDIR}/p1/{i:02d}.wav', voz); ok.append((i, voz))
-        except Exception as e:  # noqa: BLE001
-            print(f'  (se omite {voz}: {str(e)[-120:]})')
-    if not ok:
-        raise RuntimeError('Ninguna voz base se pudo sintetizar (¿sin internet para edge-tts?).')
-    params = {}
-    for (i, voz), rasgos in zip(ok, analizar_varias([f'{CDIR}/p1/{i:02d}.wav' for i, _ in ok])):
-        params[voz] = calibrar_base(REF, rasgos)  # paso 2: tono y ritmo igualados a la locutora
-        sintetizar_base(FRASE_CAL, f'{CDIR}/p2/{i:02d}.wav', voz, params[voz]['velocidad'], params[voz]['tono_hz'])
-        print(f"  {voz:22s} velocidad {params[voz]['velocidad']:+d}% · tono {params[voz]['tono_hz']:+d} Hz")
-    print('Pasando las candidatas por el modelo de la locutora…')
-    pitch_previo, AJUSTES['pitch'] = AJUSTES['pitch'], 0
-    try:
-        convertir_rvc(f'{CDIR}/p2', f'{CDIR}/rvc')
-    finally:
-        AJUSTES['pitch'] = pitch_previo
-    salidas_cal = [f'{CDIR}/rvc/{i:02d}.wav' for i, _ in ok]
-    rasgos_cal = analizar_varias(salidas_cal)
+    refs = remoto('preparar_referencias', DATA_WAVS, f'{CDIR}/refs')
+    FRASE_CAL = GUION['guiado_regional'] + ' ' + GUION['guiado_dia']
+    ajustes = {k: AJUSTES[k] for k in ('exageracion', 'cfg', 'temperatura', 'semilla', 'intentos')}
+    ajustes['silabas_s'] = REF_RASGOS['silabas_s']
+    print(f'Clonando la voz con {len(refs)} referencias (la 1ª vez descarga el modelo, ~2 GB)…')
+    cands = remoto('clonar_candidatas', FRASE_CAL, [r['ruta'] for r in refs], f'{CDIR}/cand', ajustes)
+    rasgos = analizar_varias(cands)
     print('Midiendo el parecido con el verificador de hablante (WavLM)…')
-    sim = similitudes(DATA_WAVS, salidas_cal)
+    sim = similitudes(DATA_WAVS, cands)
     if sim['sims'] is None:
-        print(f"  (verificador no disponible: {sim['aviso']} → se usa solo tono y ritmo)")
+        print(f"  (verificador no disponible: {sim['aviso']} → se decide por tono, ritmo y entonación)")
     filas = []
-    for n, ((i, voz), rasgos, salida) in enumerate(zip(ok, rasgos_cal, salidas_cal)):
-        dist = distancia_rasgos(REF, rasgos)
+    for n, (ref, cand, ras) in enumerate(zip(refs, cands, rasgos)):
+        dist = distancia_rasgos(REF_RASGOS, ras)
         s_ = sim['sims'][n] if sim['sims'] else None
-        filas.append(dict(voz=voz, velocidad=params[voz]['velocidad'], tono_hz=params[voz]['tono_hz'],
+        stem = os.path.splitext(os.path.basename(DATA_WAVS[n]))[0]
+        clip = f'{stem} · {NOMBRES_VOF[stem]}' if stem in NOMBRES_VOF else stem
+        filas.append(dict(referencia=ref['ruta'], clip=clip, segundos=ref['seg_propios'], candidato=cand,
                           similitud=s_, distancia=round(dist, 3),
-                          puntaje=(s_ - 0.02 * dist) if s_ is not None else -dist, ruta=salida))
+                          puntaje=(s_ - 0.02 * dist) if s_ is not None else -dist))
     filas.sort(key=lambda f: -f['puntaje'])
-    CAL = dict(clave=CLAVE, voz=filas[0]['voz'], velocidad=filas[0]['velocidad'],
-               tono_hz=filas[0]['tono_hz'], lufs=lufs_ref, locutora=REF,
-               ranking=[{k: v for k, v in f.items() if k != 'ruta'} for f in filas])
+    shutil.copy(filas[0]['referencia'], REF_GUARDADA)
+    CAL = dict(clave=CLAVE, clip=filas[0]['clip'], lufs=lufs_ref, locutora=REF_RASGOS,
+               ranking=[{k: v for k, v in f.items() if k not in ('referencia', 'candidato')} for f in filas])
     json.dump(CAL, open(CAL_PATH, 'w'), ensure_ascii=False, indent=1)
-    print('\\nRanking (mayor similitud y menor distancia = más parecida):')
+    print('\\nRanking de referencias (mayor similitud y menor distancia = más parecida):')
     for n, f in enumerate(filas, 1):
         s_ = f"{f['similitud']:.3f}" if f['similitud'] is not None else '  —  '
-        print(f"  {n:2d}. {f['voz']:22s} similitud {s_} · distancia {f['distancia']:.2f}")
+        print(f"  {n}. {f['clip']} ({f['segundos']:.0f} s propios) · similitud {s_} · distancia {f['distancia']:.2f}")
     display(HTML('<b>Locutora original (vof):</b>')); display(Audio(max(DATA_WAVS, key=os.path.getsize)))
     for f in filas[:3]:
-        display(HTML(f"<b>{f['voz']}</b> → modelo")); display(Audio(f['ruta']))
+        display(HTML(f"<b>Voz clonada con referencia {f['clip']}</b>")); display(Audio(f['candidato']))
 
-if CAL:
-    AJUSTES.update(voz=CAL['voz'], velocidad=CAL['velocidad'], tono_hz=CAL['tono_hz'], lufs=CAL['lufs'])
-    print(f"\\nVoz calibrada ✔ {CAL['voz']} · velocidad {CAL['velocidad']:+d}% · tono {CAL['tono_hz']:+d} Hz · "
-          f"volumen {CAL['lufs']:.1f} LUFS (guardado en {CAL_PATH})")
-else:
-    print('Sin calibrar: se usan los valores por defecto (marca CALIBRAR).')
-BASE_CAL = dict(AJUSTES)"""),
+REFERENCIA = REF_GUARDADA
+AJUSTES.update(silabas_s=CAL['locutora']['silabas_s'], lufs=CAL['lufs'])
+print(f"\\nReferencia elegida ✔ {CAL['clip']} (guardada en {REF_GUARDADA})")"""),
 
 code("""#@title 7 · Voces del Modo Guiado (+ resto del guion de la app) → ZIP para `assets/vof_tutorial/`
 GENERAR_VOCES_APP = True  #@param {type:"boolean"}
@@ -416,23 +430,22 @@ Una línea sin nombre también sirve: se llamará clip_01_una-linea-sin-nombre.
 
 - `nombre | texto` → el archivo se llama `nombre.mp3` (útil para la app: `guiado_intro | …`).
 - `[pausa]` = silencio de 0,6 s · `[pausa 1.5]` = 1,5 s · `[pausa 300ms]`.
-- Textos largos (párrafos) se parten solos en frases; no hay límite práctico.
-- Si una palabra suena mal, agrégala a `PRONUNCIACION` (p. ej. `'COSSMIL': 'Cossmil'`, `'La Paz': 'la paz'`).
+- Los números se leen solos (`8:30` → "ocho y treinta", `21 fichas` → "veintiún fichas").
+- Textos largos se parten solos en frases.
+- Si una palabra suena mal, agrégala a `PRONUNCIACION` (p. ej. `'COSSMIL': 'Cossmil'`).
 
-Por defecto usa la **voz calibrada** (celda 6). Los deslizadores son **ajuste fino** sobre ella: VELOCIDAD negativa = más pausado; INDEX_RATE más alto = más timbre de la locutora (si suena metálico, bájalo a 0.6); PROTECCION más alta = consonantes y respiraciones más limpias."""),
+**Ajustes:** `EXPRESIVIDAD` más alta = más emoción (0.5 es natural y sereno); `RITMO` más bajo = más pausado y articulado; `VARIACION` más baja = más estable; **`SEMILLA`**: otra toma distinta de la misma voz (si una frase no te gusta, cámbiala)."""),
 
 code('''#@title 8 · Estudio — escribe tus textos y ejecuta esta celda
 TEXTOS = """
 prueba_bienvenida | Bienvenido a COSSMIL. [pausa] Le acompañaré paso a paso para reservar su cita médica.
 Este es un texto de prueba: puede escribir aquí cualquier cosa que necesite, y se generará con la voz de la locutora.
 """
-VOZ_BASE = "automática (calibrada)"  #@param @@VOCES_AUTO@@
-VELOCIDAD_EXTRA = 0  #@param {type:"slider", min:-30, max:30, step:1}
-TONO_EXTRA_HZ = 0    #@param {type:"slider", min:-30, max:30, step:1}
-PITCH_RVC = 0        #@param {type:"slider", min:-6, max:6, step:1}
-INDEX_RATE = 0.75    #@param {type:"slider", min:0, max:1, step:0.05}
-PROTECCION = 0.33    #@param {type:"slider", min:0, max:0.5, step:0.01}
-LIMPIAR_RUIDO = False  #@param {type:"boolean"}
+REFERENCIA_VOZ = "automática (la mejor)"  #@param @@REFS_OPCIONES@@
+EXPRESIVIDAD = 0.5   #@param {type:"slider", min:0.25, max:1.0, step:0.05}
+RITMO = 0.5          #@param {type:"slider", min:0.2, max:0.8, step:0.05}
+VARIACION = 0.8      #@param {type:"slider", min:0.4, max:1.2, step:0.05}
+SEMILLA = 1234       #@param {type:"integer"}
 FORMATO = "mp3"      #@param ["mp3", "wav"]
 NORMALIZAR_VOLUMEN = True  #@param {type:"boolean"}
 DESCARGAR = True     #@param {type:"boolean"}
@@ -441,19 +454,20 @@ PRONUNCIACION.update({
     # 'palabra como se escribe': 'como debe sonar',
 })
 
-voz, vel, tono = BASE_CAL['voz'], BASE_CAL['velocidad'], BASE_CAL['tono_hz']
-if not VOZ_BASE.startswith('automática'):
-    fila = next((f for f in (CAL or {}).get('ranking', []) if f['voz'] == VOZ_BASE), None)
-    voz, vel, tono = VOZ_BASE, (fila['velocidad'] if fila else -8), (fila['tono_hz'] if fila else 0)
-AJUSTES.update(voz=voz, velocidad=vel + VELOCIDAD_EXTRA, tono_hz=tono + TONO_EXTRA_HZ, pitch=PITCH_RVC,
-               index_rate=INDEX_RATE, protect=PROTECCION, limpiar=LIMPIAR_RUIDO,
+if REFERENCIA_VOZ.startswith('automática'):
+    REFERENCIA = REF_GUARDADA
+else:  # una vof concreta como referencia (preparada en la celda 6)
+    REFERENCIA = f'/content/calibracion/refs/ref_{REFERENCIA_VOZ.split()[0]}.wav'
+    if not os.path.exists(REFERENCIA):
+        remoto('preparar_referencias', sorted(glob.glob(f'{DATASET}/*.wav')), '/content/calibracion/refs')
+AJUSTES.update(exageracion=EXPRESIVIDAD, cfg=RITMO, temperatura=VARIACION, semilla=SEMILLA,
                formato=FORMATO, normalizar=NORMALIZAR_VOLUMEN)
 producir(parse_textos(TEXTOS), lote=nombre_seguro(NOMBRE_LOTE), descargar=DESCARGAR)'''),
 
 code("""#@title 9 · (Opcional) Generar desde un archivo .txt / .json / .csv
 USAR_ARCHIVO = False  #@param {type:"boolean"}
 #@markdown `.txt`: mismo formato que la celda 8 · `.json`: `{"id": "texto"}` o `[{"id":…, "texto":…}]` · `.csv`: columnas `id,texto`.
-#@markdown Usa los ajustes de sonido de la celda 8.
+#@markdown Usa los ajustes de la celda 8.
 if USAR_ARCHIVO:
     from google.colab import files
     pares = []
@@ -464,13 +478,17 @@ else:
     print('Omitido (marca USAR_ARCHIVO para subir un archivo de textos).')"""),
 ]
 
+cells[cells.index(next(c for c in cells if c['source'] is None))]['source'] = componer_celda_rvc()
+
 reemplazos = {
     '@@VOF@@': json.dumps(vof),
     '@@COMMIT@@': APPLIO_COMMIT,
+    '@@CHATTERBOX@@': CHATTERBOX,
     '@@MOTOR@@': motor,
     '@@GUION@@': json.dumps(lines, ensure_ascii=False, indent=1),
-    '@@VOCES_AUTO@@': json.dumps(['automática (calibrada)'] + VOCES),
-    '@@VOCES@@': json.dumps(VOCES),
+    '@@NOMBRES_VOF@@': json.dumps(NOMBRES_VOF, ensure_ascii=False),
+    '@@REFS_OPCIONES@@': json.dumps(['automática (la mejor)'] + [f'{k} · {v}' for k, v in NOMBRES_VOF.items()],
+                                    ensure_ascii=False),
 }
 nb = {'nbformat': 4, 'nbformat_minor': 0,
       'metadata': {'accelerator': 'GPU', 'colab': {'provenance': [], 'gpuType': 'T4', 'name': 'COSSMIL_estudio_voz.ipynb'},

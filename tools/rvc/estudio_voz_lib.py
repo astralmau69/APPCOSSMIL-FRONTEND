@@ -3,7 +3,7 @@
 Este archivo se EMBEBE en la celda "Motor" del notebook de Colab al correr
 `build_colab_notebook.py`. La parte de texto (parse_textos, segmentar, …) es
 Python puro y se prueba localmente con `test_estudio_voz_lib.py`; la parte de
-audio (edge-tts → RVC/Applio → ffmpeg) solo corre en Colab.
+audio (clonación Chatterbox desde las vof → RVC opcional → ffmpeg) solo corre en Colab.
 
 Formato del texto (una línea = un audio):
 
@@ -140,6 +140,77 @@ def aplicar_pronunciacion(texto, diccionario):
     return texto
 
 
+_UNIDADES = ('cero uno dos tres cuatro cinco seis siete ocho nueve diez once doce trece catorce quince '
+             'dieciséis diecisiete dieciocho diecinueve veinte veintiuno veintidós veintitrés veinticuatro '
+             'veinticinco veintiséis veintisiete veintiocho veintinueve').split()
+_DECENAS = {3: 'treinta', 4: 'cuarenta', 5: 'cincuenta', 6: 'sesenta', 7: 'setenta', 8: 'ochenta', 9: 'noventa'}
+_CENTENAS = {1: 'ciento', 2: 'doscientos', 3: 'trescientos', 4: 'cuatrocientos', 5: 'quinientos',
+             6: 'seiscientos', 7: 'setecientos', 8: 'ochocientos', 9: 'novecientos'}
+
+
+def _apocope(palabras):
+    """'veintiuno' → 'veintiún', 'treinta y uno' → 'treinta y un' (delante de un sustantivo o de mil)."""
+    if palabras.endswith('veintiuno'):
+        return palabras[:-9] + 'veintiún'
+    return palabras[:-3] + 'un' if palabras.endswith('uno') else palabras
+
+
+def _cardinal(n):
+    """Entero (0 ≤ n < 10**12) → palabras en español ('ciento veintiuno')."""
+    if n < 30:
+        return _UNIDADES[n]
+    if n < 100:
+        d, u = divmod(n, 10)
+        return _DECENAS[d] + (f' y {_UNIDADES[u]}' if u else '')
+    if n < 1000:
+        c, r = divmod(n, 100)
+        if n == 100:
+            return 'cien'
+        return _CENTENAS[c] + (f' {_cardinal(r)}' if r else '')
+    if n < 10**6:
+        m, r = divmod(n, 1000)
+        miles = 'mil' if m == 1 else f'{_apocope(_cardinal(m))} mil'
+        return miles + (f' {_cardinal(r)}' if r else '')
+    mm, r = divmod(n, 10**6)
+    millones = 'un millón' if mm == 1 else f'{_apocope(_cardinal(mm))} millones'
+    return millones + (f' {_cardinal(r)}' if r else '')
+
+
+def numeros_a_palabras(texto):
+    """Horas (8:30), porcentajes y enteros → palabras: el modelo de voz lee mal los dígitos.
+    Deja intactos los números largos tipo código (≥ 7 dígitos) salvo que tengan separador de miles,
+    y las marcas entre corchetes ([pausa 1.5])."""
+    partes = re.split(r'(\[[^\]]*\])', texto)
+    return ''.join(p if p.startswith('[') else _numeros(p) for p in partes)
+
+
+def _numeros(texto):
+    def hora(m):
+        h, mi = int(m.group(1)), int(m.group(2))
+        if h > 24 or mi > 59:
+            return m.group(0)
+        h_txt = 'una' if h == 1 else _cardinal(h)
+        return h_txt if mi == 0 else f'{h_txt} y {_cardinal(mi)}'
+    texto = re.sub(r'\b(\d{1,2}):(\d{2})\b', hora, texto)
+    texto = re.sub(r'\b(\d{1,3}(?:\.\d{3})+)\b', lambda m: m.group(1).replace('.', ''), texto)
+    texto = re.sub(r'(\d+)\s?%', lambda m: m.group(1) + ' por ciento', texto)
+
+    def entero(m):
+        dig, sigue = m.group(1), m.group(2) or ''
+        if len(dig) >= 7:
+            return m.group(0)
+        palabras = _cardinal(int(dig))
+        if sigue:  # apócope ante sustantivo: un médico, veintiún días
+            palabras = _apocope(palabras)
+        return palabras + sigue
+    return re.sub(r'(?<![\w.,])(\d+)(?![\w]|[.,]\d)(\s+(?=[^\W\d_]))?', entero, texto)
+
+
+def silabas_estimadas(texto):
+    """Sílabas aproximadas (grupos vocálicos) para prever cuánto debería durar un audio."""
+    return max(1, len(re.findall(r'[aeiouáéíóúü]+', texto.lower())))
+
+
 def _segundos(num, unidad):
     if num is None:
         return PAUSA_DEFECTO
@@ -212,25 +283,6 @@ def duracion(ruta):
     return float(out or 0)
 
 
-def sintetizar_base(texto, ruta_wav, voz, velocidad=0, tono_hz=0, intentos=4):
-    """edge-tts (gratis, voz femenina neural) → WAV mono 44,1 kHz. Reintenta cortes de red."""
-    import os, time
-    import edge_tts
-    mp3 = ruta_wav[:-4] + '.mp3'
-    for n in range(1, intentos + 1):
-        try:
-            edge_tts.Communicate(texto, voice=voz, rate=f'{int(velocidad):+d}%',
-                                 pitch=f'{int(tono_hz):+d}Hz').save_sync(mp3)
-            if os.path.getsize(mp3) > 0:
-                break
-        except Exception as e:  # noqa: BLE001 — red de Colab inestable
-            if n == intentos:
-                raise RuntimeError(f'edge-tts no respondió ({e}). Revisa la conexión y re-ejecuta.') from e
-            time.sleep(2 * n)
-    _ffmpeg('-i', mp3, '-ac', 1, '-ar', 44100, ruta_wav)
-    os.remove(mp3)
-
-
 def ensamblar(partes, ruta_salida):
     """partes = [('wav', ruta) | ('silencio', seg)] → un solo WAV (misma frecuencia)."""
     import numpy as np
@@ -270,35 +322,49 @@ def masterizar(ruta_wav, ruta_salida, formato='mp3', normalizar=True, cola=0.25,
 
 
 def generar(pares, voz, carpeta, convertir, velocidad=0, tono_hz=0, pronunciacion=None,
-            formato='mp3', normalizar=True, sintetizar=None, log=print, lufs=-16.0):
+            formato='mp3', normalizar=True, sintetizar=None, log=print, lufs=-16.0,
+            sintetizar_lote=None, max_car=MAX_CARACTERES):
     """[(nombre, texto)] → {nombre: ruta_final}.
 
-    `convertir(carpeta_entrada, carpeta_salida)` aplica RVC a todos los WAV de una
-    vez (el modelo se carga una sola vez) y deja `<base>.wav` en la salida.
+    Voz: `sintetizar_lote([[texto, ruta_wav], …])` genera todos los trozos de una vez
+    (clonación: el modelo se carga una sola vez) o, si no se da, `sintetizar` trozo a trozo.
+    `convertir(carpeta_entrada, carpeta_salida)` aplica RVC en lote y deja `<base>.wav`;
+    con `convertir=None` se usa la voz tal cual.
     """
     import glob, os, shutil
-    sintetizar = sintetizar or sintetizar_base
     pronunciacion = PRONUNCIACION_DEFECTO if pronunciacion is None else pronunciacion
     base_dir, rvc_dir, fin_dir = (os.path.join(carpeta, d) for d in ('base', 'rvc', 'final'))
     for d in (base_dir, rvc_dir, fin_dir):
         shutil.rmtree(d, ignore_errors=True)
         os.makedirs(d)
 
-    planes = {}
+    planes, trabajos = {}, []
     for i, (nombre, texto) in enumerate(pares, 1):
         plan = []
-        for j, (tipo, valor) in enumerate(segmentar(aplicar_pronunciacion(texto, pronunciacion))):
+        limpio = numeros_a_palabras(aplicar_pronunciacion(texto, pronunciacion))
+        for j, (tipo, valor) in enumerate(segmentar(limpio, max_car=max_car)):
             if tipo == 'habla':
                 pieza = f'{i:03d}_{j:03d}'
-                sintetizar(valor, os.path.join(base_dir, pieza + '.wav'), voz, velocidad, tono_hz)
+                trabajos.append([valor, os.path.join(base_dir, pieza + '.wav')])
                 plan.append(('wav', pieza))
             else:
                 plan.append(('silencio', valor))
         planes[nombre] = plan
-        log(f'  [{i}/{len(pares)}] texto base: {nombre}')
 
-    log('  convirtiendo a la voz de la locutora (RVC)…')
-    convertir(base_dir, rvc_dir)
+    if sintetizar_lote:
+        log(f'  generando {len(trabajos)} frase(s) con la voz clonada…')
+        sintetizar_lote(trabajos)
+    else:
+        for n, (valor, ruta) in enumerate(trabajos, 1):
+            sintetizar(valor, ruta, voz, velocidad, tono_hz)
+            log(f'  [{n}/{len(trabajos)}] texto base')
+
+    if convertir:
+        log('  reforzando el timbre con RVC…')
+        convertir(base_dir, rvc_dir)
+    else:
+        for f in glob.glob(os.path.join(base_dir, '*.wav')):
+            shutil.copy(f, rvc_dir)
 
     salidas = {}
     for nombre, plan in planes.items():
@@ -307,7 +373,7 @@ def generar(pares, voz, carpeta, convertir, velocidad=0, tono_hz=0, pronunciacio
             if tipo == 'wav':
                 ruta = os.path.join(rvc_dir, valor + '.wav')
                 if not os.path.exists(ruta):
-                    raise RuntimeError(f'RVC no produjo {valor}.wav (¿falló la conversión?). '
+                    raise RuntimeError(f'No se generó {valor}.wav (¿falló la voz o RVC?). '
                                        f'Archivos en salida: {sorted(os.listdir(rvc_dir))[:5]}')
                 partes.append(('wav', ruta))
             else:
@@ -363,18 +429,6 @@ def analizar_voz(rutas):
     }
 
 
-def calibrar_base(ref, base, vel_actual=0, tono_actual=0):
-    """Con los rasgos de la locutora (ref) y de una voz base ya sintetizada,
-    calcula la velocidad (%) y el tono (Hz) de edge-tts que la acercan a la locutora."""
-    import math
-    factor = ref['silabas_s'] / max(base['silabas_s'], 0.1)
-    velocidad = (1 + vel_actual / 100) * factor * 100 - 100
-    tono = tono_actual + (ref['f0'] - base['f0'])
-    return {'velocidad': int(max(-35, min(25, round(velocidad)))),
-            'tono_hz': int(max(-40, min(40, round(tono)))),
-            'dif_st': 12 * math.log2(ref['f0'] / base['f0'])}
-
-
 def distancia_rasgos(ref, otro):
     """Qué tan lejos está una salida de la locutora en tono, ritmo y expresividad (0 = igual)."""
     import math
@@ -423,9 +477,100 @@ def similitudes(referencias, candidatos):
         return {'sims': None, 'aviso': f'{type(e).__name__}: {str(e)[:160]}'}
 
 
+def preparar_referencias(wavs, carpeta, seg_min=8.0):
+    """Referencias para clonar: cada vof sin silencios de borde y con pausas internas acortadas.
+    La candidata i empieza con la vof i (el modelo toma de ahí la prosodia, primeros 6-10 s) y
+    sigue con las demás (la huella de la voz se calcula sobre todo el audio)."""
+    import os
+    import librosa
+    import numpy as np
+    import soundfile as sf
+    os.makedirs(carpeta, exist_ok=True)
+    limpios = []
+    for w in wavs:
+        y, sr = librosa.load(w, sr=24000, mono=True)
+        trozos = [y[a:b] for a, b in librosa.effects.split(y, top_db=35)]
+        pausa = np.zeros(int(0.25 * sr), 'float32')
+        partes = []
+        for t in trozos:
+            partes += [t, pausa]
+        limpios.append(np.concatenate(partes[:-1]) if partes else y)
+    salidas = []
+    for i, y in enumerate(limpios):
+        resto = [z for j, z in enumerate(limpios) if j != i]
+        todo = np.concatenate([y] + resto)
+        ruta = os.path.join(carpeta, f'ref_{os.path.splitext(os.path.basename(wavs[i]))[0]}.wav')
+        sf.write(ruta, (0.9 * todo / max(1e-6, np.abs(todo).max())).astype('float32'), 24000)
+        salidas.append({'ruta': ruta, 'seg_propios': round(len(y) / 24000, 1)})
+    return salidas
+
+
+def _modelo_clonacion():
+    import torch
+    from chatterbox.mtl_tts import ChatterboxMultilingualTTS
+    return ChatterboxMultilingualTTS.from_pretrained(device='cuda' if torch.cuda.is_available() else 'cpu')
+
+
+def _clonar(modelo, trabajos, ajustes, mostrar=True):
+    """Lee cada [texto, ruta_wav] con la voz ya condicionada en `modelo`. Si un audio sale
+    demasiado corto o largo para su texto (frase cortada o balbuceo), lo regenera con otra
+    semilla y se queda con el de duración más plausible."""
+    import os
+    import random
+    import numpy as np
+    import soundfile as sf
+    import torch
+    ritmo = ajustes.get('silabas_s', 5.5)
+    informe = []
+    for n, (texto, ruta) in enumerate(trabajos):
+        esperado = silabas_estimadas(texto) / ritmo
+        mejor = None
+        for intento in range(int(ajustes.get('intentos', 3))):
+            semilla = int(ajustes.get('semilla', 1234)) + 1000 * intento + n
+            random.seed(semilla); np.random.seed(semilla); torch.manual_seed(semilla)
+            wav = modelo.generate(texto, language_id='es',
+                                  exaggeration=ajustes.get('exageracion', 0.5),
+                                  cfg_weight=ajustes.get('cfg', 0.5),
+                                  temperature=ajustes.get('temperatura', 0.8))
+            y = wav.squeeze(0).detach().cpu().numpy().astype('float32')
+            razon = (len(y) / modelo.sr) / max(esperado, 0.3)
+            if mejor is None or abs(np.log(razon)) < abs(np.log(mejor[1])):
+                mejor = (y, razon, intento + 1)
+            if 0.6 <= razon <= 1.7:
+                break
+        sf.write(ruta, mejor[0], modelo.sr)
+        informe.append({'ruta': os.path.basename(ruta), 'razon': round(mejor[1], 2), 'intentos': mejor[2]})
+        if mostrar:
+            extra = f' (reintentos: {mejor[2] - 1})' if mejor[2] > 1 else ''
+            print(f'  [{n + 1}/{len(trabajos)}] {texto[:70]}{extra}', flush=True)
+    return informe
+
+
+def clonar_lote(trabajos, referencia, ajustes):
+    """Chatterbox Multilingual (MIT): clona la voz de `referencia` y lee cada [texto, ruta_wav]."""
+    modelo = _modelo_clonacion()
+    modelo.prepare_conditionals(referencia, exaggeration=ajustes.get('exageracion', 0.5))
+    return _clonar(modelo, trabajos, ajustes)
+
+
+def clonar_candidatas(frase, referencias, carpeta, ajustes):
+    """Lee la misma frase con cada referencia candidata (modelo cargado una sola vez)."""
+    import os
+    os.makedirs(carpeta, exist_ok=True)
+    modelo = _modelo_clonacion()
+    salidas = []
+    for i, ref in enumerate(referencias):
+        modelo.prepare_conditionals(ref, exaggeration=ajustes.get('exageracion', 0.5))
+        ruta = os.path.join(carpeta, f'cand_{i + 1:02d}.wav')
+        _clonar(modelo, [[frase, ruta]], ajustes, mostrar=False)
+        print(f'  referencia {i + 1}/{len(referencias)} lista', flush=True)
+        salidas.append(ruta)
+    return salidas
+
+
 if __name__ == '__main__':
-    # En Colab las funciones con numpy/librosa/torch/edge-tts corren en un proceso aparte:
-    # la instalación de Applio cambia numpy en disco y el kernel ya tiene cargado el viejo.
+    # En Colab lo que usa numpy/librosa/torch corre en un proceso aparte, dentro del entorno
+    # aislado de Chatterbox: así nunca choca con el numpy del kernel ni con el torch de Applio.
     import sys
     _resultado = globals()[sys.argv[1]](*json.loads(sys.argv[2]))
     print('@@RESULTADO@@' + json.dumps(_resultado))

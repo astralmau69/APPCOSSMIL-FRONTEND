@@ -104,3 +104,16 @@ la carrera Inicio→Reserva (el `stop()` del coach que se desmonta mata el clip
 entrante); fix = `TutorialVoice.stopIfToken(token)` y comparar en `dispose`.
 
 Relacionado: [[tutorial-flow-system]], [[instructora-tutorial-asset]], [[entorno-claude-code-replica]].
+
+**Cambio de motor (24 sep 2026, tras escuchar la 1ª salida real):** el usuario la
+encontró robótica (edge-tts + RVC con ~40 s de datos) y pidió voz femenina NATURAL
+tomada de assets/vof. Nuevo motor: **Chatterbox Multilingual** (`chatterbox-tts==0.1.7`,
+MIT, `language_id='es'`, clonación zero-shot: prompt de prosodia = primeros 6 s de la
+referencia, timbre = primeros 10 s, huella de voz = todo el audio). Va en un venv
+aislado (`uv venv --python 3.11 /content/voz_env`; pide torch==2.6.0) y se llama por
+subproceso (`remoto`). La referencia candidata i = vof i (sin silencios) + resto de
+vof; se elige por WavLM-SV + distancia de rasgos (`referencia.wav` + `voz_clonada.json`
+en Drive, clave = huella del dataset). `_clonar` regenera (hasta 3 semillas) si la
+duración no cuadra con sílabas/ritmo (0,6–1,7×). Números → palabras con apócope
+(`numeros_a_palabras`). RVC queda opcional (`REFORZAR_CON_RVC`). Trae watermark
+PerTh inaudible (propio de Chatterbox). Aún sin correr en Colab real.
