@@ -390,3 +390,42 @@ def medir_lufs(ruta):
                         'loudnorm=print_format=json', '-f', 'null', '-'], capture_output=True, text=True)
     m = _re.search(r'\{[^{}]*"input_i"[^{}]*\}', r.stderr)
     return float(_json.loads(m.group(0))['input_i']) if m else -16.0
+
+
+def analizar_varias(entradas):
+    """analizar_voz para varias entradas (cada una: ruta o lista de rutas) cargando librosa una vez."""
+    return [analizar_voz(e) for e in entradas]
+
+
+def similitudes(referencias, candidatos):
+    """Similitud de hablante (coseno, WavLM-SV) de cada candidato contra el promedio de las
+    referencias. Devuelve {'sims': [...]} o {'sims': None, 'aviso': motivo} si no hay red."""
+    try:
+        import librosa
+        import numpy as np
+        import torch
+        from transformers import AutoFeatureExtractor, WavLMForXVector
+        dev = 'cuda' if torch.cuda.is_available() else 'cpu'
+        fe = AutoFeatureExtractor.from_pretrained('microsoft/wavlm-base-plus-sv')
+        red = WavLMForXVector.from_pretrained('microsoft/wavlm-base-plus-sv').to(dev).eval()
+
+        def vector(ruta):
+            y = librosa.load(ruta, sr=16000, mono=True)[0][:16000 * 20]
+            x = fe(y, sampling_rate=16000, return_tensors='pt').to(dev)
+            with torch.no_grad():
+                e = red(**x).embeddings[0]
+            return torch.nn.functional.normalize(e, dim=-1).cpu().numpy()
+
+        ref = np.mean([vector(r) for r in referencias], axis=0)
+        ref = ref / np.linalg.norm(ref)
+        return {'sims': [float(vector(c) @ ref) for c in candidatos]}
+    except Exception as e:  # noqa: BLE001 — sin la red se calibra solo con tono/ritmo
+        return {'sims': None, 'aviso': f'{type(e).__name__}: {str(e)[:160]}'}
+
+
+if __name__ == '__main__':
+    # En Colab las funciones con numpy/librosa/torch/edge-tts corren en un proceso aparte:
+    # la instalación de Applio cambia numpy en disco y el kernel ya tiene cargado el viejo.
+    import sys
+    _resultado = globals()[sys.argv[1]](*json.loads(sys.argv[2]))
+    print('@@RESULTADO@@' + json.dumps(_resultado))

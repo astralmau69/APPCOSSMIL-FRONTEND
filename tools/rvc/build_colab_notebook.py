@@ -227,11 +227,34 @@ if entrenar:
     print(f'Entrenado en {(time.time() - t0) / 60:.0f} min')
 print('modelo:', PTH, '\\nindex :', INDEX)"""),
 
-code("""#@title 5 · Motor del estudio (no hace falta tocar nada aquí)
-@@MOTOR@@
+code("""%%writefile /content/estudio_voz_lib.py
+#@title 5 · Motor del estudio (no hace falta tocar nada aquí)
+@@MOTOR@@"""),
 
-# ── Enlace con Applio y entrega de resultados ──
-import datetime, glob, os, shutil
+code("""#@title 5b · Enlace del motor con Applio (no hace falta tocar nada aquí)
+# Las funciones que usan numpy/librosa/torch/edge-tts corren en un proceso aparte (remoto):
+# la instalación de Applio cambió numpy en disco y este kernel tiene cargado el de antes.
+import datetime, glob, importlib, json, os, shutil, subprocess, sys
+sys.path.insert(0, '/content')
+import estudio_voz_lib as L
+importlib.reload(L)
+from estudio_voz_lib import (PRONUNCIACION_DEFECTO, parse_textos, parse_archivo, nombre_seguro,
+                             duracion, calibrar_base, distancia_rasgos, medir_lufs)
+
+def remoto(funcion, *args):
+    r = subprocess.run([sys.executable, '/content/estudio_voz_lib.py', funcion, json.dumps(args)],
+                       capture_output=True, text=True, cwd='/content', env={**os.environ, 'PYTORCH_JIT': '0'})
+    for linea in reversed(r.stdout.splitlines()):
+        if linea.startswith('@@RESULTADO@@'):
+            return json.loads(linea[len('@@RESULTADO@@'):])
+    raise RuntimeError(f'"{funcion}" falló:\\n' + (r.stdout + r.stderr)[-2500:])
+
+L.sintetizar_base = lambda texto, ruta, voz, velocidad=0, tono_hz=0: remoto('sintetizar_base', texto, ruta, voz, velocidad, tono_hz)
+L.ensamblar = lambda partes, ruta: remoto('ensamblar', partes, ruta)
+sintetizar_base = L.sintetizar_base
+analizar_varias = lambda entradas: remoto('analizar_varias', entradas)
+similitudes = lambda refs, cands: remoto('similitudes', refs, cands)
+generar = L.generar
 from IPython.display import Audio, HTML, display
 
 GUION = @@GUION@@
@@ -281,25 +304,6 @@ def producir(pares, lote='estudio', mostrar=12, descargar=True, textos=True):
         from google.colab import files; files.download(entrega)
     return salidas
 
-def cargar_verificador():
-    # Red de verificación de hablante (WavLM-SV): mide qué tan "la misma persona" suena cada salida.
-    try:
-        import librosa, torch
-        from transformers import AutoFeatureExtractor, WavLMForXVector
-        dev = 'cuda' if torch.cuda.is_available() else 'cpu'
-        fe = AutoFeatureExtractor.from_pretrained('microsoft/wavlm-base-plus-sv')
-        red = WavLMForXVector.from_pretrained('microsoft/wavlm-base-plus-sv').to(dev).eval()
-        def vector(ruta):
-            y = librosa.load(ruta, sr=16000, mono=True)[0][:16000 * 20]
-            x = fe(y, sampling_rate=16000, return_tensors='pt').to(dev)
-            with torch.no_grad():
-                e = red(**x).embeddings[0]
-            return torch.nn.functional.normalize(e, dim=-1).cpu().numpy()
-        return vector
-    except Exception as e:  # noqa: BLE001 — sin la red se calibra solo con tono/ritmo
-        print(f'  (verificador de hablante no disponible: {str(e)[:120]} → se usa solo tono y ritmo)')
-        return None
-
 print('Motor listo ✔')"""),
 
 code("""#@title 6 · Calibrar el parecido con la locutora (automático; ~5 min, se guarda en Drive)
@@ -308,8 +312,7 @@ RECALIBRAR = False  #@param {type:"boolean"}
 #@markdown Mide el **tono, ritmo, entonación y volumen** de las `vof`, prueba varias voces base igualando esos rasgos,
 #@markdown las pasa por el modelo y elige la que suena **más a la locutora** (verificador de hablante WavLM).
 VOCES_CANDIDATAS = @@VOCES@@
-import glob, json, os, shutil
-import numpy as np
+import glob, json, os, shutil, statistics
 
 CAL_PATH = f'{BACKUP}/modelo/calibracion.json' if BACKUP else '/content/calibracion.json'
 CLAVE = f'{HUELLA}:{os.path.basename(PTH)}'
@@ -320,8 +323,9 @@ if os.path.exists(CAL_PATH) and not RECALIBRAR:
 
 if CALIBRAR and CAL is None:
     print('Analizando la voz de la locutora…')
-    REF = analizar_voz(sorted(glob.glob(f'{DATASET}/*.wav')))
-    lufs_ref = float(np.median([medir_lufs(f) for f in sorted(glob.glob(f'{RAW}/*'))]))
+    DATA_WAVS = sorted(glob.glob(f'{DATASET}/*.wav'))
+    REF = analizar_varias([DATA_WAVS])[0]
+    lufs_ref = statistics.median(medir_lufs(f) for f in sorted(glob.glob(f'{RAW}/*')))
     print(f"  tono {REF['f0']:.0f} Hz · ritmo {REF['silabas_s']:.1f} sílabas/s · "
           f"entonación {REF['rango_st']:.1f} st · volumen {lufs_ref:.1f} LUFS")
     FRASE_CAL = GUION['guiado_regional'] + ' ' + GUION['guiado_dia']
@@ -329,41 +333,39 @@ if CALIBRAR and CAL is None:
     shutil.rmtree(CDIR, ignore_errors=True)
     for d in ('p1', 'p2', 'rvc'):
         os.makedirs(f'{CDIR}/{d}')
-    params = {}
-    for i, voz in enumerate(VOCES_CANDIDATAS):  # paso 1: voz base tal cual → medir
+    print('Probando voces base…')
+    ok = []
+    for i, voz in enumerate(VOCES_CANDIDATAS):  # paso 1: voz base tal cual
         try:
-            sintetizar_base(FRASE_CAL, f'{CDIR}/p1/{i:02d}.wav', voz)
-            params[voz] = calibrar_base(REF, analizar_voz(f'{CDIR}/p1/{i:02d}.wav'))
-            sintetizar_base(FRASE_CAL, f'{CDIR}/p2/{i:02d}.wav', voz,  # paso 2: con tono y ritmo igualados
-                            params[voz]['velocidad'], params[voz]['tono_hz'])
-            print(f"  {voz:22s} velocidad {params[voz]['velocidad']:+d}% · tono {params[voz]['tono_hz']:+d} Hz")
+            sintetizar_base(FRASE_CAL, f'{CDIR}/p1/{i:02d}.wav', voz); ok.append((i, voz))
         except Exception as e:  # noqa: BLE001
-            params.pop(voz, None); print(f'  (se omite {voz}: {str(e)[:80]})')
+            print(f'  (se omite {voz}: {str(e)[-120:]})')
+    if not ok:
+        raise RuntimeError('Ninguna voz base se pudo sintetizar (¿sin internet para edge-tts?).')
+    params = {}
+    for (i, voz), rasgos in zip(ok, analizar_varias([f'{CDIR}/p1/{i:02d}.wav' for i, _ in ok])):
+        params[voz] = calibrar_base(REF, rasgos)  # paso 2: tono y ritmo igualados a la locutora
+        sintetizar_base(FRASE_CAL, f'{CDIR}/p2/{i:02d}.wav', voz, params[voz]['velocidad'], params[voz]['tono_hz'])
+        print(f"  {voz:22s} velocidad {params[voz]['velocidad']:+d}% · tono {params[voz]['tono_hz']:+d} Hz")
     print('Pasando las candidatas por el modelo de la locutora…')
     pitch_previo, AJUSTES['pitch'] = AJUSTES['pitch'], 0
     try:
         convertir_rvc(f'{CDIR}/p2', f'{CDIR}/rvc')
     finally:
         AJUSTES['pitch'] = pitch_previo
-    vector = cargar_verificador()
-    ref_vec = None
-    if vector:
-        try:
-            v = np.mean([vector(f) for f in sorted(glob.glob(f'{DATASET}/*.wav'))], axis=0)
-            ref_vec = v / np.linalg.norm(v)
-        except Exception as e:  # noqa: BLE001
-            print(f'  (verificador falló: {str(e)[:120]})'); vector = None
+    salidas_cal = [f'{CDIR}/rvc/{i:02d}.wav' for i, _ in ok]
+    rasgos_cal = analizar_varias(salidas_cal)
+    print('Midiendo el parecido con el verificador de hablante (WavLM)…')
+    sim = similitudes(DATA_WAVS, salidas_cal)
+    if sim['sims'] is None:
+        print(f"  (verificador no disponible: {sim['aviso']} → se usa solo tono y ritmo)")
     filas = []
-    for i, voz in enumerate(VOCES_CANDIDATAS):
-        if voz not in params: continue
-        salida = f'{CDIR}/rvc/{i:02d}.wav'
-        dist = distancia_rasgos(REF, analizar_voz(salida))
-        sim = float(vector(salida) @ ref_vec) if vector else None
-        puntaje = (sim - 0.02 * dist) if sim is not None else -dist
+    for n, ((i, voz), rasgos, salida) in enumerate(zip(ok, rasgos_cal, salidas_cal)):
+        dist = distancia_rasgos(REF, rasgos)
+        s_ = sim['sims'][n] if sim['sims'] else None
         filas.append(dict(voz=voz, velocidad=params[voz]['velocidad'], tono_hz=params[voz]['tono_hz'],
-                          similitud=sim, distancia=round(dist, 3), puntaje=puntaje, ruta=salida))
-    if not filas:
-        raise RuntimeError('Ninguna voz base se pudo sintetizar (¿sin internet para edge-tts?).')
+                          similitud=s_, distancia=round(dist, 3),
+                          puntaje=(s_ - 0.02 * dist) if s_ is not None else -dist, ruta=salida))
     filas.sort(key=lambda f: -f['puntaje'])
     CAL = dict(clave=CLAVE, voz=filas[0]['voz'], velocidad=filas[0]['velocidad'],
                tono_hz=filas[0]['tono_hz'], lufs=lufs_ref, locutora=REF,
@@ -371,9 +373,9 @@ if CALIBRAR and CAL is None:
     json.dump(CAL, open(CAL_PATH, 'w'), ensure_ascii=False, indent=1)
     print('\\nRanking (mayor similitud y menor distancia = más parecida):')
     for n, f in enumerate(filas, 1):
-        s = f"{f['similitud']:.3f}" if f['similitud'] is not None else '  —  '
-        print(f"  {n:2d}. {f['voz']:22s} similitud {s} · distancia {f['distancia']:.2f}")
-    display(HTML('<b>Locutora original (vof):</b>')); display(Audio(max(glob.glob(f'{DATASET}/*.wav'), key=os.path.getsize)))
+        s_ = f"{f['similitud']:.3f}" if f['similitud'] is not None else '  —  '
+        print(f"  {n:2d}. {f['voz']:22s} similitud {s_} · distancia {f['distancia']:.2f}")
+    display(HTML('<b>Locutora original (vof):</b>')); display(Audio(max(DATA_WAVS, key=os.path.getsize)))
     for f in filas[:3]:
         display(HTML(f"<b>{f['voz']}</b> → modelo")); display(Audio(f['ruta']))
 

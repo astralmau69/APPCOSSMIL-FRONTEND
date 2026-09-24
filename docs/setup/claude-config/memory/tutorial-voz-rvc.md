@@ -93,7 +93,12 @@ batch-infer nombra la salida `<base>_output.wav`. 1ª corrida real (24 sep, Cola
 Python 3.13, torch CUDA 13): preprocess/extract/index OK (49 s de audio → 21 trozos);
 `train` cayó por "nvrtc: failed to open libnvrtc-builtins.so.13.0" (TorchScript de
 `fused_add_tanh_sigmoid_multiply` en commons.py) → fix: `PYTORCH_JIT=0` (+ libs
-nvidia en LD_LIBRARY_PATH) en el ENV de los subprocesos de Applio.
+nvidia en LD_LIBRARY_PATH) en el ENV de los subprocesos de Applio. 2ª corrida: train OK;
+celda 6 cayó con "cannot import name '_slice' from numpy._core.umath": Colab carga
+numpy al iniciar el kernel y `uv pip install` de Applio lo cambia en disco → NUNCA
+importar numpy/librosa/soundfile/torch/edge-tts en el kernel. El motor se escribe con
+`%%writefile /content/estudio_voz_lib.py` y lo pesado corre vía `remoto(fn, *args)`
+(subproceso `python estudio_voz_lib.py fn json`, marca `@@RESULTADO@@`).
 **Bug a arreglar (parte del plan):** `ficha_01` (regional) no suena en el demo por
 la carrera Inicio→Reserva (el `stop()` del coach que se desmonta mata el clip
 entrante); fix = `TutorialVoice.stopIfToken(token)` y comparar en `dispose`.
