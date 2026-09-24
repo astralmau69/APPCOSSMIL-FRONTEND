@@ -102,6 +102,14 @@ def main():
     _hand_checks(m)
     _profile_checks(m)
 
+    # Presupuesto de peso. El set anterior (17 PNG de cuerpo entero) pesaba
+    # ~700 KB; este trae 31 piezas y tiene que quedar holgadamente por debajo.
+    total = sum(
+        f.stat().st_size for f in OUT.glob("*.png") if not f.name.startswith("_")
+    )
+    kb = total / 1024
+    check(kb <= 450, f"peso total {kb:.0f} KB (presupuesto 450 KB)")
+
     return finish()
 
 
