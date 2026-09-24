@@ -106,6 +106,39 @@ def test_generar_extremo_a_extremo():
         assert sr == 44100 and 2.1 < len(a) / sr < 2.4, len(a) / sr
 
 
+def _voz_sintetica(ruta, f0, silabas_s, seg=6.0, sr=16000):
+    """Tono con vibrato y 'sílabas' (pulsos de energía) a ritmo conocido."""
+    import numpy as np
+    import soundfile as sf
+    t = np.arange(int(seg * sr)) / sr
+    fase = 2 * np.pi * np.cumsum(f0 * (1 + 0.08 * np.sin(2 * np.pi * 0.7 * t))) / sr
+    voz = sum(np.sin(k * fase) / k for k in range(1, 6))
+    env = np.sin(np.pi * silabas_s * t) ** 2  # un pulso por sílaba
+    sf.write(ruta, (0.2 * voz * env).astype('float32'), sr)
+
+
+def test_analizar_y_calibrar():
+    try:
+        import librosa  # noqa: F401
+    except ImportError:
+        print('  (omitido: falta librosa)')
+        return
+    with tempfile.TemporaryDirectory() as tmp:
+        ref_p, base_p = os.path.join(tmp, 'ref.wav'), os.path.join(tmp, 'base.wav')
+        _voz_sintetica(ref_p, 218, 6.0)
+        _voz_sintetica(base_p, 190, 4.5)
+        ref, base = L.analizar_voz(ref_p), L.analizar_voz(base_p)
+        assert abs(ref['f0'] - 218) < 8 and abs(base['f0'] - 190) < 8, (ref, base)
+        assert abs(ref['silabas_s'] - 6.0) < 0.8 and abs(base['silabas_s'] - 4.5) < 0.8, (ref, base)
+        c = L.calibrar_base(ref, base)
+        assert 20 <= c['velocidad'] <= 45 or c['velocidad'] == 25, c   # más rápida (tope +25 %)
+        assert 20 <= c['tono_hz'] <= 36, c                              # ~+28 Hz
+        assert L.distancia_rasgos(ref, ref) == 0
+        assert L.distancia_rasgos(ref, base) > L.distancia_rasgos(ref, dict(base, f0=ref['f0']))
+        if shutil.which('ffmpeg'):
+            assert -40 < L.medir_lufs(ref_p) < -5
+
+
 if __name__ == '__main__':
     for nombre, f in list(globals().items()):
         if nombre.startswith('test_'):

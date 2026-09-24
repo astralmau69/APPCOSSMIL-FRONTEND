@@ -9,9 +9,11 @@ Objetivo: que la instructora **diga en voz alta** cada paso del tutorial, con la
 > GPU. Aquí queda todo lo PREVIO ya preparado: dataset, guion y narración fuente.
 
 > **Atajo (sep 2026): usar `COSSMIL_estudio_voz.ipynb`.** Estudio de voz en Colab:
-> entrena una vez con las vof (embebidas) y luego genera **cualquier texto** con la
-> voz de la locutora (celda 6), desde archivos .txt/.json/.csv (celda 7), el guion
-> completo de la app (celda 8) o compara voces base (celda 9). El modelo queda en
+> entrena una vez con las vof (embebidas), **calibra el parecido** (celda 6: mide
+> tono/ritmo/entonación/volumen de las vof, prueba 14 voces base femeninas
+> igualando esos rasgos y elige la más parecida con el verificador WavLM-SV),
+> genera por defecto las **voces del Modo Guiado** + tutorial (celda 7) y luego
+> **cualquier texto** (celda 8) o archivos .txt/.json/.csv (celda 9). El modelo queda en
 > `MyDrive/cossmil_rvc/modelo/` y no se reentrena salvo que agregues audio en
 > `MyDrive/cossmil_rvc/audio_extra/`. Lo de abajo es la receta manual de referencia.
 >

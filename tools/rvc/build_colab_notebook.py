@@ -32,19 +32,21 @@ def code(src): return {'cell_type': 'code', 'metadata': {}, 'execution_count': N
 cells = [
 md("""# 🎙️ COSSMIL — Estudio de voz
 
-Escribe **cualquier texto** y obtén el audio con la **voz femenina de la locutora de COSSMIL** (la de `assets/vof/`, que ya viene dentro de este cuaderno).
+Genera audios con la **voz femenina de la locutora de COSSMIL** (la de `assets/vof/`, que ya viene dentro de este cuaderno): las **voces del Modo Guiado** y **cualquier texto** que escribas.
 
-**Cómo funciona:** una voz neural femenina (edge-tts, gratis) lee tu texto y un modelo **RVC** entrenado con las locuciones `vof` le cambia el timbre para que suene como la locutora.
+**Cómo logra el parecido:**
+1. Entrena un modelo **RVC** con las locuciones `vof` → copia el **timbre** de la locutora.
+2. **Calibra** (celda 6): mide su tono, ritmo, entonación y volumen, prueba 14 voces neurales femeninas igualando esos rasgos y elige, con un verificador de hablante, la que tras el modelo suena **más a ella**.
+3. Iguala el volumen final al de las `vof`.
 
-### Primera vez (≈ 30–45 min, una sola vez)
+### Primera vez (≈ 40–50 min, una sola vez)
 1. `Entorno de ejecución → Cambiar tipo de entorno → GPU T4`.
 2. `Entorno de ejecución → Ejecutar todo` y acepta el permiso de Google Drive.
-3. El modelo queda guardado en `MyDrive/cossmil_rvc/modelo/`. **No se vuelve a entrenar.**
+3. Al terminar se descarga **`vof_tutorial_….zip`** con las voces del Modo Guiado (y del tutorial): extrae los mp3 directo en `assets/vof_tutorial/`.
 
-### Después (≈ 3–5 min para dejarlo listo)
-`Ejecutar todo` otra vez (instala y carga el modelo de Drive, sin reentrenar). Luego escribe tus textos en la celda **6 · Estudio** y ejecútala las veces que quieras.
+Modelo y calibración quedan en `MyDrive/cossmil_rvc/modelo/` → **las siguientes veces no se reentrena ni recalibra** (≈ 5 min en quedar listo). Luego usa la celda **8 · Estudio** para cualquier texto.
 
-> ¿Más parecido a la locutora? Pon más grabaciones **limpias** de ella (mp3/wav, sin música ni eco) en `MyDrive/cossmil_rvc/audio_extra/`. El cuaderno detecta el cambio y reentrena solo. Con 3–5 minutos de voz mejora mucho; hoy hay ~1 minuto."""),
+> **Lo que más mejora el parecido:** más grabaciones **limpias** de la misma locutora (mp3/wav, sin música ni eco) en `MyDrive/cossmil_rvc/audio_extra/`. Hoy hay ~40 s de habla neta; con 3–5 min mejora mucho. El cuaderno detecta el cambio y reentrena y recalibra solo."""),
 
 code("""#@title 1 · Configuración general
 USAR_DRIVE = True        #@param {type:"boolean"}
@@ -225,8 +227,9 @@ code("""#@title 5 · Motor del estudio (no hace falta tocar nada aquí)
 import datetime, glob, os, shutil
 from IPython.display import Audio, HTML, display
 
-AJUSTES = dict(voz='es-BO-SofiaNeural', velocidad=-8, tono_hz=0, pitch=0, index_rate=0.7,
-               protect=0.33, envolvente=1.0, limpiar=False, formato='mp3', normalizar=True)
+GUION = @@GUION@@
+AJUSTES = dict(voz='es-BO-SofiaNeural', velocidad=-8, tono_hz=0, pitch=0, index_rate=0.75,
+               protect=0.33, envolvente=1.0, limpiar=False, formato='mp3', normalizar=True, lufs=-16.0)
 PRONUNCIACION = dict(PRONUNCIACION_DEFECTO)
 
 def convertir_rvc(entrada, salida):
@@ -235,6 +238,7 @@ def convertir_rvc(entrada, salida):
             '--volume-envelope', AJUSTES['envolvente'], '--f0-method', 'rmvpe', '--export-format', 'WAV']
     if AJUSTES['limpiar']:
         args += ['--clean-audio', '--clean-strength', 0.5]
+    os.makedirs(salida, exist_ok=True)
     t = applio('batch-infer', *args, mostrar=False)
     for f in glob.glob(f'{salida}/*_output.wav'):  # Applio agrega "_output" al nombre
         os.replace(f, f[:-len('_output.wav')] + '.wav')
@@ -244,11 +248,12 @@ def convertir_rvc(entrada, salida):
 def producir(pares, lote='estudio', mostrar=12, descargar=True, textos=True):
     if not pares:
         print('No hay textos para generar.'); return {}
-    print(f'Generando {len(pares)} audio(s) con {AJUSTES["voz"]}…')
+    print(f'Generando {len(pares)} audio(s) · voz base {AJUSTES["voz"]} '
+          f'(velocidad {AJUSTES["velocidad"]:+d}%, tono {AJUSTES["tono_hz"]:+d} Hz)…')
     salidas = generar(pares, AJUSTES['voz'], f'/content/trabajo_{lote}', convertir_rvc,
                       velocidad=AJUSTES['velocidad'], tono_hz=AJUSTES['tono_hz'],
                       pronunciacion=PRONUNCIACION, formato=AJUSTES['formato'],
-                      normalizar=AJUSTES['normalizar'])
+                      normalizar=AJUSTES['normalizar'], lufs=AJUSTES['lufs'])
     texto_de = dict(pares)
     for i, (nombre, ruta) in enumerate(salidas.items()):
         if i == mostrar:
@@ -269,11 +274,129 @@ def producir(pares, lote='estudio', mostrar=12, descargar=True, textos=True):
         from google.colab import files; files.download(entrega)
     return salidas
 
-print('Motor listo ✔ — ve a la celda 6.')"""),
+def cargar_verificador():
+    # Red de verificación de hablante (WavLM-SV): mide qué tan "la misma persona" suena cada salida.
+    try:
+        import librosa, torch
+        from transformers import AutoFeatureExtractor, WavLMForXVector
+        dev = 'cuda' if torch.cuda.is_available() else 'cpu'
+        fe = AutoFeatureExtractor.from_pretrained('microsoft/wavlm-base-plus-sv')
+        red = WavLMForXVector.from_pretrained('microsoft/wavlm-base-plus-sv').to(dev).eval()
+        def vector(ruta):
+            y = librosa.load(ruta, sr=16000, mono=True)[0][:16000 * 20]
+            x = fe(y, sampling_rate=16000, return_tensors='pt').to(dev)
+            with torch.no_grad():
+                e = red(**x).embeddings[0]
+            return torch.nn.functional.normalize(e, dim=-1).cpu().numpy()
+        return vector
+    except Exception as e:  # noqa: BLE001 — sin la red se calibra solo con tono/ritmo
+        print(f'  (verificador de hablante no disponible: {str(e)[:120]} → se usa solo tono y ritmo)')
+        return None
 
-md("""## ✍️ Estudio
+print('Motor listo ✔')"""),
 
-Escribe en `TEXTOS` (celda 6) **una línea por audio**:
+code("""#@title 6 · Calibrar el parecido con la locutora (automático; ~5 min, se guarda en Drive)
+CALIBRAR = True     #@param {type:"boolean"}
+RECALIBRAR = False  #@param {type:"boolean"}
+#@markdown Mide el **tono, ritmo, entonación y volumen** de las `vof`, prueba varias voces base igualando esos rasgos,
+#@markdown las pasa por el modelo y elige la que suena **más a la locutora** (verificador de hablante WavLM).
+VOCES_CANDIDATAS = @@VOCES@@
+import glob, json, os, shutil
+import numpy as np
+
+CAL_PATH = f'{BACKUP}/modelo/calibracion.json' if BACKUP else '/content/calibracion.json'
+CLAVE = f'{HUELLA}:{os.path.basename(PTH)}'
+CAL = None
+if os.path.exists(CAL_PATH) and not RECALIBRAR:
+    previo = json.load(open(CAL_PATH))
+    CAL = previo if previo.get('clave') == CLAVE else None
+
+if CALIBRAR and CAL is None:
+    print('Analizando la voz de la locutora…')
+    REF = analizar_voz(sorted(glob.glob(f'{DATASET}/*.wav')))
+    lufs_ref = float(np.median([medir_lufs(f) for f in sorted(glob.glob(f'{RAW}/*'))]))
+    print(f"  tono {REF['f0']:.0f} Hz · ritmo {REF['silabas_s']:.1f} sílabas/s · "
+          f"entonación {REF['rango_st']:.1f} st · volumen {lufs_ref:.1f} LUFS")
+    FRASE_CAL = GUION['guiado_regional'] + ' ' + GUION['guiado_dia']
+    CDIR = '/content/calibracion'
+    shutil.rmtree(CDIR, ignore_errors=True)
+    for d in ('p1', 'p2', 'rvc'):
+        os.makedirs(f'{CDIR}/{d}')
+    params = {}
+    for i, voz in enumerate(VOCES_CANDIDATAS):  # paso 1: voz base tal cual → medir
+        try:
+            sintetizar_base(FRASE_CAL, f'{CDIR}/p1/{i:02d}.wav', voz)
+            params[voz] = calibrar_base(REF, analizar_voz(f'{CDIR}/p1/{i:02d}.wav'))
+            sintetizar_base(FRASE_CAL, f'{CDIR}/p2/{i:02d}.wav', voz,  # paso 2: con tono y ritmo igualados
+                            params[voz]['velocidad'], params[voz]['tono_hz'])
+            print(f"  {voz:22s} velocidad {params[voz]['velocidad']:+d}% · tono {params[voz]['tono_hz']:+d} Hz")
+        except Exception as e:  # noqa: BLE001
+            params.pop(voz, None); print(f'  (se omite {voz}: {str(e)[:80]})')
+    print('Pasando las candidatas por el modelo de la locutora…')
+    pitch_previo, AJUSTES['pitch'] = AJUSTES['pitch'], 0
+    try:
+        convertir_rvc(f'{CDIR}/p2', f'{CDIR}/rvc')
+    finally:
+        AJUSTES['pitch'] = pitch_previo
+    vector = cargar_verificador()
+    ref_vec = None
+    if vector:
+        try:
+            v = np.mean([vector(f) for f in sorted(glob.glob(f'{DATASET}/*.wav'))], axis=0)
+            ref_vec = v / np.linalg.norm(v)
+        except Exception as e:  # noqa: BLE001
+            print(f'  (verificador falló: {str(e)[:120]})'); vector = None
+    filas = []
+    for i, voz in enumerate(VOCES_CANDIDATAS):
+        if voz not in params: continue
+        salida = f'{CDIR}/rvc/{i:02d}.wav'
+        dist = distancia_rasgos(REF, analizar_voz(salida))
+        sim = float(vector(salida) @ ref_vec) if vector else None
+        puntaje = (sim - 0.02 * dist) if sim is not None else -dist
+        filas.append(dict(voz=voz, velocidad=params[voz]['velocidad'], tono_hz=params[voz]['tono_hz'],
+                          similitud=sim, distancia=round(dist, 3), puntaje=puntaje, ruta=salida))
+    if not filas:
+        raise RuntimeError('Ninguna voz base se pudo sintetizar (¿sin internet para edge-tts?).')
+    filas.sort(key=lambda f: -f['puntaje'])
+    CAL = dict(clave=CLAVE, voz=filas[0]['voz'], velocidad=filas[0]['velocidad'],
+               tono_hz=filas[0]['tono_hz'], lufs=lufs_ref, locutora=REF,
+               ranking=[{k: v for k, v in f.items() if k != 'ruta'} for f in filas])
+    json.dump(CAL, open(CAL_PATH, 'w'), ensure_ascii=False, indent=1)
+    print('\\nRanking (mayor similitud y menor distancia = más parecida):')
+    for n, f in enumerate(filas, 1):
+        s = f"{f['similitud']:.3f}" if f['similitud'] is not None else '  —  '
+        print(f"  {n:2d}. {f['voz']:22s} similitud {s} · distancia {f['distancia']:.2f}")
+    display(HTML('<b>Locutora original (vof):</b>')); display(Audio(max(glob.glob(f'{DATASET}/*.wav'), key=os.path.getsize)))
+    for f in filas[:3]:
+        display(HTML(f"<b>{f['voz']}</b> → modelo")); display(Audio(f['ruta']))
+
+if CAL:
+    AJUSTES.update(voz=CAL['voz'], velocidad=CAL['velocidad'], tono_hz=CAL['tono_hz'], lufs=CAL['lufs'])
+    print(f"\\nVoz calibrada ✔ {CAL['voz']} · velocidad {CAL['velocidad']:+d}% · tono {CAL['tono_hz']:+d} Hz · "
+          f"volumen {CAL['lufs']:.1f} LUFS (guardado en {CAL_PATH})")
+else:
+    print('Sin calibrar: se usan los valores por defecto (marca CALIBRAR).')
+BASE_CAL = dict(AJUSTES)"""),
+
+code("""#@title 7 · Voces del Modo Guiado (+ resto del guion de la app) → ZIP para `assets/vof_tutorial/`
+GENERAR_VOCES_APP = True  #@param {type:"boolean"}
+INCLUIR_TUTORIAL = True   #@param {type:"boolean"}
+#@markdown Siempre genera las 8 `guiado_*`. Con `INCLUIR_TUTORIAL` también las 19 del tutorial, para que **toda la app** tenga la misma voz.
+#@markdown Extrae los mp3 del ZIP **directo** en `assets/vof_tutorial/` (sin subcarpeta).
+if GENERAR_VOCES_APP:
+    pares = [(k, v) for k, v in GUION.items() if INCLUIR_TUTORIAL or k.startswith('guiado_')]
+    pares.sort(key=lambda p: not p[0].startswith('guiado_'))  # las del Modo Guiado primero (se escuchan arriba)
+    formato_previo, AJUSTES['formato'] = AJUSTES['formato'], 'mp3'  # la app usa <id>.mp3
+    try:
+        producir(pares, lote='vof_tutorial', mostrar=8)
+    finally:
+        AJUSTES['formato'] = formato_previo
+else:
+    print('Omitido (marca GENERAR_VOCES_APP).')"""),
+
+md("""## ✍️ Estudio — cualquier texto
+
+Escribe en `TEXTOS` (celda 8) **una línea por audio**:
 
 ```
 bienvenida | Bienvenido al sistema de citas de COSSMIL.
@@ -287,37 +410,41 @@ Una línea sin nombre también sirve: se llamará clip_01_una-linea-sin-nombre.
 - Textos largos (párrafos) se parten solos en frases; no hay límite práctico.
 - Si una palabra suena mal, agrégala a `PRONUNCIACION` (p. ej. `'COSSMIL': 'Cossmil'`, `'La Paz': 'la paz'`).
 
-Ajustes de sonido: **VOZ_BASE** cambia la entonación de partida (la celda 9 las compara todas); **VELOCIDAD** negativa = más pausado; **INDEX_RATE** más alto = más parecido a la locutora (si suena metálico, bájalo a 0.5); **PROTECCION** más alta = consonantes y respiraciones más limpias."""),
+Por defecto usa la **voz calibrada** (celda 6). Los deslizadores son **ajuste fino** sobre ella: VELOCIDAD negativa = más pausado; INDEX_RATE más alto = más timbre de la locutora (si suena metálico, bájalo a 0.6); PROTECCION más alta = consonantes y respiraciones más limpias."""),
 
-code('''#@title 6 · Estudio — escribe tus textos y ejecuta esta celda
+code('''#@title 8 · Estudio — escribe tus textos y ejecuta esta celda
 TEXTOS = """
-bienvenida | Bienvenido a COSSMIL. [pausa] Le acompañaré paso a paso para reservar su cita médica.
+prueba_bienvenida | Bienvenido a COSSMIL. [pausa] Le acompañaré paso a paso para reservar su cita médica.
 Este es un texto de prueba: puede escribir aquí cualquier cosa que necesite, y se generará con la voz de la locutora.
 """
-VOZ_BASE = "es-BO-SofiaNeural"  #@param @@VOCES@@
-VELOCIDAD = -8     #@param {type:"slider", min:-40, max:30, step:1}
-TONO_BASE_HZ = 0   #@param {type:"slider", min:-30, max:30, step:1}
-PITCH_RVC = 0      #@param {type:"slider", min:-6, max:6, step:1}
-INDEX_RATE = 0.7   #@param {type:"slider", min:0, max:1, step:0.05}
-PROTECCION = 0.33  #@param {type:"slider", min:0, max:0.5, step:0.01}
+VOZ_BASE = "automática (calibrada)"  #@param @@VOCES_AUTO@@
+VELOCIDAD_EXTRA = 0  #@param {type:"slider", min:-30, max:30, step:1}
+TONO_EXTRA_HZ = 0    #@param {type:"slider", min:-30, max:30, step:1}
+PITCH_RVC = 0        #@param {type:"slider", min:-6, max:6, step:1}
+INDEX_RATE = 0.75    #@param {type:"slider", min:0, max:1, step:0.05}
+PROTECCION = 0.33    #@param {type:"slider", min:0, max:0.5, step:0.01}
 LIMPIAR_RUIDO = False  #@param {type:"boolean"}
-FORMATO = "mp3"    #@param ["mp3", "wav"]
+FORMATO = "mp3"      #@param ["mp3", "wav"]
 NORMALIZAR_VOLUMEN = True  #@param {type:"boolean"}
-DESCARGAR = True   #@param {type:"boolean"}
+DESCARGAR = True     #@param {type:"boolean"}
 NOMBRE_LOTE = "estudio"  #@param {type:"string"}
 PRONUNCIACION.update({
     # 'palabra como se escribe': 'como debe sonar',
 })
 
-AJUSTES.update(voz=VOZ_BASE, velocidad=VELOCIDAD, tono_hz=TONO_BASE_HZ, pitch=PITCH_RVC,
+voz, vel, tono = BASE_CAL['voz'], BASE_CAL['velocidad'], BASE_CAL['tono_hz']
+if not VOZ_BASE.startswith('automática'):
+    fila = next((f for f in (CAL or {}).get('ranking', []) if f['voz'] == VOZ_BASE), None)
+    voz, vel, tono = VOZ_BASE, (fila['velocidad'] if fila else -8), (fila['tono_hz'] if fila else 0)
+AJUSTES.update(voz=voz, velocidad=vel + VELOCIDAD_EXTRA, tono_hz=tono + TONO_EXTRA_HZ, pitch=PITCH_RVC,
                index_rate=INDEX_RATE, protect=PROTECCION, limpiar=LIMPIAR_RUIDO,
                formato=FORMATO, normalizar=NORMALIZAR_VOLUMEN)
 producir(parse_textos(TEXTOS), lote=nombre_seguro(NOMBRE_LOTE), descargar=DESCARGAR)'''),
 
-code("""#@title 7 · (Opcional) Generar desde un archivo .txt / .json / .csv
+code("""#@title 9 · (Opcional) Generar desde un archivo .txt / .json / .csv
 USAR_ARCHIVO = False  #@param {type:"boolean"}
-#@markdown `.txt`: mismo formato que la celda 6 · `.json`: `{"id": "texto"}` o `[{"id":…, "texto":…}]` · `.csv`: columnas `id,texto`.
-#@markdown Usa los ajustes de sonido de la celda 6.
+#@markdown `.txt`: mismo formato que la celda 8 · `.json`: `{"id": "texto"}` o `[{"id":…, "texto":…}]` · `.csv`: columnas `id,texto`.
+#@markdown Usa los ajustes de sonido de la celda 8.
 if USAR_ARCHIVO:
     from google.colab import files
     pares = []
@@ -326,37 +453,6 @@ if USAR_ARCHIVO:
     producir(pares, lote='archivo', mostrar=6)
 else:
     print('Omitido (marca USAR_ARCHIVO para subir un archivo de textos).')"""),
-
-code("""#@title 8 · (Opcional) Voces de la app COSSMIL (guion del tutorial y Modo Guiado)
-GENERAR_GUION_APP = False  #@param {type:"boolean"}
-SOLO_GUIADO = False        #@param {type:"boolean"}
-#@markdown Descarga `vof_tutorial.zip`: extrae los mp3 **directo** en `assets/vof_tutorial/` (sin subcarpeta).
-GUION = @@GUION@@
-if GENERAR_GUION_APP:
-    pares = [(k, v) for k, v in GUION.items() if not SOLO_GUIADO or k.startswith('guiado_')]
-    formato_previo, AJUSTES['formato'] = AJUSTES['formato'], 'mp3'  # la app usa <id>.mp3
-    try:
-        producir(pares, lote='vof_tutorial', mostrar=8)
-    finally:
-        AJUSTES['formato'] = formato_previo
-else:
-    print('Omitido (marca GENERAR_GUION_APP para regenerar los clips de la app).')"""),
-
-code("""#@title 9 · (Opcional) Comparar voces base con la misma frase
-COMPARAR = False  #@param {type:"boolean"}
-FRASE = "Bienvenido a COSSMIL. Su cita médica fue registrada correctamente."  #@param {type:"string"}
-#@markdown Escucha todas y copia la que más te guste en `VOZ_BASE` (celda 6). Todas pasan por el modelo de la locutora.
-VOCES_A_PROBAR = @@VOCES@@
-if COMPARAR:
-    voz_previa = AJUSTES['voz']
-    try:
-        for voz in VOCES_A_PROBAR:
-            AJUSTES['voz'] = voz
-            producir([(voz, FRASE)], lote=f'comparar_{voz}', descargar=False, textos=False)
-    finally:
-        AJUSTES['voz'] = voz_previa
-else:
-    print('Omitido (marca COMPARAR para escuchar todas las voces base).')"""),
 ]
 
 reemplazos = {
@@ -364,6 +460,7 @@ reemplazos = {
     '@@COMMIT@@': APPLIO_COMMIT,
     '@@MOTOR@@': motor,
     '@@GUION@@': json.dumps(lines, ensure_ascii=False, indent=1),
+    '@@VOCES_AUTO@@': json.dumps(['automática (calibrada)'] + VOCES),
     '@@VOCES@@': json.dumps(VOCES),
 }
 nb = {'nbformat': 4, 'nbformat_minor': 0,

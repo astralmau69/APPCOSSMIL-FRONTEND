@@ -76,9 +76,13 @@ plan TDD: `docs/superpowers/plans/2026-09-22-modo-guiado-reserva.md`.
 texto LIBRE → voz de la locutora vof (edge-tts femenina → RVC/Applio). Entrena una
 vez; modelo + `huella.txt` (hash del dataset) en `MyDrive/cossmil_rvc/modelo/`; si
 cambia el audio en `MyDrive/cossmil_rvc/audio_extra/` reentrena solo. Celdas: 6
-estudio (`nombre | texto`, `[pausa 1.5]`, diccionario `PRONUNCIACION`, ej.
-COSSMIL→Cossmil), 7 archivo txt/json/csv, 8 guion de la app (`GENERAR_GUION_APP`,
-`SOLO_GUIADO`), 9 comparar voces base. Motor en `tools/rvc/estudio_voz_lib.py`
+CALIBRACIÓN automática (analizar_voz: F0 mediana/ritmo por picos de energía/rango
+tonal; vof = ~218 Hz, ~5,5 síl/s, 12,6 st, -16 LUFS, limpias sin música; prueba 14
+voces edge-tts femeninas con velocidad/tono igualados, las pasa por RVC y ordena
+por similitud WavLM-SV − 0,02·distancia de rasgos; cache `modelo/calibracion.json`
+por huella+pth), 7 voces del MODO GUIADO (+tutorial, activa por defecto), 8 estudio
+texto libre (`nombre | texto`, `[pausa 1.5]`, `PRONUNCIACION`, ajuste fino sobre la
+calibrada), 9 archivo txt/json/csv. Motor en `tools/rvc/estudio_voz_lib.py`
 (embebido por `build_colab_notebook.py`; pruebas `test_estudio_voz_lib.py`).
 Lecciones Applio (commit fijado `939d9ed`): CLI Click con GUIONES en comandos y
 flags (`batch-infer`, NO `batch_infer`; `--model-name`); flags booleanos sin valor

@@ -534,7 +534,7 @@ Run local: `bash tools/rvc/prep_dataset.sh` → genera `tools/rvc/rvc_dataset/*.
 
 - [ ] **Step 2: Colab (reentrenar + convertir)**
 
-Subir `tools/rvc/COSSMIL_estudio_voz.ipynb` a Colab (GPU T4) y "Ejecutar todo" (autocontenido; reemplaza seguir `tools/rvc/COLAB_notebook.md` a mano). Marcar `GENERAR_GUION_APP` en la celda 8 (usa `tutorial_lines.json`, ya incluye `guiado_*`; `SOLO_GUIADO` para solo las 8 nuevas). Descargar el ZIP.
+Subir `tools/rvc/COSSMIL_estudio_voz.ipynb` a Colab (GPU T4) y "Ejecutar todo" (autocontenido; reemplaza seguir `tools/rvc/COLAB_notebook.md` a mano). La celda 7 genera por defecto las 8 `guiado_*` (+ las 19 del tutorial con `INCLUIR_TUTORIAL`) con la voz calibrada de la celda 6. Descargar el ZIP `vof_tutorial_*.zip`.
 
 - [ ] **Step 3: Colocar clips**
 

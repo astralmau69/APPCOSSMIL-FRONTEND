@@ -253,8 +253,8 @@ def ensamblar(partes, ruta_salida):
     sf.write(ruta_salida, np.concatenate(final) if final else np.zeros(1, 'float32'), sr)
 
 
-def masterizar(ruta_wav, ruta_salida, formato='mp3', normalizar=True, cola=0.25):
-    """Recorta silencios de borde, normaliza volumen (-16 LUFS), suaviza bordes y exporta."""
+def masterizar(ruta_wav, ruta_salida, formato='mp3', normalizar=True, cola=0.25, lufs=-16.0):
+    """Recorta silencios de borde, iguala el volumen a `lufs` (el de la locutora), suaviza bordes y exporta."""
     filtros = [
         'silenceremove=start_periods=1:start_threshold=-50dB:start_silence=0.05',
         'areverse',
@@ -262,7 +262,7 @@ def masterizar(ruta_wav, ruta_salida, formato='mp3', normalizar=True, cola=0.25)
         'areverse',
     ]
     if normalizar:
-        filtros.append('loudnorm=I=-16:TP=-1.5:LRA=11')
+        filtros.append(f'loudnorm=I={max(-30.0, min(-9.0, lufs)):.1f}:TP=-1.0:LRA=11')
     filtros += ['afade=t=in:d=0.02', f'apad=pad_dur={cola}']
     args = ['-i', ruta_wav, '-af', ','.join(filtros), '-ac', 1, '-ar', 44100]
     args += ['-b:a', '128k'] if formato == 'mp3' else ['-c:a', 'pcm_s16le']
@@ -270,7 +270,7 @@ def masterizar(ruta_wav, ruta_salida, formato='mp3', normalizar=True, cola=0.25)
 
 
 def generar(pares, voz, carpeta, convertir, velocidad=0, tono_hz=0, pronunciacion=None,
-            formato='mp3', normalizar=True, sintetizar=None, log=print):
+            formato='mp3', normalizar=True, sintetizar=None, log=print, lufs=-16.0):
     """[(nombre, texto)] → {nombre: ruta_final}.
 
     `convertir(carpeta_entrada, carpeta_salida)` aplica RVC a todos los WAV de una
@@ -315,8 +315,78 @@ def generar(pares, voz, carpeta, convertir, velocidad=0, tono_hz=0, pronunciacio
         crudo = os.path.join(rvc_dir, f'_{nombre}.wav')
         ensamblar(partes, crudo)
         final = os.path.join(fin_dir, f'{nombre}.{formato}')
-        masterizar(crudo, final, formato, normalizar)
+        masterizar(crudo, final, formato, normalizar, lufs=lufs)
         salidas[nombre] = final
     for f in glob.glob(os.path.join(rvc_dir, '_*.wav')):
         os.remove(f)
     return salidas
+
+
+# ─────────────────────── Calibración contra la voz real ───────────────────────
+
+def _cargar_16k(rutas):
+    import librosa
+    import numpy as np
+    partes = [librosa.load(r, sr=16000, mono=True)[0] for r in rutas]
+    return np.concatenate(partes) if partes else np.zeros(16000, 'float32')
+
+
+def analizar_voz(rutas):
+    """Rasgos objetivos de una voz: tono (mediana de F0 en Hz), rango tonal
+    (semitonos p10–p90), ritmo (sílabas/s aprox. por picos de energía) y segundos de habla."""
+    import librosa
+    import numpy as np
+    from scipy.signal import find_peaks
+    y = _cargar_16k([rutas] if isinstance(rutas, str) else rutas)
+    f0, sonoro, _ = librosa.pyin(y, fmin=90, fmax=450, sr=16000, frame_length=1024, hop_length=160)
+    f0 = f0[sonoro & ~np.isnan(f0)]
+    if len(f0) < 10:
+        raise RuntimeError('No se detectó voz suficiente para analizar.')
+    # Envolvente de energía de la banda vocal (100 cuadros/s) → cada pico ≈ una sílaba
+    banda = librosa.effects.preemphasis(y)
+    rms = librosa.feature.rms(y=banda, frame_length=400, hop_length=160)[0]
+    rms = np.convolve(rms, np.hanning(7) / np.hanning(7).sum(), mode='same')
+    umbral = 0.12 * np.percentile(rms, 95)
+    habla = rms > umbral
+    # Une huecos cortos (<250 ms: oclusivas, valles entre sílabas) → tiempo de habla, sin contar pausas.
+    huecos = np.flatnonzero(np.diff(np.concatenate([[1], habla.astype(int), [1]])))
+    for ini, fin in zip(huecos[::2], huecos[1::2]):
+        if 0 < ini and fin < len(habla) and fin - ini < 25:
+            habla[ini:fin] = True
+    picos, _ = find_peaks(rms, height=umbral, distance=8, prominence=0.08 * np.percentile(rms, 95))
+    seg_habla = max(habla.sum() / 100, 0.1)
+    return {
+        'f0': float(np.median(f0)),
+        'rango_st': float(12 * np.log2(np.percentile(f0, 90) / np.percentile(f0, 10))),
+        'silabas_s': float(len(picos) / seg_habla),
+        'seg_habla': float(seg_habla),
+    }
+
+
+def calibrar_base(ref, base, vel_actual=0, tono_actual=0):
+    """Con los rasgos de la locutora (ref) y de una voz base ya sintetizada,
+    calcula la velocidad (%) y el tono (Hz) de edge-tts que la acercan a la locutora."""
+    import math
+    factor = ref['silabas_s'] / max(base['silabas_s'], 0.1)
+    velocidad = (1 + vel_actual / 100) * factor * 100 - 100
+    tono = tono_actual + (ref['f0'] - base['f0'])
+    return {'velocidad': int(max(-35, min(25, round(velocidad)))),
+            'tono_hz': int(max(-40, min(40, round(tono)))),
+            'dif_st': 12 * math.log2(ref['f0'] / base['f0'])}
+
+
+def distancia_rasgos(ref, otro):
+    """Qué tan lejos está una salida de la locutora en tono, ritmo y expresividad (0 = igual)."""
+    import math
+    return (abs(12 * math.log2(otro['f0'] / ref['f0']))            # semitonos
+            + 4 * abs(math.log(max(otro['silabas_s'], 0.1) / max(ref['silabas_s'], 0.1)))  # ritmo
+            + 0.3 * abs(otro['rango_st'] - ref['rango_st']))       # entonación
+
+
+def medir_lufs(ruta):
+    """Sonoridad integrada (LUFS) con ffmpeg loudnorm."""
+    import json as _json, re as _re, subprocess
+    r = subprocess.run(['ffmpeg', '-hide_banner', '-nostats', '-i', ruta, '-af',
+                        'loudnorm=print_format=json', '-f', 'null', '-'], capture_output=True, text=True)
+    m = _re.search(r'\{[^{}]*"input_i"[^{}]*\}', r.stderr)
+    return float(_json.loads(m.group(0))['input_i']) if m else -16.0

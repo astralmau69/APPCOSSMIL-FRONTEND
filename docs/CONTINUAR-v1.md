@@ -20,11 +20,13 @@ generar **cualquier texto** con la voz femenina de la locutora de `assets/vof/`:
 2. Entorno de ejecución → Cambiar tipo → **T4 GPU**.
 3. Ejecutar todo (acepta el permiso de Drive). La 1ª vez entrena (~30–45 min) y
    guarda el modelo en `MyDrive/cossmil_rvc/modelo/`; después no reentrena.
-4. Celda 6 · Estudio: una línea por audio (`nombre | texto`, `[pausa 1.5]`),
-   ajustes de voz/velocidad/tono, previsualización y ZIP (copia en
-   `MyDrive/cossmil_rvc/salidas/`).
-5. Clips de la app: celda 8 (`GENERAR_GUION_APP`, `SOLO_GUIADO`) → extraer los mp3
-   **directo** en `assets/vof_tutorial/`.
+4. Celda 6 calibra el parecido (tono ~218 Hz, ~5,5 sílabas/s, -16 LUFS de las
+   vof; elige entre 14 voces base con WavLM-SV) y lo guarda en
+   `modelo/calibracion.json`.
+5. Celda 7 (activa por defecto): voces del **Modo Guiado** (+ tutorial) → ZIP
+   `vof_tutorial_*.zip` → extraer los mp3 **directo** en `assets/vof_tutorial/`.
+6. Celda 8 · Estudio: cualquier texto (`nombre | texto`, `[pausa 1.5]`), ajuste
+   fino sobre la voz calibrada; copia en `MyDrive/cossmil_rvc/salidas/`.
 
 Más parecido: dejar grabaciones limpias de la locutora en
 `MyDrive/cossmil_rvc/audio_extra/`; la huella del dataset cambia y reentrena solo.
