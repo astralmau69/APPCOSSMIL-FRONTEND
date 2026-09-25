@@ -83,6 +83,15 @@ class BookingState {
   /// ver `SummaryScreen._onConfirmPressed`.
   bool isTutorialMode = false;
 
+  /// true durante el MODO GUIADO: la misma reserva real, con la instructora
+  /// narrando cada pantalla por voz.
+  ///
+  /// Vive aparte de [isTutorialMode] a propósito, y no es un matiz: ésa apaga
+  /// las llamadas reales de negocio y jamás crea la cita. Si el modo guiado
+  /// reutilizara esa bandera, el usuario terminaría el recorrido creyendo que
+  /// reservó y no tendría ninguna cita.
+  bool guidedMode = false;
+
   String? beneficiaryLabel;
   BeneficiaryModel? beneficiary;
   RegionalModel? regional;
@@ -148,6 +157,7 @@ class BookingState {
     // tutorial de una sesión anterior — eso silenciosamente impediría crear
     // la cita real al confirmar.
     isTutorialMode = false;
+    guidedMode = false;
     beneficiaryLabel = null;
     beneficiary = null;
     regional = null;
