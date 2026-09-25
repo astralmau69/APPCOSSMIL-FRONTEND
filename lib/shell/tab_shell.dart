@@ -1268,8 +1268,12 @@ class TabShellState extends State<TabShell>
                           backgroundColor: AppColors.success,
                         ),
                       );
-                      // Se puede entrar a la reserva ahora si gusta
-                      _tryEnterBookingTab();
+                      // Se puede entrar a la reserva ahora si gusta. Por
+                      // `startBooking`, como cualquier otra reserva real: así
+                      // pregunta el modo y, sobre todo, resetea el
+                      // BookingState — entrar directo arrastraba las
+                      // selecciones de la cita que se acaba de cancelar.
+                      startBooking();
                     }
                   } else {
                     setModalState(() => isCancelling = false);

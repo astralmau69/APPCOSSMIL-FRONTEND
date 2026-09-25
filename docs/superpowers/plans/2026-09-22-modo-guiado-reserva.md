@@ -10,6 +10,25 @@
 
 **Spec:** `docs/superpowers/specs/2026-09-22-modo-guiado-reserva-design.md`
 
+## Estado (2026-09-25)
+
+Implementado y en verde: `flutter analyze` sin errores y 274 tests pasando.
+Las 8 tareas están hechas salvo las dos verificaciones que solo se pueden
+hacer con la app instalada, marcadas sin tildar más abajo:
+
+- Task 5 · Step 2 — que `guiado_intro` suene una vez y no se pise con
+  `guiado_regional`.
+- Task 8 · Step 5 — recorrer el Modo Guiado real de punta a punta y
+  comprobar que al confirmar se crea la cita y suena `guiado_final`.
+
+Cambió una decisión respecto de lo escrito abajo: el texto de las burbujas ya
+no se escribe en cada pantalla. Vive en `lib/core/tutorial/tutorial_script.dart`,
+indexado por id de clip, y `test/core/tutorial_script_test.dart` verifica que
+diga exactamente lo que dicen los mp3 (`tools/rvc/tutorial_lines.json`). Los
+textos del Modo Guiado son los del guion regrabado, no los borradores que
+aparecen en la Task 4.
+
+---
 ## Global Constraints
 
 - Idioma UI en español; guion en tono profesional/institucional militar (COSSMIL, Bolivia), trato de usted, sin jergas, sin faltas de ortografía. Fuente única del guion: `tools/rvc/tutorial_lines.{md,json}`.
@@ -32,7 +51,7 @@
 **Interfaces:**
 - Produces: `BookingState.guidedMode` (`bool`, default `false`); se limpia a `false` en el reset de la reserva.
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 ```dart
 import 'package:flutter_test/flutter_test.dart';
@@ -50,12 +69,12 @@ void main() {
 }
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `flutter test test/booking/booking_state_guided_mode_test.dart`
 Expected: FAIL (`guidedMode` no existe / reset no lo limpia). Ajustar el nombre real del método de reset leyendo `tab_shell.dart` antes de implementar.
 
-- [ ] **Step 3: Write minimal implementation**
+- [x] **Step 3: Write minimal implementation**
 
 En `BookingState`, junto a `isTutorialMode`:
 ```dart
@@ -66,12 +85,12 @@ En la rutina de reset (donde hoy se hace `isTutorialMode = false;`), añadir:
 guidedMode = false;
 ```
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 Run: `flutter test test/booking/booking_state_guided_mode_test.dart`
 Expected: PASS
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add lib/shell/tab_shell.dart test/booking/booking_state_guided_mode_test.dart
@@ -90,7 +109,7 @@ git commit -m "feat(guiado): bandera guidedMode en BookingState"
 - Consumes: nada nuevo.
 - Produces: `TutorialCoachOverlay({..., bool narrateOnly = false})`. `narrateOnly` NO cambia el comportamiento interno del overlay (voz, burbujas, contador siguen igual); es una bandera de intención que las pantallas leen para NO activar `GuidedTapHint`. El overlay ya no monta resaltados por sí mismo, así que aquí solo se agrega el parámetro y se expone.
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 ```dart
 import 'package:flutter/material.dart';
@@ -121,12 +140,12 @@ void main() {
 }
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `flutter test test/widgets/tutorial_coach_overlay_narrate_only_test.dart`
 Expected: FAIL (parámetro `narrateOnly` no existe).
 
-- [ ] **Step 3: Write minimal implementation**
+- [x] **Step 3: Write minimal implementation**
 
 En `TutorialCoachOverlay`:
 ```dart
@@ -137,12 +156,12 @@ y en el constructor:
 this.narrateOnly = false,
 ```
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 Run: `flutter test test/widgets/tutorial_coach_overlay_narrate_only_test.dart`
 Expected: PASS
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add lib/core/widgets/tutorial_coach_overlay.dart test/widgets/tutorial_coach_overlay_narrate_only_test.dart
@@ -161,7 +180,7 @@ git commit -m "feat(guiado): parámetro narrateOnly en TutorialCoachOverlay"
 - Consumes: `BookingState.guidedMode` (Task 1), `TutorialCoachOverlay.narrateOnly` (Task 2).
 - Produces: en `guidedMode`, `_coachVoiceId()` devuelve por paso: 0→`guiado_regional`, 1→`guiado_especialidad`, 2→`guiado_medico`, 3→`guiado_dia`, 4→`guiado_hora`, 5→`guiado_confirmar`, confirmado→`guiado_final`. En `isTutorialMode` (no guiado) sigue devolviendo `ficha_0X`/`ficha_07` (sin cambios).
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Extraer el mapeo a una función estática pura para testearla sin construir el widget:
 ```dart
@@ -188,12 +207,12 @@ void main() {
 }
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `flutter test test/booking/booking_flow_voice_id_test.dart`
 Expected: FAIL (`bookingVoiceId` no existe).
 
-- [ ] **Step 3: Write minimal implementation**
+- [x] **Step 3: Write minimal implementation**
 
 Añadir función de nivel de librería en `booking_flow_screen.dart`:
 ```dart
@@ -243,12 +262,12 @@ if (bs.isTutorialMode || bs.guidedMode)
 ```
 Nota para el implementador: verificar que `onExit` en `guidedMode` NO borre la reserva (solo oculta el coach); si `_exitTutorial` hoy resetea el booking, crear una rama que en guiado solo apague `guidedMode` y desmonte el coach.
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 Run: `flutter test test/booking/booking_flow_voice_id_test.dart`
 Expected: PASS
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add lib/features/booking/screens/booking_flow_screen.dart test/booking/booking_flow_voice_id_test.dart
@@ -267,7 +286,7 @@ git commit -m "feat(guiado): voz por paso y coach narrateOnly en el flujo de res
 - Consumes: `BookingState.guidedMode`.
 - Produces: cuando `guidedMode`, `_coachMessages()` devuelve el texto del guion `guiado_*` (§5 del spec) por paso; cuando `isTutorialMode` (no guiado), devuelve los mensajes demo actuales sin cambios.
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 ```dart
 import 'package:flutter_test/flutter_test.dart';
@@ -283,12 +302,12 @@ void main() {
 }
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `flutter test test/booking/booking_flow_messages_test.dart`
 Expected: FAIL (`bookingCoachMessages` no existe).
 
-- [ ] **Step 3: Write minimal implementation**
+- [x] **Step 3: Write minimal implementation**
 
 Extraer función de librería con el texto EXACTO del guion (copiar de `tools/rvc/tutorial_lines.md`, sección Modo Guiado):
 ```dart
@@ -334,12 +353,12 @@ List<String> bookingCoachMessages({
 ```
 `_coachMessages()` delega en `bookingCoachMessages(guided: bs.guidedMode, step: _currentStep, confirmed: _isConfirmed)`.
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 Run: `flutter test test/booking/booking_flow_messages_test.dart`
 Expected: PASS. Ejecutar también los tests demo previos para asegurar no-regresión.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add lib/features/booking/screens/booking_flow_screen.dart test/booking/booking_flow_messages_test.dart
@@ -358,7 +377,7 @@ git commit -m "feat(guiado): burbujas profesionales por paso en modo guiado"
 - Consumes: `TutorialVoice.play('guiado_intro')`.
 - Produces: al entrar al flujo en `guidedMode`, se reproduce `guiado_intro` una sola vez, antes/al montar el paso 0. Decisión: reproducir `guiado_intro` en el `BookingModeSheet` al elegir "Guiado" (antes de navegar), y dejar que el paso 0 reproduzca `guiado_regional` al montar. Así no compiten dos clips.
 
-- [ ] **Step 1: Implementar (sin test unitario de audio)**
+- [x] **Step 1: Implementar (sin test unitario de audio)**
 
 En el handler de "Modo Guiado" del `BookingModeSheet` (Task 6), antes de `_tryEnterBookingTab()`:
 ```dart
@@ -370,7 +389,7 @@ Documentar en comentario que el paso 0 reproducirá `guiado_regional` (patrón d
 
 Marcar para prueba en dispositivo: intro suena una vez, luego regional; no se pisan.
 
-- [ ] **Step 3: Commit** (junto con Task 6 si es el mismo archivo)
+- [x] **Step 3: Commit** (junto con Task 6 si es el mismo archivo)
 
 ```bash
 git commit -am "feat(guiado): reproducir guiado_intro al elegir modo guiado"
@@ -389,7 +408,7 @@ git commit -am "feat(guiado): reproducir guiado_intro al elegir modo guiado"
 - Consumes: `BookingState.guidedMode` (Task 1).
 - Produces: `Future<BookingMode?> showBookingModeSheet(BuildContext context)` con `enum BookingMode { clasico, guiado }`. Dos tarjetas grandes ("Modo Clásico" / "Modo Guiado") con `Key('mode_clasico')` y `Key('mode_guiado')`. Devuelve la elección o `null` si se descarta.
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 ```dart
 import 'package:flutter/material.dart';
@@ -416,23 +435,23 @@ void main() {
 }
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `flutter test test/booking/booking_mode_sheet_test.dart`
 Expected: FAIL (archivo/función no existen).
 
-- [ ] **Step 3: Write minimal implementation**
+- [x] **Step 3: Write minimal implementation**
 
 Crear `booking_mode_sheet.dart` con `enum BookingMode { clasico, guiado }` y `showBookingModeSheet` (hoja Cupertino/`showAppDialog` con dos tarjetas grandes usando tokens `AppSpacing`/`AppTypography`/`AppColors`, targets ≥48px, respetando reduce-motion). Cada tarjeta hace `Navigator.pop(context, BookingMode.x)`. Copy:
   - Clásico: título "Modo Clásico", subtítulo "Reserve por su cuenta, de forma rápida."
   - Guiado: título "Modo Guiado", subtítulo "La instructora le acompaña por voz, paso a paso."
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 Run: `flutter test test/booking/booking_mode_sheet_test.dart`
 Expected: PASS
 
-- [ ] **Step 5: Cablear en los puntos de entrada**
+- [x] **Step 5: Cablear en los puntos de entrada**
 
 En cada entrada normal de "Nueva Reserva" (NO en el tutorial-demo):
 ```dart
@@ -445,7 +464,7 @@ widget.tabShell.// _tryEnterBookingTab() equivalente público existente
 ```
 Nota: usar el método público que hoy dispara la reserva (ver `TabShell`); no duplicar la lógica de precarga de grupo familiar.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add lib/features/booking/widgets/booking_mode_sheet.dart lib/features/home/screens/home_screen.dart lib/features/reservas/screens/reservas_screen.dart test/booking/booking_mode_sheet_test.dart
@@ -464,11 +483,11 @@ git commit -m "feat(guiado): hoja de selección Clásico/Guiado en Nueva Reserva
 - Consumes: `TutorialVoice` (singleton estático, `currentToken`, `onComplete`).
 - Produces: garantía de que el `stop()` de un coach que se desmonta NO cancela el clip que otro coach acaba de lanzar. Enfoque: en `dispose()`, solo llamar `TutorialVoice.stop()` si el token vigente es del propio coach (guardar `_voiceToken` y comparar), o exponer `TutorialVoice.stopIfToken(int token)`.
 
-- [ ] **Step 1: Reproducir con debugging sistemático**
+- [x] **Step 1: Reproducir con debugging sistemático**
 
 Antes de codear: confirmar la causa (usar superpowers:systematic-debugging). Instrumentar/loguear el orden dispose(Inicio)→play(Reserva) o escribir el test rojo abajo que modele el handoff.
 
-- [ ] **Step 2: Write the failing test**
+- [x] **Step 2: Write the failing test**
 
 ```dart
 import 'package:flutter/material.dart';
@@ -485,12 +504,12 @@ void main() {
 }
 ```
 
-- [ ] **Step 3: Run test to verify it fails**
+- [x] **Step 3: Run test to verify it fails**
 
 Run: `flutter test test/services/tutorial_voice_handoff_test.dart`
 Expected: FAIL (hoy el dispose de A mata el clip de B).
 
-- [ ] **Step 4: Implementar el fix mínimo**
+- [x] **Step 4: Implementar el fix mínimo**
 
 En `TutorialVoice` añadir:
 ```dart
@@ -504,12 +523,12 @@ if (_voiceToken != null) TutorialVoice.stopIfToken(_voiceToken!);
 ```
 (el coach entrante ya incrementó el token en su `play()`, así que el saliente ya no coincide y no corta).
 
-- [ ] **Step 5: Run test to verify it passes**
+- [x] **Step 5: Run test to verify it passes**
 
 Run: `flutter test test/services/tutorial_voice_handoff_test.dart`
 Expected: PASS. Correr toda la carpeta de tests del coach para no-regresión.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add lib/core/widgets/tutorial_coach_overlay.dart lib/core/services/tutorial_voice.dart test/services/tutorial_voice_handoff_test.dart
@@ -528,19 +547,19 @@ git commit -m "fix(tutorial): el clip del paso nuevo ya no se corta por el dispo
 **Interfaces:**
 - Produces: 8 mp3 con nombres EXACTOS de los ids `guiado_*`, en `assets/vof_tutorial/` (plano).
 
-- [ ] **Step 1: Dataset**
+- [x] **Step 1: Dataset**
 
 Run local: `bash tools/rvc/prep_dataset.sh` → genera `tools/rvc/rvc_dataset/*.wav`. (Opcional recomendado: agregar 3–5 min de voz limpia de la misma locutora antes.)
 
-- [ ] **Step 2: Colab (reentrenar + convertir)**
+- [x] **Step 2: Colab (reentrenar + convertir)**
 
 Subir `tools/rvc/COSSMIL_voces_guiado.ipynb` a Colab (GPU T4) y "Ejecutar todo" (autocontenido; reemplaza seguir `tools/rvc/COLAB_notebook.md` a mano). La Celda 3 usa `tutorial_lines.json` (ya incluye `guiado_*`) → genera narración fuente de TODAS las líneas; la Celda 5 convierte en lote. Descargar el ZIP.
 
-- [ ] **Step 3: Colocar clips**
+- [x] **Step 3: Colocar clips**
 
 Extraer SOLO los `guiado_*.mp3` del ZIP en `assets/vof_tutorial/` (plano; ojo con la subcarpeta anidada que ya pasó una vez). Verificar 8 archivos con `ffprobe` (duración > 0).
 
-- [ ] **Step 4: Registrar y verificar assets**
+- [x] **Step 4: Registrar y verificar assets**
 
 `flutter pub get`; si `assets/vof_tutorial/` no está declarado por carpeta en `pubspec.yaml`, añadir la carpeta. Correr `flutter analyze`.
 
@@ -548,7 +567,7 @@ Extraer SOLO los `guiado_*.mp3` del ZIP en `assets/vof_tutorial/` (plano; ojo co
 
 Instalar (`flutter run` / apk) y recorrer el Modo Guiado real end-to-end: cada paso narra su `guiado_*`, la intro no se pisa con regional, las burbujas no tapan opciones, y al confirmar se crea la cita real y suena `guiado_final`. Verificar también que el demo (`ficha_01`) ya suena en regional (Task 7).
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add assets/vof_tutorial/guiado_*.mp3 pubspec.yaml
