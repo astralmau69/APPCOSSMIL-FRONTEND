@@ -164,7 +164,7 @@ Genera audios con **la voz real de la locutora de COSSMIL** — la de `assets/vo
 4. Se descarga **`vof_tutorial_….zip`** con las voces del Modo Guiado (y del tutorial): extrae los mp3 **directo** en `assets/vof_tutorial/`.
 5. Para cualquier otro texto: celda **8 · Estudio**.
 
-> **Calidad por frase:** se generan varias tomas; **Whisper** comprueba que se entienda completa (sin cortes ni balbuceos), **UTMOS** elige la más natural (la menos robótica) y **Resemble Enhance** la limpia con red neuronal y la deja nítida a 44,1 kHz. Al final se listan las frases a revisar; rehazlas con otra **SEMILLA** (celda 7 → `SOLO_ESTOS`; celda 8 para textos libres). Más grabaciones limpias de la locutora en `MyDrive/cossmil_rvc/audio_extra/` también ayudan."""),
+> **Calidad por frase:** se generan varias tomas; **Whisper** comprueba que se entienda completa (sin cortes ni balbuceos), **UTMOS** elige la más natural (la menos robótica) y **Resemble Enhance** la limpia con red neuronal (a fuerza máxima) y la deja nítida a 44,1 kHz; además se silencian los huecos entre palabras, se limpia la referencia antes de clonar y el volumen se iguala con ganancia fija (sin subir el ruido de las pausas). Al final se listan las frases a revisar; rehazlas con otra **SEMILLA** (celda 7 → `SOLO_ESTOS`; celda 8 para textos libres). Más grabaciones limpias de la locutora en `MyDrive/cossmil_rvc/audio_extra/` también ayudan."""),
 
 code("""#@title 1 · Configuración general
 USAR_DRIVE = True        #@param {type:"boolean"}
@@ -321,7 +321,8 @@ GUION = @@GUION@@
 NOMBRES_VOF = @@NOMBRES_VOF@@
 AJUSTES = dict(exageracion=0.5, cfg=0.4, temperatura=0.75, semilla=1234, intentos=5, tomas_min=3, silabas_s=5.5,
                verificar=True, asr='openai/whisper-large-v3-turbo', naturalidad=True,
-               nitidez=True, fuerza_realce=0.3, limpiar_ruido=False,
+               nitidez=True, fuerza_realce=0.9, limpiar_ruido=False, silenciar_pausas=True,
+               limpiar_referencia=True,
                pitch=0, index_rate=0.6, protect=0.33, envolvente=1.0, limpiar=False,
                formato='mp3', normalizar=True, lufs=-16.0)
 REFERENCIA = None   # la fija la celda 6
@@ -341,7 +342,8 @@ def convertir_rvc(entrada, salida):
         fallo('batch-infer', t, mostrado=False)
 
 CLAVES_CLON = ('exageracion', 'cfg', 'temperatura', 'semilla', 'intentos', 'tomas_min', 'silabas_s',
-               'verificar', 'asr', 'naturalidad', 'nitidez', 'fuerza_realce', 'limpiar_ruido')
+               'verificar', 'asr', 'naturalidad', 'nitidez', 'fuerza_realce', 'limpiar_ruido',
+               'silenciar_pausas', 'limpiar_referencia')
 ULTIMO_INFORME = []
 
 def clonar(trabajos):
@@ -512,8 +514,10 @@ RITMO = 0.4          #@param {type:"slider", min:0.2, max:0.8, step:0.05}
 VARIACION = 0.75     #@param {type:"slider", min:0.4, max:1.2, step:0.05}
 SEMILLA = 1234       #@param {type:"integer"}
 NITIDEZ_ESTUDIO = True  #@param {type:"boolean"}
-#@markdown Limpia con red neuronal y deja la voz a 44,1 kHz (Resemble Enhance). `FUERZA_LIMPIEZA` alta si oyes ruido de fondo.
-FUERZA_LIMPIEZA = 0.3   #@param {type:"slider", min:0, max:1, step:0.05}
+#@markdown Limpia con red neuronal y deja la voz a 44,1 kHz (Resemble Enhance). `FUERZA_LIMPIEZA` 0.9 = limpieza máxima (configuración oficial); bájala solo si notas la voz apagada.
+FUERZA_LIMPIEZA = 0.9   #@param {type:"slider", min:0, max:1, step:0.05}
+SILENCIAR_PAUSAS = True #@param {type:"boolean"}
+#@markdown Baja el soplido de fondo en los huecos entre palabras (la voz no se toca).
 ELEGIR_LA_MAS_NATURAL = True  #@param {type:"boolean"}
 #@markdown Genera al menos `TOMAS_MIN` tomas por frase y se queda con la más humana (medidor UTMOS).
 TOMAS_MIN = 3        #@param {type:"slider", min:1, max:6, step:1}
@@ -536,6 +540,7 @@ else:  # una vof concreta como referencia (preparada en la celda 6)
         remoto('preparar_referencias', sorted(glob.glob(f'{DATASET}/*.wav')), '/content/calibracion/refs')
 AJUSTES.update(exageracion=EXPRESIVIDAD, cfg=RITMO, temperatura=VARIACION, semilla=SEMILLA,
                nitidez=NITIDEZ_ESTUDIO, fuerza_realce=FUERZA_LIMPIEZA, naturalidad=ELEGIR_LA_MAS_NATURAL,
+               silenciar_pausas=SILENCIAR_PAUSAS,
                tomas_min=TOMAS_MIN, verificar=VERIFICAR_CON_WHISPER, intentos=max(TOMAS_MAX, TOMAS_MIN),
                formato=FORMATO, normalizar=NORMALIZAR_VOLUMEN)
 producir(parse_textos(TEXTOS), lote=nombre_seguro(NOMBRE_LOTE), descargar=DESCARGAR)'''),

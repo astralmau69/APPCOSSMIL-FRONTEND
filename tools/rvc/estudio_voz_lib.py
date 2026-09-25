@@ -355,17 +355,29 @@ def ensamblar(partes, ruta_salida):
 
 def masterizar(ruta_wav, ruta_salida, formato='mp3', normalizar=True, cola=0.25, lufs=-16.0):
     """Recorta silencios de borde SIN comerse finales de palabra (umbral bajo y 150 ms de
-    margen), quita zumbidos graves, iguala el volumen a `lufs` (el de la locutora), funde
-    suavemente entrada y salida y exporta."""
+    margen), quita zumbidos graves, funde entrada y salida, e iguala el volumen a `lufs` (el
+    de la locutora) con una GANANCIA FIJA + limitador. (El loudnorm de una pasada es dinámico:
+    sube las partes bajas y con ellas el ruido de las pausas.)"""
+    import os
+    import tempfile
     borde = 'silenceremove=start_periods=1:start_threshold=-58dB:start_silence=0.15'
-    filtros = ['highpass=f=70', borde, 'areverse', borde, 'afade=t=in:d=0.06', 'areverse',
+    recorte = ['highpass=f=70', borde, 'areverse', borde, 'afade=t=in:d=0.06', 'areverse',
                'afade=t=in:d=0.02']
-    if normalizar:
-        filtros.append(f'loudnorm=I={max(-30.0, min(-9.0, lufs)):.1f}:TP=-1.0:LRA=11')
-    filtros.append(f'apad=pad_dur={cola}')
-    args = ['-i', ruta_wav, '-af', ','.join(filtros), '-ac', 1, '-ar', 44100]
-    args += ['-b:a', '160k'] if formato == 'mp3' else ['-c:a', 'pcm_s16le']
-    _ffmpeg(*args, ruta_salida)
+    fd, tmp = tempfile.mkstemp(suffix='.wav')
+    os.close(fd)
+    try:
+        _ffmpeg('-i', ruta_wav, '-af', ','.join(recorte), '-ac', 1, '-ar', 44100, '-c:a', 'pcm_f32le', tmp)
+        filtros = []
+        if normalizar:
+            objetivo = max(-30.0, min(-9.0, lufs))
+            ganancia = max(-20.0, min(30.0, objetivo - medir_lufs(tmp)))
+            filtros += [f'volume={ganancia:.2f}dB', 'alimiter=limit=0.89:attack=5:release=50:level=false']
+        filtros.append(f'apad=pad_dur={cola}')
+        args = ['-i', tmp, '-af', ','.join(filtros), '-ac', 1, '-ar', 44100]
+        args += ['-b:a', '160k'] if formato == 'mp3' else ['-c:a', 'pcm_s16le']
+        _ffmpeg(*args, ruta_salida)
+    finally:
+        os.remove(tmp)
 
 
 def generar(pares, voz, carpeta, convertir, velocidad=0, tono_hz=0, pronunciacion=None,
@@ -601,7 +613,7 @@ def _cargar_mos():
         return None
 
 
-def _cargar_realce(fuerza=0.3):
+def _cargar_realce(fuerza=0.9):
     """Resemble Enhance (MIT): quita ruido con una red neuronal y reconstruye la voz a 44,1 kHz
     (más nítida que los 24 kHz del modelo de voz). Devuelve realzar(y, sr) -> (y, sr) o None."""
     try:
@@ -632,6 +644,30 @@ def relacion_senal_ruido(y, sr):
 
 
 _AVISOS = {}
+
+
+def silenciar_pausas(y, sr, atenuacion_db=-35.0, sosten=0.08):
+    """Baja SOLO los huecos entre palabras (donde se oye el soplido de fondo). El umbral se
+    adapta a cada audio: 8 dB sobre su piso de ruido (percentil 10), entre −45 y −25 dB respecto
+    a la voz fuerte. Lo que queda debajo se atenúa `atenuacion_db`, con 80 ms de margen alrededor
+    de la voz (protege inicios y finales de palabra) y transiciones suaves."""
+    import numpy as np
+    y = np.asarray(y, dtype='float32')
+    marco = max(1, int(0.01 * sr))
+    n = len(y) // marco
+    if n < 20:
+        return y
+    e = np.sqrt(np.mean(y[:n * marco].reshape(n, marco) ** 2, axis=1)) + 1e-9
+    db = 20 * np.log10(e / np.percentile(e, 95))
+    umbral_db = min(-25.0, max(float(np.percentile(db, 10)) + 8.0, -45.0))
+    voz = db > umbral_db
+    k = max(1, int(sosten / 0.01))
+    voz = np.convolve(voz.astype(float), np.ones(2 * k + 1), mode='same') > 0  # margen a ambos lados
+    g = np.where(voz, 1.0, 10 ** (atenuacion_db / 20))
+    g = np.convolve(np.pad(g, 1, mode='edge'), np.ones(3) / 3, mode='valid')  # ~30 ms de transición
+    ganancia = np.repeat(g, marco)
+    ganancia = np.concatenate([ganancia, np.full(len(y) - len(ganancia), ganancia[-1])])
+    return (y * ganancia).astype('float32')
 
 
 def limpiar_ruido(y, sr, fuerza=0.9):
@@ -697,6 +733,8 @@ def _clonar(modelo, trabajos, ajustes, mostrar=True, asr=None, mos=None, realzar
                 print(f'  [aviso] realce omitido en esta frase ({type(e).__name__})', flush=True)
         elif ajustes.get('limpiar_ruido', False) and mejor['snr'] < 30:
             y = limpiar_ruido(y, sr, 0.6)  # respaldo suave solo si hay ruido de verdad
+        if ajustes.get('silenciar_pausas', True):
+            y = silenciar_pausas(y, sr)
         sf.write(ruta, y, sr)
         ok = mejor['parecido'] is None or (mejor['parecido'] >= 0.85 and mejor['fin'])
         informe.append({'ruta': os.path.basename(ruta), 'texto': texto, 'oido': mejor['oido'],
@@ -710,13 +748,38 @@ def _clonar(modelo, trabajos, ajustes, mostrar=True, asr=None, mos=None, realzar
     return informe
 
 
+def limpiar_referencia(ruta):
+    """Pasa la referencia por el limpiador neuronal de Resemble Enhance (solo quita ruido, no
+    cambia la voz) y la guarda al lado como *_limpia.wav. Si no se puede, usa la original."""
+    import os
+    destino = ruta[:-4] + '_limpia.wav'
+    if os.path.exists(destino) and os.path.getmtime(destino) >= os.path.getmtime(ruta):
+        return destino
+    try:
+        import librosa
+        import soundfile as sf
+        import torch
+        from resemble_enhance.enhancer.inference import denoise
+        y, sr = librosa.load(ruta, sr=44100, mono=True)
+        dev = 'cuda' if torch.cuda.is_available() else 'cpu'
+        limpio, sr2 = denoise(torch.from_numpy(y).float(), sr, dev)
+        sf.write(destino, limpio.detach().cpu().numpy(), int(sr2))
+        print('  referencia de la voz limpiada ✔', flush=True)
+        return destino
+    except Exception as e:  # noqa: BLE001
+        print(f'  [aviso] no se pudo limpiar la referencia ({type(e).__name__}); se usa la original', flush=True)
+        return ruta
+
+
 def clonar_lote(trabajos, referencia, ajustes):
     """Chatterbox Multilingual (MIT): clona la voz de `referencia` y lee cada [texto, ruta_wav]."""
     modelo = _modelo_clonacion()
+    if ajustes.get('limpiar_referencia', True):
+        referencia = limpiar_referencia(referencia)
     modelo.prepare_conditionals(referencia, exaggeration=ajustes.get('exageracion', 0.5))
     asr = _cargar_asr(ajustes.get('asr', 'openai/whisper-large-v3-turbo')) if ajustes.get('verificar', True) else None
     mos = _cargar_mos() if ajustes.get('naturalidad', True) else None
-    realzar = _cargar_realce(ajustes.get('fuerza_realce', 0.3)) if ajustes.get('nitidez', True) else None
+    realzar = _cargar_realce(ajustes.get('fuerza_realce', 0.9)) if ajustes.get('nitidez', True) else None
     return _clonar(modelo, trabajos, ajustes, asr=asr, mos=mos, realzar=realzar)
 
 

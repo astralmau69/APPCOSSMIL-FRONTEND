@@ -233,6 +233,65 @@ def test_seleccion_de_tomas():
         assert inf['tomas'] == 2 and not inf['ok']                           # sin toma buena: se marca ⚠
 
 
+def _voz_con_pausas(sr=24000, seg=3.0, ruido=0.003):
+    import numpy as np
+    t = np.arange(int(sr * seg)) / sr
+    habla = (t % 1.0) < 0.6                                   # 0,6 s de voz, 0,4 s de pausa
+    voz = 0.3 * np.sin(2 * np.pi * 220 * t) * habla
+    return (voz + ruido * np.random.default_rng(1).standard_normal(len(t))).astype('float32'), habla
+
+
+def test_silenciar_pausas():
+    try:
+        import numpy as np
+    except ImportError:
+        return
+    sr = 24000
+    y, habla = _voz_con_pausas(sr)
+    z = L.silenciar_pausas(y, sr)
+    pausa = ~habla
+    pausa[:int(0.1 * sr)] = False  # lejos de los márgenes de 80 ms
+    centro_pausa = np.zeros_like(pausa)
+    for i in range(3):
+        centro_pausa[int((i + 0.7) * sr):int((i + 0.9) * sr)] = True
+    centro_voz = np.zeros_like(pausa)
+    for i in range(3):
+        centro_voz[int((i + 0.1) * sr):int((i + 0.5) * sr)] = True
+    rms = lambda a: float(np.sqrt(np.mean(a ** 2)))
+    assert rms(z[centro_pausa]) < rms(y[centro_pausa]) / 20        # soplido de la pausa: −26 dB o más
+    assert abs(rms(z[centro_voz]) / rms(y[centro_voz]) - 1) < 0.01  # la voz queda intacta
+
+
+def test_masterizar_no_sube_el_ruido_de_las_pausas():
+    try:
+        import numpy as np
+        import soundfile as sf
+    except ImportError:
+        return
+    if not shutil.which('ffmpeg'):
+        return
+    sr = 24000
+    y, habla = _voz_con_pausas(sr, ruido=0.002)
+    y *= 0.2  # voz baja: el masterizado debe subir TODO por igual, no solo las pausas
+    with tempfile.TemporaryDirectory() as tmp:
+        ent, sal = os.path.join(tmp, 'e.wav'), os.path.join(tmp, 's.wav')
+        sf.write(ent, y, sr)
+        L.masterizar(ent, sal, formato='wav', cola=0.0, lufs=-16)
+        z, sr2 = sf.read(sal)
+        assert abs(L.medir_lufs(sal) + 16) < 1.5
+        relacion = lambda a, s: (np.percentile(np.abs(a), 99.5) / np.sqrt(np.mean(a[s] ** 2)))
+        pausa_e = np.zeros(len(y), bool)
+        pausa_s = np.zeros(len(z), bool)
+        for i in range(2):
+            pausa_e[int((i + 0.7) * sr):int((i + 0.9) * sr)] = True
+        rel_e = relacion(y, pausa_e)
+        # tras recortar bordes el audio se desplaza un poco: busca la zona más silenciosa comparable
+        marco = int(0.2 * sr2)
+        rms = [np.sqrt(np.mean(z[i:i + marco] ** 2)) for i in range(0, len(z) - marco, marco // 4)]
+        rel_s = np.percentile(np.abs(z), 99.5) / min(rms)
+        assert rel_s > 0.7 * rel_e, (rel_s, rel_e)  # la distancia voz/ruido no se achica
+
+
 if __name__ == '__main__':
     for nombre, f in list(globals().items()):
         if nombre.startswith('test_'):

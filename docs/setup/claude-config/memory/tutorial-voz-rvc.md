@@ -147,3 +147,11 @@ TODAS las voces de la app: las 19 del tutorial también se reescribieron para la
 (misma idea y casi mismas palabras que las burbujas, tono "tú", frases ≤ 15 palabras,
 sin ":", ";", "—"); las BURBUJAS del código NO se tocaron (el audio es su versión
 hablada, como ya lo era). Celda 7 por defecto genera las 27 (`INCLUIR_TUTORIAL=True`).
+"Sigue habiendo algo de ruido" (25 sep 2026): causas y fixes → (1) el `loudnorm` de UNA
+pasada es DINÁMICO y subía el soplido de las pausas → `masterizar` mide LUFS y aplica
+ganancia fija + `alimiter` (−1 dBTP); (2) realce con λ 0,9 (config oficial "denoise" de
+Resemble; antes 0,3); (3) `silenciar_pausas`: expansor por energía, umbral adaptativo
+(piso p10 + 8 dB, acotado −45…−25 dB), −35 dB en huecos, 80 ms de margen — sobre las vof
+reales la voz cambia 0,000 dB; (4) `limpiar_referencia` (denoise de Resemble antes de
+`prepare_conditionals`: el clon copia el "ambiente" de la referencia). Rama `para-entrenar`
+= la que el usuario abre en Colab: mantenerla al día con v1-dev (fast-forward).
