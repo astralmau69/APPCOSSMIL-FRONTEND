@@ -1,4 +1,5 @@
 import 'dart:async';
+import '../features/booking/widgets/booking_mode_sheet.dart';
 
 import 'package:flutter/cupertino.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -683,42 +684,7 @@ class TabShellState extends State<TabShell>
     if (index != _currentIndex) TutorialFlow.stop();
 
     if (index == 2) {
-      // Defensivo: esta es la entrada REAL al tab de Reservar (ícono de la
-      // barra de navegación). Si el usuario salió de un tutorial a medias
-      // sin usar "Salir del tutorial" y vuelve a entrar por aquí, jamás debe
-      // heredar isTutorialMode=true — eso silenciaría la creación de una
-      // cita real al confirmar. Solo `startTutorialBooking()` (que no pasa
-      // por `goToTab`) puede activar el modo tutorial.
-      bookingState.isTutorialMode = false;
-
-      // Si la instructora seguía esperando en Inicio y el usuario entró a
-      // Reservar por la barra, el tutorial se cancela en silencio: nunca
-      // deben convivir el flujo real y el resalte "Toca aquí" del Home.
-      homeTutorialNotifier.value = GuidedTutorial.none;
-
-      // Tab de reservar → verificar horario primero
-
-      // Set default beneficiary if not already set
-
-      if (bookingState.beneficiary == null) {
-        final bens = UserSession.currentUser.beneficiaries;
-
-        if (bens.isNotEmpty) {
-          final titular = bens.firstWhere(
-            (b) => b.isTitular,
-
-            orElse: () => bens.first,
-          );
-
-          bookingState.beneficiary = titular;
-
-          bookingState.beneficiaryLabel = titular.isTitular
-              ? 'Para mí'
-              : titular.fullName;
-        }
-      }
-
-      _tryEnterBookingTab();
+      startBooking('Para m?', null);
 
       return;
     }
@@ -741,14 +707,23 @@ class TabShellState extends State<TabShell>
 
   /// Llamado desde HomeScreen al seleccionar un beneficiario.
 
-  void startBooking(String label, BeneficiaryModel? beneficiary) {
-    bookingState.reset();
+  bool _choosingBookingMode = false;
 
-    bookingState.beneficiaryLabel = label;
-
-    bookingState.beneficiary = beneficiary;
-
-    _tryEnterBookingTab();
+  Future<void> startBooking(String label, BeneficiaryModel? beneficiary) async {
+    if (_choosingBookingMode || _isCheckingHorario) return;
+    _choosingBookingMode = true;
+    try {
+      final mode = await showBookingModeSheet(context);
+      if (!mounted || mode == null) return;
+      homeTutorialNotifier.value = GuidedTutorial.none;
+      bookingState.reset();
+      bookingState.guidedMode = mode == BookingMode.guiado;
+      bookingState.beneficiaryLabel = label;
+      bookingState.beneficiary = beneficiary;
+      await _tryEnterBookingTab();
+    } finally {
+      _choosingBookingMode = false;
+    }
   }
 
   /// Arranca el tutorial guiado desde su verdadero comienzo: el menú de
@@ -1053,6 +1028,7 @@ class TabShellState extends State<TabShell>
       _closeLoader();
 
       if (mounted) {
+        _bookingFlowKey.currentState?.resetFlow();
         setState(() => _currentIndex = 2);
 
         _tabController.index = 2;

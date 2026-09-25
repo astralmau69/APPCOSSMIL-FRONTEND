@@ -77,6 +77,7 @@ class TutorialVoice {
       );
       if (token != _token) return null;
       await _player.resume();
+      if (token != _token) return null;
       // Sin metadatos de duración fiables no hay coreografía que sincronizar.
       if (dur == Duration.zero) return null;
       return (duration: dur, token: token);
@@ -94,5 +95,11 @@ class TutorialVoice {
     try {
       await _player.stop();
     } catch (_) {}
+  }
+
+  /// Un coach saliente solo puede cancelar la locución que él solicitó,
+  /// incluso si todavía está preparándose. Nunca corta la del coach entrante.
+  static Future<void> stopIfToken(int token) async {
+    if (token == _token) await stop();
   }
 }

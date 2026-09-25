@@ -36,7 +36,7 @@ class BookingFlowScreenState extends State<BookingFlowScreen> {
 
   /// Acceso al coach del tutorial para minimizarlo en cuanto el usuario
   /// interactúa con el contenido del paso (que no estorbe al elegir).
-  final _coachKey = GlobalKey<TutorialCoachOverlayState>();
+  var _coachKey = GlobalKey<TutorialCoachOverlayState>();
 
   static const _titles = [
     'Establecimiento',
@@ -51,6 +51,7 @@ class BookingFlowScreenState extends State<BookingFlowScreen> {
   void resetFlow() {
     if (mounted) {
       setState(() {
+        _coachKey = GlobalKey<TutorialCoachOverlayState>();
         _currentStep = 0;
         _isConfirmed = false;
       });
@@ -85,6 +86,8 @@ class BookingFlowScreenState extends State<BookingFlowScreen> {
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final r = context.r;
+    final guided = widget.tabShell.bookingState.guidedMode;
+    final showCoach = guided || widget.tabShell.bookingState.isTutorialMode;
 
     return PopScope(
       // canPop es true solo en el paso 0 (para poder salir del tab) o si está confirmado.
@@ -154,7 +157,7 @@ class BookingFlowScreenState extends State<BookingFlowScreen> {
                     // interfiere con los gestos reales.
                     Listener(
                       behavior: HitTestBehavior.translucent,
-                      onPointerDown: widget.tabShell.bookingState.isTutorialMode
+                      onPointerDown: showCoach
                           ? (_) => _coachKey.currentState?.collapse()
                           : null,
                       child: Center(
@@ -177,7 +180,7 @@ class BookingFlowScreenState extends State<BookingFlowScreen> {
                         ),
                       ),
                     ),
-                    if (widget.tabShell.bookingState.isTutorialMode)
+                    if (showCoach)
                       TutorialCoachOverlay(
                         key: _coachKey,
                         messages: _coachMessages(),
@@ -185,9 +188,12 @@ class BookingFlowScreenState extends State<BookingFlowScreen> {
                         celebrate: _isConfirmed,
                         // El paso 1 del recorrido es tocar "Nueva Reserva" en
                         // Inicio; por eso aquí los pasos van del 2 al 7.
-                        step: _currentStep + 2,
+                        step: guided ? (_isConfirmed ? 7 : _currentStep + 1) : _currentStep + 2,
                         totalSteps: 7,
                         voiceId: _coachVoiceId(),
+                        narrateOnly: guided,
+                        initialVoiceId: guided ? 'guiado_intro' : null,
+                        initialMessages: guided ? bookingGuidedIntroMessages : null,
                         onExit: _exitTutorial,
                       ),
                   ],
@@ -203,52 +209,26 @@ class BookingFlowScreenState extends State<BookingFlowScreen> {
   /// Clip de voz del paso actual (`assets/vof_tutorial/<id>.mp3`). El paso de
   /// Inicio es `ficha_00`; aquí los pasos 0..5 son `ficha_01..06` y la
   /// confirmación `ficha_07` (ver `tools/rvc/tutorial_lines.md`).
-  String _coachVoiceId() =>
-      _isConfirmed ? 'ficha_07' : 'ficha_0${_currentStep + 1}';
+  String _coachVoiceId() => bookingVoiceId(
+    guided: widget.tabShell.bookingState.guidedMode,
+    step: _currentStep,
+    confirmed: _isConfirmed,
+  );
 
   /// Burbujas de la instructora para cada paso del tutorial — frases cortas
   /// y cercanas, una idea por burbuja (estilo chat). La última siempre lleva
   /// la colita apuntando hacia ella.
-  List<String> _coachMessages() {
-    if (_isConfirmed) {
-      return const [
-        '¡Misión cumplida! 🎖️',
-        'Esto fue solo una demostración — no se creó ninguna cita real. '
-            'Puedes ver tu ficha de ejemplo o volver al inicio.',
-      ];
-    }
-    return switch (_currentStep) {
-      0 => const [
-        '¡Muy bien! Así se inicia una reserva.',
-        'Ahora elige tu hospital o policlínico — estos son los que tienes '
-            'habilitados, agrupados por regional.',
-      ],
-      1 => const [
-        '¡Muy bien!',
-        'Ahora elige la especialidad médica que necesitas.',
-      ],
-      2 => const [
-        'Estos son los médicos disponibles para esa especialidad.',
-        'Elige el que prefieras.',
-      ],
-      3 => const [
-        'Ahora elige el día — cada tarjeta muestra si el médico atiende '
-            'y si quedan fichas.',
-      ],
-      4 => const [
-        '¡Ya casi terminamos!',
-        'Elige un horario disponible dentro del día que escogiste.',
-      ],
-      5 => const [
-        'Revisa que todos los datos estén correctos.',
-        'Toca "Confirmar Reserva" — no te preocupes: aquí no se creará '
-            'ninguna cita real.',
-      ],
-      _ => const [],
-    };
-  }
+  List<String> _coachMessages() => bookingCoachMessages(
+    guided: widget.tabShell.bookingState.guidedMode,
+    step: _currentStep,
+    confirmed: _isConfirmed,
+  );
 
   Future<void> _exitTutorial() async {
+    if (widget.tabShell.bookingState.guidedMode) {
+      setState(() => widget.tabShell.bookingState.guidedMode = false);
+      return;
+    }
     if (await confirmExitTutorial(context) && mounted) {
       widget.tabShell.exitTutorialMode();
     }
@@ -294,3 +274,65 @@ class BookingFlowScreenState extends State<BookingFlowScreen> {
     };
   }
 }
+
+const bookingGuidedIntroMessages = ['Bienvenido a la reserva guiada de COSSMIL. Le acompañaré paso a paso. Tenga en cuenta que esta reserva es real, y su cita quedará registrada. Comencemos.'];
+
+String bookingVoiceId({required bool guided, required int step, required bool confirmed}) {
+ if (!guided) return confirmed ? 'ficha_07' : 'ficha_0${step + 1}';
+ if (confirmed) return 'guiado_final';
+ const ids = ['guiado_regional', 'guiado_especialidad', 'guiado_medico', 'guiado_dia', 'guiado_hora', 'guiado_confirmar'];
+ return ids[step.clamp(0, ids.length - 1)];
+}
+
+List<String> bookingCoachMessages({required bool guided, required int step, required bool confirmed}) {
+ if (guided) {
+ if (confirmed) return const ['Su cita fue registrada con éxito. Puede ver o descargar su ficha cuando lo necesite. Gracias por confiar en COSSMIL.'];
+ return switch(step) {
+ 0 => const ['Primero, elija el hospital o policlínico donde desea atenderse. Están ordenados por regional.'],
+ 1 => const ['Ahora, elija la especialidad médica que necesita.'],
+ 2 => const ['Muy bien. Elija al médico con quien desea atenderse.'],
+ 3 => const ['Elija el día de su cita. Cada tarjeta le muestra si el médico atiende, y si hay fichas disponibles.'],
+ 4 => const ['Ahora, elija el horario que prefiera.'],
+ 5 => const ['Revise que sus datos sean correctos. Cuando esté listo, presione Confirmar, y su cita quedará registrada.'],
+ _ => const [],
+ };
+ }
+
+    if (confirmed) {
+      return const [
+        '¡Misión cumplida! 🎖️',
+        'Esto fue solo una demostración — no se creó ninguna cita real. '
+            'Puedes ver tu ficha de ejemplo o volver al inicio.',
+      ];
+    }
+    return switch (step) {
+      0 => const [
+        '¡Muy bien! Así se inicia una reserva.',
+        'Ahora elige tu hospital o policlínico — estos son los que tienes '
+            'habilitados, agrupados por regional.',
+      ],
+      1 => const [
+        '¡Muy bien!',
+        'Ahora elige la especialidad médica que necesitas.',
+      ],
+      2 => const [
+        'Estos son los médicos disponibles para esa especialidad.',
+        'Elige el que prefieras.',
+      ],
+      3 => const [
+        'Ahora elige el día — cada tarjeta muestra si el médico atiende '
+            'y si quedan fichas.',
+      ],
+      4 => const [
+        '¡Ya casi terminamos!',
+        'Elige un horario disponible dentro del día que escogiste.',
+      ],
+      5 => const [
+        'Revisa que todos los datos estén correctos.',
+        'Toca "Confirmar Reserva" — no te preocupes: aquí no se creará '
+            'ninguna cita real.',
+      ],
+      _ => const [],
+    };
+  }
+

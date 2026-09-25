@@ -279,12 +279,8 @@ class _TutorialInstructorState extends State<TutorialInstructor>
   late final AnimationController _gesto;
   InstructorClip? _clipGesto;
 
-  /// El gesto que se está DESHACIENDO mientras entra el nuevo.
-  ///
-  /// Sin esto, `piensa → celebra` movía el antebrazo de −1,16 rad al 0 del clip
-  /// entrante (que no declara ese hueso) en UN fotograma: 66° de salto. Las
-  /// capas del solver son aditivas y ponderadas, así que cruzar dos gestos es
-  /// sumarlos con pesos complementarios.
+  /// Instantánea de todos los gestos mezclados al iniciar una transición.
+  /// Se aplana por hueso para conservar interrupciones sin acumular capas.
   InstructorClip? _clipSaliente;
 
   int _cicloBoca = 0;
@@ -495,35 +491,50 @@ class _TutorialInstructorState extends State<TutorialInstructor>
   /// entrante no gesticula.
   void _syncGesto() {
     final nuevo = clipForPose(widget.pose);
-    if (nuevo != null) {
-      // El gesto que estaba puesto se desvanece mientras el nuevo entra, en vez
-      // de desaparecer de golpe.
-      final previo = _clipGesto;
-      _clipSaliente = (previo != null && previo != nuevo && _gesto.value > 0)
-          ? previo
-          : null;
-      _clipGesto = nuevo;
-      _gesto.duration = nuevo.duration;
-      if (_reduceMotion) {
-        _gesto.value = 1.0;
-        _clipSaliente = null;
-      } else {
-        _gesto.forward(from: 0);
-      }
-      return;
-    }
-    _clipSaliente = null;
-    // Sin gesto nuevo: el brazo vuelve por donde vino, no se desploma.
-    if (_clipGesto == null) return;
     if (_reduceMotion) {
-      _gesto.value = 0.0;
-      _clipGesto = null;
+      _clipGesto = nuevo;
+      _clipSaliente = null;
+      _gesto.value = nuevo == null ? 0.0 : 1.0;
       return;
     }
-    _gesto.reverse().whenComplete(() {
-      if (mounted && clipForPose(widget.pose) == null) _clipGesto = null;
-    });
+    // Celebra y festeja comparten clip; cambiar la expresión no reinicia brazos.
+    if (nuevo == _clipGesto) return;
+
+    final postura = <String, BoneTransform>{};
+    for (final capa in _capasGesto()) {
+      for (final pista in capa.clip.tracks.entries) {
+        postura[pista.key] = (postura[pista.key] ?? BoneTransform.identity)
+            .addWeighted(sampleTrack(pista.value, capa.t), capa.weight);
+      }
+    }
+    final duracion = nuevo?.duration ?? _clipGesto?.duration ?? _swapDur;
+    _clipSaliente = postura.isEmpty
+        ? null
+        : InstructorClip(
+            name: 'transicion_gesto',
+            duration: duracion,
+            tracks: {
+              for (final hueso in postura.entries)
+                hueso.key: [
+                  BoneKey(
+                    t: 0,
+                    rot: hueso.value.rot,
+                    translate: hueso.value.translate,
+                    scale: hueso.value.scale,
+                  ),
+                ],
+            },
+          );
+    _clipGesto = nuevo;
+    _gesto.duration = duracion;
+    _gesto.forward(from: 0);
   }
+
+  List<ClipLayer> _capasGesto() => [
+    if (_clipSaliente != null && _gesto.value < 1.0)
+      ClipLayer(clip: _clipSaliente!, t: 0, weight: 1.0 - _gesto.value),
+    if (_clipGesto != null) ClipLayer(clip: _clipGesto!, t: _gesto.value),
+  ];
 
   /// Cuenta las vueltas del cabeceo detectando el salto de fase de 1 a 0.
   void _watchSpeakWrap() {
@@ -706,27 +717,16 @@ class _TutorialInstructorState extends State<TutorialInstructor>
       final g = _clipGesto;
       return g == null ? const [] : [ClipLayer(clip: g, t: 1.0)];
     }
-    if (!widget.idle) {
-      final g = _clipGesto;
-      return g == null ? const [] : [ClipLayer(clip: g, t: _gesto.value)];
-    }
+    if (!widget.idle) return _capasGesto();
     final base = _celebrating ? InstructorClips.idleParty : InstructorClips.idle;
     return [
       ClipLayer(clip: base, t: _idle.value),
       // El cabeceo de hablar se SUMA a la respiración: la cabeza asiente
       // mientras el torso sigue subiendo y bajando por debajo.
       if (_speakBob) ClipLayer(clip: InstructorClips.speak, t: _speak.value),
-      // El gesto saliente se va con peso decreciente: el brazo VUELVE de su
-      // postura anterior en vez de teletransportarse a la nueva.
-      if (_clipSaliente != null)
-        ClipLayer(
-          clip: _clipSaliente!,
-          t: 1.0,
-          weight: 1.0 - _gesto.value,
-        ),
       // El gesto va ENCIMA: mueve el brazo sin tocar el torso, que sigue
       // respirando por debajo. Eso es lo que hace barato el repertorio.
-      if (_clipGesto != null) ClipLayer(clip: _clipGesto!, t: _gesto.value),
+      ..._capasGesto(),
     ];
   }
 

@@ -66,6 +66,11 @@ class TutorialCoachOverlay extends StatefulWidget {
   /// "hablar" (gating audio-primero).
   final String? voiceId;
 
+  /// Introducción opcional, una vez por montaje. Al terminar continúa [voiceId].
+  /// Avanzar de paso la interrumpe para narrar la selección actual.
+  final String? initialVoiceId;
+  final List<String>? initialMessages;
+
   /// El coach acompaña una reserva REAL (Modo Guiado), no la demostración.
   ///
   /// No cambia cómo narra: cambia lo que el coach dice DE SÍ MISMO. Anunciar
@@ -85,6 +90,8 @@ class TutorialCoachOverlay extends StatefulWidget {
     this.step,
     this.totalSteps,
     this.voiceId,
+    this.initialVoiceId,
+    this.initialMessages,
     this.narrateOnly = false,
   });
 
@@ -111,6 +118,10 @@ class TutorialCoachOverlayState extends State<TutorialCoachOverlay> {
   /// token (el `complete` del paso anterior, o un `play()` que resolvió tarde)
   /// se descarta: es lo que mantenía la coreografía atada al audio equivocado.
   int? _voiceToken;
+  bool _introActive = false;
+  List<String> get _messages => _introActive
+      ? widget.initialMessages ?? widget.messages
+      : widget.messages;
 
   /// true con lector de pantalla activo (TalkBack/VoiceOver): se desactiva
   /// todo auto-colapso — quitarle las instrucciones a un usuario que las está
@@ -124,6 +135,7 @@ class TutorialCoachOverlayState extends State<TutorialCoachOverlay> {
   @override
   void initState() {
     super.initState();
+    _introActive = widget.initialVoiceId != null;
     _scheduleAutoCollapse();
     // La instructora llega: pop suave, en sintonía con su entrada elástica.
     SoundManager.playUi(AppSounds.coach);
@@ -134,13 +146,31 @@ class TutorialCoachOverlayState extends State<TutorialCoachOverlay> {
       // recorridos push hay varios coaches vivos escuchando el mismo
       // reproductor estático, y el `complete` del clip anterior cortaba el
       // gesto de habla a mitad del paso nuevo.
-      if (!mounted || !_speaking || token != _voiceToken) return;
+      if (!mounted || token != _voiceToken ||
+          token != TutorialVoice.currentToken) return;
+      if (_introActive) {
+        _finishIntro();
+        return;
+      }
       setState(() {
         _speaking = false;
         _speakDuration = null;
         _voiceToken = null;
       });
     });
+    _playVoice(id: _introActive ? widget.initialVoiceId : widget.voiceId);
+  }
+
+  void _finishIntro() {
+    if (!_introActive) return;
+    setState(() {
+      _introActive = false;
+      _speaking = false;
+      _speakDuration = null;
+      _typing = false;
+    });
+    _autoCollapse?.cancel();
+    _scheduleAutoCollapse();
     _playVoice();
   }
 
@@ -148,15 +178,30 @@ class TutorialCoachOverlayState extends State<TutorialCoachOverlay> {
   /// coreografía de "hablar" sincronizada con su duración. El orden importa
   /// (req. audio-primero): primero se dispara el audio; el estado de animación
   /// cambia después y únicamente si hay voz. Sin clip → no cambia nada.
-  void _playVoice() {
-    final id = widget.voiceId;
+  void _playVoice({String? id}) {
+    id ??= widget.voiceId;
     // Deja de reconocer como propio cualquier clip anterior: si el `play()` del
     // paso previo aún está en vuelo, su resultado ya no debe encender nada.
+    final previousToken = _voiceToken;
     _voiceToken = null;
-    if (id == null) return;
-    TutorialVoice.play(id).then((clip) {
+    if (id == null || !TutorialVoice.enabled) {
+      if (previousToken != null) TutorialVoice.stopIfToken(previousToken);
+      if (_introActive) _finishIntro();
+      return;
+    }
+    final pending = TutorialVoice.play(id);
+    // play reserva el token antes de su primer await. Guardarlo ahora permite
+    // cancelar también la preparación si este coach se desmonta enseguida.
+    final requestedToken = TutorialVoice.currentToken;
+    _voiceToken = requestedToken;
+    pending.then((clip) {
       // clip == null → sin voz: la instructora no "habla".
-      if (!mounted || clip == null) return;
+      if (!mounted || _voiceToken != requestedToken ||
+          requestedToken != TutorialVoice.currentToken) return;
+      if (clip == null) {
+        if (_introActive) _finishIntro();
+        return;
+      }
       // Entre el disparo y la respuesta pudo avanzar otro paso: si ya no es el
       // clip vigente, no hay nada que sincronizar.
       if (clip.token != TutorialVoice.currentToken) return;
@@ -198,7 +243,6 @@ class TutorialCoachOverlayState extends State<TutorialCoachOverlay> {
         _typing = false;
         _speaking = false;
         _speakDuration = null;
-        _voiceToken = null;
       });
       _scheduleAutoCollapse();
       // Avance de paso: dos notas ascendentes de confirmación. La celebración
@@ -208,7 +252,12 @@ class TutorialCoachOverlayState extends State<TutorialCoachOverlay> {
       }
     }
     // La locución sigue al paso: si cambió el id, reproduce el nuevo clip.
-    if (oldWidget.voiceId != widget.voiceId) _playVoice();
+    if (oldWidget.voiceId != widget.voiceId) {
+      _introActive = false;
+      _speaking = false;
+      _speakDuration = null;
+      _playVoice();
+    }
   }
 
   @override
@@ -216,7 +265,8 @@ class TutorialCoachOverlayState extends State<TutorialCoachOverlay> {
     _autoCollapse?.cancel();
     _voiceSub?.cancel();
     // Corta la locución al salir del paso/tutorial: nunca debe quedar sonando.
-    TutorialVoice.stop();
+    final token = _voiceToken;
+    if (token != null) TutorialVoice.stopIfToken(token);
     super.dispose();
   }
 
@@ -225,7 +275,7 @@ class TutorialCoachOverlayState extends State<TutorialCoachOverlay> {
   /// de pantalla activo no se programa nada.
   void _scheduleAutoCollapse() {
     if (_accessibleNav) return;
-    final chars = widget.messages.join().length;
+    final chars = _messages.join().length;
     final ms = (3000 + chars * 55).clamp(6000, 12000);
     _autoCollapse = Timer(Duration(milliseconds: ms), () {
       if (mounted) setState(() => _expanded = false);
@@ -416,8 +466,8 @@ class TutorialCoachOverlayState extends State<TutorialCoachOverlay> {
                       // Renueva el pop escalonado cuando cambia el contenido
                       // (nuevo paso o celebración) sin remontar a la
                       // instructora.
-                      key: ValueKey(widget.messages.join('\n')),
-                      messages: widget.messages,
+                      key: ValueKey(_messages.join('\n')),
+                      messages: _messages,
                       isDark: widget.isDark,
                       onExit: widget.onExit,
                       step: widget.step,
