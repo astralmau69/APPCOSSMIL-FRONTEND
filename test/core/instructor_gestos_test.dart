@@ -41,6 +41,9 @@ InstructorRig _rig() => InstructorRig.fromJson(<String, dynamic>{
 });
 
 void main() {
+  // El rig real se carga por rootBundle: sin binding, ni eso.
+  TestWidgetsFlutterBinding.ensureInitialized();
+  _pruebasDeAlcance();
   test('cada pose de gesto tiene su clip', () {
     for (final p in [
       InstructorPose.senala,
@@ -148,5 +151,84 @@ void main() {
     expect(instructorHandFor(InstructorPose.pulgarArriba), 'mano_g_pulgar');
     expect(instructorHandFor(InstructorPose.alto), 'mano_g_abierta');
     expect(instructorHandFor(InstructorPose.explica), 'mano_der');
+  });
+}
+
+/// Dónde acaba dibujada la muñeca, sobre el rig REAL del manifest.
+///
+/// Es el hueco que dejaban los demás tests: todos afirman estructura de
+/// keyframes (signos, fases, huesos declarados) y ninguno mira DÓNDE cae la
+/// pieza. Con eso, unos ángulos que dejan los dos brazos en cruz y la mano
+/// fuera de la figura pasaban en verde.
+void _pruebasDeAlcance() {
+  group('alcance de los gestos sobre el rig real', () {
+    late InstructorRig rig;
+    late double ancho;
+
+    setUpAll(() async {
+      rig = await loadInstructorRig();
+      ancho = rig.aspect * rig.canonicalHeight;
+    });
+
+    ({double x, double y}) muneca(InstructorPose pose) {
+      final clip = clipForPose(pose);
+      final capas = clip == null
+          ? const <ClipLayer>[]
+          : [ClipLayer(clip: clip, t: 1.0)];
+      final m = solveInstructorPose(rig, capas)['mano_der']!;
+      return (x: m.storage[12], y: m.storage[13]);
+    }
+
+    test('el saludo saluda: tiene clip propio', () {
+      expect(
+        clipForPose(InstructorPose.saludo),
+        isNotNull,
+        reason:
+            'sin clip el brazo cuelga en reposo mientras la mano abierta del '
+            'gesto queda suelta a la altura de la cadera',
+      );
+    });
+
+    for (final pose in [
+      InstructorPose.senala,
+      InstructorPose.pulgarArriba,
+      InstructorPose.alto,
+      InstructorPose.saludo,
+      InstructorPose.piensa,
+      InstructorPose.celebra,
+    ]) {
+      test('${pose.name}: la muñeca queda dentro de la figura', () {
+        final w = muneca(pose);
+        expect(
+          w.x,
+          inInclusiveRange(0, ancho),
+          reason: 'la mano se sale de la caja que declara `aspect`',
+        );
+        expect(w.y, inInclusiveRange(0, rig.canonicalHeight));
+      });
+
+      test('${pose.name}: la mano sube; no se queda colgando', () {
+        final reposo = solveInstructorPose(rig, const [])['mano_der']!;
+        final w = muneca(pose);
+        expect(
+          w.y,
+          lessThan(reposo.storage[13] - 60),
+          reason: 'un gesto que no levanta la mano no se lee como gesto',
+        );
+      });
+    }
+
+    test('celebra levanta LOS DOS brazos, no uno', () {
+      final pose = solveInstructorPose(rig, [
+        ClipLayer(clip: InstructorClips.celebra, t: 1.0),
+      ]);
+      final reposoIzq = solveInstructorPose(rig, const [])['mano_izq']!;
+      expect(
+        pose['mano_izq']!.storage[13],
+        lessThan(reposoIzq.storage[13] - 60),
+      );
+      // Y sin salirse por el borde izquierdo, donde el Stack del coach recorta.
+      expect(pose['mano_izq']!.storage[12], greaterThanOrEqualTo(0));
+    });
   });
 }

@@ -75,6 +75,32 @@ void main() {
   /// La entrada caminando, que es la única animación que usa el rig de PERFIL.
   /// Sin dispositivo es el único modo de MIRAR si las piernas alternan, si la
   /// rodilla dobla hacia el lado correcto y si el brazo va en contrafase.
+  /// Las poses con mano de GESTO. Son las que dependen del registro entre el
+  /// sprite de la mano y el antebrazo del que cuelga, y eso no lo afirma
+  /// ningun test: hay que verlo.
+  testWidgets('vuelca las poses de gesto', (tester) async {
+    await tester.runAsync(precacheInstructorRig);
+    for (final pose in [
+      InstructorPose.saludo,
+      InstructorPose.senala,
+      InstructorPose.alto,
+      InstructorPose.pulgarArriba,
+      InstructorPose.piensa,
+      InstructorPose.celebra,
+    ]) {
+      await tester.pumpWidget(escena(pose));
+      // 900 ms: el gesto mas largo (celebra) ya llego a su pose final.
+      await volcar(
+        tester,
+        'g-${pose.name}',
+        pasos: 2,
+        paso: const Duration(milliseconds: 900),
+      );
+    }
+    // ignore: avoid_print
+    print('FOTOGRAMAS EN: ${destino.absolute.path}');
+  });
+
   testWidgets('vuelca la caminata de entrada', (tester) async {
     await tester.runAsync(precacheInstructorRig);
     await tester.pumpWidget(

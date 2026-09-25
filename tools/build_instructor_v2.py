@@ -2,13 +2,17 @@
 
 Entrada : tools/instructor_v2_src/*.png  (laminas evaluadas, ver su README)
 Config  : tools/instructor_v2_cuts.json  (poligonos y pivotes, escritos a mano)
-Salida  : assets/images/instructor/*.png + manifest.json + _control.png
+Salida  : assets/images/instructor/*.png + manifest.json
+          tools/instructor_v2_src/_control/*.png  (control, FUERA del bundle)
 
 La imagen de control recompone todas las piezas en su pose de reposo: si no se
 ve identica a la A-pose original, el corte esta mal y se nota de inmediato.
+Vive fuera de assets/ a proposito: pubspec declara la CARPETA entera, asi que
+un PNG de diagnostico de 1 MB dentro de ella viaja en el APK.
 """
 
 import json
+import math
 from pathlib import Path
 
 import numpy as np
@@ -16,6 +20,8 @@ from PIL import Image, ImageDraw
 
 CUTS = Path("tools/instructor_v2_cuts.json")
 OUT = Path("assets/images/instructor")
+# Diagnostico: fuera de assets/ para que no acabe en el APK.
+CONTROL = Path("tools/instructor_v2_src/_control")
 
 
 def alpha_from_magenta(im):
@@ -291,9 +297,19 @@ def _wrist_width(t, pct_from_bottom):
 def build_hands(cfg, pieces):
     """Las manos de gesto: alternativas del hueso de la mano en reposo.
 
-    Se normalizan para que la muneca mida lo mismo que la de `mano_der`, que sale
-    de la A-pose y por tanto encaja exacto con su antebrazo. La lamina traia 7.1%
-    de deriva entre casillas; la muneca es ancla inequivoca y la lleva a cero.
+    Tres normalizaciones, y las tres hacen falta para que la mano caiga DONDE
+    ESTA LA MUNECA en vez de suelta al lado del brazo:
+
+    1. **Escala** por ancho de muneca contra `mano_der` (que sale de la A-pose y
+       encaja exacto con su antebrazo). La lamina traia 7.1% de deriva.
+    2. **Recorte en la muneca**: las casillas de la lamina 3 vienen con un trozo
+       de manga. Ese trozo se pinta ENCIMA del antebrazo real (z mayor) y con
+       otro camuflaje, asi que se corta.
+    3. **Giro al eje del antebrazo**: la lamina dibuja las manos apuntando hacia
+       ARRIBA, mientras el antebrazo de la A-pose corre a 45 grados abajo-derecha.
+       Sin este giro el guante sale rotado 135 grados respecto al brazo del que
+       cuelga — y como la mano propia del rig queda oculta, el antebrazo termina
+       en munon.
     """
     h = cfg["hands"]
     gw, gh = h["grid"]
@@ -301,33 +317,58 @@ def build_hands(cfg, pieces):
     base = next(p for p in pieces if p["name"] == "mano_der")
     objetivo = base["size"][0] * 0.62  # la muneca es ~62% del ancho del puno
 
+    # Eje codo->muneca de la A-pose: la mano prolonga esa direccion.
+    eje = math.degrees(math.atan2(base["pivot"][1], base["pivot"][0]))
+    # Las casillas apuntan hacia arriba (-90 grados en pantalla, con y hacia
+    # abajo). PIL gira en sentido antihorario, de ahi el signo.
+    giro = -(eje + 90.0)
+
     for nombre, idx in h["tiles"].items():
         t = tiles[idx]
-        bb = t.getbbox()
-        t = t.crop(bb)
+        t = t.crop(t.getbbox())
         w, _ = _wrist_width(t, h["wristFromBottomPct"])
         k = objetivo / max(1, w)
         t = t.resize(
             (max(1, round(t.width * k)), max(1, round(t.height * k))), Image.LANCZOS
         )
         wn, yn = _wrist_width(t, h["wristFromBottomPct"])
-        name = f"mano_g_{nombre}"
-        save_quant(t, OUT / f"{name}.png")
         cols = np.where(np.asarray(t)[..., 3][yn] > 40)[0]
         cx = float((cols.min() + cols.max()) / 2) if len(cols) else t.width / 2
+
+        # (2) fuera la manga: todo lo que cuelga por debajo de la muneca.
+        t = t.crop((0, 0, t.width, min(t.height, int(yn) + 2)))
+        wy = float(yn)
+
+        # (3) giro al eje del brazo, con la muneca reproyectada a mano.
+        ancho, alto = t.width, t.height
+        t = t.rotate(giro, resample=Image.BICUBIC, expand=True)
+        rad = math.radians(giro)
+        cxo, cyo = (ancho - 1) / 2.0, (alto - 1) / 2.0
+        cxn, cyn = (t.width - 1) / 2.0, (t.height - 1) / 2.0
+        dx, dy = cx - cxo, wy - cyo
+        wx = cxn + dx * math.cos(rad) + dy * math.sin(rad)
+        wy = cyn - dx * math.sin(rad) + dy * math.cos(rad)
+
+        bb = t.getbbox()
+        t = t.crop(bb)
+        wx -= bb[0]
+        wy -= bb[1]
+
+        name = f"mano_g_{nombre}"
+        save_quant(t, OUT / f"{name}.png")
         pieces.append(
             {
                 "name": name,
                 "parent": base["parent"],
                 "asset": f"{name}.png",
                 "pivot": list(base["pivot"]),
-                "anchor": [round(cx, 2), round(float(yn), 2)],
+                "anchor": [round(wx, 2), round(wy, 2)],
                 "size": [t.width, t.height],
                 "z": base["z"],
                 "wrist": wn,
             }
         )
-        print(f"  {name:<18} {t.width}x{t.height}  (muneca {wn} px, k={k:.3f})")
+        print(f"  {name:<18} {t.width}x{t.height}  (muneca {wn} px, k={k:.3f}, giro {giro:.0f})")
 
 
 def build_profile(cfg):
@@ -360,20 +401,35 @@ def build_profile(cfg):
         else:
             ppx, ppy = by_name[parent]["pivot"]
             pivot = [(px - ppx) * s, (py - ppy) * s]
+        # `shiftX` mueve donde se DIBUJA la pieza sin mover su pivote, y es lo
+        # que endereza la caminata: la lamina dibuja las dos piernas separadas
+        # (postura de pie con los pies abiertos), asi que cada muslo traia su
+        # propia cadera, a 78 px canonicos de la otra. Rotaciones simetricas
+        # sobre dos centros distintos dan zancadas de tamanos distintos: una
+        # medida 2.6x la otra. Con las dos piernas colgando de la cadera real
+        # (la del torso) el ciclo sale simetrico.
+        #
+        # Los pivotes de una cadena desplazada se declaran YA en el sistema
+        # desplazado; de ahi el `- shift` al calcular el ancla, que se mide
+        # contra el recorte sin desplazar.
+        shift = p.get("shiftX", 0)
         out.append(
             {
                 "name": p["name"],
                 "parent": parent,
                 "asset": f"{p['name']}.png",
                 "pivot": [round(v, 2) for v in pivot],
-                "anchor": [round((px - bb[0]) * s, 2), round((py - bb[1]) * s, 2)],
+                "anchor": [
+                    round((px - shift - bb[0]) * s, 2),
+                    round((py - bb[1]) * s, 2),
+                ],
                 "size": [w, h],
                 "z": p["z"],
             }
         )
         print(f"  {p['name']:<18} {w}x{h}")
 
-    control.crop((x0, y0, x1 + 1, y1 + 1)).save(OUT / "_control_perfil.png")
+    control.crop((x0, y0, x1 + 1, y1 + 1)).save(CONTROL / "control_perfil.png")
     fig = np.asarray(src)[..., 3] > 40
     cub = np.zeros(fig.shape, bool)
     for m in masks:
@@ -388,6 +444,7 @@ def build_profile(cfg):
 def main():
     cfg = json.loads(CUTS.read_text(encoding="utf-8"))
     OUT.mkdir(parents=True, exist_ok=True)
+    CONTROL.mkdir(parents=True, exist_ok=True)
     src = alpha_from_magenta(Image.open(cfg["source"]))
     x0, y0, x1, y1 = cfg["figureBBox"]
     fh = y1 - y0 + 1
@@ -398,7 +455,7 @@ def main():
     build_faces(cfg, s, pieces)
     build_hands(cfg, pieces)
     profile = build_profile(cfg)
-    control.crop((x0, y0, x1 + 1, y1 + 1)).save(OUT / "_control.png")
+    control.crop((x0, y0, x1 + 1, y1 + 1)).save(CONTROL / "control.png")
 
     (OUT / "manifest.json").write_text(
         json.dumps(

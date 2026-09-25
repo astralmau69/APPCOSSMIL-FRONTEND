@@ -312,6 +312,10 @@ class TutorialCoachOverlayState extends State<TutorialCoachOverlay> {
                       // sincronizado con la duración del audio (lip-sync de pose).
                       speaking: _speaking,
                       speakDuration: _speakDuration,
+                      // Semilla del movimiento de boca. Sin ella, dos pasos
+                      // con locuciones de la misma duración mueven los labios
+                      // idéntico, que es lo que el parámetro evita.
+                      voiceId: widget.voiceId,
                     ),
                   ),
                   // Globito de "tengo algo que decirte" junto a su cabeza

@@ -122,7 +122,11 @@ class InstructorRigPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     if (scale <= 0 || !scale.isFinite) return;
-    final paint = Paint()..filterQuality = FilterQuality.medium;
+    // `low` (bilineal) es el filtrado recomendado para imagenes ANIMADAS:
+    // lo hace la GPU, mientras `medium` (cubico) se nota en equipos flojos.
+    // Antes esa decision estaba tomada y documentada para UNA lamina; aqui
+    // son 28 `drawImageRect` por fotograma, asi que pesa 28 veces mas.
+    final paint = Paint()..filterQuality = FilterQuality.low;
     canvas.save();
     canvas.scale(scale);
     for (final bone in rig.drawOrder) {

@@ -3,6 +3,8 @@ import 'dart:math' as math;
 
 import 'package:flutter/cupertino.dart';
 
+import '../utils/app_logger.dart';
+
 import '../animations/instructor/instructor_clip.dart';
 import '../animations/instructor/instructor_clips.dart';
 import '../animations/instructor/instructor_rig.dart';
@@ -59,7 +61,14 @@ const double kInstructorAspectFallback = 0.63;
 
 /// Precarga el rig una sola vez por proceso. Lo llama Inicio antes de que la
 /// instructora aparezca, para que su primer fotograma no espere al disco.
-Future<void> precacheInstructorRig() => _InstructorAssets.warmUp();
+///
+/// NUNCA propaga: quien la llama la espera antes de abrir el diálogo de
+/// invitación al tutorial, y ese diálogo se marca como "visto" antes. Si un
+/// manifest ilegible tumbara la precarga, la invitación no volvería a
+/// aparecer JAMÁS. Sin rig la instructora se dibuja vacía, que es un mal
+/// mucho más pequeño.
+Future<void> precacheInstructorRig({AssetBundle? bundle}) =>
+    _InstructorAssets.warmUp(bundle: bundle);
 
 class _InstructorAssets {
   static InstructorRig? rig;
@@ -73,15 +82,35 @@ class _InstructorAssets {
   /// un detalle: un Future creado dentro de la zona fake-async de un test
   /// jamás completa en la del siguiente, así que reutilizarlo colgaría a todo
   /// widget montado después del primero.
-  static Future<InstructorRig> soloRig() {
+  static Future<InstructorRig> soloRig({AssetBundle? bundle}) {
     final r = rig;
     if (r != null) return Future.value(r);
-    return _rigFuture ??= loadInstructorRig().then((x) => rig = x);
+    // Un fallo NO se cachea: `_rigFuture ??=` guardaba el Future roto para todo
+    // el proceso, así que un tropiezo puntual dejaba a la instructora sin rig
+    // hasta reiniciar la app.
+    final pendiente = _rigFuture;
+    if (pendiente != null) return pendiente;
+    final f = loadInstructorRig(bundle: bundle).then((x) => rig = x);
+    _rigFuture = f;
+    // Rama silenciosa SOLO para olvidar el Future roto. El error de verdad
+    // viaja por `f`, que es la que se devuelve; si esta rama lo relanzara,
+    // nadie la estaría escuchando y se convertiría en un error asíncrono
+    // huérfano (que en test es un fallo aunque quien llama lo capture).
+    f.then<void>(
+      (_) {},
+      onError: (Object _) {
+        if (_rigFuture == f) _rigFuture = null;
+      },
+    );
+    return f;
   }
 
   /// Los PNG decodificados. Tardan más, y la figura puede esperarlos con la
   /// pose ya resuelta en vez de no existir.
-  static Future<InstructorImages> imagenes(InstructorRig r) {
+  static Future<InstructorImages> imagenes(
+    InstructorRig r, {
+    AssetBundle? bundle,
+  }) {
     final i = images;
     if (i != null) return Future.value(i);
     // Las dos vistas en el MISMO mapa: la de perfil sólo aparece 1,3 s al
@@ -90,10 +119,20 @@ class _InstructorAssets {
     return _imgFuture ??= InstructorImages.load([
       r,
       if (perfil != null) perfil,
-    ]).then((x) => images = x);
+    ], bundle: bundle).then((x) => images = x);
   }
 
-  static Future<void> warmUp() async => imagenes(await soloRig());
+  static Future<void> warmUp({AssetBundle? bundle}) async {
+    try {
+      await imagenes(await soloRig(bundle: bundle), bundle: bundle);
+    } catch (e) {
+      AppLogger.warn(
+        'TutorialInstructor',
+        'No se pudo precargar el rig; la instructora se dibujará vacía',
+        e,
+      );
+    }
+  }
 }
 
 /// Instructora militar que guía los tutoriales. Está VIVA en tres capas:
@@ -240,6 +279,14 @@ class _TutorialInstructorState extends State<TutorialInstructor>
   late final AnimationController _gesto;
   InstructorClip? _clipGesto;
 
+  /// El gesto que se está DESHACIENDO mientras entra el nuevo.
+  ///
+  /// Sin esto, `piensa → celebra` movía el antebrazo de −1,16 rad al 0 del clip
+  /// entrante (que no declara ese hueso) en UN fotograma: 66° de salto. Las
+  /// capas del solver son aditivas y ponderadas, así que cruzar dos gestos es
+  /// sumarlos con pesos complementarios.
+  InstructorClip? _clipSaliente;
+
   int _cicloBoca = 0;
   double _ultimoSpeak = 0;
 
@@ -324,7 +371,10 @@ class _TutorialInstructorState extends State<TutorialInstructor>
     _swap = AnimationController(vsync: this, duration: _swapDur);
     _gesto = AnimationController(vsync: this, duration: _swapDur);
     _clipGesto = clipForPose(widget.pose);
-    if (_clipGesto != null) _gesto.value = 1.0;
+    if (_clipGesto != null) {
+      _gesto.duration = _clipGesto!.duration;
+      _gesto.value = 1.0;
+    }
     _loop = Listenable.merge([_idle, _pop, _walk, _talk, _speak, _swap, _gesto]);
     // La alternancia check↔risa no pasa por didUpdateWidget (la mueve _talk),
     // así que el golpe se engancha a su cruce de casilla.
@@ -446,15 +496,23 @@ class _TutorialInstructorState extends State<TutorialInstructor>
   void _syncGesto() {
     final nuevo = clipForPose(widget.pose);
     if (nuevo != null) {
+      // El gesto que estaba puesto se desvanece mientras el nuevo entra, en vez
+      // de desaparecer de golpe.
+      final previo = _clipGesto;
+      _clipSaliente = (previo != null && previo != nuevo && _gesto.value > 0)
+          ? previo
+          : null;
       _clipGesto = nuevo;
       _gesto.duration = nuevo.duration;
       if (_reduceMotion) {
         _gesto.value = 1.0;
+        _clipSaliente = null;
       } else {
         _gesto.forward(from: 0);
       }
       return;
     }
+    _clipSaliente = null;
     // Sin gesto nuevo: el brazo vuelve por donde vino, no se desploma.
     if (_clipGesto == null) return;
     if (_reduceMotion) {
@@ -546,12 +604,18 @@ class _TutorialInstructorState extends State<TutorialInstructor>
   }
 
   Future<void> _cargarRig() async {
-    final rig = await _InstructorAssets.soloRig();
-    if (!mounted) return;
-    setState(() => _rig = rig);
-    final imgs = await _InstructorAssets.imagenes(rig);
-    if (!mounted) return;
-    setState(() => _images = imgs);
+    // `fire-and-forget` con try/catch: un manifest ilegible deja a la figura
+    // invisible, no un error asíncrono sin dueño en cada montaje.
+    try {
+      final rig = await _InstructorAssets.soloRig();
+      if (!mounted) return;
+      setState(() => _rig = rig);
+      final imgs = await _InstructorAssets.imagenes(rig);
+      if (!mounted) return;
+      setState(() => _images = imgs);
+    } catch (e) {
+      AppLogger.warn('TutorialInstructor', 'Sin rig que dibujar', e);
+    }
   }
 
   @override
@@ -652,6 +716,14 @@ class _TutorialInstructorState extends State<TutorialInstructor>
       // El cabeceo de hablar se SUMA a la respiración: la cabeza asiente
       // mientras el torso sigue subiendo y bajando por debajo.
       if (_speakBob) ClipLayer(clip: InstructorClips.speak, t: _speak.value),
+      // El gesto saliente se va con peso decreciente: el brazo VUELVE de su
+      // postura anterior en vez de teletransportarse a la nueva.
+      if (_clipSaliente != null)
+        ClipLayer(
+          clip: _clipSaliente!,
+          t: 1.0,
+          weight: 1.0 - _gesto.value,
+        ),
       // El gesto va ENCIMA: mueve el brazo sin tocar el torso, que sigue
       // respirando por debajo. Eso es lo que hace barato el repertorio.
       if (_clipGesto != null) ClipLayer(clip: _clipGesto!, t: _gesto.value),
