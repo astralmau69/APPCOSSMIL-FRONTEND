@@ -1,5 +1,6 @@
 import 'dart:async';
 import '../features/booking/widgets/booking_mode_sheet.dart';
+import '../features/reservas/widgets/calificaciones_pendientes_gate.dart';
 
 import 'package:flutter/cupertino.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -308,7 +309,13 @@ class TabShellState extends State<TabShell>
       );
     });
 
-    WidgetsBinding.instance.addPostFrameCallback((_) {
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      // Lo primero: si el asegurado dejó atenciones sin calificar, no pasa de
+      // aquí. Va antes que el resto del arranque para no abrirle avisos encima
+      // de una barrera que igual tiene que resolver, y se espera a que termine
+      // porque lo que sigue son modales que se apilarían.
+      await _checkCalificacionesPendientes();
+      if (!mounted) return;
       _showScheduleInfoModalIfNeeded();
       // Verificar citas completadas al inicio de sesión
       _checkForCompletedAppointments();
@@ -422,6 +429,15 @@ class TabShellState extends State<TabShell>
   /// (lifecycle resumed), **independientemente** de si [ReservasScreen] está montada.
   Future<void> _checkForCompletedAppointments() =>
       AppointmentStatusSync.checkCompletedAppointments(
+        service: _programacionService,
+      );
+
+  /// Barrera de calificaciones pendientes. Se dispara en el montaje de
+  /// TabShell, que es por donde pasan TODAS las entradas al área autenticada
+  /// (login, desbloqueo por PIN y restauración de sesión).
+  Future<void> _checkCalificacionesPendientes() =>
+      CalificacionesPendientesGate.showIfNeeded(
+        context,
         service: _programacionService,
       );
 

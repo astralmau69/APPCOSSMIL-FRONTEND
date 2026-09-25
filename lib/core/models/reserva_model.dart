@@ -35,6 +35,11 @@ class ReservaModel {
   final String estadoCancelacion;
 
   /// Si la cita ya fue calificada según el backend (campo del historial).
+  ///
+  /// El historial trae un estado propio para esto (0 = sin calificar,
+  /// 1 = calificada). Antes la app lo deducía de la nota o de lo que hubiera
+  /// guardado en el teléfono; ahora manda el backend, que es el único que lo
+  /// sabe de verdad — el mismo dato que alimenta `calificaciones-pendientes`.
   final bool calificado;
 
   const ReservaModel({
@@ -130,17 +135,7 @@ class ReservaModel {
       idmed: (json['idmed'] ?? json['idMed'] ?? json['id_medico'])?.toString(),
       idesp: json['idesp'] as int? ?? json['idEsp'] as int?,
       estadoCancelacion: estadoCancelacionVal,
-      calificado: () {
-        if (json['calificado'] is bool) return json['calificado'] as bool;
-        if (json['yaCalificado'] is bool) return json['yaCalificado'] as bool;
-        // Calificación numérica presente y no cero → ya fue calificada.
-        final v = json['calificacion'] ?? json['calif'];
-        if (v != null) {
-          final s = v.toString().trim();
-          return s.isNotEmpty && s != '0' && s.toLowerCase() != 'null';
-        }
-        return false;
-      }(),
+      calificado: _parseCalificado(json),
     );
   }
 
@@ -196,6 +191,36 @@ class ReservaModel {
     estadoCancelacion: m['estadoCancelacion'] as String? ?? '0',
     calificado: m['calificado'] as bool? ?? false,
   );
+
+  /// Estado de calificación que manda el historial: 0 = sin calificar,
+  /// 1 = calificada.
+  ///
+  /// Se prueban varios nombres porque el dato se fue agregando con etiquetas
+  /// distintas según el endpoint, y una lista de reservas vieja (o la caché de
+  /// una versión anterior) puede no traer ninguno. Si no viene ninguno se cae
+  /// al comportamiento anterior: una nota distinta de cero implica calificada.
+  static bool _parseCalificado(Map<String, dynamic> json) {
+    for (final key in const [
+      'velo',
+      'calificado',
+      'yaCalificado',
+      'estadoCalificacion',
+      'estadocalificacion',
+    ]) {
+      final v = json[key];
+      if (v == null) continue;
+      if (v is bool) return v;
+      final s = v.toString().trim().toLowerCase();
+      if (s.isEmpty || s == 'null') continue;
+      return s == '1' || s == 'true' || s == 's' || s == 'si';
+    }
+    final nota = json['calificacion'] ?? json['calif'];
+    if (nota != null) {
+      final s = nota.toString().trim();
+      return s.isNotEmpty && s != '0' && s.toLowerCase() != 'null';
+    }
+    return false;
+  }
 
   /// Expande abreviaciones de hospitales militares al nombre completo.
   static String _normalizeHospital(String name) {

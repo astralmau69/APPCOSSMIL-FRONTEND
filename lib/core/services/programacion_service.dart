@@ -810,6 +810,36 @@ class ProgramacionService {
     };
   }
 
+  /// Atenciones que [idper] todavía no calificó, según el backend.
+  ///
+  /// Reemplaza al cálculo local que hacía la app (ventana de tiempo + lo que
+  /// hubiera quedado guardado en SharedPreferences): eso no sobrevivía a un
+  /// cambio de teléfono ni a reinstalar, y dejaba pasar atenciones sin
+  /// calificar. Ahora la lista la decide el backend.
+  ///
+  /// Devuelve lista vacía si no hay nada pendiente. Lanza [Exception] si la
+  /// consulta falla, para que quien llame decida si insiste o deja pasar.
+  Future<List<ReservaModel>> getCalificacionesPendientes(int idper) async {
+    if (AppConfig.useMockData) {
+      await Future.delayed(const Duration(milliseconds: 400));
+      return const [];
+    }
+
+    final response = await _api.get(
+      ApiConstants.calificacionesPendientes(idper),
+    );
+
+    return switch (response) {
+      // Las atenciones pendientes vienen con la misma forma que el historial,
+      // así que las parsea el mismo modelo en vez de duplicar el mapeo.
+      ApiSuccess(:final data) => _extractDataList(data)
+          .whereType<Map<String, dynamic>>()
+          .map(ReservaModel.fromJson)
+          .toList(),
+      ApiError(:final message) => throw Exception(message),
+    };
+  }
+
   /// Registra la calificación del médico.
   ///
   /// Retorna:

@@ -173,6 +173,14 @@ class ApiConstants {
   /// Registrar calificación del médico (POST).
   static String medicoCalificacion() => '/api/programacion/medico-calificacion';
 
+  /// Atenciones que el asegurado todavía no calificó.
+  ///
+  /// Es la fuente de verdad de lo pendiente: el backend sabe qué se calificó y
+  /// qué no, así que la app no tiene que deducirlo de fechas ni de lo que
+  /// guardó en el teléfono.
+  static String calificacionesPendientes(int idper) =>
+      '/api/programacion/calificaciones-pendientes/$idper';
+
   /// Actualizar datos personales del afiliado: teléfono de emergencia y referencia (PUT).
   static String actualizaDatosPer() => '/api/safil/afiliado/actualiza-datosper';
 
