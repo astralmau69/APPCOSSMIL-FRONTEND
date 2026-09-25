@@ -66,6 +66,16 @@ class TutorialCoachOverlay extends StatefulWidget {
   /// "hablar" (gating audio-primero).
   final String? voiceId;
 
+  /// El coach acompaña una reserva REAL (Modo Guiado), no la demostración.
+  ///
+  /// No cambia cómo narra: cambia lo que el coach dice DE SÍ MISMO. Anunciar
+  /// "modo entrenamiento" sobre una cita que sí se registra, u ofrecer "salir
+  /// del tutorial" en rojo junto a una reserva en curso, deja al usuario sin
+  /// saber qué está haciendo ni qué pierde si cierra. Los resaltados de
+  /// `GuidedTapHint` no hay que apagarlos aquí: cuelgan de
+  /// `BookingState.isTutorialMode`, que en modo guiado es false.
+  final bool narrateOnly;
+
   const TutorialCoachOverlay({
     super.key,
     required this.messages,
@@ -75,6 +85,7 @@ class TutorialCoachOverlay extends StatefulWidget {
     this.step,
     this.totalSteps,
     this.voiceId,
+    this.narrateOnly = false,
   });
 
   @override
@@ -411,6 +422,7 @@ class TutorialCoachOverlayState extends State<TutorialCoachOverlay> {
                       onExit: widget.onExit,
                       step: widget.step,
                       totalSteps: widget.totalSteps,
+                      narrateOnly: widget.narrateOnly,
                       onTyping: (v) {
                         if (_typing != v) setState(() => _typing = v);
                       },
@@ -440,6 +452,7 @@ class _CoachBubbles extends StatefulWidget {
   final VoidCallback onExit;
   final int? step;
   final int? totalSteps;
+  final bool narrateOnly;
 
   /// Avisa cuando entra/sale el indicador de "escribiendo…", para que la
   /// instructora cambie a la pose pensativa mientras tanto.
@@ -452,6 +465,7 @@ class _CoachBubbles extends StatefulWidget {
     required this.onExit,
     this.step,
     this.totalSteps,
+    this.narrateOnly = false,
     this.onTyping,
   });
 
@@ -563,9 +577,17 @@ class _CoachBubblesState extends State<_CoachBubbles> {
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              _ModeBadge(step: widget.step, total: widget.totalSteps),
+              _ModeBadge(
+                step: widget.step,
+                total: widget.totalSteps,
+                guiado: widget.narrateOnly,
+              ),
               SizedBox(width: r.spaceSm),
-              _ExitButton(isDark: widget.isDark, onExit: widget.onExit),
+              _ExitButton(
+                isDark: widget.isDark,
+                onExit: widget.onExit,
+                guiado: widget.narrateOnly,
+              ),
             ],
           ),
         ),
@@ -616,17 +638,26 @@ class _CoachBubblesState extends State<_CoachBubbles> {
 
 /// Insignia "MODO ENTRENAMIENTO · PASO X/N" — refuerza que nada de lo que se
 /// haga aquí es real, con sensación de progreso tipo videojuego.
+///
+/// En Modo Guiado ([guiado]) dice "RESERVA GUIADA": ahí todo lo que se hace SÍ
+/// es real, y la misma insignia diría exactamente lo contrario de la verdad.
 class _ModeBadge extends StatelessWidget {
   final int? step;
   final int? total;
+  final bool guiado;
 
-  const _ModeBadge({required this.step, required this.total});
+  const _ModeBadge({
+    required this.step,
+    required this.total,
+    this.guiado = false,
+  });
 
   @override
   Widget build(BuildContext context) {
+    final modo = guiado ? 'RESERVA GUIADA' : 'MODO ENTRENAMIENTO';
     final label = (step != null && total != null)
-        ? 'MODO ENTRENAMIENTO · PASO $step/$total'
-        : 'MODO ENTRENAMIENTO';
+        ? '$modo · PASO $step/$total'
+        : modo;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(
@@ -656,14 +687,19 @@ class _ModeBadge extends StatelessWidget {
 class _ExitButton extends StatelessWidget {
   final bool isDark;
   final VoidCallback onExit;
+  final bool guiado;
 
-  const _ExitButton({required this.isDark, required this.onExit});
+  const _ExitButton({
+    required this.isDark,
+    required this.onExit,
+    this.guiado = false,
+  });
 
   @override
   Widget build(BuildContext context) {
     final r = context.r;
     return Semantics(
-      label: 'Salir del tutorial',
+      label: guiado ? 'Ocultar la guía' : 'Salir del tutorial',
       button: true,
       child: CupertinoButton(
         padding: EdgeInsets.zero,
@@ -931,26 +967,36 @@ class _BubblePopState extends State<_BubblePop>
   }
 }
 
-/// Hoja de confirmación "¿Salir del tutorial?" — se llama antes de abandonar
-/// el modo demostración desde cualquiera de las pantallas reales.
-Future<bool> confirmExitTutorial(BuildContext context) async {
+/// Hoja de confirmación antes de abandonar el acompañamiento.
+///
+/// Con [guiado] la pregunta es otra COSA, no otra redacción: en Modo Guiado lo
+/// que se cierra es la narración, mientras la reserva real sigue su curso. La
+/// hoja del tutorial anuncia en rojo "Salir del tutorial", que sobre una cita a
+/// medio reservar se lee como "abandonar la reserva".
+Future<bool> confirmExitTutorial(
+  BuildContext context, {
+  bool guiado = false,
+}) async {
   final confirmed = await showCupertinoModalPopup<bool>(
     context: context,
     builder: (ctx) => CupertinoActionSheet(
-      title: const Text('¿Salir del tutorial?'),
-      message: const Text(
-        'Puedes volver a verlo cuando quieras desde tu Perfil.',
+      title: Text(guiado ? '¿Ocultar la guía?' : '¿Salir del tutorial?'),
+      message: Text(
+        guiado
+            ? 'Tu reserva sigue en curso y puedes terminarla sin la guía.'
+            : 'Puedes volver a verlo cuando quieras desde tu Perfil.',
       ),
       actions: [
         CupertinoActionSheetAction(
-          isDestructiveAction: true,
+          // En guiado no es destructivo: no se pierde nada.
+          isDestructiveAction: !guiado,
           onPressed: () => Navigator.pop(ctx, true),
-          child: const Text('Salir del tutorial'),
+          child: Text(guiado ? 'Ocultar la guía' : 'Salir del tutorial'),
         ),
       ],
       cancelButton: CupertinoActionSheetAction(
         onPressed: () => Navigator.pop(ctx, false),
-        child: const Text('Continuar viendo'),
+        child: Text(guiado ? 'Seguir con la guía' : 'Continuar viendo'),
       ),
     ),
   );
