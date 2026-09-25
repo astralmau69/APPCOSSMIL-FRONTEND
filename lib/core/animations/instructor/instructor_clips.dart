@@ -235,6 +235,72 @@ class InstructorClips {
     },
   );
 
+  /// Ciclo de caminata de PERFIL, para la entrada. Una zancada (dos pasos).
+  ///
+  /// Tres decisiones que son las que lo hacen leerse como andar y no como un
+  /// compás de metrónomo:
+  ///
+  /// 1. **Arranca en la pose de paso** (piernas juntas, t=0), no en el
+  ///    contacto. Así los extremos caen en 0.25 y 0.75, el ciclo cierra con el
+  ///    mismo valor con el que abrió, y encadenar zancadas no da ningún salto.
+  /// 2. **El brazo va contra la pierna de su lado.** Es lo que cancela la
+  ///    torsión al caminar; con brazo y pierna en fase la figura parece un
+  ///    juguete de cuerda.
+  /// 3. **La rodilla sólo dobla hacia atrás** (rot positivo: la figura mira a
+  ///    la derecha) y justo después de despegar el pie, no en el apoyo — una
+  ///    pantorrilla que dobla mientras carga el peso es una pierna rota.
+  ///
+  /// La cabeza y el torso NO figuran a propósito: en una caminata el cráneo se
+  /// queda quieto y sólo se mueven las extremidades. Si el torso cabecea, la
+  /// entrada parece un salto de canguro.
+  static const walkCycle = InstructorClip(
+    name: 'walk',
+    duration: Duration(milliseconds: 650),
+    loop: true,
+    tracks: {
+      'perfil_muslo_a': [
+        BoneKey(t: 0.00, rot: 0.0),
+        BoneKey(t: 0.25, rot: 0.34, curve: AppCurves.smooth),
+        BoneKey(t: 0.50, rot: 0.0, curve: AppCurves.smooth),
+        BoneKey(t: 0.75, rot: -0.34, curve: AppCurves.smooth),
+        BoneKey(t: 1.00, rot: 0.0, curve: AppCurves.smooth),
+      ],
+      'perfil_muslo_b': [
+        BoneKey(t: 0.00, rot: 0.0),
+        BoneKey(t: 0.25, rot: -0.34, curve: AppCurves.smooth),
+        BoneKey(t: 0.50, rot: 0.0, curve: AppCurves.smooth),
+        BoneKey(t: 0.75, rot: 0.34, curve: AppCurves.smooth),
+        BoneKey(t: 1.00, rot: 0.0, curve: AppCurves.smooth),
+      ],
+      // La pierna A queda atrás en 0.25: despega ahí y la rodilla llega a su
+      // máximo en 0.45, ya en vuelo.
+      'perfil_pantorrilla_a': [
+        BoneKey(t: 0.00, rot: 0.0),
+        BoneKey(t: 0.25, rot: 0.05, curve: AppCurves.smooth),
+        BoneKey(t: 0.45, rot: 0.46, curve: AppCurves.smooth),
+        BoneKey(t: 0.70, rot: 0.0, curve: AppCurves.smooth),
+        BoneKey(t: 1.00, rot: 0.0),
+      ],
+      // La B es la misma curva media zancada después: en t=0 viene estirando
+      // la rodilla de su propio vuelo, por eso no arranca en cero.
+      'perfil_pantorrilla_b': [
+        BoneKey(t: 0.00, rot: 0.37),
+        BoneKey(t: 0.20, rot: 0.0, curve: AppCurves.smooth),
+        BoneKey(t: 0.50, rot: 0.0),
+        BoneKey(t: 0.75, rot: 0.05, curve: AppCurves.smooth),
+        BoneKey(t: 0.95, rot: 0.46, curve: AppCurves.smooth),
+        BoneKey(t: 1.00, rot: 0.37, curve: AppCurves.smooth),
+      ],
+      'perfil_brazo': [
+        BoneKey(t: 0.00, rot: 0.0),
+        BoneKey(t: 0.25, rot: -0.26, curve: AppCurves.smooth),
+        BoneKey(t: 0.50, rot: 0.0, curve: AppCurves.smooth),
+        BoneKey(t: 0.75, rot: 0.26, curve: AppCurves.smooth),
+        BoneKey(t: 1.00, rot: 0.0, curve: AppCurves.smooth),
+      ],
+    },
+  );
+
   /// Cabeceo mientras habla. No mueve la boca: eso lo hace [mouthSequence]
   /// conmutando sprites, porque una boca no interpola, conmuta.
   static const speak = InstructorClip(

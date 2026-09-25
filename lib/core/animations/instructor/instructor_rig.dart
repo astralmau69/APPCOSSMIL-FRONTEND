@@ -2,6 +2,8 @@ import 'dart:convert';
 
 import 'package:flutter/services.dart';
 
+import '../../utils/app_logger.dart';
+
 /// Una pieza del rig de la instructora: su PNG, dónde gira y de quién cuelga.
 ///
 /// Datos puros generados por `tools/build_instructor_v2.py`. Las coordenadas
@@ -56,14 +58,50 @@ class InstructorRig {
   /// la proporción escrita a mano, para que no se desincronice del arte.
   final double aspect;
 
+  /// La misma figura DE PERFIL, con su propia jerarquía y su propio `aspect`
+  /// (de costado es la mitad de ancha). `null` si el manifest no la trae: sin
+  /// ella la caminata de entrada cae al rig de frente, que es lo que hacía
+  /// antes. Es un rig hermano y no un hueso más, porque las dos vistas no
+  /// comparten ni piezas ni proporción.
+  final InstructorRig? profile;
+
   final Map<String, InstructorBone> _byName;
   final List<InstructorBone> _drawOrder;
 
-  InstructorRig._(this.bones, this.canonicalHeight, this.aspect)
+  InstructorRig._(this.bones, this.canonicalHeight, this.aspect, this.profile)
     : _byName = {for (final b in bones) b.name: b},
       _drawOrder = [...bones]..sort((a, b) => a.z.compareTo(b.z));
 
   factory InstructorRig.fromJson(Map<String, dynamic> json) {
+    final alto = (json['canonicalHeight'] as num).toDouble();
+    final perfil = json['profile'] as Map<String, dynamic>?;
+
+    InstructorRig? perfilRig;
+    if (perfil != null) {
+      try {
+        // El bloque de perfil no repite `canonicalHeight`: es la misma figura
+        // canónica medida de costado, así que hereda la del padre.
+        perfilRig = InstructorRig._desde(perfil, alto);
+      } catch (e) {
+        // Un perfil ilegible cuesta la entrada caminando y nada más. Dejarlo
+        // propagar costaría el rig de frente, que es TODO lo que el tutorial
+        // dibuja el resto del tiempo.
+        AppLogger.warn(
+          'InstructorRig',
+          'Bloque de perfil inservible; la entrada cae al rig de frente',
+          e,
+        );
+      }
+    }
+
+    return InstructorRig._desde(json, alto, perfil: perfilRig);
+  }
+
+  factory InstructorRig._desde(
+    Map<String, dynamic> json,
+    double canonicalHeight, {
+    InstructorRig? perfil,
+  }) {
     final bones = (json['pieces'] as List)
         .cast<Map<String, dynamic>>()
         .map(InstructorBone.fromJson)
@@ -92,8 +130,9 @@ class InstructorRig {
 
     return InstructorRig._(
       bones,
-      (json['canonicalHeight'] as num).toDouble(),
+      canonicalHeight,
       (json['aspect'] as num).toDouble(),
+      perfil,
     );
   }
 

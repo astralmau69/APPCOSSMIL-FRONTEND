@@ -76,7 +76,13 @@ class _InstructorAssets {
   static Future<InstructorImages> imagenes(InstructorRig r) {
     final i = images;
     if (i != null) return Future.value(i);
-    return _imgFuture ??= InstructorImages.load([r]).then((x) => images = x);
+    // Las dos vistas en el MISMO mapa: la de perfil sólo aparece 1,3 s al
+    // entrar, y decodificarla entonces daría el tirón justo en la entrada.
+    final perfil = r.profile;
+    return _imgFuture ??= InstructorImages.load([
+      r,
+      if (perfil != null) perfil,
+    ]).then((x) => images = x);
   }
 
   static Future<void> warmUp() async => imagenes(await soloRig());
@@ -183,9 +189,15 @@ class _TutorialInstructorState extends State<TutorialInstructor>
   static const _idleCalm = Duration(milliseconds: 2600);
   static const _idleParty = Duration(milliseconds: 1500);
 
-  /// Duración de la caminata de entrada y cuántos pasos (ciclos del set de 7)
-  /// da en ese trayecto — ~11 fps, que es donde una caminada chibi lee natural.
+  /// Duración de la caminata de entrada y cuántas zancadas da en ese trayecto.
+  ///
+  /// Dos, no una: el trayecto es 1,25 veces su altura, y cruzarlo de una sola
+  /// zancada le daría trancos de gigante. Como [InstructorClips.walkCycle]
+  /// cierra donde abrió, encadenarlas no produce ningún corte, y en `value=1`
+  /// la fase vuelve a 0 — o sea que llega con los pies juntos, no a media
+  /// tranca.
   static const _walkDur = Duration(milliseconds: 1300);
+  static const _walkStrides = 2;
 
   /// true mientras la caminata de entrada está en curso.
   bool get _walking => widget.walkIn && !_reduceMotion && _walk.value < 1.0;
@@ -632,6 +644,10 @@ class _TutorialInstructorState extends State<TutorialInstructor>
     ];
   }
 
+  /// Fase del ciclo de caminata (0..1), encadenando [_walkStrides] zancadas a
+  /// lo largo de la entrada.
+  double get _faseCaminata => (_walk.value * _walkStrides) % 1.0;
+
   @override
   Widget build(BuildContext context) {
     final h = widget.height;
@@ -729,15 +745,34 @@ class _TutorialInstructorState extends State<TutorialInstructor>
           // movimiento INTERNO que un PNG no podía dar: respiración del torso,
           // cabeceo propio y la antena llegando tarde.
           final rig = _rig;
-          final figura = rig == null
-              ? SizedBox(height: h, width: h * 0.63)
-              : InstructorRigView(
-                  rig: rig,
-                  images: _images ?? InstructorImages.empty,
-                  pose: solveInstructorPose(rig, _capas()),
-                  height: h,
-                  hidden: hidden,
-                );
+          // Al entrar camina DE PERFIL: es otro rig, con sus propias piezas y
+          // la mitad de ancho. Si el manifest no lo trae, la entrada cae al rig
+          // de frente deslizándose, que es lo que hacía antes de articularla.
+          final perfil = walking ? rig?.profile : null;
+          final Widget figura;
+          if (perfil != null) {
+            figura = InstructorRigView(
+              rig: perfil,
+              images: _images ?? InstructorImages.empty,
+              pose: solveInstructorPose(perfil, [
+                ClipLayer(
+                  clip: InstructorClips.walkCycle,
+                  t: _faseCaminata,
+                ),
+              ]),
+              height: h,
+            );
+          } else if (rig == null) {
+            figura = SizedBox(height: h, width: h * 0.63);
+          } else {
+            figura = InstructorRigView(
+              rig: rig,
+              images: _images ?? InstructorImages.empty,
+              pose: solveInstructorPose(rig, _capas()),
+              height: h,
+              hidden: hidden,
+            );
+          }
 
           return Opacity(
             opacity: opacity,
