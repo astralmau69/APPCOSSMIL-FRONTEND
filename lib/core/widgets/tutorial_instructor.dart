@@ -49,6 +49,14 @@ enum InstructorPose {
   sorpresa,
 }
 
+/// Proporción ancho/alto de la figura mientras el manifest todavía no llegó.
+///
+/// Existe UNA sola vez: el coach reserva su caja con [TutorialInstructor.aspecto],
+/// que devuelve el valor real del manifest en cuanto está cargado. Tener el
+/// número escrito a mano en dos sitios fue lo que dejó al coach reservando la
+/// proporción del set anterior (0.58) para una figura que ya no la tenía.
+const double kInstructorAspectFallback = 0.63;
+
 /// Precarga el rig una sola vez por proceso. Lo llama Inicio antes de que la
 /// instructora aparezca, para que su primer fotograma no espere al disco.
 Future<void> precacheInstructorRig() => _InstructorAssets.warmUp();
@@ -138,6 +146,12 @@ class TutorialInstructor extends StatefulWidget {
   /// boca, para que dos pasos distintos no muevan los labios igual. Opcional:
   /// sin él la semilla sale de la duración.
   final String? voiceId;
+
+  /// Ancho/alto de la figura, leído del manifest en cuanto cargó. Lo usa quien
+  /// tenga que RESERVAR su caja antes de que exista (el coach), para no tener
+  /// la proporción del arte escrita a mano.
+  static double get aspecto =>
+      _InstructorAssets.rig?.aspect ?? kInstructorAspectFallback;
 
   const TutorialInstructor({
     super.key,
@@ -763,7 +777,7 @@ class _TutorialInstructorState extends State<TutorialInstructor>
               height: h,
             );
           } else if (rig == null) {
-            figura = SizedBox(height: h, width: h * 0.63);
+            figura = SizedBox(height: h, width: h * kInstructorAspectFallback);
           } else {
             figura = InstructorRigView(
               rig: rig,

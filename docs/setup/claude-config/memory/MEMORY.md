@@ -8,7 +8,7 @@
 - [Entorno de build Android en Linux](entorno-build-android-linux.md) — SDK en ~/Android/Sdk, JDK 21 en ~/.jdks, RAM 7.5GB (Gradle Xmx3G máx), proyecto en NTFS/FUSE (builds lentos, workers.max=2), tablet SM-T735.
 - [Cédula ausente en gpo-familiar](cedula-gpo-familiar.md) — el backend no manda la CI de los familiares; los trámites la recuerdan localmente con TramiteCiStore.
 - [Sistema liquid glass](liquid-glass-system.md) — LiquidGlass/LiquidGlassButton en core/widgets/liquid_glass.dart; blur real solo en superficies arquitectónicas, tarjetas en scroll usan blur:false.
-- [Asset de la instructora del tutorial](instructora-tutorial-asset.md) — instructora_tutorial.png vino de una imagen Gemini con fondo falso; pipeline PIL (flood-fill thresh=suma de canales) por si hay que regenerarlo.
+- [Avatar de la instructora: rig v2](instructora-tutorial-asset.md) — es un rig de recortes articulado (no láminas); pipeline en tools/build_instructor_v2.py y las trampas de test de la zona fake-async.
 - [Ruflo instalado](ruflo-instalado.md) — meta-harness multi-agente para Claude Code; CLI en ~/.npm-global, workspace en ~/ruflo (no en COSSMIL), MCP a scope user ✔; cómo arrancar/desinstalar.
 - [Sistema de tutoriales guiados](tutorial-flow-system.md) — TutorialFlow/TutorialFlowHost para recorridos push (Calendario/Trámites); trucos de test del coach.
 - [Parar bucles de animación sin saltos](animaciones-parar-bucles-sin-saltos.md) — `_settle` en vez de `value = 0`; y `AnimatedSize` con `Duration.zero` rompe el layout.

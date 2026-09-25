@@ -246,7 +246,9 @@ class TutorialCoachOverlayState extends State<TutorialCoachOverlay> {
     // (o en horizontal), que es como se perdía antes de vista.
     final maxChar = context.height * 0.30;
     final charH = math.min(r.profileAvatarSize * 1.55, maxChar);
-    final charW = charH * 0.58; // proporción del asset (405×700)
+    // La proporción sale del manifest del rig, no de un número a mano: el 0.58
+    // de antes era el del set de láminas retirado y dejaba la figura estrecha.
+    final charW = charH * TutorialInstructor.aspecto;
     // Lo más abajo posible sin chocar con el FloatingNavBar: justo en la
     // zona de respiro que las listas ya reservan (navBarBottomSpace incluye
     // spaceLg de aire), así incluso desplegada pisa lo mínimo de contenido.

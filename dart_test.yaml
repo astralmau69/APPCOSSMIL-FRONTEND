@@ -3,7 +3,7 @@
 # mirarla sin dispositivo. Tarda minutos y no afirma nada, asi que se excluye
 # de la suite normal. Para correrlo:
 #
-#     flutter test --tags frames test/core/tutorial_instructor_frames_test.dart
+#     flutter test --tags frames --run-skipped test/core/tutorial_instructor_frames_test.dart
 tags:
   frames:
     skip: "herramienta de diagnostico; correr con --tags frames"
