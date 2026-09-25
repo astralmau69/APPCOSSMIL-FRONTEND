@@ -684,7 +684,9 @@ class TabShellState extends State<TabShell>
     if (index != _currentIndex) TutorialFlow.stop();
 
     if (index == 2) {
-      startBooking('Para m?', null);
+      // Entrada REAL al tab de Reservar (ícono de la barra). No viene de
+      // elegir a nadie en el menú, así que `startBooking` asume el titular.
+      startBooking();
 
       return;
     }
@@ -705,21 +707,50 @@ class TabShellState extends State<TabShell>
     _tabController.index = index;
   }
 
-  /// Llamado desde HomeScreen al seleccionar un beneficiario.
+  /// Titular de la sesión: el beneficiario que se asume cuando la reserva no
+  /// nace de elegir a alguien en concreto (el ícono de la barra, por ejemplo).
+  /// Si la cuenta no trae ningún beneficiario cargado devuelve null y el flujo
+  /// pide elegir más adelante, como siempre.
+  BeneficiaryModel? get _titular {
+    final bens = UserSession.currentUser.beneficiaries;
+    if (bens.isEmpty) return null;
+    return bens.firstWhere((b) => b.isTitular, orElse: () => bens.first);
+  }
 
+  /// "Para mí" cuando la cita es del propio titular; si no, el nombre de la
+  /// persona, que es lo que el flujo muestra en cada paso.
+  String _labelFor(BeneficiaryModel? b) =>
+      (b == null || b.isTitular) ? 'Para mí' : b.fullName;
+
+  /// Evita que dos toques seguidos abran dos hojas de modo encimadas.
   bool _choosingBookingMode = false;
 
-  Future<void> startBooking(String label, BeneficiaryModel? beneficiary) async {
+  /// Arranca una reserva REAL: primero pregunta si la quiere clásica o guiada
+  /// (la hoja se puede descartar, y entonces no pasa nada), y recién después
+  /// entra al tab con las verificaciones de negocio de siempre.
+  ///
+  /// Lo llama HomeScreen al elegir un beneficiario y `goToTab` al entrar por
+  /// la barra; sin [beneficiary] se asume el titular.
+  Future<void> startBooking([
+    String? label,
+    BeneficiaryModel? beneficiary,
+  ]) async {
     if (_choosingBookingMode || _isCheckingHorario) return;
     _choosingBookingMode = true;
     try {
       final mode = await showBookingModeSheet(context);
       if (!mounted || mode == null) return;
+      // La instructora no puede quedar esperando en Inicio mientras el
+      // usuario arranca una reserva de verdad por otro lado.
       homeTutorialNotifier.value = GuidedTutorial.none;
+      // reset() apaga isTutorialMode: una reserva real jamás debe heredar el
+      // modo demostración de un tutorial abandonado a medias (con él puesto,
+      // confirmar no llamaría a la API y el usuario se quedaría sin cita).
       bookingState.reset();
       bookingState.guidedMode = mode == BookingMode.guiado;
-      bookingState.beneficiaryLabel = label;
-      bookingState.beneficiary = beneficiary;
+      final elegido = beneficiary ?? _titular;
+      bookingState.beneficiary = elegido;
+      bookingState.beneficiaryLabel = label ?? _labelFor(elegido);
       await _tryEnterBookingTab();
     } finally {
       _choosingBookingMode = false;
@@ -763,14 +794,8 @@ class TabShellState extends State<TabShell>
     bookingState.reset();
     bookingState.isTutorialMode = true;
 
-    final bens = UserSession.currentUser.beneficiaries;
-    final titular = bens.isNotEmpty
-        ? bens.firstWhere((b) => b.isTitular, orElse: () => bens.first)
-        : null;
-    bookingState.beneficiary = titular;
-    bookingState.beneficiaryLabel = (titular == null || titular.isTitular)
-        ? 'Para mí'
-        : titular.fullName;
+    bookingState.beneficiary = _titular;
+    bookingState.beneficiaryLabel = _labelFor(_titular);
 
     _bookingFlowKey.currentState?.resetFlow();
     setState(() => _currentIndex = 2);
