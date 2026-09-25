@@ -155,3 +155,10 @@ Resemble; antes 0,3); (3) `silenciar_pausas`: expansor por energía, umbral adap
 reales la voz cambia 0,000 dB; (4) `limpiar_referencia` (denoise de Resemble antes de
 `prepare_conditionals`: el clon copia el "ambiente" de la referencia). Rama `para-entrenar`
 = la que el usuario abre en Colab: mantenerla al día con v1-dev (fast-forward).
+"Sonidos extraños al terminar el texto" (25 sep 2026): Chatterbox agrega a veces respiro/
+murmullo/sonidos tras la última palabra (y el realce puede inventar ruido en silencio) →
+`recortar_bordes` por TOMA antes de puntuar: tramos de voz por energía (`tramos_de_voz`,
+−35 dB, huecos < 150 ms unidos); quita tramos finales (hasta 3) solo si Whisper sigue
+oyendo el texto completo sin ellos (respaldo sin Whisper: solo chasquidos < 0,25 s
+separados > 0,3 s); márgenes 80 ms/150 ms y fundidos 10/60 ms; tras el realce + gate
+se vuelve a cerrar el borde. En las vof reales no corta palabras.

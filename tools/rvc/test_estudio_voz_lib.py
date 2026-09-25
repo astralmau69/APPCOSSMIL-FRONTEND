@@ -218,8 +218,8 @@ def test_seleccion_de_tomas():
 
     frase = 'Ahora, elija el horario que prefiera.'
     oidos = {1: 'Ahora, elija el horario', 2: frase, 3: frase, 4: frase, 5: frase}  # la toma 1 sale cortada
-    asr = lambda y, sr: oidos[round(float(y[0]) * 10)]
-    mos = lambda y, sr: {1: 4.5, 2: 3.2, 3: 4.1, 4: 3.9, 5: 3.0}[round(float(y[0]) * 10)]
+    asr = lambda y, sr: oidos[round(float(y[len(y) // 2]) * 10)]
+    mos = lambda y, sr: {1: 4.5, 2: 3.2, 3: 4.1, 4: 3.9, 5: 3.0}[round(float(y[len(y) // 2]) * 10)]
     realzar = lambda y, sr: (np.repeat(y, 2), sr * 2)
     with tempfile.TemporaryDirectory() as tmp:
         ruta = os.path.join(tmp, 'x.wav')
@@ -227,7 +227,7 @@ def test_seleccion_de_tomas():
                         mostrar=False, asr=asr, mos=mos, realzar=realzar)[0]
         y, sr = sf.read(ruta)
         assert inf['tomas'] == 3 and inf['ok'] and inf['mos'] == 4.1, inf  # la 1 (cortada) pierde pese a su MOS
-        assert sr == 48000 and abs(y[0] - 0.3) < 1e-3                       # se guardó la toma 3, realzada
+        assert sr == 48000 and abs(y[len(y) // 2] - 0.3) < 1e-3                       # se guardó la toma 3, realzada
         inf = L._clonar(Modelo(), [[frase, ruta]], {'silabas_s': 5.5, 'intentos': 2, 'tomas_min': 3},
                         mostrar=False, asr=lambda y, sr: 'Ahora elija', mos=None)[0]
         assert inf['tomas'] == 2 and not inf['ok']                           # sin toma buena: se marca ⚠
@@ -290,6 +290,36 @@ def test_masterizar_no_sube_el_ruido_de_las_pausas():
         rms = [np.sqrt(np.mean(z[i:i + marco] ** 2)) for i in range(0, len(z) - marco, marco // 4)]
         rel_s = np.percentile(np.abs(z), 99.5) / min(rms)
         assert rel_s > 0.7 * rel_e, (rel_s, rel_e)  # la distancia voz/ruido no se achica
+
+
+def test_recortar_sonidos_al_final():
+    try:
+        import numpy as np
+    except ImportError:
+        return
+    sr = 24000
+    t = np.arange(sr * 3) / sr
+    voz = 0.3 * np.sin(2 * np.pi * 220 * t)
+    y = np.zeros(len(t), 'float32')
+    y[int(0.2 * sr):int(1.0 * sr)] = voz[int(0.2 * sr):int(1.0 * sr)]    # "Ahora, elija"
+    y[int(1.1 * sr):int(1.9 * sr)] = voz[int(1.1 * sr):int(1.9 * sr)]    # "el horario."
+    y[int(2.3 * sr):int(2.5 * sr)] = 0.2 * voz[int(2.3 * sr):int(2.5 * sr)]  # sonido extraño al final
+    texto = 'Ahora, elija el horario.'
+
+    def asr(a, sr_):
+        dur = len(a) / sr_
+        return texto if dur < 2.2 else texto + ' ah'   # el murmullo final se "oye" como una palabra más
+    z, oido, parecido, fin, cortado = L.recortar_bordes(y, sr, texto, asr)
+    assert oido == texto and parecido == 1.0 and fin
+    assert 1.9 < 0.12 + len(z) / sr < 2.2 and cortado > 0.8, (len(z) / sr, cortado)  # sin cola extraña
+    # si el último tramo ES parte del texto, no se toca
+    asr2 = lambda a, sr_: texto if len(a) / sr_ > 2.2 else 'Ahora, elija el'
+    z2 = L.recortar_bordes(y, sr, texto, asr2)[0]
+    assert len(z2) / sr > 2.3
+    # sin Whisper: se quita un chasquido corto y separado, pero no una palabra larga
+    z3 = L.recortar_bordes(y, sr, texto, None)[0]
+    assert len(z3) / sr < 2.0
+    assert abs(float(z[0])) < 1e-6 and abs(float(z[-1])) < 1e-3  # entra y sale en silencio (fundidos)
 
 
 if __name__ == '__main__':

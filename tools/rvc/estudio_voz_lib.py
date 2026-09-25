@@ -646,6 +646,79 @@ def relacion_senal_ruido(y, sr):
 _AVISOS = {}
 
 
+def tramos_de_voz(y, sr, umbral_db=-35.0, hueco_max=0.15, minimo=0.05):
+    """[(inicio, fin)] en muestras de los tramos con voz: cuadros de 10 ms sobre `umbral_db`
+    respecto a la voz fuerte, uniendo huecos cortos (< `hueco_max` s) y sin tramos mínimos."""
+    import numpy as np
+    marco = max(1, int(0.01 * sr))
+    n = len(y) // marco
+    if n == 0:
+        return []
+    e = np.sqrt(np.mean(np.asarray(y[:n * marco], dtype='float64').reshape(n, marco) ** 2, axis=1)) + 1e-9
+    voz = 20 * np.log10(e / np.percentile(e, 95)) > umbral_db
+    tramos, i = [], 0
+    while i < n:
+        if voz[i]:
+            j = i
+            while j < n and voz[j]:
+                j += 1
+            tramos.append([i, j])
+            i = j
+        else:
+            i += 1
+    unidos = []
+    for t in tramos:
+        if unidos and (t[0] - unidos[-1][1]) * 0.01 < hueco_max:
+            unidos[-1][1] = t[1]
+        else:
+            unidos.append(t)
+    return [(a * marco, b * marco) for a, b in unidos if (b - a) * 0.01 >= minimo]
+
+
+def recortar_bordes(y, sr, texto, asr=None, margen_ini=0.08, margen_fin=0.15, max_cortes=3):
+    """Quita lo que sobra antes de la primera palabra y DESPUÉS de la última (el modelo a veces
+    agrega al final un respiro, un murmullo o sonidos sueltos). Un tramo final se corta solo si,
+    sin él, Whisper sigue oyendo el texto completo; sin Whisper, solo si es un chasquido corto
+    (< 0,25 s) y separado de la voz (> 0,3 s). Termina con fundido suave.
+    Devuelve (y, oido, parecido, fin, segundos_recortados)."""
+    import numpy as np
+    y = np.asarray(y, dtype='float32')
+    largo = len(y)
+    tramos = tramos_de_voz(y, sr)
+    oido, parecido, fin = None, None, True
+    if asr:
+        oido = asr(y, sr)
+        parecido, fin = coincidencia(texto, oido)
+    if tramos:
+        fin_voz = len(tramos)
+        for _ in range(max_cortes):
+            if fin_voz <= 1:
+                break
+            ultimo, previo = tramos[fin_voz - 1], tramos[fin_voz - 2]
+            corte = min(largo, previo[1] + int(margen_fin * sr))
+            if asr:
+                oido_c = asr(y[:corte], sr)
+                parecido_c, fin_c = coincidencia(texto, oido_c)
+                if not (fin_c and parecido_c >= (parecido or 0) - 0.01):
+                    break
+                oido, parecido, fin = oido_c, parecido_c, fin_c
+            else:
+                corto = (ultimo[1] - ultimo[0]) / sr < 0.25
+                separado = (ultimo[0] - previo[1]) / sr > 0.3
+                if not (corto and separado):
+                    break
+            fin_voz -= 1
+        ini = max(0, tramos[0][0] - int(margen_ini * sr))
+        fin_m = min(largo, tramos[fin_voz - 1][1] + int(margen_fin * sr))
+        y = y[ini:fin_m].copy()
+        f_in, f_out = min(len(y), int(0.01 * sr)), min(len(y), int(0.06 * sr))
+        if f_in:
+            y[:f_in] *= np.linspace(0, 1, f_in, dtype='float32')
+        if f_out:
+            y[-f_out:] *= np.linspace(1, 0, f_out, dtype='float32')
+    return y, oido, parecido, fin, round((largo - len(y)) / sr, 2)
+
+
 def silenciar_pausas(y, sr, atenuacion_db=-35.0, sosten=0.08):
     """Baja SOLO los huecos entre palabras (donde se oye el soplido de fondo). El umbral se
     adapta a cada audio: 8 dB sobre su piso de ruido (percentil 10), entre −45 y −25 dB respecto
@@ -711,18 +784,15 @@ def _clonar(modelo, trabajos, ajustes, mostrar=True, asr=None, mos=None, realzar
                                   cfg_weight=ajustes.get('cfg', 0.4),
                                   temperature=ajustes.get('temperatura', 0.75))
             y = wav.squeeze(0).detach().cpu().numpy().astype('float32')
+            y, oido, parecido, fin, recorte = recortar_bordes(y, modelo.sr, texto, asr)
             razon = (len(y) / modelo.sr) / max(esperado, 0.3)
             snr = relacion_senal_ruido(y, modelo.sr)
-            oido, parecido, fin = None, None, True
-            if asr:
-                oido = asr(y, modelo.sr)
-                parecido, fin = coincidencia(texto, oido)
             natural = mos(y, modelo.sr) if mos else None
             nota = puntuar_toma(parecido if parecido is not None else 1.0, fin, razon, snr, natural)
             completa = 0.6 <= razon <= 1.7 and (parecido is None or (parecido >= 0.92 and fin))
             if mejor is None or nota > mejor['nota']:
                 mejor = dict(y=y, nota=nota, razon=razon, parecido=parecido, fin=fin, oido=oido,
-                             snr=snr, mos=natural, completa=completa)
+                             snr=snr, mos=natural, completa=completa, recorte=recorte)
             if toma + 1 >= min_tomas and mejor['completa']:
                 break
         y, sr = mejor['y'], modelo.sr
@@ -735,12 +805,13 @@ def _clonar(modelo, trabajos, ajustes, mostrar=True, asr=None, mos=None, realzar
             y = limpiar_ruido(y, sr, 0.6)  # respaldo suave solo si hay ruido de verdad
         if ajustes.get('silenciar_pausas', True):
             y = silenciar_pausas(y, sr)
+        y = recortar_bordes(y, sr, texto, None, max_cortes=0)[0]  # cierre limpio tras el realce
         sf.write(ruta, y, sr)
         ok = mejor['parecido'] is None or (mejor['parecido'] >= 0.85 and mejor['fin'])
         informe.append({'ruta': os.path.basename(ruta), 'texto': texto, 'oido': mejor['oido'],
                         'parecido': mejor['parecido'], 'fin': mejor['fin'], 'razon': round(mejor['razon'], 2),
                         'snr': round(mejor['snr'], 1), 'mos': None if mejor['mos'] is None else round(mejor['mos'], 2),
-                        'tomas': toma + 1, 'ok': ok})
+                        'tomas': toma + 1, 'ok': ok, 'cola_recortada_s': mejor['recorte']})
         if mostrar:
             nat = f" · naturalidad {mejor['mos']:.2f}/5" if mejor['mos'] is not None else ''
             marca = '' if ok else f" ⚠ revisar (se oyó: «{(mejor['oido'] or '')[:70]}»)"
