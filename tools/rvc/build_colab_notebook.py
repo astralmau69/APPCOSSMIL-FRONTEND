@@ -161,7 +161,7 @@ Genera audios con **la voz real de la locutora de COSSMIL** — la de `assets/vo
 1. `Entorno de ejecución → Cambiar tipo de entorno → GPU T4`.
 2. `Entorno de ejecución → Ejecutar todo` y acepta el permiso de Google Drive.
 3. La 1ª vez tarda ≈ 15 min (instala y elige la referencia); luego ≈ 5 min.
-4. Se descarga **`vof_tutorial_….zip`** con las voces del Modo Guiado (y del tutorial): extrae los mp3 **directo** en `assets/vof_tutorial/`.
+4. Al final queda **`vof_tutorial_….zip`** con todas las voces: se guarda en **Google Drive** (`Mi unidad/cossmil_rvc/salidas/`, también con los mp3 sueltos en la carpeta `vof_tutorial/`), se descarga sola y además aparece un enlace **⬇️ Descargar** por si el navegador bloqueó la descarga. Extrae los mp3 **directo** en `assets/vof_tutorial/`. Si algo falló, la celda **7b** vuelve a entregar lo último sin regenerar.
 5. Para cualquier otro texto: celda **8 · Estudio**.
 
 > **Calidad por frase:** se generan varias tomas; **Whisper** comprueba que se entienda completa (sin cortes ni balbuceos), **UTMOS** elige la más natural (la menos robótica) y **se recortan los sonidos extraños después de la última palabra** (solo si Whisper confirma que no son parte del texto); **Resemble Enhance** la limpia con red neuronal (a fuerza máxima) y la deja nítida a 44,1 kHz; además se silencian los huecos entre palabras, se limpia la referencia antes de clonar y el volumen se iguala con ganancia fija (sin subir el ruido de las pausas). Al final se listan las frases a revisar; rehazlas con otra **SEMILLA** (celda 7 → `SOLO_ESTOS`; celda 8 para textos libres). Más grabaciones limpias de la locutora en `MyDrive/cossmil_rvc/audio_extra/` también ayudan."""),
@@ -380,18 +380,52 @@ def producir(pares, lote='estudio', mostrar=12, descargar=True, textos=True):
         detalle = f' — {texto_de[nombre][:90]}' if textos else ''
         display(HTML(f'<b>{nombre}</b> ({duracion(ruta):.1f} s){detalle}'))
         display(Audio(ruta))
-    sello = datetime.datetime.now().strftime('%Y%m%d_%H%M%S')
-    if len(salidas) == 1:
-        entrega = next(iter(salidas.values()))
-    else:
-        entrega = shutil.make_archive(f'/content/{lote}_{sello}', 'zip',
-                                      root_dir=os.path.dirname(next(iter(salidas.values()))))
-    if BACKUP:
-        destino = f'{BACKUP}/salidas/{lote}_{sello}{os.path.splitext(entrega)[1]}'
-        shutil.copy(entrega, destino); print('Copia en Drive:', destino)
-    if descargar:
-        from google.colab import files; files.download(entrega)
+    entregar(list(salidas.values()), lote, descargar=descargar)
     return salidas
+
+ULTIMA_ENTREGA = None
+
+def entregar(archivos, lote, descargar=True):
+    # Guarda SIEMPRE en Drive (ZIP + mp3 sueltos) y ofrece la descarga de dos formas:
+    # la automática de Colab (el navegador a veces la bloquea tras celdas largas) y un enlace.
+    global ULTIMA_ENTREGA
+    import base64
+    sello = datetime.datetime.now().strftime('%Y%m%d_%H%M%S')
+    if len(archivos) == 1:
+        entrega = archivos[0]
+    else:
+        entrega = shutil.make_archive(f'/content/{lote}_{sello}', 'zip', root_dir=os.path.dirname(archivos[0]))
+    ULTIMA_ENTREGA = dict(archivos=list(archivos), lote=lote, entrega=entrega)
+    if BACKUP:
+        try:
+            carpeta = f'{BACKUP}/salidas/{lote}'            # siempre la última versión, suelta
+            os.makedirs(carpeta, exist_ok=True)
+            for a in archivos:
+                shutil.copy(a, carpeta)
+            destino = f'{BACKUP}/salidas/{lote}_{sello}{os.path.splitext(entrega)[1]}'
+            shutil.copy(entrega, destino)
+            os.sync()
+            ok = os.path.getsize(destino) == os.path.getsize(entrega)
+            print(f"{'✔' if ok else '⚠'} Guardado en Google Drive → Mi unidad/cossmil_rvc/salidas/")
+            print(f'   · {os.path.basename(destino)} (ZIP)')
+            print(f'   · carpeta {lote}/ con los {len(archivos)} audio(s) sueltos')
+        except Exception as e:  # noqa: BLE001
+            print(f'⚠ No se pudo guardar en Drive ({type(e).__name__}: {e}). Re-ejecuta la celda 1 para montarlo.')
+    else:
+        print('(Drive desactivado: marca USAR_DRIVE en la celda 1 para guardar una copia)')
+    if descargar:
+        tam = os.path.getsize(entrega)
+        if tam < 40 * 1024 * 1024:
+            datos = base64.b64encode(open(entrega, 'rb').read()).decode()
+            tipo = 'application/zip' if entrega.endswith('.zip') else 'audio/mpeg'
+            display(HTML(f'<p style="font-size:15px">⬇️ <a download="{os.path.basename(entrega)}" '
+                         f'href="data:{tipo};base64,{datos}"><b>Descargar {os.path.basename(entrega)}</b></a>'
+                         f' ({tam / 1e6:.1f} MB) — si no bajó solo, haz clic aquí.</p>'))
+        try:
+            from google.colab import files; files.download(entrega)
+        except Exception as e:  # noqa: BLE001
+            print(f'(descarga automática no disponible: {type(e).__name__}; usa el enlace o Drive)')
+        print(f'También puedes bajarlo desde el panel de archivos de la izquierda: {entrega}')
 
 print('Motor listo ✔')"""),
 
@@ -481,6 +515,16 @@ if GENERAR_VOCES_APP:
         AJUSTES.update(formato=previo['formato'], semilla=previo['semilla'])
 else:
     print('Omitido (marca GENERAR_VOCES_APP).')"""),
+
+code("""#@title 7b · Volver a descargar / guardar en Drive lo último generado (sin regenerar)
+VOLVER_A_ENTREGAR = False  #@param {type:"boolean"}
+#@markdown Márcalo y ejecuta SOLO esta celda si la descarga no bajó o Drive no guardó.
+if not VOLVER_A_ENTREGAR:
+    print('Omitido (marca VOLVER_A_ENTREGAR si necesitas bajar o guardar de nuevo lo último).')
+elif ULTIMA_ENTREGA:
+    entregar(ULTIMA_ENTREGA['archivos'], ULTIMA_ENTREGA['lote'])
+else:
+    print('Aún no hay nada generado en esta sesión. Si ya generaste antes, búscalo en Mi unidad/cossmil_rvc/salidas/.')"""),
 
 md("""## ✍️ Estudio — cualquier texto
 

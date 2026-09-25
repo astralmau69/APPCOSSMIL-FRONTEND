@@ -162,3 +162,8 @@ murmullo/sonidos tras la última palabra (y el realce puede inventar ruido en si
 oyendo el texto completo sin ellos (respaldo sin Whisper: solo chasquidos < 0,25 s
 separados > 0,3 s); márgenes 80 ms/150 ms y fundidos 10/60 ms; tras el realce + gate
 se vuelve a cerrar el borde. En las vof reales no corta palabras.
+"Al final no descarga" (25 sep 2026): `files.download` falla EN SILENCIO tras celdas largas
+(el navegador la bloquea) → `entregar()` guarda SIEMPRE en Drive (`salidas/<lote>_<sello>.zip`
++ carpeta `salidas/<lote>/` con los mp3 sueltos, verificando tamaño tras `os.sync()`),
+muestra enlace data-URI "⬇️ Descargar" (< 40 MB) y además intenta la descarga automática.
+Celda 7b (`VOLVER_A_ENTREGAR`) re-entrega lo último sin regenerar.
