@@ -36,12 +36,6 @@ class FormulariosScreen extends StatelessWidget {
         voiceId: 'tramites_04',
         celebrate: true,
         confirmOnExit: false,
-        messages: const [
-          '¡Listo! 🎖️',
-          'Cada tarjeta abre un formulario con tu nombre y cédula ya '
-              'completados, listo para imprimir, compartir o descargar. '
-              'Puedes repetir este tutorial desde tu Perfil.',
-        ],
         builder: (context, _) => _buildContent(context, isDark, r),
       ),
     );

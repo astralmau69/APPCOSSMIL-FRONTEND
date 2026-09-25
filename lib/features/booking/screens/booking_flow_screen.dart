@@ -4,6 +4,7 @@ import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_sounds.dart';
 import '../../../core/extensions/responsive_extensions.dart';
 import '../../../core/theme/sound_manager.dart';
+import '../../../core/tutorial/tutorial_script.dart';
 import '../../../core/widgets/booking_stepper.dart';
 import '../../../core/widgets/tutorial_coach_overlay.dart';
 import '../../../shell/tab_shell.dart';
@@ -186,14 +187,20 @@ class BookingFlowScreenState extends State<BookingFlowScreen> {
                         messages: _coachMessages(),
                         isDark: isDark,
                         celebrate: _isConfirmed,
-                        // El paso 1 del recorrido es tocar "Nueva Reserva" en
-                        // Inicio; por eso aquí los pasos van del 2 al 7.
-                        step: guided ? (_isConfirmed ? 7 : _currentStep + 1) : _currentStep + 2,
+                        // En el demo, el paso 1 del recorrido es tocar
+                        // "Nueva Reserva" en Inicio, así que aquí los pasos
+                        // van del 2 al 7. El Modo Guiado empieza en esta
+                        // misma pantalla: sus pasos van del 1 al 7.
+                        step: guided
+                            ? (_isConfirmed ? 7 : _currentStep + 1)
+                            : _currentStep + 2,
                         totalSteps: 7,
                         voiceId: _coachVoiceId(),
                         narrateOnly: guided,
                         initialVoiceId: guided ? 'guiado_intro' : null,
-                        initialMessages: guided ? bookingGuidedIntroMessages : null,
+                        initialMessages: guided
+                            ? tutorialBubbles('guiado_intro')
+                            : null,
                         onExit: _exitTutorial,
                       ),
                   ],
@@ -206,18 +213,12 @@ class BookingFlowScreenState extends State<BookingFlowScreen> {
     );
   }
 
-  /// Clip de voz del paso actual (`assets/vof_tutorial/<id>.mp3`). El paso de
-  /// Inicio es `ficha_00`; aquí los pasos 0..5 son `ficha_01..06` y la
-  /// confirmación `ficha_07` (ver `tools/rvc/tutorial_lines.md`).
   String _coachVoiceId() => bookingVoiceId(
     guided: widget.tabShell.bookingState.guidedMode,
     step: _currentStep,
     confirmed: _isConfirmed,
   );
 
-  /// Burbujas de la instructora para cada paso del tutorial — frases cortas
-  /// y cercanas, una idea por burbuja (estilo chat). La última siempre lleva
-  /// la colita apuntando hacia ella.
   List<String> _coachMessages() => bookingCoachMessages(
     guided: widget.tabShell.bookingState.guidedMode,
     step: _currentStep,
@@ -225,6 +226,10 @@ class BookingFlowScreenState extends State<BookingFlowScreen> {
   );
 
   Future<void> _exitTutorial() async {
+    // En Modo Guiado la reserva es REAL y sigue en pie: cerrar solo apaga la
+    // narración. Pedir aquí la confirmación roja de "salir del tutorial", o
+    // llamar a exitTutorialMode (que resetea el BookingState), tiraría a la
+    // basura una cita a medio reservar.
     if (widget.tabShell.bookingState.guidedMode) {
       setState(() => widget.tabShell.bookingState.guidedMode = false);
       return;
@@ -275,64 +280,38 @@ class BookingFlowScreenState extends State<BookingFlowScreen> {
   }
 }
 
-const bookingGuidedIntroMessages = ['Bienvenido a la reserva guiada de COSSMIL. Le acompañaré paso a paso. Tenga en cuenta que esta reserva es real, y su cita quedará registrada. Comencemos.'];
-
-String bookingVoiceId({required bool guided, required int step, required bool confirmed}) {
- if (!guided) return confirmed ? 'ficha_07' : 'ficha_0${step + 1}';
- if (confirmed) return 'guiado_final';
- const ids = ['guiado_regional', 'guiado_especialidad', 'guiado_medico', 'guiado_dia', 'guiado_hora', 'guiado_confirmar'];
- return ids[step.clamp(0, ids.length - 1)];
+/// Clip de voz del paso actual del flujo de reserva
+/// (`assets/vof_tutorial/<id>.mp3`).
+///
+/// En el tutorial-demo el paso 1 del recorrido es tocar "Nueva Reserva" en
+/// Inicio (`ficha_00`), así que aquí los pasos 0..5 son `ficha_01..06` y la
+/// confirmación `ficha_07`. El Modo Guiado tiene su propia serie `guiado_*`:
+/// misma reserva, pero la locución trata de usted y nunca dice que la cita
+/// sea de mentira, porque no lo es.
+String bookingVoiceId({
+  required bool guided,
+  required int step,
+  required bool confirmed,
+}) {
+  if (!guided) return confirmed ? 'ficha_07' : 'ficha_0${step + 1}';
+  if (confirmed) return 'guiado_final';
+  const ids = [
+    'guiado_regional',
+    'guiado_especialidad',
+    'guiado_medico',
+    'guiado_dia',
+    'guiado_hora',
+    'guiado_confirmar',
+  ];
+  return ids[step.clamp(0, ids.length - 1)];
 }
 
-List<String> bookingCoachMessages({required bool guided, required int step, required bool confirmed}) {
- if (guided) {
- if (confirmed) return const ['Su cita fue registrada con éxito. Puede ver o descargar su ficha cuando lo necesite. Gracias por confiar en COSSMIL.'];
- return switch(step) {
- 0 => const ['Primero, elija el hospital o policlínico donde desea atenderse. Están ordenados por regional.'],
- 1 => const ['Ahora, elija la especialidad médica que necesita.'],
- 2 => const ['Muy bien. Elija al médico con quien desea atenderse.'],
- 3 => const ['Elija el día de su cita. Cada tarjeta le muestra si el médico atiende, y si hay fichas disponibles.'],
- 4 => const ['Ahora, elija el horario que prefiera.'],
- 5 => const ['Revise que sus datos sean correctos. Cuando esté listo, presione Confirmar, y su cita quedará registrada.'],
- _ => const [],
- };
- }
-
-    if (confirmed) {
-      return const [
-        '¡Misión cumplida! 🎖️',
-        'Esto fue solo una demostración — no se creó ninguna cita real. '
-            'Puedes ver tu ficha de ejemplo o volver al inicio.',
-      ];
-    }
-    return switch (step) {
-      0 => const [
-        '¡Muy bien! Así se inicia una reserva.',
-        'Ahora elige tu hospital o policlínico — estos son los que tienes '
-            'habilitados, agrupados por regional.',
-      ],
-      1 => const [
-        '¡Muy bien!',
-        'Ahora elige la especialidad médica que necesitas.',
-      ],
-      2 => const [
-        'Estos son los médicos disponibles para esa especialidad.',
-        'Elige el que prefieras.',
-      ],
-      3 => const [
-        'Ahora elige el día — cada tarjeta muestra si el médico atiende '
-            'y si quedan fichas.',
-      ],
-      4 => const [
-        '¡Ya casi terminamos!',
-        'Elige un horario disponible dentro del día que escogiste.',
-      ],
-      5 => const [
-        'Revisa que todos los datos estén correctos.',
-        'Toca "Confirmar Reserva" — no te preocupes: aquí no se creará '
-            'ninguna cita real.',
-      ],
-      _ => const [],
-    };
-  }
-
+/// Burbujas del paso: las del guion del clip que suena en ese mismo paso, para
+/// que la instructora muestre exactamente lo que dice (ver `tutorial_script`).
+List<String> bookingCoachMessages({
+  required bool guided,
+  required int step,
+  required bool confirmed,
+}) => tutorialBubbles(
+  bookingVoiceId(guided: guided, step: step, confirmed: confirmed),
+);

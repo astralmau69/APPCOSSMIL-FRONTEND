@@ -16,6 +16,7 @@ import '../../../core/models/user_model.dart';
 import '../../../core/services/cossmil_news_service.dart';
 import '../../../core/services/tutorial_flow.dart';
 import '../../../core/services/tutorial_service.dart';
+import '../../../core/tutorial/tutorial_script.dart';
 import '../../../core/widgets/guided_tap_hint.dart';
 import '../../../core/widgets/liquid_glass.dart';
 import '../../../core/widgets/tutorial_coach_overlay.dart';
@@ -200,7 +201,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
           if (tutorialActive)
             TutorialCoachOverlay(
               key: _coachKey,
-              messages: _homeCoachMessages(tutorial),
+              messages: tutorialBubbles(_homeVoiceId(tutorial)),
               isDark: isDark,
               // Los tres recorridos comparten este primer paso, y cada uno
               // tiene su propia longitud.
@@ -214,32 +215,15 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     );
   }
 
-  /// Lo que dice la instructora en el menú, según a dónde vaya el recorrido.
-  /// Siempre nombra la tarjeta EXACTA que hay que tocar: el objetivo del paso
-  /// es que el usuario memorice la puerta de entrada, no solo el destino.
   /// Clip de voz del paso de Inicio de cada recorrido (`<recorrido>_00.mp3`).
+  /// Del id salen también las burbujas (ver `tutorial_script`): en este paso
+  /// la instructora nombra la tarjeta EXACTA que hay que tocar, porque lo que
+  /// se enseña es la puerta de entrada, no solo el destino.
   String? _homeVoiceId(GuidedTutorial t) => switch (t) {
     GuidedTutorial.ficha => 'ficha_00',
     GuidedTutorial.calendario => 'calendario_00',
     GuidedTutorial.tramites => 'tramites_00',
     GuidedTutorial.none => null,
-  };
-
-  List<String> _homeCoachMessages(GuidedTutorial t) => switch (t) {
-    GuidedTutorial.ficha => const [
-      '¡Hola! Vamos a sacar tu primera ficha juntos.',
-      'Todo empieza aquí, en Inicio: toca la primera opción del menú, el '
-          'botón verde "Nueva Reserva".',
-    ],
-    GuidedTutorial.calendario => const [
-      '¡Hola! Te voy a enseñar a consultar los horarios de los médicos.',
-      'Empezamos desde Inicio: toca la tarjeta "Calendario de Atención".',
-    ],
-    GuidedTutorial.tramites => const [
-      '¡Hola! Vamos a generar un trámite paso a paso.',
-      'Empezamos desde Inicio: toca la tarjeta "Procedimientos COSSMIL".',
-    ],
-    GuidedTutorial.none => const [],
   };
 
   int _homeTutorialSteps(GuidedTutorial t) => switch (t) {
@@ -506,11 +490,9 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
           widget.tabShell.enterHomeTutorialTarget(context);
           return;
         }
-        final bens = UserSession.currentUser.beneficiaries;
-        final titular = bens.isNotEmpty
-            ? bens.firstWhere((b) => b.isTitular, orElse: () => bens.first)
-            : null;
-        widget.tabShell.startBooking('Para mí', titular);
+        // Sin beneficiario: el botón héroe reserva para el titular, que es
+        // lo que `startBooking` asume por defecto.
+        widget.tabShell.startBooking();
       },
     );
 

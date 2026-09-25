@@ -2,6 +2,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart' show Theme, Brightness;
 
 import '../services/tutorial_flow.dart';
+import '../tutorial/tutorial_script.dart';
 import 'tutorial_coach_overlay.dart';
 
 /// Monta el coach del tutorial ([TutorialCoachOverlay]) sobre una pantalla
@@ -17,7 +18,11 @@ class TutorialFlowHost extends StatefulWidget {
   final GuidedTutorial tutorial;
 
   /// Burbujas del paso que esta pantalla representa dentro del recorrido.
-  final List<String> messages;
+  /// Por defecto, las del guion para [voiceId]: lo que la instructora muestra
+  /// es lo mismo que dice, sin que cada pantalla guarde su propia copia del
+  /// texto (así fue como al regenerar las voces las burbujas quedaron
+  /// diciendo otra cosa). Se pasa a mano solo en tests.
+  final List<String>? messages;
   final int step;
   final int totalSteps;
   final bool celebrate;
@@ -39,10 +44,10 @@ class TutorialFlowHost extends StatefulWidget {
   const TutorialFlowHost({
     super.key,
     required this.tutorial,
-    required this.messages,
     required this.step,
     required this.totalSteps,
     required this.builder,
+    this.messages,
     this.celebrate = false,
     this.confirmOnExit = true,
     this.stopOnDispose = false,
@@ -92,7 +97,7 @@ class _TutorialFlowHostState extends State<TutorialFlowHost> {
             ),
             TutorialCoachOverlay(
               key: _coachKey,
-              messages: widget.messages,
+              messages: widget.messages ?? tutorialBubbles(widget.voiceId),
               isDark: Theme.of(context).brightness == Brightness.dark,
               celebrate: widget.celebrate,
               step: widget.step,

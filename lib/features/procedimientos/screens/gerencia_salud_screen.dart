@@ -33,10 +33,6 @@ class GerenciaSaludScreen extends StatelessWidget {
         step: 3,
         totalSteps: 5,
         voiceId: 'tramites_02',
-        messages: const [
-          '¡Muy bien!',
-          'Esta gerencia agrupa sus dependencias. Entra a "Hospital".',
-        ],
         builder: (context, tutorialActive) {
           final hospitalCard = GerenciaNavCard(
             icon: CupertinoIcons.building_2_fill,
@@ -112,10 +108,6 @@ class HospitalProcedimientosScreen extends StatelessWidget {
         step: 4,
         totalSteps: 5,
         voiceId: 'tramites_03',
-        messages: const [
-          'Ya casi llegamos.',
-          'Cada categoría agrupa documentos. Abre "Formularios".',
-        ],
         builder: (context, tutorialActive) {
           final formulariosCard = TramiteCategoryCard(
             icon: CupertinoIcons.doc_on_doc_fill,

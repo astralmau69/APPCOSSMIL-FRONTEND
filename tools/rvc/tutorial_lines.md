@@ -2,8 +2,13 @@
 
 Cada línea es UN clip de audio. El `id` es el nombre de archivo final:
 `assets/vof_tutorial/<id>.mp3`. El texto es exactamente lo que dicen las
-burbujas del coach en cada paso (sin emojis, que no se leen). Si cambias el
-texto de una burbuja en el código, actualiza aquí y regenera ese clip.
+burbujas del coach en cada paso (sin emojis, que no se leen).
+
+En el código, esas burbujas viven en UN solo sitio:
+`lib/core/tutorial/tutorial_script.dart`, con el mismo id como clave. Un
+cambio de texto toca los tres: este md, `tutorial_lines.json` y ese mapa — y
+después hay que regenerar el mp3. `test/core/tutorial_script_test.dart`
+compara el mapa contra el json y falla si se quedan diciendo cosas distintas.
 
 La versión legible por máquina (para los scripts) está en `tutorial_lines.json`.
 

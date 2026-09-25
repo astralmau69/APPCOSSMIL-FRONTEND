@@ -132,11 +132,6 @@ class _CalendarioHospitalScreenState extends State<CalendarioHospitalScreen> {
           step: 2,
           totalSteps: 5,
           voiceId: 'calendario_01',
-          messages: const [
-            'Aquí puedes ver los días y horarios en que atiende cada '
-                'médico — sin reservar nada.',
-            'Empieza eligiendo tu hospital o policlínico.',
-          ],
           builder: (context, tutorialActive) =>
               _buildBody(isDark, r, tutorialActive),
         ),

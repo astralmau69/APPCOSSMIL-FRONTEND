@@ -148,3 +148,13 @@ Two static in-memory singletons, populated after login and cleared on logout:
 
 - `assets/images/` — App images including `cossmil_logo.png` (used in PDF generation and launcher icon)
 - `assets/vof/` — Voice-over audio files for splash screen
+- `assets/vof_tutorial/` — Instructor voice clips for the tutorial and Modo Guiado, one mp3 per step (`<id>.mp3`)
+
+## Tutorial & Modo Guiado
+
+Two separate things share the same instructor (`TutorialCoachOverlay` + `TutorialInstructor`):
+
+- **Tutorial (demo)** — `BookingState.isTutorialMode`. Skips every business call and **never** creates an appointment. Three tours: `ficha`, `calendario`, `tramites`.
+- **Modo Guiado** — `BookingState.guidedMode`. The **real** booking flow, narrated. Creates a real appointment; the overlay runs with `narrateOnly: true` so the badge says "RESERVA GUIADA" instead of claiming it is a drill. `TabShell.startBooking()` asks which mode via `showBookingModeSheet` before entering the tab.
+
+**What the instructor says lives in one place:** `lib/core/tutorial/tutorial_script.dart` maps each voice clip id to its bubbles. Joined with a space they must equal the line in `tools/rvc/tutorial_lines.json`, which is what the mp3 actually pronounces — `test/core/tutorial_script_test.dart` enforces it. Changing a wording means editing the map, the json, the md, and regenerating that clip (see `tools/rvc/README.md`).

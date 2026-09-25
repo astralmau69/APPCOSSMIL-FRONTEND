@@ -8,6 +8,7 @@ import '../constants/app_sounds.dart';
 import '../extensions/responsive_extensions.dart';
 import '../services/tutorial_voice.dart';
 import '../theme/sound_manager.dart';
+import '../tutorial/tutorial_script.dart';
 import 'liquid_glass.dart';
 import 'tutorial_instructor.dart';
 import 'tutorial_coach_overlay.dart' show kTutorialAccent;
@@ -25,6 +26,9 @@ Future<void> showTutorialInviteDialog(
   SoundManager.playUi(AppSounds.coach);
   // Locución de bienvenida (si existe el clip; si no, en silencio).
   TutorialVoice.play('invite');
+  // El título y el cuerpo salen del guion: es lo que el clip pronuncia, y el
+  // diálogo no debe decir una cosa mientras la voz dice otra.
+  final guion = tutorialBubbles('invite');
   return showAppDialog(
     context: context,
     barrierLabel: 'Invitación al tutorial',
@@ -70,7 +74,7 @@ Future<void> showTutorialInviteDialog(
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       Text(
-                        '¡Bienvenido a COSSMIL!',
+                        guion.first,
                         textAlign: TextAlign.center,
                         style: ctx.texts.titleLarge.copyWith(
                           color: AppColors.textPrimaryC(isDark),
@@ -78,10 +82,7 @@ Future<void> showTutorialInviteDialog(
                       ),
                       SizedBox(height: r.spaceSm),
                       Text(
-                        'Soy tu instructora y te puedo enseñar a sacar una '
-                        'ficha (cita médica) paso a paso. Toma menos de un '
-                        'minuto y puedes repetir el tutorial cuando quieras '
-                        'desde tu Perfil.',
+                        guion.last,
                         textAlign: TextAlign.center,
                         style: ctx.texts.bodyMedium.copyWith(
                           height: 1.45,

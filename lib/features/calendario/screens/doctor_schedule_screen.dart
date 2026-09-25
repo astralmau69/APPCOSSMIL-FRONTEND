@@ -150,13 +150,6 @@ class _DoctorScheduleScreenState extends State<DoctorScheduleScreen> {
           voiceId: 'calendario_04',
           celebrate: true,
           confirmOnExit: false,
-          messages: const [
-            '¡Eso es todo! 🎖️',
-            'Aquí ves los días, turnos y horas en que atiende este médico. '
-                'Recuerda: esto es solo consulta — para sacar una ficha usa '
-                '"Nueva Reserva" en Inicio. Puedes repetir este tutorial '
-                'desde tu Perfil.',
-          ],
           builder: (context, _) => _buildBody(isDark, r),
         ),
       ),

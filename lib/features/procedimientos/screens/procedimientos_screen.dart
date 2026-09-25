@@ -36,12 +36,6 @@ class ProcedimientosScreen extends StatelessWidget {
         totalSteps: 5,
         voiceId: 'tramites_01',
         stopOnDispose: true,
-        messages: const [
-          'Aquí puedes generar documentos oficiales con tus datos ya '
-              'cargados.',
-          'Los trámites se organizan por gerencia: entra a '
-              '"Gerencia de Salud".',
-        ],
         builder: (context, tutorialActive) {
           final gerenciaCard = GerenciaNavCard(
             icon: CupertinoIcons.heart_circle_fill,

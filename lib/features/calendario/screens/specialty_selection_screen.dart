@@ -113,10 +113,6 @@ class _SpecialtySelectionScreenState extends State<SpecialtySelectionScreen> {
           step: 3,
           totalSteps: 5,
           voiceId: 'calendario_02',
-          messages: const [
-            '¡Muy bien!',
-            'Ahora elige la especialidad que quieres consultar.',
-          ],
           builder: (context, tutorialActive) =>
               _buildBody(isDark, r, tutorialActive),
         ),

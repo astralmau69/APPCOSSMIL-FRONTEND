@@ -119,10 +119,6 @@ class _DoctorSelectionScreenState extends State<DoctorSelectionScreen> {
           step: 4,
           totalSteps: 5,
           voiceId: 'calendario_03',
-          messages: const [
-            'Estos son los médicos de esa especialidad.',
-            'Toca uno para ver su horario de atención.',
-          ],
           builder: (context, tutorialActive) =>
               _buildBody(isDark, r, tutorialActive),
         ),
