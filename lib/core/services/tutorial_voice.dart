@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:audioplayers/audioplayers.dart';
+import 'package:flutter/foundation.dart' show visibleForTesting;
 
 import '../utils/app_logger.dart';
 
@@ -21,8 +22,27 @@ typedef VoiceClip = ({Duration duration, int token});
 class TutorialVoice {
   TutorialVoice._();
 
-  static final AudioPlayer _player = AudioPlayer()
-    ..setReleaseMode(ReleaseMode.stop);
+  static AudioPlayer? _instance;
+
+  /// El reproductor, creado en el primer [play] y reutilizado después: la voz
+  /// de la instructora es una sola y nunca se solapa consigo misma.
+  static AudioPlayer get _player =>
+      _instance ??= (AudioPlayer()..setReleaseMode(ReleaseMode.stop));
+
+  /// Tira el reproductor para que el próximo [play] arranque con uno nuevo.
+  ///
+  /// Solo para tests, y no es una manía de aislamiento: audioplayers guarda
+  /// `Completer`s dentro del reproductor, y un `Completer` entrega su
+  /// resultado en la zona async donde se creó. Cada `testWidgets` corre en su
+  /// propia zona, así que un reproductor heredado del test anterior espera
+  /// para siempre en una zona ya muerta y deja colgado a todo el archivo.
+  @visibleForTesting
+  static void debugResetPlayer() {
+    _instance?.dispose();
+    _instance = null;
+    _wiredTo = null;
+    _token = 0;
+  }
 
   /// Interruptor global (botón de silencio del tutorial).
   static bool enabled = true;
@@ -42,13 +62,15 @@ class TutorialVoice {
 
   static final StreamController<int> _completions =
       StreamController<int>.broadcast();
-  static bool _wired = false;
+  static AudioPlayer? _wiredTo;
 
   /// Emite el token del clip que acaba de terminar. Compáralo con el token que
   /// devolvió [play] antes de reaccionar.
   static Stream<int> get onComplete {
-    if (!_wired) {
-      _wired = true;
+    // Se cablea una vez POR reproductor: al renovarlo en tests, el stream del
+    // anterior ya no emite y el nuevo tiene que quedar escuchado.
+    if (_wiredTo != _player) {
+      _wiredTo = _player;
       _player.onPlayerComplete.listen((_) => _completions.add(_token));
     }
     return _completions.stream;
