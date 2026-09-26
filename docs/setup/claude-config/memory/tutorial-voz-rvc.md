@@ -167,3 +167,12 @@ se vuelve a cerrar el borde. En las vof reales no corta palabras.
 + carpeta `salidas/<lote>/` con los mp3 sueltos, verificando tamaño tras `os.sync()`),
 muestra enlace data-URI "⬇️ Descargar" (< 40 MB) y además intenta la descarga automática.
 Celda 7b (`VOLVER_A_ENTREGAR`) re-entrega lo último sin regenerar.
+Modo Guiado AMPLIADO (26 sep 2026, pedido del usuario): 11 voces `guiado_*`. Cambios:
+medico ("…con quien desea realizar su consulta"), dia (explica SOLO verde=disponible /
+rojo=fichas agotadas; el gris "Sin consulta" no se narra), hora ("…horario de su
+preferencia"), NUEVO `guiado_aviso` (emergente "Aviso Importante" de inasistencias en
+summary_screen, botón real "Entiendo, continuar con la reserva"), `guiado_final` → 
+`guiado_registrada` (invita a "Ver Imagen de la Cita Médica") + `guiado_ficha` (explica
+"Descargar / Imprimir" y "Compartir", se despide) + `guiado_despedida` ("Volver al
+Inicio" sin abrir la imagen; siempre "Gracias por su atención"). Spec §3.4/§5 y plan
+("Ampliación de voces") actualizados; la app aún no cablea estas voces.

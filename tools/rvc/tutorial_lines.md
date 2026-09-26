@@ -47,19 +47,33 @@ La versión legible por máquina (para los scripts) está en `tutorial_lines.jso
 > Registro tonal DISTINTO al resto: profesional, institucional militar (COSSMIL,
 > Bolivia), trato de usted, sin jergas ni signos de exclamación de apertura.
 > La instructora recuerda que la cita es REAL. Un clip por pantalla del flujo de
-> reserva real (Regional → Especialidad → Médico → Día → Hora → Confirmar) más
-> intro y cierre. Si cambia el texto de una burbuja, regenerar ese clip.
+> reserva real (Regional → Especialidad → Médico → Día → Hora → Confirmar), más
+> intro, aviso de inasistencias, cita registrada, imagen de la cita y despedida. Si cambia el texto de una burbuja, regenerar ese clip.
 >
 > Escrito PARA LA VOZ (rev. 24 sep 2026, tras escuchar la 1ª versión clonada):
 > frases cortas (≤ ~15 palabras), palabras de uso común, comas donde se respira,
 > una idea por frase y siempre punto final. Evitar cadenas de sustantivos largos
 > ("establecimiento… agrupados por regional") que la voz lee atropellado.
 
-- **guiado_intro** — «Bienvenido a la reserva guiada de COSSMIL. Le acompañaré paso a paso. Tenga en cuenta que esta reserva es real, y su cita quedará registrada. Comencemos.»
-- **guiado_regional** — «Primero, elija el hospital o policlínico donde desea atenderse. Están ordenados por regional.»
-- **guiado_especialidad** — «Ahora, elija la especialidad médica que necesita.»
-- **guiado_medico** — «Muy bien. Elija al médico con quien desea atenderse.»
-- **guiado_dia** — «Elija el día de su cita. Cada tarjeta le muestra si el médico atiende, y si hay fichas disponibles.»
-- **guiado_hora** — «Ahora, elija el horario que prefiera.»
-- **guiado_confirmar** — «Revise que sus datos sean correctos. Cuando esté listo, presione Confirmar, y su cita quedará registrada.»
-- **guiado_final** — «Su cita fue registrada con éxito. Puede ver o descargar su ficha cuando lo necesite. Gracias por confiar en COSSMIL.»
+- **guiado_intro** — «Bienvenido a la reserva guiada de COSSMIL. Le acompañaré paso a paso. Tenga en cuenta que esta reserva es real, y su cita quedará registrada. Comencemos.»  
+  _Suena: al elegir "Modo Guiado"._
+- **guiado_regional** — «Primero, elija el hospital o policlínico donde desea atenderse. Están ordenados por regional.»  
+  _Suena: pantalla de hospital / policlínico (paso 0)._
+- **guiado_especialidad** — «Ahora, elija la especialidad médica que necesita.»  
+  _Suena: pantalla de especialidad (paso 1)._
+- **guiado_medico** — «Muy bien. Ahora, elija al médico con quien desea realizar su consulta.»  
+  _Suena: pantalla de médico (paso 2)._
+- **guiado_dia** — «Elija el día de su cita. Los días en rojo no tienen fichas disponibles. Para continuar, seleccione un día en verde, que sí tiene fichas disponibles.»  
+  _Suena: pantalla de día / agenda (paso 3)._
+- **guiado_hora** — «Ahora, elija el horario de su preferencia.»  
+  _Suena: pantalla de horario (paso 4)._
+- **guiado_confirmar** — «Revise que sus datos sean correctos. Cuando esté listo, presione Confirmar.»  
+  _Suena: resumen, antes de confirmar (paso 5)._
+- **guiado_aviso** — «Antes de continuar, lea con atención este aviso importante. Si acumula tres inasistencias, se suspenderá su acceso para sacar fichas en línea. Cuando termine de leerlo, presione Entiendo, continuar con la reserva.»  
+  _Suena: al abrirse el emergente "Aviso Importante" (inasistencias) tras tocar Confirmar._
+- **guiado_registrada** — «Su cita fue registrada con éxito. Si desea verla, presione Ver Imagen de la Cita Médica.»  
+  _Suena: cita registrada (pantalla de confirmación)._
+- **guiado_ficha** — «Esta es la imagen de su cita médica. Con Descargar, puede guardarla o imprimirla. Con Compartir, puede enviarla a quien desee. Gracias por su atención, que tenga un buen día.»  
+  _Suena: al abrir "Ver Imagen de la Cita Médica" (explica Descargar / Imprimir y Compartir, y se despide)._
+- **guiado_despedida** — «Gracias por su atención. Le esperamos en su próxima reserva.»  
+  _Suena: al tocar "Volver al Inicio" SIN haber abierto la imagen de la cita._

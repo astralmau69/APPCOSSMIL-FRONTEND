@@ -159,7 +159,7 @@ git commit -m "feat(guiado): parámetro narrateOnly en TutorialCoachOverlay"
 
 **Interfaces:**
 - Consumes: `BookingState.guidedMode` (Task 1), `TutorialCoachOverlay.narrateOnly` (Task 2).
-- Produces: en `guidedMode`, `_coachVoiceId()` devuelve por paso: 0→`guiado_regional`, 1→`guiado_especialidad`, 2→`guiado_medico`, 3→`guiado_dia`, 4→`guiado_hora`, 5→`guiado_confirmar`, confirmado→`guiado_final`. En `isTutorialMode` (no guiado) sigue devolviendo `ficha_0X`/`ficha_07` (sin cambios).
+- Produces: en `guidedMode`, `_coachVoiceId()` devuelve por paso: 0→`guiado_regional`, 1→`guiado_especialidad`, 2→`guiado_medico`, 3→`guiado_dia`, 4→`guiado_hora`, 5→`guiado_confirmar`, confirmado→`guiado_registrada` (ver "Ampliación de voces" al final: `guiado_aviso`, `guiado_ficha`, `guiado_despedida`). En `isTutorialMode` (no guiado) sigue devolviendo `ficha_0X`/`ficha_07` (sin cambios).
 
 - [ ] **Step 1: Write the failing test**
 
@@ -178,7 +178,7 @@ void main() {
     expect(bookingVoiceId(guided: true, step: 3, confirmed: false), 'guiado_dia');
     expect(bookingVoiceId(guided: true, step: 4, confirmed: false), 'guiado_hora');
     expect(bookingVoiceId(guided: true, step: 5, confirmed: false), 'guiado_confirmar');
-    expect(bookingVoiceId(guided: true, step: 3, confirmed: true), 'guiado_final');
+    expect(bookingVoiceId(guided: true, step: 3, confirmed: true), 'guiado_registrada');
   });
   test('voz demo (no guiado) intacta', () {
     expect(bookingVoiceId(guided: false, step: 0, confirmed: false), 'ficha_01');
@@ -203,7 +203,7 @@ String bookingVoiceId({
   required bool confirmed,
 }) {
   if (guided) {
-    if (confirmed) return 'guiado_final';
+    if (confirmed) return 'guiado_registrada';
     const ids = [
       'guiado_regional',
       'guiado_especialidad',
@@ -522,7 +522,7 @@ git commit -m "fix(tutorial): el clip del paso nuevo ya no se corta por el dispo
 
 **Files:**
 - Usa: `tools/rvc/tutorial_lines.json` (ya con las líneas `guiado_*`), `tools/rvc/COLAB_notebook.md`, `tools/rvc/prep_dataset.sh`, `tools/rvc/gen_source_tts.py`
-- Create (salida): `assets/vof_tutorial/guiado_intro.mp3` … `guiado_final.mp3` (8 clips)
+- Create (salida): `assets/vof_tutorial/guiado_*.mp3` (11 clips: intro, regional, especialidad, medico, dia, hora, confirmar, aviso, registrada, ficha, despedida)
 - Modify (si aplica): `pubspec.yaml` (solo si los assets no se incluyen por carpeta)
 
 **Interfaces:**
@@ -546,7 +546,7 @@ Extraer SOLO los `guiado_*.mp3` del ZIP en `assets/vof_tutorial/` (plano; ojo co
 
 - [ ] **Step 5: Prueba en dispositivo**
 
-Instalar (`flutter run` / apk) y recorrer el Modo Guiado real end-to-end: cada paso narra su `guiado_*`, la intro no se pisa con regional, las burbujas no tapan opciones, y al confirmar se crea la cita real y suena `guiado_final`. Verificar también que el demo (`ficha_01`) ya suena en regional (Task 7).
+Instalar (`flutter run` / apk) y recorrer el Modo Guiado real end-to-end: cada paso narra su `guiado_*`, la intro no se pisa con regional, las burbujas no tapan opciones, y al confirmar suena `guiado_aviso` en el emergente, se crea la cita real y suena `guiado_registrada`; al abrir la imagen suena `guiado_ficha` y, si se vuelve al inicio sin abrirla, `guiado_despedida`. Verificar también que el demo (`ficha_01`) ya suena en regional (Task 7).
 
 - [ ] **Step 6: Commit**
 
@@ -566,3 +566,15 @@ git commit -m "feat(guiado): clips de voz guiado_* (RVC) e integración de asset
 **Placeholder scan:** sin TODOs/“implement later”; cada paso de código lleva su bloque. Las notas “ajustar al nombre real” son porque el implementador debe leer `tab_shell.dart`/`tutorial_voice.dart` (APIs existentes) — no son placeholders de diseño.
 
 **Type consistency:** `BookingMode { clasico, guiado }`, `showBookingModeSheet`, `bookingVoiceId`, `bookingCoachMessages`, `narrateOnly`, `stopIfToken(int)`, `guidedMode` — usados consistentes entre tasks.
+
+## Ampliación de voces (26 sep 2026)
+
+Además de la voz por paso (Task 3), cablear en `guidedMode`:
+- `guiado_aviso`: al abrirse el emergente "Aviso Importante" de `summary_screen.dart`
+  (inasistencias, botón "Entiendo, continuar con la reserva").
+- `guiado_registrada`: cita confirmada (reemplaza a `guiado_final`).
+- `guiado_ficha`: al abrir "Ver Imagen de la Cita Médica" (explica "Descargar / Imprimir"
+  y "Compartir" y se despide).
+- `guiado_despedida`: al tocar "Volver al Inicio" SIN haber abierto la imagen.
+Cada uno con prueba: el id correcto según el evento, y que la despedida no suene si ya
+sonó `guiado_ficha`.

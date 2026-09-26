@@ -23,10 +23,13 @@
     "guiado_intro": "Bienvenido a la reserva guiada de COSSMIL. Le acompañaré paso a paso. Tenga en cuenta que esta reserva es real, y su cita quedará registrada. Comencemos.",
     "guiado_regional": "Primero, elija el hospital o policlínico donde desea atenderse. Están ordenados por regional.",
     "guiado_especialidad": "Ahora, elija la especialidad médica que necesita.",
-    "guiado_medico": "Muy bien. Elija al médico con quien desea atenderse.",
-    "guiado_dia": "Elija el día de su cita. Cada tarjeta le muestra si el médico atiende, y si hay fichas disponibles.",
-    "guiado_hora": "Ahora, elija el horario que prefiera.",
-    "guiado_confirmar": "Revise que sus datos sean correctos. Cuando esté listo, presione Confirmar, y su cita quedará registrada.",
-    "guiado_final": "Su cita fue registrada con éxito. Puede ver o descargar su ficha cuando lo necesite. Gracias por confiar en COSSMIL."
+    "guiado_medico": "Muy bien. Ahora, elija al médico con quien desea realizar su consulta.",
+    "guiado_dia": "Elija el día de su cita. Los días en rojo no tienen fichas disponibles. Para continuar, seleccione un día en verde, que sí tiene fichas disponibles.",
+    "guiado_hora": "Ahora, elija el horario de su preferencia.",
+    "guiado_confirmar": "Revise que sus datos sean correctos. Cuando esté listo, presione Confirmar.",
+    "guiado_aviso": "Antes de continuar, lea con atención este aviso importante. Si acumula tres inasistencias, se suspenderá su acceso para sacar fichas en línea. Cuando termine de leerlo, presione Entiendo, continuar con la reserva.",
+    "guiado_registrada": "Su cita fue registrada con éxito. Si desea verla, presione Ver Imagen de la Cita Médica.",
+    "guiado_ficha": "Esta es la imagen de su cita médica. Con Descargar, puede guardarla o imprimirla. Con Compartir, puede enviarla a quien desee. Gracias por su atención, que tenga un buen día.",
+    "guiado_despedida": "Gracias por su atención. Le esperamos en su próxima reserva."
   }
 }
