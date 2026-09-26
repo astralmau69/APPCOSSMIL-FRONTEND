@@ -164,7 +164,7 @@ Genera audios con **la voz real de la locutora de COSSMIL** — la de `assets/vo
 4. Al final queda **`vof_tutorial_….zip`** con todas las voces: se guarda en **Google Drive** (`Mi unidad/cossmil_rvc/salidas/`, también con los mp3 sueltos en la carpeta `vof_tutorial/`), se descarga sola y además aparece un enlace **⬇️ Descargar** por si el navegador bloqueó la descarga. Extrae los mp3 **directo** en `assets/vof_tutorial/`. Si algo falló, la celda **7b** vuelve a entregar lo último sin regenerar.
 5. Para cualquier otro texto: celda **8 · Estudio**.
 
-> **Calidad por frase:** se generan varias tomas; **Whisper** comprueba que se entienda completa (sin cortes ni balbuceos), **UTMOS** elige la más natural (la menos robótica) y **se recortan los sonidos extraños después de la última palabra** (solo si Whisper confirma que no son parte del texto); **Resemble Enhance** la limpia con red neuronal (a fuerza máxima) y la deja nítida a 44,1 kHz; además se silencian los huecos entre palabras, se limpia la referencia antes de clonar y el volumen se iguala con ganancia fija (sin subir el ruido de las pausas). Al final se listan las frases a revisar; rehazlas con otra **SEMILLA** (celda 7 → `SOLO_ESTOS`; celda 8 para textos libres). Más grabaciones limpias de la locutora en `MyDrive/cossmil_rvc/audio_extra/` también ayudan."""),
+> **Calidad por frase:** se generan varias tomas; **Whisper** comprueba que se entienda completa (sin cortes ni balbuceos), **UTMOS** elige la más natural (la menos robótica) y **se recortan los sonidos extraños después de la última palabra** (solo si Whisper confirma que no son parte del texto); **DeepFilterNet** quita el ruido sin inventar sonidos y **DNSMOS** (medidor de Microsoft) exige que el fondo quede tan limpio como en las vof, o se genera otra toma; el realce de nitidez (Resemble Enhance) solo se conserva si el medidor confirma que no ensució; además se silencian los huecos entre palabras, se limpia la referencia antes de clonar y el volumen se iguala con ganancia fija (sin subir el ruido de las pausas). Al final se listan las frases a revisar; rehazlas con otra **SEMILLA** (celda 7 → `SOLO_ESTOS`; celda 8 para textos libres). Más grabaciones limpias de la locutora en `MyDrive/cossmil_rvc/audio_extra/` también ayudan."""),
 
 code("""#@title 1 · Configuración general
 USAR_DRIVE = True        #@param {type:"boolean"}
@@ -277,6 +277,18 @@ if not os.path.exists(f'{VENV}/.ok_realce'):
         !touch {VENV}/.ok_realce
     else:
         print('⚠ Nitidez no disponible (se generará igual, a 24 kHz). Detalle:', *r[-6:], sep='\\n')
+# Audio limpio: DeepFilterNet 3 (quita ruido sin inventar sonidos) + medidor DNSMOS de Microsoft
+# (califica la limpieza del fondo de cada toma). Se descargan ahora para fallar temprano.
+if not os.path.exists(f'{VENV}/.ok_limpio'):
+    !uv pip install -q --python {PY} --no-deps deepfilternet==0.5.6 deepfilterlib==0.5.6
+    !uv pip install -q --python {PY} loguru appdirs onnxruntime
+    !mkdir -p ~/.cache/cossmil_dnsmos && curl -sL -o ~/.cache/cossmil_dnsmos/sig_bak_ovr.onnx https://raw.githubusercontent.com/microsoft/DNS-Challenge/master/DNSMOS/DNSMOS/sig_bak_ovr.onnx
+    r = !{PY} -c "from df.enhance import init_df; init_df(log_level='ERROR', log_file=None); import onnxruntime; print('limpieza OK')" 2>&1
+    print(r[-1])
+    if 'limpieza OK' in r[-1]:
+        !touch {VENV}/.ok_limpio
+    else:
+        print('⚠ Limpieza neuronal no disponible (se usará el realce como respaldo). Detalle:', *r[-6:], sep='\\n')
 print('Motor de voz listo ✔ (entorno aparte: no toca el numpy/torch de Colab)')"""),
 
 code(None),  # celda 4: RVC opcional (componer_celda_rvc)
@@ -319,7 +331,8 @@ similitudes = lambda refs, cands: remoto('similitudes', refs, cands)
 
 GUION = @@GUION@@
 NOMBRES_VOF = @@NOMBRES_VOF@@
-AJUSTES = dict(exageracion=0.5, cfg=0.4, temperatura=0.75, semilla=1234, intentos=5, tomas_min=3, silabas_s=5.5,
+AJUSTES = dict(exageracion=0.5, cfg=0.4, temperatura=0.7, semilla=1234, intentos=6, tomas_min=3, silabas_s=5.5,
+               limpieza_neuronal=True, medir_fondo=True, fondo_min=4.0,
                verificar=True, asr='openai/whisper-large-v3-turbo', naturalidad=True,
                nitidez=True, fuerza_realce=0.9, limpiar_ruido=False, silenciar_pausas=True,
                limpiar_referencia=True,
@@ -343,15 +356,15 @@ def convertir_rvc(entrada, salida):
 
 CLAVES_CLON = ('exageracion', 'cfg', 'temperatura', 'semilla', 'intentos', 'tomas_min', 'silabas_s',
                'verificar', 'asr', 'naturalidad', 'nitidez', 'fuerza_realce', 'limpiar_ruido',
-               'silenciar_pausas', 'limpiar_referencia')
+               'silenciar_pausas', 'limpiar_referencia', 'limpieza_neuronal', 'medir_fondo', 'fondo_min')
 ULTIMO_INFORME = []
 
 def clonar(trabajos):
     global ULTIMO_INFORME
     if AJUSTES['verificar']:
         print(f"  (por frase: {AJUSTES['tomas_min']}+ tomas → Whisper verifica que se entienda completa, "
-              "UTMOS elige la más natural y Resemble Enhance la deja nítida a 44,1 kHz; "
-              "la 1ª vez descarga los modelos)")
+              f"DeepFilterNet la limpia, DNSMOS exige fondo ≥ {AJUSTES['fondo_min']}/5 (como las vof), "
+              "UTMOS elige la más natural y el realce se conserva solo si no ensucia)")
     ULTIMO_INFORME = remoto('clonar_lote', trabajos, REFERENCIA, {k: AJUSTES[k] for k in CLAVES_CLON}, mostrar=True)
     return ULTIMO_INFORME
 
@@ -371,7 +384,9 @@ def producir(pares, lote='estudio', mostrar=12, descargar=True, textos=True):
         print(f"\\n⚠ {len(dudosos)} audio(s) para escuchar con atención: {', '.join(dudosos)}\\n"
               f"  Si alguno no te convence: cambia la SEMILLA y regenera solo esos (celda 7: SOLO_ESTOS).")
     elif any(r['parecido'] is not None for r in ULTIMO_INFORME):
-        print('\\n✔ Todas las frases se entendieron completas (verificadas con Whisper).')
+        fondos = [r['fondo']['bak'] for r in ULTIMO_INFORME if r.get('fondo')]
+        extra = f" y con el fondo limpio (DNSMOS {min(fondos):.2f}–{max(fondos):.2f}/5)" if fondos else ''
+        print(f'\\n✔ Todas las frases se entendieron completas (Whisper){extra}.')
     else:
         print('\\n(sin verificación Whisper: solo se revisó la duración de cada frase)')
     for i, (nombre, ruta) in enumerate(salidas.items()):
@@ -543,7 +558,7 @@ Una línea sin nombre también sirve: se llamará clip_01_una-linea-sin-nombre.
 - Textos largos se parten solos en frases.
 - Si una palabra suena mal, agrégala a `PRONUNCIACION` (p. ej. `'COSSMIL': 'Cossmil'`).
 
-**Calidad:** por frase se generan al menos `TOMAS_MIN` tomas; Whisper descarta las cortadas o con balbuceo, UTMOS elige la más natural y Resemble Enhance la deja limpia y nítida (44,1 kHz). Al final verás cuáles conviene revisar.
+**Calidad:** por frase se generan al menos `TOMAS_MIN` tomas; Whisper descarta las cortadas o con balbuceo, **DeepFilterNet** limpia el fondo, **DNSMOS** exige que quede tan limpio como las vof (si no, se genera otra toma), UTMOS elige la más natural y el realce de nitidez solo se conserva si no ensucia. Al final verás la limpieza de cada frase y cuáles conviene revisar.
 
 **Ajustes:** `EXPRESIVIDAD` más alta = más emoción (0.5 es natural y sereno); `RITMO` más bajo = más pausado y articulado; `VARIACION` más baja = más estable; **`SEMILLA`**: otra toma distinta de la misma voz (si una frase no te gusta, cámbiala)."""),
 
@@ -555,19 +570,23 @@ Este es un texto de prueba: puede escribir aquí cualquier cosa que necesite, y 
 REFERENCIA_VOZ = "automática (la mejor)"  #@param @@REFS_OPCIONES@@
 EXPRESIVIDAD = 0.5   #@param {type:"slider", min:0.25, max:1.0, step:0.05}
 RITMO = 0.4          #@param {type:"slider", min:0.2, max:0.8, step:0.05}
-VARIACION = 0.75     #@param {type:"slider", min:0.4, max:1.2, step:0.05}
+VARIACION = 0.7      #@param {type:"slider", min:0.4, max:1.2, step:0.05}
 SEMILLA = 1234       #@param {type:"integer"}
 NITIDEZ_ESTUDIO = True  #@param {type:"boolean"}
 #@markdown Limpia con red neuronal y deja la voz a 44,1 kHz (Resemble Enhance). `FUERZA_LIMPIEZA` 0.9 = limpieza máxima (configuración oficial); bájala solo si notas la voz apagada.
 FUERZA_LIMPIEZA = 0.9   #@param {type:"slider", min:0, max:1, step:0.05}
 SILENCIAR_PAUSAS = True #@param {type:"boolean"}
+LIMPIEZA_NEURONAL = True #@param {type:"boolean"}
+#@markdown DeepFilterNet quita el ruido de fondo sin inventar sonidos.
+FONDO_MINIMO = 4.0      #@param {type:"slider", min:3.0, max:4.5, step:0.1}
+#@markdown Limpieza mínima del fondo (DNSMOS 1–5; las vof originales dan 4,1–4,2). Si una toma no llega, se genera otra.
 #@markdown Baja el soplido de fondo en los huecos entre palabras (la voz no se toca).
 ELEGIR_LA_MAS_NATURAL = True  #@param {type:"boolean"}
 #@markdown Genera al menos `TOMAS_MIN` tomas por frase y se queda con la más humana (medidor UTMOS).
 TOMAS_MIN = 3        #@param {type:"slider", min:1, max:6, step:1}
 VERIFICAR_CON_WHISPER = True  #@param {type:"boolean"}
 #@markdown Escucha cada frase y la rehace (hasta `TOMAS_MAX` veces) si sale cortada, con balbuceo o ruido.
-TOMAS_MAX = 5        #@param {type:"slider", min:1, max:8, step:1}
+TOMAS_MAX = 6        #@param {type:"slider", min:1, max:10, step:1}
 FORMATO = "mp3"      #@param ["mp3", "wav"]
 NORMALIZAR_VOLUMEN = True  #@param {type:"boolean"}
 DESCARGAR = True     #@param {type:"boolean"}
@@ -584,7 +603,7 @@ else:  # una vof concreta como referencia (preparada en la celda 6)
         remoto('preparar_referencias', sorted(glob.glob(f'{DATASET}/*.wav')), '/content/calibracion/refs')
 AJUSTES.update(exageracion=EXPRESIVIDAD, cfg=RITMO, temperatura=VARIACION, semilla=SEMILLA,
                nitidez=NITIDEZ_ESTUDIO, fuerza_realce=FUERZA_LIMPIEZA, naturalidad=ELEGIR_LA_MAS_NATURAL,
-               silenciar_pausas=SILENCIAR_PAUSAS,
+               silenciar_pausas=SILENCIAR_PAUSAS, limpieza_neuronal=LIMPIEZA_NEURONAL, fondo_min=FONDO_MINIMO,
                tomas_min=TOMAS_MIN, verificar=VERIFICAR_CON_WHISPER, intentos=max(TOMAS_MAX, TOMAS_MIN),
                formato=FORMATO, normalizar=NORMALIZAR_VOLUMEN)
 producir(parse_textos(TEXTOS), lote=nombre_seguro(NOMBRE_LOTE), descargar=DESCARGAR)'''),

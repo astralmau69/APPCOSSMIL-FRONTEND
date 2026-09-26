@@ -176,3 +176,16 @@ summary_screen, botón real "Entiendo, continuar con la reserva"), `guiado_final
 "Descargar / Imprimir" y "Compartir", se despide) + `guiado_despedida` ("Volver al
 Inicio" sin abrir la imagen; siempre "Gracias por su atención"). Spec §3.4/§5 y plan
 ("Ampliación de voces") actualizados; la app aún no cablea estas voces.
+"Sigue habiendo ruido raro en algunas" (26 sep 2026) → cadena por toma rehecha:
+Chatterbox (temp 0,7) → `recortar_bordes` (Whisper) → **DeepFilterNet 3** (`deepfilternet==0.5.6
+--no-deps` + `deepfilterlib` cp311 manylinux_2_28, loguru, appdirs; torchaudio 2.6 aún trae
+`torchaudio.backend.common`) → **DNSMOS P.835** propio con onnxruntime (`dnsmos()`, modelo
+`sig_bak_ovr.onnx` de microsoft/DNS-Challenge, coeficientes polyfit oficiales; probado AQUÍ:
+vof limpias bak 4,06–4,22, +soplido 2,2–2,5, +zumbido ~3,3) → UTMOS. Umbral `FONDO_LIMPIO`
+= 4,0: si ninguna toma llega, más tomas (hasta 6); la elegida prueba el realce Resemble y SOLO
+se conserva si DNSMOS no empeora (el generativo a veces inventa sonidos). Hallazgo medido: el
+`alimiter` del masterizado hacía "respirar" el fondo (bak 3,82→3,62) → ahora ganancia lineal
+pura con techo de pico −1 dBFS (`medir_pico_db`). OJO: DNSMOS depende del nivel (~0,02–0,03
+por dB) y del tramo evaluado (±0,1–0,2 al recortar bordes): comparar a igual nivel/tramo.
+Alternativas de motor descartadas por licencia: XTTS (CPML no comercial), F5-TTS y Fish
+Speech (CC-BY-NC); CosyVoice sin español sólido.

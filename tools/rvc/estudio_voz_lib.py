@@ -240,9 +240,10 @@ def coincidencia(esperado, oido):
     return round(parecido, 3), fin
 
 
-def puntuar_toma(parecido, fin, razon_duracion, snr_db=None, mos=None):
-    """Nota de una toma: manda que se entienda completa; luego naturalidad (MOS 1–5, lo que
-    separa una toma humana de una robótica), duración plausible y limpieza."""
+def puntuar_toma(parecido, fin, razon_duracion, snr_db=None, mos=None, fondo=None):
+    """Nota de una toma: manda que se entienda completa; luego que el FONDO esté limpio
+    (DNSMOS: bak = limpieza del fondo, ovr = calidad global), la naturalidad (UTMOS: lo que
+    separa una toma humana de una robótica), la duración plausible y la relación señal/ruido."""
     import math
     nota = parecido + (0.1 if fin else -0.35)
     nota -= 0.3 * max(0.0, abs(math.log(max(razon_duracion, 1e-3))) - math.log(1.5))
@@ -250,7 +251,13 @@ def puntuar_toma(parecido, fin, razon_duracion, snr_db=None, mos=None):
         nota -= 0.01 * max(0.0, 40.0 - snr_db)
     if mos is not None:
         nota += 0.3 * (mos - 3.5)
+    if fondo:
+        nota -= 0.6 * max(0.0, FONDO_LIMPIO - fondo['bak'])  # cualquier ruido audible pesa mucho
+        nota += 0.2 * (fondo['ovr'] - 3.3)
     return round(nota, 4)
+
+
+FONDO_LIMPIO = 4.0  # DNSMOS bak de las vof originales: 4,06–4,22
 
 
 def silabas_estimadas(texto):
@@ -356,8 +363,9 @@ def ensamblar(partes, ruta_salida):
 def masterizar(ruta_wav, ruta_salida, formato='mp3', normalizar=True, cola=0.25, lufs=-16.0):
     """Recorta silencios de borde SIN comerse finales de palabra (umbral bajo y 150 ms de
     margen), quita zumbidos graves, funde entrada y salida, e iguala el volumen a `lufs` (el
-    de la locutora) con una GANANCIA FIJA + limitador. (El loudnorm de una pasada es dinámico:
-    sube las partes bajas y con ellas el ruido de las pausas.)"""
+    de la locutora) con una GANANCIA LINEAL PURA, limitada para que ningún pico pase de −1 dBFS.
+    Sin compresión ni limitador: el loudnorm de una pasada sube el ruido de las pausas y un
+    limitador rápido hace "respirar" el fondo (medido con DNSMOS: bak 3,82 → 3,62)."""
     import os
     import tempfile
     borde = 'silenceremove=start_periods=1:start_threshold=-58dB:start_silence=0.15'
@@ -370,8 +378,8 @@ def masterizar(ruta_wav, ruta_salida, formato='mp3', normalizar=True, cola=0.25,
         filtros = []
         if normalizar:
             objetivo = max(-30.0, min(-9.0, lufs))
-            ganancia = max(-20.0, min(30.0, objetivo - medir_lufs(tmp)))
-            filtros += [f'volume={ganancia:.2f}dB', 'alimiter=limit=0.89:attack=5:release=50:level=false']
+            ganancia = max(-20.0, min(30.0, objetivo - medir_lufs(tmp), -1.0 - medir_pico_db(tmp)))
+            filtros.append(f'volume={ganancia:.2f}dB')
         filtros.append(f'apad=pad_dur={cola}')
         args = ['-i', tmp, '-af', ','.join(filtros), '-ac', 1, '-ar', 44100]
         args += ['-b:a', '160k'] if formato == 'mp3' else ['-c:a', 'pcm_s16le']
@@ -497,6 +505,15 @@ def distancia_rasgos(ref, otro):
             + 0.3 * abs(otro['rango_st'] - ref['rango_st']))       # entonación
 
 
+def medir_pico_db(ruta):
+    """Pico de muestra en dBFS (ffmpeg volumedetect)."""
+    import re as _re, subprocess
+    r = subprocess.run(['ffmpeg', '-hide_banner', '-nostats', '-i', ruta, '-af', 'volumedetect',
+                        '-f', 'null', '-'], capture_output=True, text=True)
+    m = _re.search(r'max_volume:\s*(-?[\d.]+) dB', r.stderr)
+    return float(m.group(1)) if m else 0.0
+
+
 def medir_lufs(ruta):
     """Sonoridad integrada (LUFS) con ffmpeg loudnorm."""
     import json as _json, re as _re, subprocess
@@ -613,6 +630,27 @@ def _cargar_mos():
         return None
 
 
+def _cargar_limpiador():
+    """DeepFilterNet 3 (MIT/Apache): quita ruido de fondo con una red NO generativa (no inventa
+    sonidos). Devuelve limpiar(y, sr) -> (y, 48000) o None."""
+    try:
+        import librosa
+        import torch
+        from df.enhance import enhance, init_df
+        modelo, estado, _ = init_df(log_level='ERROR', log_file=None)
+        sr_df = estado.sr()
+
+        def limpiar(y, sr):
+            y48 = librosa.resample(y, orig_sr=sr, target_sr=sr_df) if sr != sr_df else y
+            with torch.no_grad():
+                out = enhance(modelo, estado, torch.from_numpy(y48).float().unsqueeze(0))
+            return out.squeeze(0).detach().cpu().numpy().astype('float32'), int(sr_df)
+        return limpiar
+    except Exception as e:  # noqa: BLE001
+        print(f'  [aviso] limpiador DeepFilterNet no disponible ({type(e).__name__}: {str(e)[:100]})', flush=True)
+        return None
+
+
 def _cargar_realce(fuerza=0.9):
     """Resemble Enhance (MIT): quita ruido con una red neuronal y reconstruye la voz a 44,1 kHz
     (más nítida que los 24 kHz del modelo de voz). Devuelve realzar(y, sr) -> (y, sr) o None."""
@@ -632,6 +670,53 @@ def _cargar_realce(fuerza=0.9):
         return None
 
 
+_DNSMOS_URL = 'https://raw.githubusercontent.com/microsoft/DNS-Challenge/master/DNSMOS/DNSMOS/sig_bak_ovr.onnx'
+_DNSMOS = {}
+_AVISOS = {}
+
+
+def dnsmos(y, sr):
+    """DNSMOS P.835 de Microsoft (sin referencia): califica de 1 a 5 la VOZ (sig), el FONDO
+    (bak: 5 = sin ruido audible) y el conjunto (ovr). Corre con onnxruntime (sin torch).
+    Devuelve {'sig', 'bak', 'ovr'} o None si no se puede cargar el modelo."""
+    import os
+    import numpy as np
+    try:
+        if 'sesion' not in _DNSMOS:
+            import onnxruntime as ort
+            ruta = os.path.expanduser('~/.cache/cossmil_dnsmos/sig_bak_ovr.onnx')
+            if not os.path.exists(ruta):
+                import urllib.request
+                os.makedirs(os.path.dirname(ruta), exist_ok=True)
+                urllib.request.urlretrieve(_DNSMOS_URL, ruta + '.tmp')
+                os.replace(ruta + '.tmp', ruta)
+            _DNSMOS['sesion'] = ort.InferenceSession(ruta, providers=['CPUExecutionProvider'])
+        sesion = _DNSMOS['sesion']
+    except Exception as e:  # noqa: BLE001
+        if not _AVISOS.get('dnsmos'):
+            _AVISOS['dnsmos'] = True
+            print(f'  [aviso] medidor de ruido DNSMOS no disponible ({type(e).__name__}: {str(e)[:100]})', flush=True)
+        return None
+    y = np.asarray(y, dtype='float32')
+    if sr != 16000:
+        import librosa
+        y = librosa.resample(y, orig_sr=sr, target_sr=16000)
+    largo = int(9.01 * 16000)
+    while len(y) < largo:  # como el original: repite el audio hasta 9,01 s
+        y = np.concatenate([y, y])
+    saltos = int(np.floor(len(y) / 16000) - 9.01) + 1
+    crudos = []
+    for i in range(max(1, saltos)):
+        seg = y[i * 16000:i * 16000 + largo]
+        if len(seg) < largo:
+            continue
+        crudos.append(sesion.run(None, {'input_1': seg[np.newaxis, :]})[0][0])
+    sig, bak, ovr = np.mean(crudos, axis=0)
+    return {'sig': float(np.poly1d([-0.08397278, 1.22083953, 0.0052439])(sig)),
+            'bak': float(np.poly1d([-0.13166888, 1.60915514, -0.39604546])(bak)),
+            'ovr': float(np.poly1d([-0.06766283, 1.11546468, 0.04602535])(ovr))}
+
+
 def relacion_senal_ruido(y, sr):
     """dB entre la voz (percentil 95 de energía) y el fondo (percentil 10)."""
     import numpy as np
@@ -641,9 +726,6 @@ def relacion_senal_ruido(y, sr):
         return 60.0
     e = np.sqrt(np.mean(y[:n * marco].reshape(n, marco) ** 2, axis=1)) + 1e-9
     return float(20 * np.log10(np.percentile(e, 95) / np.percentile(e, 10)))
-
-
-_AVISOS = {}
 
 
 def tramos_de_voz(y, sr, umbral_db=-35.0, hueco_max=0.15, minimo=0.05):
@@ -758,20 +840,25 @@ def limpiar_ruido(y, sr, fuerza=0.9):
         return y
 
 
-def _clonar(modelo, trabajos, ajustes, mostrar=True, asr=None, mos=None, realzar=None):
+def _clonar(modelo, trabajos, ajustes, mostrar=True, asr=None, mos=None, realzar=None, limpiar=None,
+            medir=None):
     """Lee cada [texto, ruta_wav] con la voz ya condicionada en `modelo`.
 
-    Por frase genera varias tomas (al menos `tomas_min`, hasta `intentos`): cada una se
-    'escucha' con Whisper (¿se entiende completa?) y se puntúa su naturalidad con UTMOS. Se
-    queda la mejor y solo esa pasa por el realce de nitidez (Resemble Enhance, 44,1 kHz)."""
+    Por frase genera varias tomas (al menos `tomas_min`, hasta `intentos`). Cada toma:
+    recorte de lo que sobra al final (verificado con Whisper) → limpieza con DeepFilterNet →
+    medición del fondo (DNSMOS) y de la naturalidad (UTMOS). Gana la que se entiende completa,
+    con el fondo tan limpio como las vof (bak ≥ 4,0) y más natural; si ninguna llega, se
+    siguen generando tomas. A la elegida se le prueba el realce de nitidez (Resemble Enhance)
+    y SOLO se conserva si DNSMOS confirma que no empeoró (a veces inventa sonidos)."""
     import os
     import random
     import numpy as np
     import soundfile as sf
     import torch
     ritmo = ajustes.get('silabas_s', 5.5)
-    max_tomas = max(1, int(ajustes.get('intentos', 5)))
+    max_tomas = max(1, int(ajustes.get('intentos', 6)))
     min_tomas = min(max_tomas, max(1, int(ajustes.get('tomas_min', 3))))
+    exigir_fondo = float(ajustes.get('fondo_min', FONDO_LIMPIO))
     informe = []
     for n, (texto, ruta) in enumerate(trabajos):
         esperado = silabas_estimadas(texto) / ritmo
@@ -782,50 +869,84 @@ def _clonar(modelo, trabajos, ajustes, mostrar=True, asr=None, mos=None, realzar
             wav = modelo.generate(texto, language_id='es',
                                   exaggeration=ajustes.get('exageracion', 0.5),
                                   cfg_weight=ajustes.get('cfg', 0.4),
-                                  temperature=ajustes.get('temperatura', 0.75))
+                                  temperature=ajustes.get('temperatura', 0.7))
             y = wav.squeeze(0).detach().cpu().numpy().astype('float32')
             y, oido, parecido, fin, recorte = recortar_bordes(y, modelo.sr, texto, asr)
-            razon = (len(y) / modelo.sr) / max(esperado, 0.3)
-            snr = relacion_senal_ruido(y, modelo.sr)
-            natural = mos(y, modelo.sr) if mos else None
-            nota = puntuar_toma(parecido if parecido is not None else 1.0, fin, razon, snr, natural)
-            completa = 0.6 <= razon <= 1.7 and (parecido is None or (parecido >= 0.92 and fin))
+            sr = modelo.sr
+            if limpiar:
+                try:
+                    y, sr = limpiar(y, sr)
+                except Exception as e:  # noqa: BLE001
+                    print(f'  [aviso] limpieza omitida en una toma ({type(e).__name__})', flush=True)
+            razon = (len(y) / sr) / max(esperado, 0.3)
+            snr = relacion_senal_ruido(y, sr)
+            fondo = medir(y, sr) if medir else None
+            natural = mos(y, sr) if mos else None
+            nota = puntuar_toma(parecido if parecido is not None else 1.0, fin, razon, snr, natural, fondo)
+            limpia = fondo is None or fondo['bak'] >= exigir_fondo
+            completa = 0.6 <= razon <= 1.7 and (parecido is None or (parecido >= 0.92 and fin)) and limpia
             if mejor is None or nota > mejor['nota']:
-                mejor = dict(y=y, nota=nota, razon=razon, parecido=parecido, fin=fin, oido=oido,
-                             snr=snr, mos=natural, completa=completa, recorte=recorte)
+                mejor = dict(y=y, sr=sr, nota=nota, razon=razon, parecido=parecido, fin=fin, oido=oido,
+                             snr=snr, mos=natural, fondo=fondo, completa=completa, recorte=recorte)
             if toma + 1 >= min_tomas and mejor['completa']:
                 break
-        y, sr = mejor['y'], modelo.sr
+        y, sr, fondo = mejor['y'], mejor['sr'], mejor['fondo']
+        realce_usado = False
         if realzar:
             try:
-                y, sr = realzar(y, sr)
+                y2, sr2 = realzar(y, sr)
+                fondo2 = medir(y2, sr2) if medir else None
+                if fondo is None or fondo2 is None or (fondo2['bak'] >= fondo['bak'] - 0.05
+                                                       and fondo2['ovr'] >= fondo['ovr'] - 0.05):
+                    y, sr, fondo, realce_usado = y2, sr2, fondo2 or fondo, True
             except Exception as e:  # noqa: BLE001
                 print(f'  [aviso] realce omitido en esta frase ({type(e).__name__})', flush=True)
-        elif ajustes.get('limpiar_ruido', False) and mejor['snr'] < 30:
-            y = limpiar_ruido(y, sr, 0.6)  # respaldo suave solo si hay ruido de verdad
+        elif not limpiar and ajustes.get('limpiar_ruido', False) and mejor['snr'] < 30:
+            y = limpiar_ruido(y, sr, 0.6)  # respaldo suave solo si no hay limpiador neuronal
         if ajustes.get('silenciar_pausas', True):
             y = silenciar_pausas(y, sr)
         y = recortar_bordes(y, sr, texto, None, max_cortes=0)[0]  # cierre limpio tras el realce
+        final = medir(y, sr) if medir else None
         sf.write(ruta, y, sr)
-        ok = mejor['parecido'] is None or (mejor['parecido'] >= 0.85 and mejor['fin'])
+        entendida = mejor['parecido'] is None or (mejor['parecido'] >= 0.85 and mejor['fin'])
+        limpio = final is None or final['bak'] >= exigir_fondo - 0.1
         informe.append({'ruta': os.path.basename(ruta), 'texto': texto, 'oido': mejor['oido'],
                         'parecido': mejor['parecido'], 'fin': mejor['fin'], 'razon': round(mejor['razon'], 2),
                         'snr': round(mejor['snr'], 1), 'mos': None if mejor['mos'] is None else round(mejor['mos'], 2),
-                        'tomas': toma + 1, 'ok': ok, 'cola_recortada_s': mejor['recorte']})
+                        'fondo': None if final is None else {k: round(v, 2) for k, v in final.items()},
+                        'realce': realce_usado, 'tomas': toma + 1, 'ok': entendida and limpio,
+                        'cola_recortada_s': mejor['recorte']})
         if mostrar:
             nat = f" · naturalidad {mejor['mos']:.2f}/5" if mejor['mos'] is not None else ''
-            marca = '' if ok else f" ⚠ revisar (se oyó: «{(mejor['oido'] or '')[:70]}»)"
-            print(f"  [{n + 1}/{len(trabajos)}] {texto[:60]} · {toma + 1} tomas{nat}{marca}", flush=True)
+            fon = f" · fondo {final['bak']:.2f}/5" if final else ''
+            marca = ''
+            if not entendida:
+                marca = f" ⚠ revisar (se oyó: «{(mejor['oido'] or '')[:70]}»)"
+            elif not limpio:
+                marca = ' ⚠ revisar (aún con algo de ruido)'
+            print(f"  [{n + 1}/{len(trabajos)}] {texto[:55]} · {toma + 1} tomas{nat}{fon}{marca}", flush=True)
     return informe
 
 
-def limpiar_referencia(ruta):
-    """Pasa la referencia por el limpiador neuronal de Resemble Enhance (solo quita ruido, no
-    cambia la voz) y la guarda al lado como *_limpia.wav. Si no se puede, usa la original."""
+def limpiar_referencia(ruta, limpiar=None):
+    """Limpia la referencia (DeepFilterNet; respaldo: denoise de Resemble Enhance) — solo quita
+    ruido, no cambia la voz — y la guarda al lado como *_limpia.wav. Si no se puede, la original.
+    Importa porque el clon copia también el "ambiente" de la grabación de referencia."""
     import os
     destino = ruta[:-4] + '_limpia.wav'
     if os.path.exists(destino) and os.path.getmtime(destino) >= os.path.getmtime(ruta):
         return destino
+    if limpiar:
+        try:
+            import librosa
+            import soundfile as sf
+            y, sr = librosa.load(ruta, sr=None, mono=True)
+            y2, sr2 = limpiar(y, sr)
+            sf.write(destino, y2, sr2)
+            print('  referencia de la voz limpiada ✔ (DeepFilterNet)', flush=True)
+            return destino
+        except Exception as e:  # noqa: BLE001
+            print(f'  [aviso] DeepFilterNet no limpió la referencia ({type(e).__name__}); se prueba otro', flush=True)
     try:
         import librosa
         import soundfile as sf
@@ -845,13 +966,15 @@ def limpiar_referencia(ruta):
 def clonar_lote(trabajos, referencia, ajustes):
     """Chatterbox Multilingual (MIT): clona la voz de `referencia` y lee cada [texto, ruta_wav]."""
     modelo = _modelo_clonacion()
+    limpiar = _cargar_limpiador() if ajustes.get('limpieza_neuronal', True) else None
     if ajustes.get('limpiar_referencia', True):
-        referencia = limpiar_referencia(referencia)
+        referencia = limpiar_referencia(referencia, limpiar)
     modelo.prepare_conditionals(referencia, exaggeration=ajustes.get('exageracion', 0.5))
     asr = _cargar_asr(ajustes.get('asr', 'openai/whisper-large-v3-turbo')) if ajustes.get('verificar', True) else None
     mos = _cargar_mos() if ajustes.get('naturalidad', True) else None
     realzar = _cargar_realce(ajustes.get('fuerza_realce', 0.9)) if ajustes.get('nitidez', True) else None
-    return _clonar(modelo, trabajos, ajustes, asr=asr, mos=mos, realzar=realzar)
+    medir = dnsmos if ajustes.get('medir_fondo', True) else None
+    return _clonar(modelo, trabajos, ajustes, asr=asr, mos=mos, realzar=realzar, limpiar=limpiar, medir=medir)
 
 
 def clonar_candidatas(frase, referencias, carpeta, ajustes):

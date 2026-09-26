@@ -322,6 +322,76 @@ def test_recortar_sonidos_al_final():
     assert abs(float(z[0])) < 1e-6 and abs(float(z[-1])) < 1e-3  # entra y sale en silencio (fundidos)
 
 
+def test_elige_la_toma_sin_ruido_y_descarta_realce_que_empeora():
+    try:
+        import numpy as np
+        import soundfile as sf
+    except ImportError:
+        return
+    import types
+    if 'torch' not in sys.modules:
+        sys.modules['torch'] = types.SimpleNamespace(manual_seed=lambda s: None)
+
+    class Onda:
+        def __init__(self, y): self.y = y
+        def squeeze(self, i): return self
+        def detach(self): return self
+        def cpu(self): return self
+        def numpy(self): return self.y
+
+    class Modelo:
+        sr = 24000
+        def __init__(self): self.n = 0
+        def generate(self, texto, **k):
+            self.n += 1
+            return Onda(np.full(int(self.sr * 2.0), 0.1 * self.n, dtype='float32'))
+
+    toma = lambda y: round(float(y[len(y) // 2]) * 10)
+    frase = 'Ahora, elija el horario de su preferencia.'
+    asr = lambda y, sr: frase
+    # tomas 1-3 con ruido de fondo (bak 3,0–3,5); la 4 limpia (4,2)
+    fondo_por_toma = {1: 3.0, 2: 3.5, 3: 3.2, 4: 4.2, 5: 4.3, 6: 4.1}
+    medir = lambda y, sr: {'sig': 3.6, 'bak': fondo_por_toma.get(toma(y), 4.2), 'ovr': 3.4}
+    limpiar = lambda y, sr: (y, sr)
+    with tempfile.TemporaryDirectory() as tmp:
+        ruta = os.path.join(tmp, 'x.wav')
+        # realce que ENSUCIA (bak baja a 3,0): debe descartarse
+        realce_malo = lambda y, sr: (y * 1.0 + 0.0 * y, 48000)
+        medir_malo = lambda y, sr: ({'sig': 3.6, 'bak': 3.0, 'ovr': 3.0} if sr == 48000 else medir(y, sr))
+        inf = L._clonar(Modelo(), [[frase, ruta]], {'intentos': 6, 'tomas_min': 3},
+                        mostrar=False, asr=asr, limpiar=limpiar, realzar=realce_malo, medir=medir_malo)[0]
+        y, sr = sf.read(ruta)
+        assert inf['tomas'] == 4 and inf['ok'] and not inf['realce'], inf   # siguió hasta la toma limpia
+        assert sr == 24000 and abs(y[len(y) // 2] - 0.4) < 1e-3               # guardó la 4, sin realce
+        # realce que NO empeora: se conserva
+        realce_bueno = lambda y, sr: (np.repeat(y, 2), 48000)
+        inf = L._clonar(Modelo(), [[frase, ruta]], {'intentos': 6, 'tomas_min': 3},
+                        mostrar=False, asr=asr, limpiar=limpiar, realzar=realce_bueno, medir=medir)[0]
+        assert inf['realce'] and sf.read(ruta)[1] == 48000
+        # si ninguna toma queda limpia, se marca para revisar
+        inf = L._clonar(Modelo(), [[frase, ruta]], {'intentos': 3, 'tomas_min': 3},
+                        mostrar=False, asr=asr, limpiar=limpiar, medir=lambda y, sr: {'sig': 3, 'bak': 3.1, 'ovr': 2.9})[0]
+        assert not inf['ok'] and inf['tomas'] == 3
+
+
+def test_dnsmos_distingue_ruido():
+    try:
+        import numpy as np
+        import onnxruntime  # noqa: F401
+        import librosa
+    except ImportError:
+        print('  (omitido: falta onnxruntime/librosa)')
+        return
+    y, sr = librosa.load(sorted(__import__('glob').glob(os.path.join(os.path.dirname(__file__),
+                                                                       '../../assets/vof/*.mp3')))[1], sr=16000)
+    limpio = L.dnsmos(y, sr)
+    if limpio is None:
+        print('  (omitido: no se pudo descargar el modelo DNSMOS)')
+        return
+    sucio = L.dnsmos(y + 0.01 * np.random.default_rng(0).standard_normal(len(y)).astype('float32'), sr)
+    assert limpio['bak'] >= L.FONDO_LIMPIO and sucio['bak'] < 3.0, (limpio, sucio)
+
+
 if __name__ == '__main__':
     for nombre, f in list(globals().items()):
         if nombre.startswith('test_'):
