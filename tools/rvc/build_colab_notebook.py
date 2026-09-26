@@ -332,7 +332,7 @@ similitudes = lambda refs, cands: remoto('similitudes', refs, cands)
 GUION = @@GUION@@
 NOMBRES_VOF = @@NOMBRES_VOF@@
 AJUSTES = dict(exageracion=0.5, cfg=0.4, temperatura=0.7, semilla=1234, intentos=6, tomas_min=3, silabas_s=5.5,
-               limpieza_neuronal=True, medir_fondo=True, fondo_min=4.0,
+               limpieza_neuronal=True, medir_fondo=True, fondo_min=4.0, misma_voz=True, igualar_timbre=True,
                verificar=True, asr='openai/whisper-large-v3-turbo', naturalidad=True,
                nitidez=True, fuerza_realce=0.9, limpiar_ruido=False, silenciar_pausas=True,
                limpiar_referencia=True,
@@ -356,7 +356,8 @@ def convertir_rvc(entrada, salida):
 
 CLAVES_CLON = ('exageracion', 'cfg', 'temperatura', 'semilla', 'intentos', 'tomas_min', 'silabas_s',
                'verificar', 'asr', 'naturalidad', 'nitidez', 'fuerza_realce', 'limpiar_ruido',
-               'silenciar_pausas', 'limpiar_referencia', 'limpieza_neuronal', 'medir_fondo', 'fondo_min')
+               'silenciar_pausas', 'limpiar_referencia', 'limpieza_neuronal', 'medir_fondo', 'fondo_min',
+               'misma_voz', 'igualar_timbre')
 ULTIMO_INFORME = []
 
 def clonar(trabajos):
@@ -364,7 +365,8 @@ def clonar(trabajos):
     if AJUSTES['verificar']:
         print(f"  (por frase: {AJUSTES['tomas_min']}+ tomas → Whisper verifica que se entienda completa, "
               f"DeepFilterNet la limpia, DNSMOS exige fondo ≥ {AJUSTES['fondo_min']}/5 (como las vof), "
-              "UTMOS elige la más natural y el realce se conserva solo si no ensucia)")
+              "UTMOS elige la más natural, WavLM exige que suene a la misma locutora, "
+              "el color se iguala al de las vof y el realce se conserva solo si no ensucia)")
     ULTIMO_INFORME = remoto('clonar_lote', trabajos, REFERENCIA, {k: AJUSTES[k] for k in CLAVES_CLON}, mostrar=True)
     return ULTIMO_INFORME
 
@@ -580,6 +582,10 @@ LIMPIEZA_NEURONAL = True #@param {type:"boolean"}
 #@markdown DeepFilterNet quita el ruido de fondo sin inventar sonidos.
 FONDO_MINIMO = 4.0      #@param {type:"slider", min:3.0, max:4.5, step:0.1}
 #@markdown Limpieza mínima del fondo (DNSMOS 1–5; las vof originales dan 4,1–4,2). Si una toma no llega, se genera otra.
+MISMA_LOCUTORA = True   #@param {type:"boolean"}
+#@markdown Prefiere las tomas cuya voz se parece más a la huella de la locutora (WavLM): todos los audios suenan a la misma persona.
+IGUALAR_TIMBRE = True   #@param {type:"boolean"}
+#@markdown Ecualiza suavemente para que el color del sonido coincida con las vof que ya suenan en la app (solo si no ensucia).
 #@markdown Baja el soplido de fondo en los huecos entre palabras (la voz no se toca).
 ELEGIR_LA_MAS_NATURAL = True  #@param {type:"boolean"}
 #@markdown Genera al menos `TOMAS_MIN` tomas por frase y se queda con la más humana (medidor UTMOS).
@@ -604,6 +610,7 @@ else:  # una vof concreta como referencia (preparada en la celda 6)
 AJUSTES.update(exageracion=EXPRESIVIDAD, cfg=RITMO, temperatura=VARIACION, semilla=SEMILLA,
                nitidez=NITIDEZ_ESTUDIO, fuerza_realce=FUERZA_LIMPIEZA, naturalidad=ELEGIR_LA_MAS_NATURAL,
                silenciar_pausas=SILENCIAR_PAUSAS, limpieza_neuronal=LIMPIEZA_NEURONAL, fondo_min=FONDO_MINIMO,
+               misma_voz=MISMA_LOCUTORA, igualar_timbre=IGUALAR_TIMBRE,
                tomas_min=TOMAS_MIN, verificar=VERIFICAR_CON_WHISPER, intentos=max(TOMAS_MAX, TOMAS_MIN),
                formato=FORMATO, normalizar=NORMALIZAR_VOLUMEN)
 producir(parse_textos(TEXTOS), lote=nombre_seguro(NOMBRE_LOTE), descargar=DESCARGAR)'''),

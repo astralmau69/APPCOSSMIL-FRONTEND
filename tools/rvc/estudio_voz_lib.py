@@ -240,7 +240,7 @@ def coincidencia(esperado, oido):
     return round(parecido, 3), fin
 
 
-def puntuar_toma(parecido, fin, razon_duracion, snr_db=None, mos=None, fondo=None):
+def puntuar_toma(parecido, fin, razon_duracion, snr_db=None, mos=None, fondo=None, voz=None):
     """Nota de una toma: manda que se entienda completa; luego que el FONDO esté limpio
     (DNSMOS: bak = limpieza del fondo, ovr = calidad global), la naturalidad (UTMOS: lo que
     separa una toma humana de una robótica), la duración plausible y la relación señal/ruido."""
@@ -254,7 +254,12 @@ def puntuar_toma(parecido, fin, razon_duracion, snr_db=None, mos=None, fondo=Non
     if fondo:
         nota -= 0.6 * max(0.0, FONDO_LIMPIO - fondo['bak'])  # cualquier ruido audible pesa mucho
         nota += 0.2 * (fondo['ovr'] - 3.3)
+    if voz is not None:
+        nota += 2.0 * (voz - MISMA_VOZ)  # que siga sonando la MISMA locutora en todos los audios
     return round(nota, 4)
+
+
+MISMA_VOZ = 0.86  # umbral de WavLM-SV para "misma persona"
 
 
 FONDO_LIMPIO = 4.0  # DNSMOS bak de las vof originales: 4,06–4,22
@@ -717,6 +722,91 @@ def dnsmos(y, sr):
             'ovr': float(np.poly1d([-0.06766283, 1.11546468, 0.04602535])(ovr))}
 
 
+_BANDAS_HZ = [80 * (10000 / 80) ** (i / 27) for i in range(28)]  # tercios de octava aprox., 80 Hz–10 kHz
+
+
+def perfil_timbre(y, sr):
+    """Color del sonido: nivel medio (dB) por banda, solo en los tramos con voz."""
+    import numpy as np
+    from scipy.signal import welch
+    y = np.asarray(y, dtype='float64')
+    tramos = tramos_de_voz(y, sr)
+    voz = np.concatenate([y[a:b] for a, b in tramos]) if tramos else y
+    f, p = welch(voz, sr, nperseg=min(4096, len(voz)))
+    perfil = []
+    for c in _BANDAS_HZ:
+        m = (f >= c / 2 ** (1 / 6)) & (f < c * 2 ** (1 / 6))
+        perfil.append(float(10 * np.log10(np.mean(p[m]) + 1e-20)) if m.any() else None)
+    return perfil
+
+
+def igualar_timbre(y, sr, perfil_ref, max_sube=2.0, max_baja=6.0, fuerza=0.6, umbral_db=2.5):
+    """Ecualiza el audio para que su color (graves/medios/agudos) se parezca al de las vof.
+    Solo actúa si se aleja de verdad (> `umbral_db` dB rms: por debajo, la diferencia es de las
+    palabras, no del sonido) y corrige al `fuerza`·100 %, por bandas (sube ≤ 2 dB, baja ≤ 6 dB),
+    sin cambiar el volumen general ni tocar > 10 kHz (no sube ruido). Fase lineal (sin eco)."""
+    import numpy as np
+    from scipy.signal import fftconvolve, firwin2
+    y = np.asarray(y, dtype='float32')
+    propio = perfil_timbre(y, sr)
+    if distancia_timbre(perfil_ref, propio) <= umbral_db:
+        return y
+    pares = [(c, r - p) for c, r, p in zip(_BANDAS_HZ, perfil_ref, propio)
+             if r is not None and p is not None and c < sr / 2 * 0.9]
+    if len(pares) < 8:
+        return y
+    frec = np.array([c for c, _ in pares])
+    dif = np.array([d for _, d in pares])
+    dif -= np.median(dif)                                   # solo la FORMA, no el volumen
+    dif = np.convolve(np.pad(dif, 1, mode='edge'), np.ones(3) / 3, mode='valid')  # suavizado
+    dif = np.clip(fuerza * dif, -max_baja, max_sube)
+    nyq = sr / 2
+    puntos = [0.0] + list(frec)
+    ganancias = [dif[0]] + list(dif)
+    if frec[-1] < min(11000.0, nyq * 0.95):
+        puntos.append(min(11000.0, nyq * 0.95)); ganancias.append(0.0)   # agudos extremos intactos
+    puntos.append(nyq); ganancias.append(0.0)
+    filtro = firwin2(1025, puntos, [10 ** (g / 20) for g in ganancias], fs=sr)
+    return fftconvolve(y, filtro, mode='same').astype('float32')
+
+
+def distancia_timbre(a, b):
+    """Diferencia (dB rms) entre dos perfiles, ignorando el volumen general."""
+    import numpy as np
+    d = np.array([x - y for x, y in zip(a, b) if x is not None and y is not None])
+    return float(np.sqrt(np.mean((d - np.median(d)) ** 2))) if len(d) else 0.0
+
+
+def _cargar_huella_voz(referencia):
+    """WavLM-SV: devuelve parecido(y, sr) = coseno entre la toma y la huella de la locutora
+    (promedio de trozos de 6 s de la referencia). ≥ 0,86 = misma persona (umbral del modelo)."""
+    try:
+        import librosa
+        import numpy as np
+        import torch
+        from transformers import AutoFeatureExtractor, WavLMForXVector
+        dev = 'cuda' if torch.cuda.is_available() else 'cpu'
+        fe = AutoFeatureExtractor.from_pretrained('microsoft/wavlm-base-plus-sv')
+        red = WavLMForXVector.from_pretrained('microsoft/wavlm-base-plus-sv').to(dev).eval()
+
+        def vector(y, sr):
+            y16 = librosa.resample(np.asarray(y, dtype='float32'), orig_sr=sr, target_sr=16000) if sr != 16000 else y
+            x = fe(y16[:16000 * 20], sampling_rate=16000, return_tensors='pt').to(dev)
+            with torch.no_grad():
+                e = red(**x).embeddings[0]
+            return torch.nn.functional.normalize(e, dim=-1).cpu().numpy()
+
+        yr = librosa.load(referencia, sr=16000, mono=True)[0]
+        trozos = [yr[i:i + 16000 * 6] for i in range(0, max(1, len(yr) - 16000 * 3), 16000 * 6)]
+        huella = np.mean([vector(t, 16000) for t in trozos if len(t) > 16000], axis=0)
+        huella = huella / np.linalg.norm(huella)
+        return lambda y, sr: float(vector(y, sr) @ huella)
+    except Exception as e:  # noqa: BLE001
+        print(f'  [aviso] comparación con la huella de la voz no disponible ({type(e).__name__}: {str(e)[:100]})',
+              flush=True)
+        return None
+
+
 def relacion_senal_ruido(y, sr):
     """dB entre la voz (percentil 95 de energía) y el fondo (percentil 10)."""
     import numpy as np
@@ -841,7 +931,7 @@ def limpiar_ruido(y, sr, fuerza=0.9):
 
 
 def _clonar(modelo, trabajos, ajustes, mostrar=True, asr=None, mos=None, realzar=None, limpiar=None,
-            medir=None):
+            medir=None, huella=None, timbre=None):
     """Lee cada [texto, ruta_wav] con la voz ya condicionada en `modelo`.
 
     Por frase genera varias tomas (al menos `tomas_min`, hasta `intentos`). Cada toma:
@@ -882,12 +972,13 @@ def _clonar(modelo, trabajos, ajustes, mostrar=True, asr=None, mos=None, realzar
             snr = relacion_senal_ruido(y, sr)
             fondo = medir(y, sr) if medir else None
             natural = mos(y, sr) if mos else None
-            nota = puntuar_toma(parecido if parecido is not None else 1.0, fin, razon, snr, natural, fondo)
+            voz = huella(y, sr) if huella else None
+            nota = puntuar_toma(parecido if parecido is not None else 1.0, fin, razon, snr, natural, fondo, voz)
             limpia = fondo is None or fondo['bak'] >= exigir_fondo
             completa = 0.6 <= razon <= 1.7 and (parecido is None or (parecido >= 0.92 and fin)) and limpia
             if mejor is None or nota > mejor['nota']:
                 mejor = dict(y=y, sr=sr, nota=nota, razon=razon, parecido=parecido, fin=fin, oido=oido,
-                             snr=snr, mos=natural, fondo=fondo, completa=completa, recorte=recorte)
+                             snr=snr, mos=natural, fondo=fondo, completa=completa, recorte=recorte, voz=voz)
             if toma + 1 >= min_tomas and mejor['completa']:
                 break
         y, sr, fondo = mejor['y'], mejor['sr'], mejor['fondo']
@@ -903,6 +994,16 @@ def _clonar(modelo, trabajos, ajustes, mostrar=True, asr=None, mos=None, realzar
                 print(f'  [aviso] realce omitido en esta frase ({type(e).__name__})', flush=True)
         elif not limpiar and ajustes.get('limpiar_ruido', False) and mejor['snr'] < 30:
             y = limpiar_ruido(y, sr, 0.6)  # respaldo suave solo si no hay limpiador neuronal
+        timbre_usado = False
+        if timbre:  # mismo color de sonido que las vof que ya suenan en la app
+            try:
+                y2 = igualar_timbre(y, sr, timbre)
+                if y2 is not y:
+                    antes, despues = (medir(y, sr), medir(y2, sr)) if medir else (None, None)
+                    if antes is None or despues is None or despues['bak'] >= antes['bak'] - 0.03:
+                        y, timbre_usado = y2, True  # solo si no ensucia el fondo
+            except Exception as e:  # noqa: BLE001
+                print(f'  [aviso] ecualización omitida ({type(e).__name__})', flush=True)
         if ajustes.get('silenciar_pausas', True):
             y = silenciar_pausas(y, sr)
         y = recortar_bordes(y, sr, texto, None, max_cortes=0)[0]  # cierre limpio tras el realce
@@ -914,16 +1015,21 @@ def _clonar(modelo, trabajos, ajustes, mostrar=True, asr=None, mos=None, realzar
                         'parecido': mejor['parecido'], 'fin': mejor['fin'], 'razon': round(mejor['razon'], 2),
                         'snr': round(mejor['snr'], 1), 'mos': None if mejor['mos'] is None else round(mejor['mos'], 2),
                         'fondo': None if final is None else {k: round(v, 2) for k, v in final.items()},
-                        'realce': realce_usado, 'tomas': toma + 1, 'ok': entendida and limpio,
+                        'voz': None if mejor['voz'] is None else round(mejor['voz'], 3),
+                        'realce': realce_usado, 'timbre_igualado': timbre_usado,
+                        'tomas': toma + 1, 'ok': entendida and limpio,
                         'cola_recortada_s': mejor['recorte']})
         if mostrar:
             nat = f" · naturalidad {mejor['mos']:.2f}/5" if mejor['mos'] is not None else ''
             fon = f" · fondo {final['bak']:.2f}/5" if final else ''
+            fon += f" · voz {mejor['voz']:.2f}" if mejor['voz'] is not None else ''
             marca = ''
             if not entendida:
                 marca = f" ⚠ revisar (se oyó: «{(mejor['oido'] or '')[:70]}»)"
             elif not limpio:
                 marca = ' ⚠ revisar (aún con algo de ruido)'
+            elif mejor['voz'] is not None and mejor['voz'] < MISMA_VOZ - 0.06:
+                marca = ' ⚠ revisar (la voz se aleja de la locutora)'
             print(f"  [{n + 1}/{len(trabajos)}] {texto[:55]} · {toma + 1} tomas{nat}{fon}{marca}", flush=True)
     return informe
 
@@ -974,7 +1080,17 @@ def clonar_lote(trabajos, referencia, ajustes):
     mos = _cargar_mos() if ajustes.get('naturalidad', True) else None
     realzar = _cargar_realce(ajustes.get('fuerza_realce', 0.9)) if ajustes.get('nitidez', True) else None
     medir = dnsmos if ajustes.get('medir_fondo', True) else None
-    return _clonar(modelo, trabajos, ajustes, asr=asr, mos=mos, realzar=realzar, limpiar=limpiar, medir=medir)
+    huella = _cargar_huella_voz(referencia) if ajustes.get('misma_voz', True) else None
+    timbre = None
+    if ajustes.get('igualar_timbre', True):
+        try:
+            import librosa
+            yr, srr = librosa.load(referencia, sr=None, mono=True)
+            timbre = perfil_timbre(yr, srr)
+        except Exception as e:  # noqa: BLE001
+            print(f'  [aviso] perfil de timbre no disponible ({type(e).__name__})', flush=True)
+    return _clonar(modelo, trabajos, ajustes, asr=asr, mos=mos, realzar=realzar, limpiar=limpiar, medir=medir,
+                   huella=huella, timbre=timbre)
 
 
 def clonar_candidatas(frase, referencias, carpeta, ajustes):

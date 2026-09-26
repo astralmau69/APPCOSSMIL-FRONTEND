@@ -189,3 +189,12 @@ pura con techo de pico −1 dBFS (`medir_pico_db`). OJO: DNSMOS depende del nive
 por dB) y del tramo evaluado (±0,1–0,2 al recortar bordes): comparar a igual nivel/tramo.
 Alternativas de motor descartadas por licencia: XTTS (CPML no comercial), F5-TTS y Fish
 Speech (CC-BY-NC); CosyVoice sin español sólido.
+"¿Es lo mejor? mejóralo para mi app" (26 sep 2026): Chatterbox Multilingual sigue siendo la
+mejor opción LIBRE (MIT) con español y clonación; lo que más mejoraría es MÁS DATOS reales →
+`tools/rvc/guion_grabacion_locutora.md` (Parte A = las 30 frases de la app, que grabadas
+directo serían voz humana real; Parte B = 35 frases variadas; ~8–10 min; subir a
+`audio_extra/`). Añadido al pipeline: huella WavLM-SV por toma (`_cargar_huella_voz`,
+peso 2·(sim−0,86), ⚠ si < 0,80) para que TODOS los audios suenen a la misma persona, e
+`igualar_timbre` (EQ por tercios de octava hacia el perfil de la referencia; solo si la
+distancia > 2,5 dB, al 60 %, +2/−6 dB, nada > 10 kHz; se conserva solo si DNSMOS bak no baja
+> 0,03). Validado en vof: corrige agudos ±6–8 dB (3,6→2,3 dB) y deja intactas las vof.

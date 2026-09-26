@@ -25,6 +25,12 @@ Objetivo: que la instructora **diga en voz alta** cada paso del tutorial, con la
 > - Motor: `estudio_voz_lib.py` (pruebas: `python3 tools/rvc/test_estudio_voz_lib.py`);
 >   notebook: `python3 tools/rvc/build_colab_notebook.py` (nunca editar el `.ipynb`).
 >
+> - Cada toma se limpia (DeepFilterNet), se mide (DNSMOS: fondo ≥ 4,0 como las vof), se
+>   compara con la huella de la locutora (WavLM, "misma persona") y se ecualiza suavemente al
+>   color de las vof (solo si no ensucia).
+> - **Para mejorar de verdad:** grabar a la locutora con `guion_grabacion_locutora.md`
+>   (8–10 min) y subirlo a `MyDrive/cossmil_rvc/audio_extra/`.
+>
 > Lo de abajo es la receta RVC manual original, solo como referencia.
 
 ## Piezas de esta carpeta

@@ -392,6 +392,33 @@ def test_dnsmos_distingue_ruido():
     assert limpio['bak'] >= L.FONDO_LIMPIO and sucio['bak'] < 3.0, (limpio, sucio)
 
 
+def test_igualar_timbre():
+    try:
+        import numpy as np
+        import librosa
+        from scipy.signal import fftconvolve, firwin2
+    except ImportError:
+        return
+    import glob as _g
+    vofs = sorted(_g.glob(os.path.join(os.path.dirname(__file__), '../../assets/vof/*.mp3')))
+    if len(vofs) < 6:
+        return
+    sr = 24000
+    perfil = L.perfil_timbre(np.concatenate([librosa.load(f, sr=sr)[0] for f in vofs[:4]]), sr)
+    y = librosa.load(vofs[4], sr=sr)[0]
+    assert L.igualar_timbre(y, sr, perfil) is y                      # ya se parece: no se toca
+    f = firwin2(1025, [0, 1500, 4000, 12000], [1, 1, 10 ** (-8 / 20), 10 ** (-8 / 20)], fs=sr)
+    apagada = fftconvolve(y, f, mode='same').astype('float32')       # agudos -8 dB
+    z = L.igualar_timbre(apagada, sr, perfil)
+    antes = L.distancia_timbre(perfil, L.perfil_timbre(apagada, sr))
+    despues = L.distancia_timbre(perfil, L.perfil_timbre(z, sr))
+    assert despues < antes - 0.8, (antes, despues)                    # recupera el color
+    rms = lambda a: 20 * np.log10(np.sqrt(np.mean(a ** 2)))
+    assert abs(rms(z) - rms(apagada)) < 1.5                           # sin cambiar mucho el volumen
+    # la misma locutora pesa en la nota
+    assert L.puntuar_toma(1.0, True, 1.0, voz=0.92) > L.puntuar_toma(1.0, True, 1.0, voz=0.80)
+
+
 if __name__ == '__main__':
     for nombre, f in list(globals().items()):
         if nombre.startswith('test_'):
